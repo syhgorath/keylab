@@ -50,7 +50,7 @@ CHOICES=',"platform_choices":[{"id":"generic","label":"Debian / Ubuntu"},{"id":"
     [ "$(comp_vars_get "$VF" mode)" = b ]
     [ "$(comp_vars_get "$VF" allow_from)" = 10.1.10.0/24 ]
     run grep -q pve_apply "$VF"; [ "$status" -ne 0 ]
-    [ "$(stat -f '%Lp' "$VF" 2>/dev/null || stat -c '%a' "$VF")" = 600 ]
+    [ "$(stat -c %a "$VF" 2>/dev/null || stat -f %Lp "$VF")" = 600 ]
 }
 
 @test "'Bilmiyorum' generic yazar; 'Şimdi değil' hiçbir platform satırı yazmaz (allow_from yine sorulur)" {
