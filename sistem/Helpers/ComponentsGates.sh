@@ -217,3 +217,41 @@ comp_gate_warn_vars() {
     done
     return 0
 }
+
+# comp_gate_apply_vars <bilgi> <eylem> <değerler-dosyası> → seçili platformun apply_vars'ından BU koşuya özel geçirilecek "ad=değer" satırları.
+# Koşullar (hepsi gerekir): eylem type-server-name onaylı, changes-config etkili, yıkıcı değil ve bir ön koşul (requires) taşıyan "önizle→uygula" eylemi;
+# platform değerler dosyasında AÇIKÇA yazılı ve bildirilen platform_choices arasında; değişken dosyada YOK (kullanıcının değeri, false dahil, ezilmez);
+# eylemin kendi action.set'i aynı değişkeni zaten belirlemiyor. Alan yoksa hiçbir şey yazmaz (eski paketler değişmez). Dosyaya YAZILMAZ.
+comp_gate_apply_vars() {
+    local info="$1" action="$2" vf="$3" pv pid kv k eff
+    [ "$(comp_action_get "$info" "$action" confirm)" = type-server-name ] || return 0
+    eff=",$(comp_action_get "$info" "$action" effects),"
+    case "$eff" in *,changes-config,*) ;; *) return 0 ;; esac
+    case "$eff" in *,destructive,*) return 0 ;; esac
+    [ -n "$(comp_action_get "$info" "$action" requires)" ] || return 0
+    pv=$(comp_info_get "$info" platform_var); [ -n "$pv" ] || return 0
+    pid=$(comp_vars_get "$vf" "$pv" 2>/dev/null) || return 0
+    [ -n "$pid" ] || return 0
+    comp_info_all "$info" platform_choice | grep -qxF -- "$pid" || return 0
+    while IFS= read -r kv; do
+        [ -n "$kv" ] || continue
+        k="${kv%%=*}"
+        comp_vars_get "$vf" "$k" >/dev/null 2>&1 && continue
+        comp_info_all "$info" "action.$action.set" | grep -q "^$k=" && continue
+        printf '%s\n' "$kv"
+    done < <(comp_info_all "$info" "platform_choice.$pid.apply_var")
+    return 0
+}
+
+# comp_gate_apply_vars_notice <bilgi> <değerler-dosyası> <ad=değer>... → onaydan ÖNCE stderr'e: paketin apply_warnings metinleri ve "bu koşuya özel" satırı
+comp_gate_apply_vars_notice() {
+    local info="$1" vf="$2" pid w kv
+    shift 2
+    [ "$#" -gt 0 ] || return 0
+    pid=$(comp_vars_get "$vf" "$(comp_info_get "$info" platform_var)" 2>/dev/null) || pid=""
+    {
+        echo "ℹ️  Seçili platform ($pid) için bu koşuya özel değişken verilecek (değerler dosyanıza YAZILMAZ):"
+        for kv in "$@"; do echo "    $kv"; done
+        while IFS= read -r w; do [ -n "$w" ] && echo "  ⚠️  $w"; done < <(comp_info_all "$info" "platform_choice.$pid.apply_warning")
+    } >&2
+}
