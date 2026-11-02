@@ -88,6 +88,7 @@ kilitlenir. Öneri: **eylem düzeyinde, isteğe bağlı yeni alan** `requires_va
 "actions": { "preview": {…, "requires_vars": ["hardening_ssh_allow_from"]}, "apply": {…, "requires_vars": ["hardening_ssh_allow_from"]} }
 ```
 
+- Pakette `linux-hardening` için: `preview`, `apply`, `pve_firewall_preview`, `pve_firewall_apply` (paket oturumu, bilinçli sıkılık: ufw ve ssh alanı ikisi de kapalıyken bile ister).
 - sshpocket, listedeki değişken `.vars` dosyasında **boş ya da yoksa** o eylemi ssh'a gitmeden reddeder (⛔, `required` kapısıyla aynı yer: `comp_gate_*`); `audit`, `rollback_*`, `kaldir` etkilenmez.
 - Paketin kendi ön kontrolü (`access.yml`) `harden.yml`'i zaten durduruyor: eski sshpocket'te alan yok sayılsa bile güvenli başarısız olur (kemer + pantolon).
 - Sunucu eklerken değer **zorunlu sorulur, boş geçilemez**; boş bırakılırsa sunucu kaydedilir ama `preview`/`apply` kapıdan döner ve menüde tek satır "önce izinli ağı girin" gösterilir.
