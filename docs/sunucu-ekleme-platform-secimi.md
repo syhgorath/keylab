@@ -79,12 +79,19 @@ Paket `component.json`'a ekler (hepsi isteğe bağlı; eski sshpocket yok sayar)
   3. yalnızca değişiklik yapan eylemlerde (`preview`/`audit` değil) ve platform **açıkça seçilmişse** (`platform_var` dosyada yazılı; `auto`/belirsiz değil);
   4. yalnızca tanımlı `bool`/`enum` değişkenler; silici/erişimi kesen değişken (`hardening_ufw_prune_ssh`) bulunamaz (iki yönlü denetim: paket ve menü).
 
-### 5.1 `allow_from` zorunlu: boşsa eylemler çalışmaz
+### 5.1 `allow_from` zorunlu: boşsa preview/apply çalışmaz
 
-Mevcut `required: true` mekanizması bunu zaten sağlar: zorunlu değişken boşsa **değişiklik yapan eylemler ve başka bir eylemin ön koşulu olan
-eylemler** (`preview`, `apply`…) çalışmaz; salt okunur durum eylemleri (`rollback_status`) çalışır (paket standardı §değişkenler).
-Yani sshpocket'e yeni kod gerekmez: **paket** `hardening_ssh_allow_from`'u `required: true` yapar (yeni paket sürümü) ve sshpocket'in mevcut ⛔ kapısı
-devreye girer. Sunucu eklerken sorulması, bu kapıya takılmadan baştan doldurmak içindir.
+Paket oturumu `required: true`'ya **karşı**: gizli (platforma uymayan) değişken de zorunlu kalır ve `audit` (aracı kurduğu için "değiştiren" sayılır)
+kilitlenir. Öneri: **eylem düzeyinde, isteğe bağlı yeni alan** `requires_vars` (paket bildirir, sshpocket kapıda uygular):
+
+```json
+"actions": { "preview": {…, "requires_vars": ["hardening_ssh_allow_from"]}, "apply": {…, "requires_vars": ["hardening_ssh_allow_from"]} }
+```
+
+- sshpocket, listedeki değişken `.vars` dosyasında **boş ya da yoksa** o eylemi ssh'a gitmeden reddeder (⛔, `required` kapısıyla aynı yer: `comp_gate_*`); `audit`, `rollback_*`, `kaldir` etkilenmez.
+- Paketin kendi ön kontrolü (`access.yml`) `harden.yml`'i zaten durduruyor: eski sshpocket'te alan yok sayılsa bile güvenli başarısız olur (kemer + pantolon).
+- Sunucu eklerken değer **zorunlu sorulur, boş geçilemez**; boş bırakılırsa sunucu kaydedilir ama `preview`/`apply` kapıdan döner ve menüde tek satır "önce izinli ağı girin" gösterilir.
+- Bu, `sshpocket_api`'yi artırmaz (isteğe bağlı alan). Yeni kod: `component_manifest.py` (`requires_vars` doğrulaması), `ComponentsGates.sh` (kapı), menüde ⛔ etiketi.
 
 **Öneri nereden gelir (hiçbiri sessizce yazılmaz, hepsi "doğru mu?" diye sorulur):**
 1. **Sunucunun gördüğü adres** (`comp_net_seen_by_server`, salt okunur ssh, mevcut işlev): tek adres olarak `x.x.x.x/32` — en dar ve güvenli öneri.
@@ -150,7 +157,7 @@ Kopyalama senaryosunu çözmüyoruz; yalnızca uyarı öneriyoruz:
 
 ## 11. Kararlar (kullanıcı) ve açık sorular
 
-**Karar verilenler:** platform doğrudan sorulur, algılama zorunlu değil (§3, §6) · `allow_from` zorunlu, boşsa eylemler çalışmaz (§5.1) ·
+**Karar verilenler:** platform doğrudan sorulur, algılama zorunlu değil (§3, §6) · `allow_from` zorunlu, boşsa `preview`/`apply` çalışmaz (§5.1, eylem düzeyi `requires_vars`) ·
 `apply_vars` kuralını sshpocket uygular (§5.1, öneri; paket oturumuyla anlaşılacak) · Raspberry Pi'ye özgü değişkenler eklerken sorulmaz (§5) ·
 **çok düğümlü (küme) Proxmox: kullanıcıda yok, DOĞRULANMADI / DESTEKLENMİYOR olarak belgelenir** (platform listesinin açıklamasında ve README'de) ·
 `servers/` yerel↔USB ayrışması için yalnızca uyarı (§9).
@@ -161,4 +168,4 @@ Kopyalama senaryosunu çözmüyoruz; yalnızca uyarı öneriyoruz:
 3. Birden çok paket platform listesi bildirirse platform paket başına mı sorulsun (öneri), sunucu başına tek "tür" mü?
 4. `doctor` yerel↔USB `servers/` `.vars` farkını göstersin mi (salt okunur, otomatik kopya yok)?
 5. Eski sshpocket + yeni paket: yeni alanlar yok sayılır, kullanıcı platformu elle yazar. Kabul edilebilir mi?
-6. `hardening_ssh_allow_from` `required: true` yapılırsa mevcut sunucular (örn. `.vars`'ında bu satır olmayan) ilk açılışta ⛔ görür; bu istenen davranış mı, yoksa tek seferlik geçiş notu mu?
+6. `requires_vars` ile mevcut sunucular (örn. `.vars`'ında bu satır olmayan) ilk açılışta ⛔ görür; bu istenen davranış mı, yoksa tek seferlik geçiş notu mu?
