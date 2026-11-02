@@ -985,3 +985,18 @@ PY
     [[ "$output" == *"Önce zorunlu değişkenleri tamamlayın"* ]] || false
     [ ! -e "$T/runs" ]
 }
+
+@test "requires_vars: değişkeni boş eylem menüde ⛔ ve 'Boş: …' ipucu alır; audit etkilenmez; değer girilince açılır" {
+    setup_state
+    sed 's|"preview":{"cmd":"ansible-playbook a.yml --check","effects":\[\]|"preview":{"cmd":"ansible-playbook a.yml --check","effects":[],"requires_vars":["scan_dir"]|' "$T/m.json" > "$T/m3.json"
+    INFO=$(comp_manifest_info "$T/m3.json" demo 1.0.0)
+    [ -n "$INFO" ]
+    COMP_MENU_VARS="$T/v"; : > "$COMP_MENU_VARS"
+    run _comp_menu_action_blocked "$INFO" preview ""; [ "$status" -eq 0 ]
+    run _comp_menu_action_blocked "$INFO" audit ""; [ "$status" -ne 0 ]
+    COMP_MENU_VER=1.0.0
+    run _comp_menu_action_card_head "$INFO" demo web1 preview ""
+    [[ "$output" == *"⛔ Kapalı"* && "$output" == *"Boş: scan_dir"* ]] || { echo "$output"; false; }
+    printf 'scan_dir=/tmp/x\n' > "$COMP_MENU_VARS"
+    run _comp_menu_action_blocked "$INFO" preview ""; [ "$status" -ne 0 ]
+}

@@ -218,7 +218,7 @@ comp_menu_findings() {
 # _comp_menu_action_blocked <bilgi> <eylem> <eksik-değişkenler> → 0 ise eylem kapalı: zorunlu değişken eksik VE eylem değiştirici ya da
 # başka bir eylemin ön koşulu. Salt okunur durum eylemleri (rollback_status) zorunlu değişken olmadan da açıktır (CLI ile aynı kural).
 _comp_menu_action_blocked() {
-    [ -n "$3" ] && comp_gate_required_applies "$1" "$2"
+    { [ -n "$3" ] && comp_gate_required_applies "$1" "$2"; } || [ -n "$(comp_gate_unmet_vars "$1" "$2" "${COMP_MENU_VARS:-/dev/null}")" ]
 }
 
 # _comp_menu_wrap <genişlik> <girinti> <metin> → metni sözcük sınırından satırlara böler; devam satırları girintilenir
@@ -235,13 +235,15 @@ _comp_menu_wrap() {
 
 # _comp_menu_action_card_head <bilgi> <paket> <sunucu> <eylem> <eksik> → kartın üst yarısı: ad, etkiler, onay, ön koşul, kapalı uyarısı
 _comp_menu_action_card_head() {
-    local info="$1" id="$2" server="$3" name="$4" missing="$5" eff req conf
+    local info="$1" id="$2" server="$3" name="$4" missing="$5" eff req conf um
     eff=$(comp_action_get "$info" "$name" effects); req=$(comp_action_get "$info" "$name" requires); conf=$(comp_action_get "$info" "$name" confirm)
     printf '%s  —  %s\n' "$name" "$(_comp_menu_badge "$info" "$name")"
     printf 'Etkiler: %s\n' "${eff:-yok (salt okunur)}"
     printf 'Onay: %s\n' "${conf:-yok}"
     [ -z "$req" ] || printf 'Ön koşul: %s\n' "$(_comp_menu_req_label "$id" "$server" "$COMP_MENU_VER" "$req")"
     if _comp_menu_action_blocked "$info" "$name" "$missing"; then printf '⛔ Kapalı: önce zorunlu değişkenleri tamamlayın\n'; fi
+    um=$(comp_gate_unmet_vars "$info" "$name" "${COMP_MENU_VARS:-/dev/null}" | tr '\n' ' ')
+    [ -z "${um// }" ] || printf '   Boş: %s (Değişkenler ekranından girin)\n' "${um% }"
 }
 # _comp_menu_action_card_tail <bilgi> <paket> <sunucu> <eylem> [sarma-genişliği] → kartın alt yarısı: son sonuç ve uyarılar (genişlik 0: sarma yapılmaz)
 _comp_menu_action_card_tail() {
