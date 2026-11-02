@@ -167,10 +167,10 @@ Kopyalama senaryosunu çözmüyoruz; yalnızca uyarı öneriyoruz:
 `apply_vars` uygulaması (`comp_gate_apply_vars`; yalnız type-server-name onaylı, changes-config, yıkıcı olmayan ve `requires` taşıyan eylemlerde = `apply`, `pve_firewall_apply`) ·
 eski sunucuların ilk açılış sorusu (`comp_onboard_needed`, paket menüsü girişi; yalnız `platform_var` dosyada yoksa sorar, `allow_from` boşluğunu ⛔ kapısı yönetir).
 
-**Açık sorular:**
-1. ~~`apply_vars`~~ **Kullanıcı onayladı (2026-11-02):** `apply` sunucu adı onayından sonra `apply_vars` (örn. `hardening_pve_apply`) geçirilir; `.vars`'taki kullanıcı değeri ezilmez. Kuralı sshpocket uygular, pakette ara değişken yok (§5, §5.1 koşulları geçerli).
-2. Soru anı: sunucu eklerken **ve** paket menüsü ilk açılırken (aynı kod). Kabul edilirse kapanır.
-3. Birden çok paket platform listesi bildirirse platform paket başına mı sorulsun (öneri), sunucu başına tek "tür" mü?
-4. `doctor` yerel↔USB `servers/` `.vars` farkını göstersin mi (salt okunur, otomatik kopya yok)?
-5. Eski sshpocket + yeni paket: yeni alanlar yok sayılır, kullanıcı platformu elle yazar. Kabul edilebilir mi?
-6. `requires_vars` ile mevcut sunucular (örn. `.vars`'ında bu satır olmayan) ilk açılışta ⛔ görür; bu istenen davranış mı, yoksa tek seferlik geçiş notu mu?
+**Sorular ve sonuçları (2026-11-02):**
+1. ~~`apply_vars`~~ **Kullanıcı onayladı:** `apply` sunucu adı onayından sonra `apply_vars` (örn. `hardening_pve_apply`) geçirilir; `.vars`'taki kullanıcı değeri ezilmez. Kuralı sshpocket uygular, pakette ara değişken yok (§5, §5.1).
+2. ~~Soru anı~~ **Uygulandı:** sunucu eklerken **ve** paket menüsü ilk açılırken (aynı kod, `comp_onboard_package`).
+3. ~~Birden çok paket platform listesi bildirirse~~ **Karar (kullanıcı): platform paket başına sorulur.** Her paketin listesi farklı olabilir, cevaplar karışmaz. Ortak "sunucu türü" sözlüğü şimdilik yok; ikinci bir paket platform bildirince yeniden değerlendirilir.
+4. **Ertelendi (kullanıcı: "olmazsa olmaz değil"):** `doctor` Mac'teki ve USB'deki `servers/` `.vars` dosyalarını karşılaştırıp fark gösterebilir (salt okunur, sunucuya bakmaz, otomatik kopya yok). Yapılmazsa: iki kopyayı birlikte kullananlar bir kopyada `allow_from` doldurup ötekinde doldurmayabilir ve o kopyada eylemler ⛔ kalır (güvenlik açığı değil, anlaşılması zor bir tutarsızlık). Yalnız USB'den çalışanlar etkilenmez.
+5. ~~Eski sshpocket + yeni paket~~ **Kabul edildi, belgelendi:** yeni alanlar isteğe bağlı olduğu için eski sshpocket onları yok sayar; platform sorusu, `allow_from` kapısı ve `apply_vars` çalışmaz, platformu elle `.vars`'a yazmak gerekir. Paketin kendi ön kontrolü `allow_from` boşsa yine durdurur (güvenli başarısızlık). Yayındaki 3.6.19'un kilidi 0.11.0 olduğundan normal kurulumda bu karışım oluşmaz; yeni sshpocket ile 0.12.0 birlikte yayımlanır.
+6. ~~`requires_vars` ve mevcut sunucular~~ **Karar (kullanıcı): her seferinde ⛔**, paket menüsünde ilk girişte `allow_from` ve platform sorulur (§4).
