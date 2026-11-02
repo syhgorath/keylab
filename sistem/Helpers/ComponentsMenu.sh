@@ -233,15 +233,19 @@ _comp_menu_wrap() {
     printf '%s\n' "$out$line"
 }
 
-# _comp_menu_action_card <bilgi> <paket> <sunucu> <eylem> <eksik> → seçili eylemin kartı (çok satırlı; fzf sağ bölmesi)
-_comp_menu_action_card() {
-    local info="$1" id="$2" server="$3" name="$4" missing="$5" eff req conf w last ts rest now n=0
+# _comp_menu_action_card_head <bilgi> <paket> <sunucu> <eylem> <eksik> → kartın üst yarısı: ad, etkiler, onay, ön koşul, kapalı uyarısı
+_comp_menu_action_card_head() {
+    local info="$1" id="$2" server="$3" name="$4" missing="$5" eff req conf
     eff=$(comp_action_get "$info" "$name" effects); req=$(comp_action_get "$info" "$name" requires); conf=$(comp_action_get "$info" "$name" confirm)
     printf '%s  —  %s\n' "$name" "$(_comp_menu_badge "$info" "$name")"
     printf 'Etkiler: %s\n' "${eff:-yok (salt okunur)}"
     printf 'Onay: %s\n' "${conf:-yok}"
     [ -z "$req" ] || printf 'Ön koşul: %s\n' "$(_comp_menu_req_label "$id" "$server" "$COMP_MENU_VER" "$req")"
     if _comp_menu_action_blocked "$info" "$name" "$missing"; then printf '⛔ Kapalı: önce zorunlu değişkenleri tamamlayın\n'; fi
+}
+# _comp_menu_action_card_tail <bilgi> <paket> <sunucu> <eylem> [sarma-genişliği] → kartın alt yarısı: son sonuç ve uyarılar (genişlik 0: sarma yapılmaz)
+_comp_menu_action_card_tail() {
+    local info="$1" id="$2" server="$3" name="$4" ww="${5:-44}" last ts rest now w n=0
     if last=$(comp_exec_last_result "$id" "$server" "$name" 2>/dev/null); then
         now=$(date +%s); ts=$(printf '%s\n' "$last" | head -n 1); rest=$(printf '%s\n' "$last" | tail -n +2 | tr '\n' ' ')
         if [[ "$ts" =~ ^[0-9]+$ ]] && [ "$ts" -le "$now" ]; then printf 'Son sonuç (%s): %s\n' "$(_comp_menu_age $((now - ts)))" "${rest% }"
@@ -250,8 +254,13 @@ _comp_menu_action_card() {
     while IFS= read -r w; do
         [ -n "$w" ] || continue
         n=$((n + 1)); [ "$n" -le 6 ] || break
-        _comp_menu_wrap 44 "   " "⚠ $w"
+        if [ "$ww" -gt 0 ]; then _comp_menu_wrap "$ww" "   " "⚠ $w"; else printf '⚠ %s\n' "$w"; fi
     done < <(comp_info_all "$info" "action.$name.warning")
+}
+# _comp_menu_action_card <bilgi> <paket> <sunucu> <eylem> <eksik> → seçili eylemin kartı (çok satırlı; fzf sağ bölmesi)
+_comp_menu_action_card() {
+    _comp_menu_action_card_head "$@"
+    _comp_menu_action_card_tail "$1" "$2" "$3" "$4"
 }
 
 # _comp_menu_history_card <paket> <sunucu> → Geçmiş satırının kartı: son 5 çalıştırma ve son günlüğün son 8 satırı (fzf sağ bölmesi)
@@ -322,8 +331,10 @@ _comp_menu_watch_stop() {
 }
 # _comp_menu_panel_begin <paket> <sunucu> <bilgi> <eylem> <eksik> → 0: panel kuruldu; 1: terminal küçük/bilinmiyor (eski akış)
 _comp_menu_panel_begin() {
-    local id="$1" server="$2" info="$3" name="$4" missing="$5"
-    ui_region_begin "Sunucu › $server › Paketler › $id › $name" "$(_comp_menu_action_card "$info" "$id" "$server" "$name" "$missing")" "Çıktı: $name — $server (çalışıyor)" || return 1
+    local id="$1" server="$2" info="$3" name="$4" missing="$5" tail
+    tail=$(_comp_menu_action_card_tail "$info" "$id" "$server" "$name" 0); [ -n "$tail" ] || tail="(henüz sonuç ya da uyarı yok)"
+    ui_region_begin2 "Sunucu › $server › Paketler › $id › $name" "$(_comp_menu_action_card_head "$info" "$id" "$server" "$name" "$missing")" \
+        "$tail" "Eylem" "Son sonuç ve uyarılar" "Çıktı: $name — $server (çalışıyor)" || return 1
     _comp_menu_watch_start "$id" "$server" "$name"
 }
 # _comp_menu_panel_end <eylem> <sunucu> <çıkış-kodu> <saniye> → çıktı çerçevesinin başlığını sonuçla günceller

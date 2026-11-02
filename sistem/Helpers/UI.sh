@@ -413,6 +413,51 @@ ui_region_begin() {
     return 0
 }
 
+# ui_wrap_text <genişlik> <metin> → her satırı sözcük sınırından sarar (devam satırları 3 boşluk girintili; genişliği aşan sözcük kesilir)
+ui_wrap_text() {
+    local w="$1" text="$2" raw line word out
+    while IFS= read -r raw; do
+        line=""; out=""
+        set -f
+        for word in $raw; do
+            while [ "${#word}" -gt "$w" ]; do out+="${line:+$line$'\n'}${word:0:$w}"$'\n'; line=""; word="   ${word:$w}"; done
+            if [ -n "$line" ] && [ $((${#line} + ${#word} + 1)) -gt "$w" ]; then out+="$line"$'\n'; line="   $word"
+            else line="${line:+$line }$word"; fi
+        done
+        set +f
+        printf '%s\n' "$out$line"
+    done <<< "$text"
+}
+
+# ui_region_begin2 <başlık> <sol-metin> <sağ-metin> <sol-etiket> <sağ-etiket> <alt-etiket> → ui_region_begin gibi, ama üst bölüm
+# iki sütunlu (sol ~%45, ortada │, sağda kalan) ve kenarlık etiketli; sütunlar $COLUMNS genişliğinde, yükseklik içeriğe göre
+# (en az 9 satır, en çok terminalin %40'ı). Sonrası ui_region_end / ui_region_reset ile aynı. 0: kuruldu · 1: terminal küçük/bilinmiyor
+ui_region_begin2() {
+    local title="$1" left="$2" right="$3" ll="$4" rl="$5" label="$6" rows cols top lw rw n i lines_l lines_r a b max
+    rows="${SSHPOCKET_ROWS:-$(tput lines 2>/dev/null)}"; cols="${SSHPOCKET_COLS:-$(tput cols 2>/dev/null)}"
+    [[ "$rows" =~ ^[0-9]+$ && "$cols" =~ ^[0-9]+$ ]] && [ "$rows" -ge 24 ] && [ "$cols" -ge 60 ] || return 1
+    lw=$((cols * 45 / 100)); [ "$lw" -ge 28 ] || lw=28
+    rw=$((cols - lw - 3))                                           # " │ " ayırıcı
+    lines_l=$(ui_wrap_text "$((lw - 2))" "$left"); lines_r=$(ui_wrap_text "$((rw - 2))" "$right")
+    a=$(printf '%s\n' "$lines_l" | wc -l | tr -d ' '); b=$(printf '%s\n' "$lines_r" | wc -l | tr -d ' ')
+    max=$a; [ "$b" -le "$max" ] || max=$b
+    top=$((max + 4)); [ "$top" -ge 9 ] || top=9
+    n=$((rows * 4 / 10)); [ "$n" -ge 9 ] || n=9; [ "$top" -le "$n" ] || top="$n"
+    clear
+    printf '\033[1;1H\033[2K\033[1m  %s\033[0m' "$title"
+    printf '\033[2;1H\033[2K%s' "$(printf '─%.0s' $(seq 1 "$cols"))"
+    printf '\033[3;1H\033[2K\033[1m  %s\033[0m\033[3;%dH\033[1m│ %s\033[0m' "${ll:0:$((lw - 2))}" "$((lw + 2))" "${rl:0:$((rw - 2))}"
+    for ((i = 1; i <= top - 4; i++)); do
+        a=$(printf '%s\n' "$lines_l" | sed -n "${i}p"); b=$(printf '%s\n' "$lines_r" | sed -n "${i}p")
+        printf '\033[%d;1H\033[2K  %s\033[%d;%dH│ %s' "$((i + 3))" "${a:0:$((lw - 2))}" "$((i + 3))" "$((lw + 2))" "${b:0:$((rw - 2))}"
+    done
+    ui_rule_label "$top" "$label" "$cols"
+    UI_REGION_ROWS="$rows"; UI_REGION_COLS="$cols"; UI_REGION_TOP="$top"
+    printf '\033[%d;%dr\033[%d;1H' "$((top + 1))" "$rows" "$((top + 1))"
+    trap _ui_region_int INT
+    return 0
+}
+
 ui_region_end() {
     [ "$UI_REGION_ROWS" -gt 0 ] || return 0
     printf '\0337'; ui_rule_label "$UI_REGION_TOP" "$1" "$UI_REGION_COLS"; printf '\0338'

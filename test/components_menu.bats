@@ -786,7 +786,7 @@ PY
     ui_fzf_enabled() { return 0; }
     interactive_pick 2 0
     run comp_menu_actions demo web1 <<<""
-    [[ "$output" == *$'\033[13;30r'* ]] || false                 # alt bölge: üst=30*4/10=12 → 13..30
+    [[ "$output" == *$'\033[10;30r'* ]] || { echo "$output" | cat -v | head -c 500; false; }   # alt bölge: iki sütunlu üst bölüm en az 9 satır → 10..30
     [[ "$output" == *"Sunucu › web1 › Paketler › demo › preview"* ]] || false
     [[ "$output" == *"Etkiler: yok (salt okunur)"* ]] || false    # üstte eylem kartı
     [[ "$output" == *"Çıktı: preview — web1 (çalışıyor)"* ]] || false

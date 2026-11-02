@@ -519,6 +519,36 @@ PY
     [ "$status" -eq 0 ]; [ -z "$output" ]
 }
 
+@test "ui_wrap_text: sözcük sınırından sarar, devam satırı girintili; uzun sözcük kesilir; boş satır korunur" {
+    out=$(ui_wrap_text 12 $'aaa bbb ccc ddd\n\nxxxxxxxxxxxxxxx')
+    [ "$out" = $'aaa bbb ccc\n   ddd\n\nxxxxxxxxxxxx\n   xxx' ] || { printf '%s\n' "$out"; false; }
+}
+
+@test "ui_region_begin2: geniş terminalde (254x66) iki sütun tam genişlikte çizilir; bölge içeriğe göre başlar" {
+    export SSHPOCKET_ROWS=66 SSHPOCKET_COLS=254
+    clear() { :; }
+    f() { ui_region_begin2 "Başlık" $'sol bir\nsol iki' "sağ bir" "Eylem" "Açıklama" "Çıktı"; }
+    run f
+    [ "$status" -eq 0 ]
+    [[ "$output" == *$'\033[10;66r'* ]] || { echo "$output" | cat -v | head -c 600; false; }    # içerik 2 satır → alt sınır 9 → bölge 10..66
+    [[ "$output" == *"Eylem"* && "$output" == *"Açıklama"* && "$output" == *"sol iki"* && "$output" == *"sağ bir"* && "$output" == *"│"* ]] || false
+    [[ "$output" == *"$(printf '─%.0s' $(seq 1 250))"* ]] || false                                   # çizgi 254 sütuna yayılır
+    [[ "$output" == *$'\033[3;116H'* ]] || false                                                     # sağ sütun: 254*45/100=114 → sütun 116
+}
+
+@test "ui_region_begin2: dar terminalde (80x24) sütun sığar, yükseklik terminalin %40'ını aşmaz; küçükte 1 döner" {
+    export SSHPOCKET_ROWS=24 SSHPOCKET_COLS=80
+    clear() { :; }
+    f() { ui_region_begin2 "T" "$(seq 1 30)" "$(seq 1 30)" "Sol" "Sağ" "Çıktı"; }
+    run f
+    [ "$status" -eq 0 ]
+    [[ "$output" == *$'\033[10;24r'* ]] || { echo "$output" | cat -v | head -c 400; false; }      # 24*4/10=9 → bölge 10..24
+    SSHPOCKET_ROWS=20 SSHPOCKET_COLS=80 run ui_region_begin2 "T" "a" "b" "L" "R" "E"
+    [ "$status" -eq 1 ]
+    SSHPOCKET_ROWS=30 SSHPOCKET_COLS=50 run ui_region_begin2 "T" "a" "b" "L" "R" "E"
+    [ "$status" -eq 1 ]
+}
+
 # Motor testleri: ui_pick sahte seçiciyle (kuyruk); satırlar: öğeler, ➕ Ekle, (ek satırlar), 🧹 Temizle (öğe varsa), 💾 Kaydet
 liste_motoru() {
     : > "$BATS_TEST_TMPDIR/q"; for x in "$@"; do echo "$x" >> "$BATS_TEST_TMPDIR/q"; done

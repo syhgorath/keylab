@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- **Çalışma paneli iki sütunlu (fzf eylem menüsü, eylem çalışırken):** üst bölüm artık terminal genişliğinin tamamını kullanır: solda eylem özeti (ad, etkiler, onay, ön koşul), sağda son sonuç ve uyarılar; `│` ayırıcı ve fzf'e benzer kenarlık etiketleri (`Eylem`, `Son sonuç ve uyarılar`). Üst bölümün yüksekliği içeriğe göre ayarlanır (en az 9 satır, en çok terminalin %40'ı), çıktı bölgesi altta tam genişlikte kalır; çıktı çerçevesinin başlığı canlı ilerlemeyi göstermeye devam eder. `BECOME password:` ve diğer istemler alt bölgede aynen çalışır. Terminal < 24 satır ya da < 60 sütunsa eski akış kullanılır. Çizim başlangıçtaki genişliğe göre yapılır; çalışırken terminal yeniden boyutlandırılırsa üst bölüm yeniden çizilmez. UI parçası: `ui_region_begin2`, `ui_wrap_text` (`UI.sh`).
+
 ## [3.6.19] - 2026-11-01
 
 Bu yama sürümü kullanıcıya görünür özellikler de taşır: paket menüsünde 🧪 Kontrol ve ön koşul önerisi, bulgular ekranı, canlı ilerleme, ortak arayüz parçaları ve `linux-hardening` 0.11.0.
