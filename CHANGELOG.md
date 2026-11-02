@@ -6,6 +6,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ### Değişti
 - **README, README.en ve `docs/hardening-kullanim.md` 3.6.20 / linux-hardening 0.12.0 durumuna getirildi:** kilit sürümü, gerçek VM'de denenenler (Ubuntu 26.04.1 ve Proxmox VE 9: sunucu türü ve zorunlu `allow_from` akışı, `apply_vars`, `pve_firewall_*`, fail2ban) ve denenmeyenler (etkin ban, yetkisiz ağ, küme/misafirli Proxmox, Raspberry Pi), güncelleme paneli ve değişiklik raporu. Yalnızca belge.
+- **README test tablosu:** macOS 27.2'de elle denendi olarak işaretlendi: Terminal penceresi açma, `start.command` çift tıklama, `🛡️ Paketler` menüsünün fzf görünümü. Hâlâ denenmedi: ok tuşlu (fzf'siz) görünüm, gerçek sunucuda knock.
 
 ## [3.6.20] - 2026-11-02
 
