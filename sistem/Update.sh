@@ -138,28 +138,55 @@ update_attention() {
     ' "$1" | tr -d '\000-\010\013-\037' | head -n 12
 }
 
-# Kurulum ÖNCESİ özet (imza ve arşiv denetimi geçtikten sonra; hiçbir şey yazmaz). Parametreler: yeni ağaç, hedef kök, eski sürüm, yeni sürüm
-update_summary() {
-    local tree="$1" root="$2" oldver="$3" newver="$4" id o n same=0 att line
-    echo ""
-    echo "──── Güncelleme özeti ────"
-    printf '  %-12s %s → %s\n' "sshpocket" "$oldver" "$newver"
-    printf '  %-12s %s\n' "imza" "✅ doğrulandı, arşiv denetimi geçti"
+# Özetin sol sütunu (düz metin satırları): sürüm, imza, paket farkları. Parametreler: yeni ağaç, hedef kök, eski sürüm, yeni sürüm
+update_summary_text() {
+    local tree="$1" root="$2" oldver="$3" newver="$4" id o n same=0
+    printf '%-9s %s → %s\n' "sshpocket" "$oldver" "$newver"
+    printf '%-9s %s\n' "imza" "✅ doğrulandı"
     while read -r id o n; do
         [ -n "$id" ] || continue
         if [ "$o" = "$n" ]; then same=$((same + 1)); continue; fi
-        case "$o" in -) printf '  %-12s %s: yeni paket (%s)\n' "paket" "$id" "$n" ;; *)
-            case "$n" in -) printf '  %-12s %s: kilitten çıkıyor (%s)\n' "paket" "$id" "$o" ;; *) printf '  %-12s %s: %s → %s\n' "paket" "$id" "$o" "$n" ;; esac ;;
+        case "$o" in -) printf '%-9s %s %s (yeni)\n' "paket" "$id" "$n" ;; *)
+            case "$n" in -) printf '%-9s %s %s (kilitten çıkıyor)\n' "paket" "$id" "$o" ;; *) printf '%-9s %s %s → %s\n' "paket" "$id" "$o" "$n" ;; esac ;;
         esac
     done < <(update_lock_diff "$root/components.lock" "$tree/components.lock")
-    [ "$same" -eq 0 ] || printf '  %-12s %s paket değişmiyor\n' "paket" "$same"
-    att=$(update_attention "$tree/CHANGELOG.md" "$newver")
+    [ "$same" -eq 0 ] || printf '%-9s %s paket değişmiyor\n' "paket" "$same"
+}
+
+# Kurulum ÖNCESİ özet, düz akış (imza ve arşiv denetimi geçtikten sonra; hiçbir şey yazmaz). Parametreler update_summary_text ile aynı
+update_summary() {
+    local att line
+    echo ""
+    echo "──── Güncelleme özeti ────"
+    while IFS= read -r line; do echo "  $line"; done < <(update_summary_text "$@")
+    att=$(update_attention "$1/CHANGELOG.md" "$4")
     if [ -n "$att" ]; then
         echo "  ⚠️  Dikkat:"
         while IFS= read -r line; do echo "     $line"; done <<< "$att"
     fi
     echo "───────────────────────────"
 }
+
+# Bölgeli panel (ortak UI): üstte sabit özet (solda özet, sağda Dikkat), altta notlar/sorular/kurulum kaydırma bölgesinde.
+# Yalnızca terminalde (ya da SSHPOCKET_ROWS/COLS testte) ve UI.sh yüklenebiliyorsa; dar/kısa terminalde ya da tty yoksa 1 döner (düz akış).
+# UI.sh burada, kurulum başlamadan ÖNCE okunur (kurulum dosyaları değiştirse de bellekteki işlevler çalışır).
+update_panel_begin() {
+    local left right
+    { [ -t 1 ] || [ -n "${SSHPOCKET_ROWS:-}" ]; } || return 1
+    if ! declare -F ui_region_begin2 >/dev/null; then
+        # shellcheck source=/dev/null
+        source "$UPDATE_SISTEM_DIR/Helpers/UI.sh" 2>/dev/null || return 1
+        declare -F ui_region_begin2 >/dev/null || return 1
+    fi
+    left=$(update_summary_text "$1" "$2" "$3" "$4")
+    right=$(update_attention "$1/CHANGELOG.md" "$4")
+    [ -n "$right" ] || right="Bu sürümde ayrıca dikkat edilecek not yok."
+    ui_region_begin2 "Güncelleme · sshpocket $3 → $4" "$left" "$right" "Özet" "Dikkat" "Sürüm notları ve kurulum" || return 1
+    # Özet üst bölüme sığmadıysa hiçbir bilgi kaybolmasın: tamamı kaydırma bölgesinin başında düz yazılır
+    [ "${UI_REGION_TRUNC:-0}" != 1 ] || update_summary "$1" "$2" "$3" "$4"
+}
+
+update_panel_end() { declare -F ui_region_reset >/dev/null && ui_region_reset; return 0; }
 
 # Yedek: kod dosyalarını tar.gz olarak saklar. Parametreler: hedef kök, sürüm
 update_backup() {
@@ -328,7 +355,17 @@ update_main() {
         return 1
     fi
 
-    update_summary "$tree" "$UPDATE_ROOT_DIR" "$cur" "$latest"
+    local panel=0 rc
+    if update_panel_begin "$tree" "$UPDATE_ROOT_DIR" "$cur" "$latest"; then panel=1; else update_summary "$tree" "$UPDATE_ROOT_DIR" "$cur" "$latest"; fi
+    update_install_flow "$tree" "$cur" "$latest"
+    rc=$?
+    [ "$panel" = 0 ] || update_panel_end
+    return "$rc"
+}
+
+# Notlar, kurulum onayı ve kurulum (tek çıkış noktası: panel her durumda kapatılabilsin). Parametreler: yeni ağaç, eski sürüm, yeni sürüm
+update_install_flow() {
+    local tree="$1" cur="$2" latest="$3"
     echo ""
     echo "──── Sürüm notları ────"
     update_release_notes "$tree/CHANGELOG.md" "$latest"
