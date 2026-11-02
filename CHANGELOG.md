@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Düzeltildi
+- **Sunucu eklerken CIDR editörü:** `ModuleGenerator.sh` `SSHModule.sh`'yi yüklemediği için sunucu bilgileri (IP/port/kullanıcı/anahtar) okunamıyor ve "_ssh_env_get: command not found" yazıyordu; ayrıca değişken türü sorgusu Python'a BrokenPipe izi bastırabiliyordu. İkisi de giderildi (test eklendi).
+
 ### Eklendi
 - **Eylem düzeyi `requires_vars` (isteğe bağlı manifest alanı):** bir eylem, listedeki değişken değerler dosyasında boş/yoksa ssh'a gitmeden "⛔ çalıştırılmadı: değeri boş değişken: …" ile reddedilir; menüde eylem kartında ⛔ ve "Boş: …" ipucu görünür. Yalnızca o eylemleri kapatır (`audit`, `rollback_*` etkilenmez); alan yoksa davranış değişmez. Amaç: erişim kısıtını (örn. `hardening_ssh_allow_from`) boş bırakıp kendini dışarıda bırakmayı önlemek.
 - **Manifest: `platform_choices` / `onboarding_vars` okunur ve doğrulanır** (sunucu eklerken platform seçimi için hazırlık; seçim ekranı ve `apply_vars` uygulaması sonraki PR'larda). Alan yoksa davranış değişmez; bozuksa paket kilide yazılmaz. Tasarım: `docs/sunucu-ekleme-platform-secimi.md`.

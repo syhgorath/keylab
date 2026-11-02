@@ -100,6 +100,7 @@ CHOICES=',"platform_choices":[{"id":"generic","label":"Debian / Ubuntu"},{"id":"
         bash "$ROOT/sistem/ModuleGenerator.sh" <<< $'web9\n192.0.2.9\ndeploy\n\nn\n2\n\ne\n10.1.10.0/24\nk\n\n\n'
     [ "$status" -eq 0 ]
     [[ "$output" == *"sunucu türü ve zorunlu ayarlar"* && "$output" == *"Sunucu oluşturuldu"* ]] || { echo "$output"; false; }
+    [[ "$output" != *"command not found"* && "$output" != *Traceback* ]] || { echo "$output"; false; }
     [ "$(comp_vars_get "$T/srv2/web9/demo.vars" demo_platform)" = proxmox-host ]
     [ "$(comp_vars_get "$T/srv2/web9/demo.vars" allow_from)" = 10.1.10.0/24 ]
     # paket kurulu değil: soru çıkmaz, sunucu yine oluşur

@@ -26,7 +26,8 @@ comp_onboard_ids() {
 
 # _comp_onboard_var_type <manifest> <değişken> → tür (örn. list[cidr])
 _comp_onboard_var_type() {
-    comp_vars_describe "$1" | awk -F'\t' -v n="$2" '$1 == n { print $2; exit }'
+    # awk'ı erken bitirmek (exit) python'a BrokenPipe izi bastırırdı: çıktı tamamen okunur
+    comp_vars_describe "$1" | awk -F'\t' -v n="$2" '$1 == n && !d { print $2; d=1 }'
 }
 
 # _comp_onboard_ask_platform <bilgi> → seçilen platform kimliği (stdout); "" = şimdi değil (hiçbir şey yazılmaz). Menü stderr'e yazılır.
@@ -106,7 +107,7 @@ _comp_onboard_vars() {
                 COMP_MENU_DIR="$dir"
                 comp_menu_edit_cidr "$n" "$server" || true
             else
-                echo "$n — $(comp_vars_describe "$mf" | awk -F'\t' -v n="$n" '$1 == n { print $NF; exit }')"
+                echo "$n — $(comp_vars_describe "$mf" | awk -F'\t' -v n="$n" '$1 == n && !d { print $NF; d=1 }')"
                 IFS= read -r -p "Değer (boş = atla): " v || return 1
                 if [ -n "$v" ]; then
                     if out=$(comp_vars_check "$mf" "$n" "$v" 2>&1); then comp_vars_set "$vf" "$n" "$v" && echo "✅ Kaydedildi: $n = $v"
