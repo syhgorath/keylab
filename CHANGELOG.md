@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **Eylem düzeyi `requires_vars` (isteğe bağlı manifest alanı):** bir eylem, listedeki değişken değerler dosyasında boş/yoksa ssh'a gitmeden "⛔ çalıştırılmadı: değeri boş değişken: …" ile reddedilir; menüde eylem kartında ⛔ ve "Boş: …" ipucu görünür. Yalnızca o eylemleri kapatır (`audit`, `rollback_*` etkilenmez); alan yoksa davranış değişmez. Amaç: erişim kısıtını (örn. `hardening_ssh_allow_from`) boş bırakıp kendini dışarıda bırakmayı önlemek.
+- **Manifest: `platform_choices` / `onboarding_vars` okunur ve doğrulanır** (sunucu eklerken platform seçimi için hazırlık; seçim ekranı ve `apply_vars` uygulaması sonraki PR'larda). Alan yoksa davranış değişmez; bozuksa paket kilide yazılmaz. Tasarım: `docs/sunucu-ekleme-platform-secimi.md`.
+
 ### Değişti
 - **Çalışma paneli iki sütunlu (fzf eylem menüsü, eylem çalışırken):** üst bölüm artık terminal genişliğinin tamamını kullanır: solda eylem özeti (ad, etkiler, onay, ön koşul), sağda son sonuç ve uyarılar; `│` ayırıcı ve fzf'e benzer kenarlık etiketleri (`Eylem`, `Son sonuç ve uyarılar`). Üst bölümün yüksekliği içeriğe göre ayarlanır (en az 9 satır, en çok terminalin %40'ı), çıktı bölgesi altta tam genişlikte kalır; çıktı çerçevesinin başlığı canlı ilerlemeyi göstermeye devam eder. `BECOME password:` ve diğer istemler alt bölgede aynen çalışır. Terminal < 24 satır ya da < 60 sütunsa eski akış kullanılır. Çizim başlangıçtaki genişliğe göre yapılır; çalışırken terminal yeniden boyutlandırılırsa üst bölüm yeniden çizilmez. UI parçası: `ui_region_begin2`, `ui_wrap_text` (`UI.sh`).
 

@@ -395,6 +395,108 @@ def main():
                 continue
             act_lines.append("action.%s.set=%s=%s" % (name, k, ("true" if val else "false") if isinstance(val, bool) else val))
 
+    # --- sunucu eklerken platform seçimi ve eylem düzeyi zorunlu değişkenler (hepsi isteğe bağlı; yoksa davranış değişmez) ---
+    # requires_vars: eylem, listedeki değişken .vars dosyasında boş/yoksa çalışmaz (kapı: ComponentsGates.sh). required'dan farkı: yalnızca o eylemleri kapatır.
+    # platform_choices: seçilebilir platformlar; defaults = platforma göre güvenli varsayılanlar (dosyada yoksa yazılır), apply_vars = değişiklik
+    #   yapan eylemin onayından SONRA o koşuya özel verilen değerler (apply_warnings zorunlu); onboarding_vars = sunucu eklenirken sorulacak değişkenler.
+    plat_lines = []
+
+    def _declared(n, what, want_types=None):
+        if not is_str(n) or n not in var_specs:
+            err("%s: tanımlı bir değişken adı olmalı (%s)" % (what, n if is_str(n) else "?"))
+            return False
+        if want_types and var_specs[n][0] not in want_types:
+            err("%s: %s için tür %s olmalı" % (what, n, "/".join(want_types)))
+            return False
+        return True
+
+    def _scalar_ok(n, val):
+        vt, vs = var_specs[n]
+        if vt == "bool":
+            return isinstance(val, bool)
+        if vt == "enum":
+            return is_str(val) and val in vs.get("values", [])
+        if vt in ("string", "path"):
+            return is_str(val) and bool(val) and len(val) <= 200 and not RE_TEXT_BAD.search(val)
+        return False
+
+    for name, a in actions.items():
+        if not isinstance(a, dict) or "requires_vars" not in a:
+            continue
+        rv = a["requires_vars"]
+        if not isinstance(rv, list) or not rv or len(rv) > 8 or len(set(map(str, rv))) != len(rv):
+            err("%s: requires_vars 1-8 benzersiz değişken adından oluşan liste olmalı" % name)
+            continue
+        if all(_declared(n, "%s: requires_vars" % name) for n in rv):
+            act_lines.append("action.%s.requires_vars=%s" % (name, ",".join(rv)))
+
+    ob = d.get("onboarding_vars")
+    if ob is not None:
+        if not isinstance(ob, list) or len(ob) > 8 or len(set(map(str, ob))) != len(ob):
+            err("onboarding_vars en çok 8 benzersiz değişken adından oluşan liste olmalı")
+        else:
+            for n in ob:
+                if _declared(n, "onboarding_vars"):
+                    if "warn_if" in var_specs[n][1]:
+                        err("onboarding_vars: %s riskli değer (warn_if) taşıyor; sunucu eklerken sorulamaz" % n)
+                    else:
+                        plat_lines.append("onboarding_var=%s" % n)
+
+    pc = d.get("platform_choices")
+    if pc is not None:
+        if not isinstance(pc, list) or not pc or len(pc) > 10:
+            err("platform_choices 1-10 öğeli liste olmalı")
+            pc = []
+        seen_ids = set()
+        for i, c in enumerate(pc):
+            w = "platform_choices[%d]" % i
+            if not isinstance(c, dict) or not is_str(c.get("id")) or not RE_PLATFORM.match(c["id"]) or c["id"] in seen_ids:
+                err("%s: id benzersiz, küçük harfli kimlik olmalı" % w)
+                continue
+            cid = c["id"]
+            seen_ids.add(cid)
+            if not is_str(c.get("label")) or not c["label"].strip() or len(c["label"]) > 60 or RE_TEXT_BAD.search(c["label"]):
+                err("%s: label 1-60 karakterlik düz metin olmalı" % w)
+                continue
+            if "description" in c:
+                text_ok(c["description"], "%s: description" % w, maxlen=VAR_DESC_MAX)
+            if "auto_detect" in c and not isinstance(c["auto_detect"], bool):
+                err("%s: auto_detect bool olmalı" % w)
+            plat_lines.append("platform_choice=%s" % cid)
+            plat_lines.append("platform_choice.%s.label=%s" % (cid, c["label"]))
+            if is_str(c.get("description")) and c["description"]:
+                plat_lines.append("platform_choice.%s.description=%s" % (cid, c["description"]))
+            plat_lines.append("platform_choice.%s.auto_detect=%s" % (cid, "no" if c.get("auto_detect") is False else "yes"))
+            for key, tag in (("defaults", "default"), ("apply_vars", "apply_var")):
+                dv = c.get(key)
+                if dv is None:
+                    continue
+                if not isinstance(dv, dict) or len(dv) > 8:
+                    err("%s: %s en çok 8 değişkenli nesne olmalı (boş nesne kabul edilir)" % (w, key))
+                    continue
+                for k in sorted(dv):
+                    if not _declared(k, "%s: %s" % (w, key)):
+                        continue
+                    if "warn_if" in var_specs[k][1] and key == "defaults":
+                        err("%s: defaults %s riskli değer (warn_if) taşıyan değişkeni yazamaz" % (w, k))
+                    elif key == "apply_vars" and var_specs[k][0] not in ("bool", "enum"):
+                        err("%s: apply_vars %s için tür bool/enum olmalı" % (w, k))
+                    elif not _scalar_ok(k, dv[k]):
+                        err("%s: %s %s için geçersiz değer/tür" % (w, key, k))
+                    else:
+                        val = dv[k]
+                        plat_lines.append("platform_choice.%s.%s=%s=%s" % (cid, tag, k, ("true" if val else "false") if isinstance(val, bool) else val))
+            aw = c.get("apply_warnings")
+            if c.get("apply_vars") and (not isinstance(aw, list) or not aw or len(aw) > 10):
+                err("%s: apply_vars doluysa apply_warnings (1-10 metin) zorunlu" % w)
+            elif aw is not None:
+                if not isinstance(aw, list) or len(aw) > 10:
+                    err("%s: apply_warnings liste olmalı" % w)
+                else:
+                    for t in aw:
+                        if text_ok(t, "%s: apply_warnings"  % w) is not False and is_str(t):
+                            plat_lines.append("platform_choice.%s.apply_warning=%s" % (cid, t))
+
     # --- invoke.append ---
     inv_lines = []
     inv = d.get("invoke", {})
@@ -431,7 +533,7 @@ def main():
         out.append("inventory_group=%s" % group)
     if req_py:
         out.append("requires.python=%s" % req_py)
-    out += prof_lines + act_lines + var_lines + inv_lines
+    out += prof_lines + act_lines + var_lines + plat_lines + inv_lines
     print("\n".join(out))
     return 0
 

@@ -173,6 +173,28 @@ comp_gate_required_applies() {
     return 1
 }
 
+# comp_gate_unmet_vars <bilgi> <eylem> <değerler-dosyası> → manifestteki action.<eylem>.requires_vars içinden dosyada BOŞ ya da YOK olanları (satır satır) yazar.
+# required'dan farkı: yalnızca bu eylemi kapatır (audit/rollback gibi eylemler etkilenmez). Alan yoksa hiçbir şey yazmaz (eski paketler değişmez).
+comp_gate_unmet_vars() {
+    local info="$1" action="$2" vf="$3" n v
+    for n in $(comp_action_get "$info" "$action" requires_vars | tr ',' ' '); do
+        v=$(comp_vars_get "$vf" "$n" 2>/dev/null) || v=""
+        [ -n "$v" ] || printf '%s\n' "$n"
+    done
+}
+
+# comp_gate_requires_vars <bilgi> <eylem> <değerler-dosyası> → 0: tamam · 1: eksik değişken var (neden ve ne yapılacağı stderr'e)
+comp_gate_requires_vars() {
+    local miss
+    miss=$(comp_gate_unmet_vars "$1" "$2" "$3" | tr '\n' ' ')
+    [ -z "${miss// }" ] && return 0
+    {
+        echo "⛔ '$2' çalıştırılmadı: değeri boş değişken: ${miss% }. Bu eylem için girilmesi zorunlu (erişim kaybını önlemek için)."
+        echo "   Menüde 'Değişkenler' ekranından girin ya da $3 dosyasına '${miss%% *}=<değer>' satırı ekleyin."
+    } >&2
+    return 1
+}
+
 # comp_gate_warn_applies <bilgi> <eylem> → 0 ise warn_if ("riskli değer") onayı bu eylemde sorulur: YALNIZCA yapılandırmayı değiştiren
 # eylemlerde. Salt okunur eylemler (preview, durum) ve yalnızca araç kuran eylemler (effects yalnız installs-package, örn. audit) sormaz;
 # risk onayı asıl değişikliğin yapıldığı eylemde (apply) alınır.

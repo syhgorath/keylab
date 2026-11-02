@@ -169,6 +169,7 @@ _comp_exec_body() {
     comp_gate_agent "$COMP_CTX_PREFIX" "$COMP_CTX_KEY" || return "$refused"
     comp_gate_profile "$info" "$COMP_CTX_PROFILE" || return "$refused"
     comp_gate_requires "$info" "$id" "$server" "$ver" "$action" || return "$refused"
+    comp_gate_requires_vars "$info" "$action" "${COMP_CTX_VALUES:-/dev/null}" || return "$refused"
 
     sdir=$(comp_gate_state_ensure "$id" "$server") || return "$refused"
     work=$(mktemp -d "${TMPDIR:-/tmp}/sshpocket-run.XXXXXX") || { echo "Geçici klasör oluşturulamadı." >&2; return "$refused"; }

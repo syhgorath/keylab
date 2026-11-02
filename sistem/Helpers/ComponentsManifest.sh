@@ -23,7 +23,7 @@ comp_info_all() {
     printf '%s\n' "$1" | awk -v k="$2" 'index($0, k "=") == 1 { print substr($0, length(k) + 2) }'
 }
 
-# comp_action_get <bilgi> <eylem> <alan>  (alan: cmd effects sudo interactive confirm confirm_raised warnings requires platforms)
+# comp_action_get <bilgi> <eylem> <alan>  (alan: cmd effects sudo interactive confirm confirm_raised warnings requires requires_vars platforms)
 comp_action_get() {
     comp_info_get "$1" "action.$2.$3"
 }
