@@ -16,6 +16,8 @@ source "$SCRIPT_DIR/Helpers/ModuleFiles.sh"
 source "$SCRIPT_DIR/Helpers/Servers.sh"
 # shellcheck source=Helpers/SSHHelper.sh
 source "$SCRIPT_DIR/Helpers/SSHHelper.sh"
+# shellcheck source=Helpers/SSHModule.sh
+source "$SCRIPT_DIR/Helpers/SSHModule.sh"
 # Paket platformu / zorunlu ayar soruları (manifestinde platform_choices olan paket yoksa hiçbir şey sorulmaz)
 for _f in Components ComponentsInstall ComponentsManifest ComponentsRun ComponentsVars ComponentsMenu ComponentsOnboard; do
     # shellcheck source=/dev/null
