@@ -90,6 +90,8 @@ source "$SISTEM_PATH/Helpers/ComponentsRunCLI.sh"
 source "$SISTEM_PATH/Helpers/ComponentsMenu.sh"
 # shellcheck source=Helpers/ComponentsOnboard.sh
 source "$SISTEM_PATH/Helpers/ComponentsOnboard.sh"
+# shellcheck source=Helpers/ComponentsReport.sh
+source "$SISTEM_PATH/Helpers/ComponentsReport.sh"
 # shellcheck source=Helpers/ComponentsCLI.sh
 source "$SISTEM_PATH/Helpers/ComponentsCLI.sh"
 # shellcheck source=Helpers/Doctor.sh

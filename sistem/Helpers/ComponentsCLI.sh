@@ -94,7 +94,8 @@ comp_cli_list() {
 
 # comp_cli_sync [--yes] → 0 hepsi tamam, 1 en az bir hata/ret
 comp_cli_sync() {
-    local yes=0 ids id st want rc=0
+    local yes=0 ids id st want rc=0 oldv
+    local -a reported=()
     [ "${1:-}" = "--yes" ] && yes=1
     comp_lock_validate || return 1
     ids=$(comp_ids)
@@ -118,8 +119,15 @@ comp_cli_sync() {
                 _comp_quarantine "$id" "$(comp_installed_version "$id")" || { rc=1; continue; }
                 ;;
         esac
-        if comp_install "$id"; then echo "✅ $id $want"; else echo "⚠️  $id kurulamadı"; rc=1; fi
+        oldv=$(comp_installed_version "$id")
+        if comp_install "$id"; then
+            echo "✅ $id $want"
+            [ -z "$oldv" ] || [ "$oldv" = "$want" ] || reported+=("$id")      # sürüm değişti: ne değiştiğini aşağıda göster
+        else echo "⚠️  $id kurulamadı"; rc=1; fi
     done 3<<< "$ids"
+    if declare -F comp_report_pkg >/dev/null; then
+        for id in ${reported[@]+"${reported[@]}"}; do echo ""; comp_report_pkg "$id" "$(comp_report_prev_version "$id")" || true; done
+    fi
     return "$rc"
 }
 
@@ -247,6 +255,7 @@ components_cli() {
         run) comp_cli_run "$@" ;;
         validate) comp_cli_validate "$@" ;;
         prune) comp_cli_prune "$@" ;;
-        *) echo "kullanım: --components list | sync [--yes] | check-new | prune [--yes] [--dry-run] | run <paket> <eylem> <sunucu> | validate <paket|dizin|arşiv> [--strict]" >&2; return 2 ;;
+        report) if [ $# -gt 0 ]; then comp_report_pkg "$@"; else comp_report_all; fi ;;
+        *) echo "kullanım: --components list | sync [--yes] | check-new | prune [--yes] [--dry-run] | report [paket [eski-sürüm]] | run <paket> <eylem> <sunucu> | validate <paket|dizin|arşiv> [--strict]" >&2; return 2 ;;
     esac
 }
