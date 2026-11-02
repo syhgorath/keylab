@@ -270,8 +270,8 @@ make_cli_sandbox() {
     [[ "$output" == *"yeni özellik 2.2.0"* ]]
     [[ "$output" == *"2.1.0 → 2.2.0"* ]]
     # özet tablosu (kurulumdan önce): sürüm, imza, paket farkları, Dikkat
-    [[ "$output" == *"Güncelleme özeti"* && "$output" == *"linux-hardening: 0.11.0 → 0.12.0"* ]] || { echo "$output"; false; }
-    [[ "$output" == *"yeni-paket: yeni paket (1.0.0)"* && "$output" == *"eski-paket: kilitten çıkıyor (2.0.0)"* ]] || { echo "$output"; false; }
+    [[ "$output" == *"Güncelleme özeti"* && "$output" == *"linux-hardening 0.11.0 → 0.12.0"* ]] || { echo "$output"; false; }
+    [[ "$output" == *"yeni-paket 1.0.0 (yeni)"* && "$output" == *"eski-paket 2.0.0 (kilitten çıkıyor)"* ]] || { echo "$output"; false; }
     [[ "$output" == *"Dikkat:"* && "$output" == *"davranış değişti 2.2.0"* ]] || { echo "$output"; false; }
     pre="${output%%Kurulsun mu*}"; [[ "$pre" == *"Güncelleme özeti"* ]]
     [ "$(cat "$SB/VERSION")" = "2.2.0" ]
@@ -428,4 +428,42 @@ make_cli_sandbox() {
     [ "$output" = $'- önemli [31mkırmızı\n- ikinci' ]
     run update_attention "$T/cl.md" 9.9.9
     [ -z "$output" ]
+}
+
+# ---------- bölgeli panel (ortak UI) ----------
+@test "CLI --update (30x80): üst bölüm sabit çizilir, notlar/sorular/kurulum kaydırma bölgesinde akar, bölge sonda sıfırlanır" {
+    make_cli_sandbox; make_release 2.2.0
+    FAKE_LATEST=2.2.0 SSHPOCKET_ROWS=30 SSHPOCKET_COLS=80 run bash -c "printf 'y\ny\n' | bash '$SB/sistem/Main.sh' --update"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *$'\033[3;1H'* && "$output" == *"Güncelleme · sshpocket 2.1.0 → 2.2.0"* ]] || { echo "$output" | cat -v | head -20; false; }
+    [[ "$output" == *"Özet"* && "$output" == *"Dikkat"* && "$output" == *"davranış değişti 2.2.0"* ]] || { echo "$output"; false; }
+    [[ "$output" == *"0.11.0 →"* && "$output" == *"yeni özellik 2.2.0"* && "$output" == *"2.1.0 → 2.2.0"* ]] || { echo "$output"; false; }
+    [[ "$output" == *"0.12.0"* && "$output" == *"yeni-paket 1.0.0 (yeni)"* && "$output" == *"kilitten"* ]] || { echo "$output" | cat -v; false; }
+    [[ "$output" == *$'\033[r'* ]]                         # bölge sıfırlandı
+    [ "$(cat "$SB/VERSION")" = "2.2.0" ]
+}
+
+@test "CLI --update (kısa terminal 20x80): bölge çizilmez, düz akış ve özet aynen çıkar" {
+    make_cli_sandbox; make_release 2.2.0
+    FAKE_LATEST=2.2.0 SSHPOCKET_ROWS=20 SSHPOCKET_COLS=80 run bash -c "printf 'y\ny\n' | bash '$SB/sistem/Main.sh' --update"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Güncelleme özeti"* && "$output" != *$'\033[3;1H'* ]] || { echo "$output" | cat -v | head -20; false; }
+    [ "$(cat "$SB/VERSION")" = "2.2.0" ]
+}
+
+@test "CLI --update (panel): kurulumu reddetmek bölgeyi yine de sıfırlar, dosyalar değişmez" {
+    make_cli_sandbox; make_release 2.2.0
+    FAKE_LATEST=2.2.0 SSHPOCKET_ROWS=30 SSHPOCKET_COLS=80 run bash -c "printf 'y\nn\n' | bash '$SB/sistem/Main.sh' --update"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"İptal edildi."* && "$output" == *$'\033[r'* ]] || { echo "$output" | cat -v | tail; false; }
+    [ "$(cat "$SB/VERSION")" = "2.1.0" ]
+}
+
+@test "panel: özet üst bölüme sığmazsa hiçbir bilgi kaybolmaz, tamamı kaydırma bölgesine düz yazılır" {
+    tree="$T/tr"; mkdir -p "$tree" "$T/root"
+    printf '## [2.2.0] - x\n\n### Dikkat\n- önemli\n' > "$tree/CHANGELOG.md"
+    for i in $(seq 1 15); do printf '[paket-%s]\nversion = 1.0.%s\n\n' "$i" "$i"; done > "$tree/components.lock"
+    SSHPOCKET_ROWS=30 SSHPOCKET_COLS=80 run update_panel_begin "$tree" "$T/root" 2.1.0 2.2.0
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Güncelleme özeti"* && "$output" == *"paket-15 1.0.15 (yeni)"* && "$output" == *"önemli"* ]] || { echo "$output" | cat -v | tail; false; }
 }

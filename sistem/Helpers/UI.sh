@@ -443,6 +443,11 @@ ui_region_begin2() {
     max=$a; [ "$b" -le "$max" ] || max=$b
     top=$((max + 4)); [ "$top" -ge 9 ] || top=9
     n=$((rows * 4 / 10)); [ "$n" -ge 9 ] || n=9; [ "$top" -le "$n" ] || top="$n"
+    # çağıran (örn. Update.sh) okur: içerik üst bölüme sığmadı, tamamını altta yazabilir
+    # shellcheck disable=SC2034
+    UI_REGION_TRUNC=0
+    # shellcheck disable=SC2034
+    [ "$max" -le $((top - 4)) ] || UI_REGION_TRUNC=1
     clear
     printf '\033[1;1H\033[2K\033[1m  %s\033[0m' "$title"
     printf '\033[2;1H\033[2K%s' "$(printf '─%.0s' $(seq 1 "$cols"))"
