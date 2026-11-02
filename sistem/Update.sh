@@ -110,6 +110,57 @@ update_release_notes() {
     ' "$1" | head -n 40
 }
 
+# Kilit dosyasındaki paket sürümleri: "kimlik sürüm" satırları (yorum satırları ve bozuk bölümler atlanır). Parametre: components.lock
+update_lock_versions() {
+    [ -f "$1" ] || return 0
+    awk '
+        /^\[[a-z][a-z0-9-]*\][[:space:]]*$/ { id=$0; gsub(/[][[:space:]]/, "", id); next }
+        id != "" && /^version[[:space:]]*=/ { v=$0; sub(/^version[[:space:]]*=[[:space:]]*/, "", v); gsub(/[[:space:]\r]+$/, "", v); print id " " v; id="" }
+    ' "$1"
+}
+
+# Eski ve yeni kilit arasındaki fark: "kimlik eski yeni" satırları (olmayan taraf "-"). Parametreler: eski kilit, yeni kilit
+update_lock_diff() {
+    { update_lock_versions "$1" | sed 's/^/o /'; update_lock_versions "$2" | sed 's/^/n /'; } | awk '
+        $1 == "o" { o[$2]=$3; ids[$2]=1 }
+        $1 == "n" { n[$2]=$3; ids[$2]=1 }
+        END { for (i in ids) print i " " ((i in o) ? o[i] : "-") " " ((i in n) ? n[i] : "-") }
+    ' | sort
+}
+
+# CHANGELOG'daki ilgili sürümün "### Dikkat" bölümü (en çok 12 satır; denetim karakterleri atılır). Parametreler: changelog, sürüm
+update_attention() {
+    awk -v v="$2" '
+        $0 ~ "^## \\[" v "\\]" { in_v=1; next }
+        in_v && /^## \[/ { exit }
+        in_v && /^### / { on = ($0 ~ /^### Dikkat/); next }
+        in_v && on && NF { print }
+    ' "$1" | tr -d '\000-\010\013-\037' | head -n 12
+}
+
+# Kurulum ÖNCESİ özet (imza ve arşiv denetimi geçtikten sonra; hiçbir şey yazmaz). Parametreler: yeni ağaç, hedef kök, eski sürüm, yeni sürüm
+update_summary() {
+    local tree="$1" root="$2" oldver="$3" newver="$4" id o n same=0 att line
+    echo ""
+    echo "──── Güncelleme özeti ────"
+    printf '  %-12s %s → %s\n' "sshpocket" "$oldver" "$newver"
+    printf '  %-12s %s\n' "imza" "✅ doğrulandı, arşiv denetimi geçti"
+    while read -r id o n; do
+        [ -n "$id" ] || continue
+        if [ "$o" = "$n" ]; then same=$((same + 1)); continue; fi
+        case "$o" in -) printf '  %-12s %s: yeni paket (%s)\n' "paket" "$id" "$n" ;; *)
+            case "$n" in -) printf '  %-12s %s: kilitten çıkıyor (%s)\n' "paket" "$id" "$o" ;; *) printf '  %-12s %s: %s → %s\n' "paket" "$id" "$o" "$n" ;; esac ;;
+        esac
+    done < <(update_lock_diff "$root/components.lock" "$tree/components.lock")
+    [ "$same" -eq 0 ] || printf '  %-12s %s paket değişmiyor\n' "paket" "$same"
+    att=$(update_attention "$tree/CHANGELOG.md" "$newver")
+    if [ -n "$att" ]; then
+        echo "  ⚠️  Dikkat:"
+        while IFS= read -r line; do echo "     $line"; done <<< "$att"
+    fi
+    echo "───────────────────────────"
+}
+
 # Yedek: kod dosyalarını tar.gz olarak saklar. Parametreler: hedef kök, sürüm
 update_backup() {
     local root="$1" version="$2" f dest
@@ -277,6 +328,7 @@ update_main() {
         return 1
     fi
 
+    update_summary "$tree" "$UPDATE_ROOT_DIR" "$cur" "$latest"
     echo ""
     echo "──── Sürüm notları ────"
     update_release_notes "$tree/CHANGELOG.md" "$latest"

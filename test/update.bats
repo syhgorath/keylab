@@ -45,7 +45,8 @@ make_release() {
     local tree="$T/rel/sshpocket-$v"
     mkdir -p "$tree/sistem/Helpers" "$tree/sistem/Modules/example"
     printf '%s\n' "$v" > "$tree/VERSION"
-    printf '# Changelog\n\n## [%s] - 2026-01-01\n\n### Eklendi\n- yeni özellik %s\n\n## [0.0.1] - 2020-01-01\n- eski\n' "$v" "$v" > "$tree/CHANGELOG.md"
+    printf '# Changelog\n\n## [%s] - 2026-01-01\n\n### Dikkat\n- davranış değişti %s\n\n### Eklendi\n- yeni özellik %s\n\n## [0.0.1] - 2020-01-01\n- eski\n' "$v" "$v" "$v" > "$tree/CHANGELOG.md"
+    printf '[linux-hardening]\nrepo = a/b\nversion = 0.12.0\n\n[yeni-paket]\nversion = 1.0.0\n' > "$tree/components.lock"
     printf '#!/bin/bash\necho NEW-%s\n' "$v" > "$tree/sistem/Helpers/New.sh"
     printf '#!/bin/bash\necho main-%s\n' "$v" > "$tree/sistem/Main.sh"
     printf '#!/bin/bash\necho update-%s\n' "$v" > "$tree/sistem/Update.sh"
@@ -240,6 +241,7 @@ make_cli_sandbox() {
     SB="$T/sb"; mkdir -p "$SB"
     cp -R "$ROOT/sistem" "$SB/"; cp "$ROOT/start.sh" "$SB/"
     printf '2.1.0\n' > "$SB/VERSION"
+    printf '# yorum\n# [yorum-paket]\n\n[linux-hardening]\nrepo = a/b\nversion = 0.11.0\n\n[eski-paket]\nversion = 2.0.0\n' > "$SB/components.lock"
     printf 'EjectUSB(){ :; }\n' > "$SB/sistem/Helpers/Eject.sh"
     cp "$SIGNERS" "$SB/sistem/release_signers"
     mkdir -p "$SB/sistem/Modules/mine"
@@ -267,6 +269,11 @@ make_cli_sandbox() {
     [[ "$output" == *"İmza geçerli"* ]]
     [[ "$output" == *"yeni özellik 2.2.0"* ]]
     [[ "$output" == *"2.1.0 → 2.2.0"* ]]
+    # özet tablosu (kurulumdan önce): sürüm, imza, paket farkları, Dikkat
+    [[ "$output" == *"Güncelleme özeti"* && "$output" == *"linux-hardening: 0.11.0 → 0.12.0"* ]] || { echo "$output"; false; }
+    [[ "$output" == *"yeni-paket: yeni paket (1.0.0)"* && "$output" == *"eski-paket: kilitten çıkıyor (2.0.0)"* ]] || { echo "$output"; false; }
+    [[ "$output" == *"Dikkat:"* && "$output" == *"davranış değişti 2.2.0"* ]] || { echo "$output"; false; }
+    pre="${output%%Kurulsun mu*}"; [[ "$pre" == *"Güncelleme özeti"* ]]
     [ "$(cat "$SB/VERSION")" = "2.2.0" ]
     [ "$(cat "$SB/sistem/Modules/mine/.env")" = "MINE_IP=192.0.2.1" ]
     grep -q -- "--proto-redir =https" "$FAKE_LOG"
@@ -403,4 +410,22 @@ make_cli_sandbox() {
     printf 'not' > "$INST/sistem/Modules/example/notlarim.txt"
     run update_cleanup_stale_example "$INST"
     [ -f "$INST/sistem/Modules/example/notlarim.txt" ]
+}
+
+# ---------- özet tablosu yardımcıları ----------
+@test "kilit farkı: eklenen, kalkan, değişen ve aynı paketler; yorum satırları atlanır" {
+    printf '# [yorum]\n[a]\nversion = 1.0.0\n\n[b]\nversion = 2.0.0\n\n[c]\nversion = 3.0.0\n' > "$T/old.lock"
+    printf '[a]\nversion = 1.0.0\n\n[b]\nversion = 2.1.0\n\n[d]\nversion = 4.0.0\n' > "$T/new.lock"
+    run update_lock_diff "$T/old.lock" "$T/new.lock"
+    [ "$output" = $'a 1.0.0 1.0.0\nb 2.0.0 2.1.0\nc 3.0.0 -\nd - 4.0.0' ]
+    run update_lock_diff "$T/yok.lock" "$T/new.lock"            # eski kilit yoksa hepsi yeni
+    [ "$output" = $'a - 1.0.0\nb - 2.1.0\nd - 4.0.0' ]
+}
+
+@test "Dikkat bölümü: yalnızca ilgili sürümün '### Dikkat' satırları; denetim karakteri atılır; yoksa boş" {
+    printf '## [Unreleased]\n\n### Dikkat\n- yayımlanmamış\n\n## [2.2.0] - x\n\n### Dikkat\n- önemli \033[31mkırmızı\n- ikinci\n\n### Eklendi\n- şey\n\n## [2.1.0] - y\n\n### Dikkat\n- eski\n' > "$T/cl.md"
+    run update_attention "$T/cl.md" 2.2.0
+    [ "$output" = $'- önemli [31mkırmızı\n- ikinci' ]
+    run update_attention "$T/cl.md" 9.9.9
+    [ -z "$output" ]
 }
