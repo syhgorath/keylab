@@ -484,6 +484,13 @@ comp_menu_actions() {
     local -a names labels
     info=$(comp_prepare "$id") || { echo "Paket doğrulanamadı: $id (./start.sh --components list)" >&2; return 1; }
     _comp_menu_ctx "$id" "$server" "$info"
+    # Eski sunucu / ilk açılış: platform kayıtlı değilse (ve paket platform listesi bildiriyorsa) bir kez sorulur; "Şimdi değil" hiçbir şey yazmaz,
+    # soru bir sonraki girişte yine çıkar. allow_from boşsa ayrıca her eylemde ⛔ (requires_vars kapısı) sürer.
+    if declare -F comp_onboard_needed >/dev/null && comp_onboard_needed "$id" "$COMP_MENU_VARS"; then
+        echo "ℹ️  Bu sunucu için $id'ın sunucu türü henüz seçilmemiş."
+        comp_onboard_package "$id" "$COMP_MENU_DIR" || true
+        IFS= read -r -p "Devam için Enter..." _ || true
+    fi
     names=()
     hidden=0
     plat=$(comp_vars_platform "$COMP_MENU_MF" "$COMP_MENU_VARS" 2>/dev/null) || plat=""

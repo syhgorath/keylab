@@ -5,7 +5,7 @@ load test_helper
 setup() {
     load_helpers
     export SISTEM_PATH="$ROOT/sistem"
-    for f in UI Servers Components ComponentsInstall ComponentsManifest ComponentsRun ComponentsGates ComponentsExec ComponentsVars ComponentsMenu; do source "$H/$f.sh"; done
+    for f in UI Servers Components ComponentsInstall ComponentsManifest ComponentsRun ComponentsGates ComponentsExec ComponentsVars ComponentsMenu ComponentsOnboard; do source "$H/$f.sh"; done
     T="$BATS_TEST_TMPDIR"
     export SSHPOCKET_COMPONENTS_DIR="$T/comps" SSHPOCKET_SERVERS_DIR="$T/srv"
     D="$T/srv/web1"; mkdir -p "$D" "$T/comps/demo/1.0.0"
@@ -999,4 +999,25 @@ PY
     [[ "$output" == *"⛔ Kapalı"* && "$output" == *"Boş: scan_dir"* ]] || { echo "$output"; false; }
     printf 'scan_dir=/tmp/x\n' > "$COMP_MENU_VARS"
     run _comp_menu_action_blocked "$INFO" preview ""; [ "$status" -ne 0 ]
+}
+
+# ---------- eski sunucu: ilk açılışta platform sorusu ----------
+@test "ilk açılış: platform kayıtlı değilse paket menüsü bir kez sorar; 'Şimdi değil' yazmaz; seçilince bir daha sormaz" {
+    python3 - "$T/m.json" <<'PY'
+import json, sys
+p = sys.argv[1]; m = json.load(open(p))
+m["vars"].append({"name": "demo_platform", "type": "string", "default": "generic"})
+m["platform_var"] = "demo_platform"
+m["platform_choices"] = [{"id": "generic", "label": "Genel"}, {"id": "proxmox-host", "label": "Proxmox"}]
+json.dump(m, open(p, "w"))
+PY
+    cp "$T/m.json" "$T/comps/demo/1.0.0/component.json"
+    INFO=$(comp_manifest_info "$T/m.json" demo 1.0.0)
+    run comp_menu_actions demo web1 <<<$'s\n\n0'
+    [[ "$output" == *"sunucu türü henüz seçilmemiş"* && "$output" == *"Bu sunucu hangi türde?"* ]] || { echo "$output"; false; }
+    run grep -q demo_platform "$D/demo.vars"; [ "$status" -ne 0 ]
+    run comp_menu_actions demo web1 <<<$'2\n\n\n0'
+    [ "$(comp_vars_get "$D/demo.vars" demo_platform)" = proxmox-host ]
+    run comp_menu_actions demo web1 <<<"0"
+    [[ "$output" != *"hangi türde"* ]] || { echo "$output"; false; }
 }

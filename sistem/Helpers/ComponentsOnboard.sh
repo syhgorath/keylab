@@ -136,6 +136,16 @@ comp_onboard_package() {
     _comp_onboard_vars "$pkg" "$info" "$mf" "$vf" "$dir"
 }
 
+# comp_onboard_needed <paket> <vars-dosyası> → 0: paketin platform listesi var ama platform_var dosyada yok/boş (eski sunucu, ilk açılış)
+comp_onboard_needed() {
+    local info pv
+    info=$(_comp_onboard_info "$1")
+    [ -n "$(comp_info_get "$info" platform_choice)" ] || return 1
+    pv=$(comp_info_get "$info" platform_var)
+    [ -n "$pv" ] || return 1
+    [ -z "$(comp_vars_get "$2" "$pv" 2>/dev/null)" ]
+}
+
 # comp_onboard_all <sunucu-klasörü> → platform listesi olan her kurulu paket için bir kez
 comp_onboard_all() {
     local pkg
