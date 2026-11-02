@@ -152,7 +152,7 @@ _comp_exec_script() {
 _comp_exec_body() {
     local info="$1" id="$2" ver="$3" action="$4" kv
     local server="$COMP_CTX_SERVER" pkg="$COMP_CTX_PKGDIR" bindir="${COMP_CTX_BINDIR:-}" runner work sdir vf inv group dir_var outdir log w prog rc line
-    local -a sets warn_names
+    local -a sets warn_names applied
     local refused="$COMP_EXEC_REFUSED"
 
     runner=$(comp_info_get "$info" runner)
@@ -194,6 +194,10 @@ _comp_exec_body() {
     while IFS= read -r kv; do
         [ -n "$kv" ] && sets+=(--set "$kv")
     done < <(comp_info_all "$info" "action.$action.set")
+    # platform apply_vars: kurallar comp_gate_apply_vars'ta; metin onay sorusundan ÖNCE gösterilir, onay yoksa hiçbir şey çalışmaz
+    applied=()
+    while IFS= read -r kv; do [ -n "$kv" ] && applied+=("$kv"); done < <(comp_gate_apply_vars "$info" "$action" "${COMP_CTX_VALUES:-/dev/null}")
+    for kv in ${applied[@]+"${applied[@]}"}; do sets+=(--set "$kv"); done
     warn_names=()
     # Salt okunur, başka eylemin ön koşulu olmayan eylemler (rollback_status vb.) zorunlu değişken istemez; değer verilmişse yine doğrulanır
     if ! comp_gate_required_applies "$info" "$action"; then sets+=(--no-required); fi
@@ -208,6 +212,7 @@ _comp_exec_body() {
     fi
 
     # ---- onay (effects + uyarılar gösterilir) ----
+    comp_gate_apply_vars_notice "$info" "${COMP_CTX_VALUES:-/dev/null}" ${applied[@]+"${applied[@]}"}
     comp_gate_confirm "$info" "$action" "$server" || return "$refused"
 
     # ---- script runner: betik SUNUCUDA çalışır (Mac'te yabancı kod çalışmaz); kapılar/değişkenler/onay yukarıda ortak ----
@@ -241,6 +246,7 @@ _comp_exec_body() {
     # ---- çalıştır (günlük kullanıcı klasöründe, izin 600; kullanıcı terminali çıktıyı olduğu gibi görür) ----
     log="$sdir/last-run.log"
     ( umask 077; : > "$log" ) || return "$refused"
+    for kv in ${applied[@]+"${applied[@]}"}; do printf 'bu koşuya özel: %s\n' "$kv" >> "$log"; done
     {
         cd "$pkg" && env PYTHONDONTWRITEBYTECODE=1 ANSIBLE_CONFIG="$pkg/ansible.cfg" ANSIBLE_HOST_KEY_CHECKING=True ANSIBLE_TIMEOUT="${ANSIBLE_TIMEOUT:-30}" PATH="$bindir:$PATH" "${COMP_RUN_ARGV[@]}"
     } 2>&1 | tee -a "$log"

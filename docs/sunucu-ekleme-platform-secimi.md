@@ -164,7 +164,8 @@ Kopyalama senaryosunu çözmüyoruz; yalnızca uyarı öneriyoruz:
 `servers/` yerel↔USB ayrışması için yalnızca uyarı (§9).
 
 **Uygulama durumu:** manifest + `requires_vars` kapısı (#150) · sunucu eklerken platform + `allow_from` sorusu (`Helpers/ComponentsOnboard.sh`, `ModuleGenerator.sh`; `platform_detect` önerisi YOK, liste doğrudan sorulur; `allow_from` boş kalırsa platform yine yazılır, `allow_from` yazılmaz) ·
-`apply_vars` ve eski sunucuların ilk açılış sorusu sonraki PR'larda.
+`apply_vars` uygulaması (`comp_gate_apply_vars`; yalnız type-server-name onaylı, changes-config, yıkıcı olmayan ve `requires` taşıyan eylemlerde = `apply`, `pve_firewall_apply`) ·
+eski sunucuların ilk açılış sorusu sonraki PR'da.
 
 **Açık sorular:**
 1. ~~`apply_vars`~~ **Kullanıcı onayladı (2026-11-02):** `apply` sunucu adı onayından sonra `apply_vars` (örn. `hardening_pve_apply`) geçirilir; `.vars`'taki kullanıcı değeri ezilmez. Kuralı sshpocket uygular, pakette ara değişken yok (§5, §5.1 koşulları geçerli).
