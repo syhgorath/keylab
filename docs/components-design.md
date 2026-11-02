@@ -237,7 +237,7 @@ Command Line Tools gerekiyorsa yönlendirir (grafik arayüzlüdür).
   - fail2ban `ignoreip`:
     - **0.10.0 (kilitli):** kontrol makinesinin sunucunun gördüğü adresi otomatik eklenir (tüm yönetim ağı muaf değil);
       dinamik IP'den çalışılırsa yapılandırma her seferinde değişir.
-    - **0.11.0'dan itibaren (henüz yayınlanmadı):** `127.0.0.1/8 ::1` kodda her zaman eklenir; `hardening_fail2ban_ignoreip`
+    - **0.11.0'dan itibaren (kilitli: 3.6.19):** `127.0.0.1/8 ::1` kodda her zaman eklenir; `hardening_fail2ban_ignoreip`
       varsayılanı boştur. Kontrol makinesi ve `hardening_ssh_allow_from` otomatik eklenmez. Bağlı adres muaf değilse günlükte
       tek satır `NOT (fail2ban): Bağlı olduğun adres (X) fail2ban'dan muaf değil` çıkar (uyarı sayılmaz). `bantime`
       varsayılanı 10 dakika. Yükseltmede eskiden otomatik eklenen adres jail dosyasından düşer: ilk koşu `changed` ve bir
