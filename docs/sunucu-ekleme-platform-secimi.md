@@ -32,23 +32,23 @@ seçer; gerisi otomatik.
 ## 3. Akış (ekran adımları)
 
 Mevcut sunucu ekleme betiği `sistem/ModuleGenerator.sh`: ad → IP → kullanıcı → port → anahtar → public key kopyalama.
-Platform adımı bundan **sonra**, anahtarla bağlanılabildiği an gelir:
+Platform adımı bundan **sonra** gelir. **Platform kullanıcıya DOĞRUDAN sorulur; algılama zorunlu değildir** ve ekleme akışının ön
+koşulu yapılmaz (ssh/sudo/ajan gerektiren hiçbir adım sorunun çıkması için şart değil):
 
 | Adım | Ekran | Not |
 |---|---|---|
 | 1–5 | Ad, bağlantı, anahtar (bugünkü gibi) | değişmez |
-| 6 | **Platform tahmini** (isteğe bağlı, salt okunur ssh) | "Bu sunucu Proxmox VE görünüyor. Doğru mu? [E/h]" |
-| 7 | **Platform listesi** (paketin manifestinden) | tahmin varsa onun üstünde imleç; "Bilmiyorum / genel (generic)" her zaman var |
-| 8 | **`allow_from` sorusu** (yalnızca pakette tanımlıysa) | "Bu Mac'in ağı (10.1.10.0/24) doğru mu?" önerisi; `/24` ↔ `/32` uyarısı (tek adres için `/32`); boş geçilebilir |
-| 9 | Özet: yazılacak satırlar | onay → `servers/<ad>/<paket>.vars` |
+| 6 | **Platform listesi** (paketin manifestinden, `platform_choices`) | doğrudan sorulur; "Bilmiyorum / genel (generic)" her zaman var. `platform_detect` **sonuç verdiyse** (kapılar uygunsa) o satırın yanında "(önerilen)" işareti çıkar, imleç orada başlar; sonuç yoksa sessizce atlanır |
+| 7 | **`allow_from` sorusu** (pakette `onboarding_vars` ile tanımlıysa) | **ZORUNLU:** boş geçilemez (§5.1). Öneriler "doğru mu?" diye sunulur, sessizce yazılmaz; `/24` ↔ `/32` uyarısı |
+| 8 | Özet: yazılacak satırlar | onay → `servers/<ad>/<paket>.vars` |
 
-**Hangi paket?** Sunucu ekleme pakete bağlı değil. Öneri: adım 6–9, **kurulu ve manifestinde platform listesi olan her paket için**
+**Hangi paket?** Sunucu ekleme pakete bağlı değil. Öneri: adım 6–8, **kurulu ve manifestinde platform listesi olan her paket için**
 yalnızca bir kez, sunucu eklendikten sonra sorulur ("linux-hardening için bu sunucunun türü?"). Hiç paket yoksa adım atlanır.
 
 ## 4. Eski sunucular: ilk açılışta soru
 
 `servers/<ad>/<paket>.vars` içinde `platform_var` satırı **yoksa** ve paketin platform listesi varsa, pakete ilk girişte
-(paket menüsü açılırken, bir kez) aynı 6–7. adımlar sorulur. "Sonra" denirse hiçbir şey yazılmaz (işaret dosyası yok):
+(paket menüsü açılırken, bir kez) aynı 6–7. adımlar (platform + zorunlu `allow_from`) sorulur. "Sonra" denirse hiçbir şey yazılmaz (işaret dosyası yok):
 `generic` varsayımıyla devam edilir, başlıkta tek satırlık not çıkar ve soru bir sonraki girişte yine sorulur. Böylece GitHub'dan indiren biri Proxmox'ta hatayla
 karşılaşmadan önce sorulmuş olur.
 
@@ -70,7 +70,7 @@ Paket `component.json`'a ekler (hepsi isteğe bağlı; eski sshpocket yok sayar)
 - `onboarding_vars` → sunucu eklenirken **sorulacak** değişkenler (**grup (c)**'den yalnızca `allow_from` gibi sorulabilir olanlar).
   `hardening_pve_apply` ve `hardening_ufw_prune_ssh` burada **bulunamaz**: sshpocket bu iki türü (`warn_if` taşıyan ya da `destructive`
   olarak işaretli değişkenleri) `onboarding_vars` dışında reddeder.
-- `platform_choices[].auto_detect: false` → tahmin bu platformu önermez (Raspberry Pi).
+- `platform_choices[].auto_detect: false` → tahmin bu platformu önermez (Raspberry Pi). Pi'ye özgü değişkenler (örn. `hardening_rpi_strict`) sunucu eklerken **ASLA sorulmaz** ve `defaults`'a girmez.
 - `platform_choices[].apply_vars` + `apply_warnings` (paket oturumunun isteği, **koşullu kabul önerisi**): örn. `{"hardening_pve_apply": true}`.
   Sunucu eklerken **yazılmaz**; yalnızca değişiklik yapan eylemin (`apply`) onayından (`type-server-name`) **sonra**, o koşuya özel
   `-e` ile geçer ve **yalnızca değişken `.vars` dosyasında YOKSA** (kullanıcı bilerek `false` yazdıysa ezilmez). Koşullar:
@@ -78,6 +78,24 @@ Paket `component.json`'a ekler (hepsi isteğe bağlı; eski sshpocket yok sayar)
   2. `.vars` dosyasına **yazılmaz**; günlük başlığında "bu koşuya özel: hardening_pve_apply=true" satırı çıkar;
   3. yalnızca değişiklik yapan eylemlerde (`preview`/`audit` değil) ve platform **açıkça seçilmişse** (`platform_var` dosyada yazılı; `auto`/belirsiz değil);
   4. yalnızca tanımlı `bool`/`enum` değişkenler; silici/erişimi kesen değişken (`hardening_ufw_prune_ssh`) bulunamaz (iki yönlü denetim: paket ve menü).
+
+### 5.1 `allow_from` zorunlu: boşsa eylemler çalışmaz
+
+Mevcut `required: true` mekanizması bunu zaten sağlar: zorunlu değişken boşsa **değişiklik yapan eylemler ve başka bir eylemin ön koşulu olan
+eylemler** (`preview`, `apply`…) çalışmaz; salt okunur durum eylemleri (`rollback_status`) çalışır (paket standardı §değişkenler).
+Yani sshpocket'e yeni kod gerekmez: **paket** `hardening_ssh_allow_from`'u `required: true` yapar (yeni paket sürümü) ve sshpocket'in mevcut ⛔ kapısı
+devreye girer. Sunucu eklerken sorulması, bu kapıya takılmadan baştan doldurmak içindir.
+
+**Öneri nereden gelir (hiçbiri sessizce yazılmaz, hepsi "doğru mu?" diye sorulur):**
+1. **Sunucunun gördüğü adres** (`comp_net_seen_by_server`, salt okunur ssh, mevcut işlev): tek adres olarak `x.x.x.x/32` — en dar ve güvenli öneri.
+2. **Bu Mac'in yerel ağı:** varsayılan arayüzün adresi ve maskesi (`route`/`ipconfig`), `/24` ağ olarak önerilir; ekranda "tüm ağa izin verir; tek cihaz için /32" uyarısı.
+3. **VPN uyarısı:** uzaktan (VPN) bağlanılıyorsa 1. öneri VPN adresini, 2. öneri LAN'ı verir; ikisini de yazmak gerekebilir (`a,b`). Ekran, "evde ve dışarıda farklı adresten bağlanıyorsanız ikisini de ekleyin" der.
+4. Algılama başarısızsa öneri yok; kullanıcı kendi yazar. Boş geçilemez.
+
+**`apply_vars` kuralını kim uygular? Öneri: sshpocket.** Sebep: kullanıcının `.vars` değerini ve `type-server-name` onayını sshpocket bilir; paket yalnızca birleşmiş değerleri
+görür ve dosyada "yoktu" ile "bilerek false yazılmıştı" ayrımını yapamaz. sshpocket zaten eylem düzeyi sabit değişkenleri (`action.set`) `-e` ile geçiriyor
+(`ComponentsExec.sh`); `apply_vars` aynı yoldan, ama onaydan sonra ve yalnızca dosyada yoksa geçer. Paket yalnızca bildirir (`apply_vars`, `apply_warnings`) ve
+tutarlılığı doğrular.
 
 **Okuma yeri:** `sistem/Helpers/component_manifest.py` doğrulayıp `kimlik=değer` bilgi satırlarına çevirir (bugün `platform_var` ve
 `platforms` böyle okunuyor); `ComponentsManifest.sh` yeni okuyucu işlev ekler; seçim ve yazma `ComponentsVars.sh`
@@ -88,13 +106,13 @@ diyor). Bilinmeyen alanlar eski sürümlerde yok sayılır; yalnızca yeni seçi
 
 ## 6. Tahmin ve `auto` sorunu
 
-- **Tahmin kaynağı:** paket bildirir. Öneri: paket isteğe bağlı salt okunur bir `detect` eylemi (`effects: []`) tanımlar ve
-  `SSHPOCKET_RESULT … platform=proxmox-host` döner; sshpocket bunu mevcut yürütme yolundan (host key, ajan, onay kapıları) çalıştırır.
-  Alternatif (sade ama sshpocket'e komut koyar): manifestte `detect_command`. **Açık soru:** hangisi?
-- **`auto` sorunu:** paket varsayılanı `auto` yaparsa `platform_var` süzmesi (`current_platform`) `auto` değerini platform sanıp tüm
-  platformlu değişkenleri gizler. Çözüm: `current_platform` bildirilen `platform_choices` kimlikleri dışındaki değeri (`auto`, boş, bilinmeyen)
-  **"belirsiz"** sayar, hiçbir süzme yapılmaz (bugünkü "platform belirlenemezse süzme yok" kuralıyla aynı).
-  `platform_choices` hiç yoksa bugünkü davranış aynen sürer.
+- **Tahmin yalnızca öneridir, zorunlu değil.** Kaynak: paketin salt okunur `platform_detect` eylemi (`effects: []`, sudo yok, onay yok, zorunlu değişken yok;
+  tek `SSHPOCKET_RESULT linux-hardening.platform_detect platform=<id|boş> hint=<id|none> os=<…>` satırı; Raspberry Pi **asla** `platform=` olmaz, yalnız `hint=`).
+  sshpocket bunu mevcut yürütme yolundan çalıştırır; host key, ajan ya da başka kapı engellerse tahmin **sessizce atlanır** ve kullanıcı listeden seçer.
+  (`detect_command` seçeneği elendi: sshpocket'e komut koymamak için.)
+- **`auto` değeri paket tarafında yok** (`hardening_platform` hep somut; varsayılan `generic`). Yine de savunma için `current_platform` bildirilen
+  `platform_choices` kimlikleri dışındaki değeri (boş, bilinmeyen) **"belirsiz"** sayar ve hiçbir süzme yapmaz (bugünkü "platform belirlenemezse süzme yok"
+  kuralıyla aynı). `platform_choices` hiç yoksa bugünkü davranış aynen sürer.
 - Tahmin başarısızsa (ssh yok, anahtar yok, zaman aşımı) sessizce atlanır; liste yine gösterilir.
 
 ## 7. Vars dosyası yazma kuralları
@@ -130,12 +148,17 @@ Kopyalama senaryosunu çözmüyoruz; yalnızca uyarı öneriyoruz:
 - Güvenlik: `hardening_pve_apply`/`ufw_prune_ssh` hiçbir yoldan sessizce yazılmaz.
 - Gerçek VM: Ubuntu ve Proxmox'ta sunucu ekleme → liste → tahmin → `preview` (el ile).
 
-## 11. Açık sorular
-0. **`apply_vars` (karar kullanıcıda):** `hardening_pve_apply` bugün elle yazılır. `apply_vars` bunu `apply` onayına taşır; kolaylık, ama gerçek koşuya geçişi bir 'tek seferlik izin'e çevirir. §2 ilkesiyle (apply anında, eylemin kendi onayıyla) uyumlu; yine de güvenlik anlamı değiştiği için onay bekler.
+## 11. Kararlar (kullanıcı) ve açık sorular
 
-1. Tahmin kaynağı: paketin `detect` eylemi mi, manifestte `detect_command` mı? (öneri: `detect` eylemi)
-2. Soru hangi anda: sunucu eklerken mi, paket menüsü ilk açılırken mi, ikisi de mi? (öneri: ikisi, aynı kod)
-3. Birden çok paket platform listesi bildirirse sunucu başına tek "tür" mü, paket başına ayrı mı? (öneri: paket başına)
-4. `onboarding_vars` için "yıkıcı/erişimi etkiler" ayrımı manifestte açık bir alan mı olsun (`sensitive: true`), yoksa `warn_if` yeterli mi?
-5. `doctor` USB/yerel `servers/` farkını göstersin mi?
-6. Eski sshpocket'te yeni alanlar yok sayılır; yeni paket + eski sshpocket'te kullanıcı yine elle yazar. Kabul edilebilir mi?
+**Karar verilenler:** platform doğrudan sorulur, algılama zorunlu değil (§3, §6) · `allow_from` zorunlu, boşsa eylemler çalışmaz (§5.1) ·
+`apply_vars` kuralını sshpocket uygular (§5.1, öneri; paket oturumuyla anlaşılacak) · Raspberry Pi'ye özgü değişkenler eklerken sorulmaz (§5) ·
+**çok düğümlü (küme) Proxmox: kullanıcıda yok, DOĞRULANMADI / DESTEKLENMİYOR olarak belgelenir** (platform listesinin açıklamasında ve README'de) ·
+`servers/` yerel↔USB ayrışması için yalnızca uyarı (§9).
+
+**Açık sorular:**
+1. **`apply_vars`:** `hardening_pve_apply` bugün elle yazılır; `apply_vars` bunu `apply` onayına taşır (§5, koşullu kabul önerisi). Gerçek koşuyu elle yazmadan onayla açtığı için güvenlik anlamı değişir: **kullanıcı onayı bekliyor**. Ret olursa `pve_apply` elle kalır (preflight Proxmox'ta gerçek koşuyu zaten durdurur).
+2. Soru anı: sunucu eklerken **ve** paket menüsü ilk açılırken (aynı kod). Kabul edilirse kapanır.
+3. Birden çok paket platform listesi bildirirse platform paket başına mı sorulsun (öneri), sunucu başına tek "tür" mü?
+4. `doctor` yerel↔USB `servers/` `.vars` farkını göstersin mi (salt okunur, otomatik kopya yok)?
+5. Eski sshpocket + yeni paket: yeni alanlar yok sayılır, kullanıcı platformu elle yazar. Kabul edilebilir mi?
+6. `hardening_ssh_allow_from` `required: true` yapılırsa mevcut sunucular (örn. `.vars`'ında bu satır olmayan) ilk açılışta ⛔ görür; bu istenen davranış mı, yoksa tek seferlik geçiş notu mu?
