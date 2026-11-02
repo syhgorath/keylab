@@ -400,6 +400,8 @@ def main():
     # platform_choices: seçilebilir platformlar; defaults = platforma göre güvenli varsayılanlar (dosyada yoksa yazılır), apply_vars = değişiklik
     #   yapan eylemin onayından SONRA o koşuya özel verilen değerler (apply_warnings zorunlu); onboarding_vars = sunucu eklenirken sorulacak değişkenler.
     plat_lines = []
+    if is_str(d.get("platform_var")) and d["platform_var"] in var_specs:
+        plat_lines.append("platform_var=%s" % d["platform_var"])
 
     def _declared(n, what, want_types=None):
         if not is_str(n) or n not in var_specs:
