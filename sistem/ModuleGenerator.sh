@@ -16,6 +16,11 @@ source "$SCRIPT_DIR/Helpers/ModuleFiles.sh"
 source "$SCRIPT_DIR/Helpers/Servers.sh"
 # shellcheck source=Helpers/SSHHelper.sh
 source "$SCRIPT_DIR/Helpers/SSHHelper.sh"
+# Paket platformu / zorunlu ayar soruları (manifestinde platform_choices olan paket yoksa hiçbir şey sorulmaz)
+for _f in Components ComponentsInstall ComponentsManifest ComponentsRun ComponentsVars ComponentsMenu ComponentsOnboard; do
+    # shellcheck source=/dev/null
+    source "$SCRIPT_DIR/Helpers/$_f.sh"
+done
 SERVERS_DIR="$(servers_dir)"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
@@ -85,6 +90,9 @@ if [ -f "$key" ]; then
         ssh_copy_key "$ssh_user" "$ssh_ip" "$ssh_port" "$key" || true
     fi
 fi
+
+# Kurulu paketlerin platform listesi ve zorunlu ayarları (anahtar kopyalandıktan sonra: "sunucunun gördüğü adres" sorgusu çalışabilsin)
+comp_onboard_all "$module_dir"
 
 echo ""
 echo -e "${GREEN}✅ Sunucu oluşturuldu: $module_dir${NC}"
