@@ -71,6 +71,13 @@ Paket `component.json`'a ekler (hepsi isteğe bağlı; eski sshpocket yok sayar)
   `hardening_pve_apply` ve `hardening_ufw_prune_ssh` burada **bulunamaz**: sshpocket bu iki türü (`warn_if` taşıyan ya da `destructive`
   olarak işaretli değişkenleri) `onboarding_vars` dışında reddeder.
 - `platform_choices[].auto_detect: false` → tahmin bu platformu önermez (Raspberry Pi).
+- `platform_choices[].apply_vars` + `apply_warnings` (paket oturumunun isteği, **koşullu kabul önerisi**): örn. `{"hardening_pve_apply": true}`.
+  Sunucu eklerken **yazılmaz**; yalnızca değişiklik yapan eylemin (`apply`) onayından (`type-server-name`) **sonra**, o koşuya özel
+  `-e` ile geçer ve **yalnızca değişken `.vars` dosyasında YOKSA** (kullanıcı bilerek `false` yazdıysa ezilmez). Koşullar:
+  1. `apply_vars` doluysa `apply_warnings` boş olamaz ve metin **onay sorusundan önce** gösterilir ("bu koşuda hardening_pve_apply=true verilecek");
+  2. `.vars` dosyasına **yazılmaz**; günlük başlığında "bu koşuya özel: hardening_pve_apply=true" satırı çıkar;
+  3. yalnızca değişiklik yapan eylemlerde (`preview`/`audit` değil) ve platform **açıkça seçilmişse** (`platform_var` dosyada yazılı; `auto`/belirsiz değil);
+  4. yalnızca tanımlı `bool`/`enum` değişkenler; silici/erişimi kesen değişken (`hardening_ufw_prune_ssh`) bulunamaz (iki yönlü denetim: paket ve menü).
 
 **Okuma yeri:** `sistem/Helpers/component_manifest.py` doğrulayıp `kimlik=değer` bilgi satırlarına çevirir (bugün `platform_var` ve
 `platforms` böyle okunuyor); `ComponentsManifest.sh` yeni okuyucu işlev ekler; seçim ve yazma `ComponentsVars.sh`
@@ -124,6 +131,7 @@ Kopyalama senaryosunu çözmüyoruz; yalnızca uyarı öneriyoruz:
 - Gerçek VM: Ubuntu ve Proxmox'ta sunucu ekleme → liste → tahmin → `preview` (el ile).
 
 ## 11. Açık sorular
+0. **`apply_vars` (karar kullanıcıda):** `hardening_pve_apply` bugün elle yazılır. `apply_vars` bunu `apply` onayına taşır; kolaylık, ama gerçek koşuya geçişi bir 'tek seferlik izin'e çevirir. §2 ilkesiyle (apply anında, eylemin kendi onayıyla) uyumlu; yine de güvenlik anlamı değiştiği için onay bekler.
 
 1. Tahmin kaynağı: paketin `detect` eylemi mi, manifestte `detect_command` mı? (öneri: `detect` eylemi)
 2. Soru hangi anda: sunucu eklerken mi, paket menüsü ilk açılırken mi, ikisi de mi? (öneri: ikisi, aynı kod)
