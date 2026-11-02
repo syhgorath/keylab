@@ -4,6 +4,15 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.6.20] - 2026-11-02
+
+Bu yama sürümü `linux-hardening` 0.12.0'ı kilitler ve sunucu eklerken platform seçimini, güncelleme panelini getirir.
+
+### Dikkat
+- **Mevcut sunucularda `linux-hardening` eylemleri ⛔ görünebilir:** 0.12.0 `preview`, `apply`, `pve_firewall_preview` ve `pve_firewall_apply` eylemlerini `hardening_ssh_allow_from` dolu olmadan çalıştırmaz (kemer ve pantolon: erişim kısıtını boş bırakıp kendinizi dışarıda bırakmayı önler). Paket menüsünü ilk açtığınızda sunucu türü ve izinli ağlar sorulur; "Şimdi değil" derseniz değer yazılmaz ve eylemler ⛔ kalır. `audit` ve `rollback_*` etkilenmez. Güncellemeden sonra `--components report` hangi sunucunun etkilendiğini gösterir.
+- **Proxmox'ta `apply` artık `hardening_pve_apply=true`'yu o koşuya özel verir** (yalnızca sunucu türü `proxmox-host` seçiliyse, uyarı sunucu adı onayından önce gösterilir, `.vars` dosyanıza yazılmaz ve kendi yazdığınız değer ezilmez).
+- **Gerçek VM (Ubuntu + Proxmox) doğrulaması henüz yapılmadı** (3.6.19'daki fail2ban maddesi dahil): yalnızca birim testleri, gerçek 0.12.0 manifestiyle yerel denemeler ve Docker LAB e2e (18/18) yeşil. Platform seçimi, `apply_vars` ve güncelleme paneli gerçek terminalde/sunucuda elle denenmedi.
+
 ### Düzeltildi
 - **Sunucu eklerken CIDR editörü:** `ModuleGenerator.sh` `SSHModule.sh`'yi yüklemediği için sunucu bilgileri (IP/port/kullanıcı/anahtar) okunamıyor ve "_ssh_env_get: command not found" yazıyordu; ayrıca değişken türü sorgusu Python'a BrokenPipe izi bastırabiliyordu. İkisi de giderildi (test eklendi).
 
@@ -16,7 +25,6 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 - **`linux-hardening` 0.12.0 kilitlendi** (`components.lock`): manifestte `platform_choices` (generic / proxmox-host / raspberry-pi), `onboarding_vars`, `requires_vars` (`preview`, `apply`, `pve_firewall_preview`, `pve_firewall_apply` için `hardening_ssh_allow_from`) ve `apply_vars` (proxmox-host: `hardening_pve_apply=true`) bildirilir; roller/playbook davranışı değişmedi. Gerçek paket manifesti sshpocket doğrulayıcısından geçti, boş `allow_from` ile 4 eylem ⛔ (audit/rollback_status açık), sunucu ekleme akışında platform sorusu gerçek manifestle çalıştı. **Gerçek VM (Ubuntu + Proxmox) doğrulaması henüz yapılmadı** (akşam yapılacak); `apply_vars` uygulaması ve eski sunucuların ilk açılış sorusu sonraki PR'larda.
 - **Eylem düzeyi `requires_vars` (isteğe bağlı manifest alanı):** bir eylem, listedeki değişken değerler dosyasında boş/yoksa ssh'a gitmeden "⛔ çalıştırılmadı: değeri boş değişken: …" ile reddedilir; menüde eylem kartında ⛔ ve "Boş: …" ipucu görünür. Yalnızca o eylemleri kapatır (`audit`, `rollback_*` etkilenmez); alan yoksa davranış değişmez. Amaç: erişim kısıtını (örn. `hardening_ssh_allow_from`) boş bırakıp kendini dışarıda bırakmayı önlemek.
 - **Manifest: `platform_choices` / `onboarding_vars` okunur ve doğrulanır** (sunucu eklerken platform seçimi için hazırlık; seçim ekranı ve `apply_vars` uygulaması sonraki PR'larda). Alan yoksa davranış değişmez; bozuksa paket kilide yazılmaz. Tasarım: `docs/sunucu-ekleme-platform-secimi.md`.
-
 - **Sunucu eklerken platform ve `allow_from` sorusu:** `ModuleGenerator.sh` (anahtar adımından sonra), kurulu ve manifestinde `platform_choices` olan her paket için sunucu türünü doğrudan sorar ("Bilmiyorum" = `generic`, "Şimdi değil" = hiçbir şey yazılmaz), seçilen platformun `defaults` değerlerini özetleyip onayla `servers/<ad>/<paket>.vars`'a yazar (dosyadaki değerler ezilmez) ve `onboarding_vars` için (örn. `list[cidr]` `allow_from`) mevcut CIDR editörünü açar; boş bırakılırsa değer yazılmaz ve ilgili eylemler ⛔ kalır. Manifest yoksa/alan yoksa hiçbir şey sorulmaz. `apply_vars` bu adımda YAZILMAZ (sonraki PR). Algılama (`platform_detect`) henüz yok; liste doğrudan sorulur. Yeni: `Helpers/ComponentsOnboard.sh`; `platform_var=` bilgi satırı.
 
 ### Değişti
