@@ -71,7 +71,7 @@ Paket `component.json`'a ekler (hepsi isteğe bağlı; eski sshpocket yok sayar)
   `hardening_pve_apply` ve `hardening_ufw_prune_ssh` burada **bulunamaz**: sshpocket bu iki türü (`warn_if` taşıyan ya da `destructive`
   olarak işaretli değişkenleri) `onboarding_vars` dışında reddeder.
 - `platform_choices[].auto_detect: false` → tahmin bu platformu önermez (Raspberry Pi). Pi'ye özgü değişkenler (örn. `hardening_rpi_strict`) sunucu eklerken **ASLA sorulmaz** ve `defaults`'a girmez.
-- `platform_choices[].apply_vars` + `apply_warnings` (paket oturumunun isteği, **koşullu kabul önerisi**): örn. `{"hardening_pve_apply": true}`.
+- `platform_choices[].apply_vars` + `apply_warnings` (paket oturumunun isteği; **kullanıcı onayladı**, koşullarla): örn. `{"hardening_pve_apply": true}`.
   Sunucu eklerken **yazılmaz**; yalnızca değişiklik yapan eylemin (`apply`) onayından (`type-server-name`) **sonra**, o koşuya özel
   `-e` ile geçer ve **yalnızca değişken `.vars` dosyasında YOKSA** (kullanıcı bilerek `false` yazdıysa ezilmez). Koşullar:
   1. `apply_vars` doluysa `apply_warnings` boş olamaz ve metin **onay sorusundan önce** gösterilir ("bu koşuda hardening_pve_apply=true verilecek");
@@ -159,12 +159,12 @@ Kopyalama senaryosunu çözmüyoruz; yalnızca uyarı öneriyoruz:
 ## 11. Kararlar (kullanıcı) ve açık sorular
 
 **Karar verilenler:** platform doğrudan sorulur, algılama zorunlu değil (§3, §6) · `allow_from` zorunlu, boşsa `preview`/`apply` çalışmaz (§5.1, eylem düzeyi `requires_vars`) ·
-`apply_vars` kuralını sshpocket uygular (§5.1, öneri; paket oturumuyla anlaşılacak) · Raspberry Pi'ye özgü değişkenler eklerken sorulmaz (§5) ·
+`apply_vars` ONAYLANDI ve kuralı sshpocket uygular (§5, §5.1) · Raspberry Pi'ye özgü değişkenler eklerken sorulmaz (§5) ·
 **çok düğümlü (küme) Proxmox: kullanıcıda yok, DOĞRULANMADI / DESTEKLENMİYOR olarak belgelenir** (platform listesinin açıklamasında ve README'de) ·
 `servers/` yerel↔USB ayrışması için yalnızca uyarı (§9).
 
 **Açık sorular:**
-1. **`apply_vars`:** `hardening_pve_apply` bugün elle yazılır; `apply_vars` bunu `apply` onayına taşır (§5, koşullu kabul önerisi). Gerçek koşuyu elle yazmadan onayla açtığı için güvenlik anlamı değişir: **kullanıcı onayı bekliyor**. Ret olursa `pve_apply` elle kalır (preflight Proxmox'ta gerçek koşuyu zaten durdurur).
+1. ~~`apply_vars`~~ **Kullanıcı onayladı (2026-11-02):** `apply` sunucu adı onayından sonra `apply_vars` (örn. `hardening_pve_apply`) geçirilir; `.vars`'taki kullanıcı değeri ezilmez. Kuralı sshpocket uygular, pakette ara değişken yok (§5, §5.1 koşulları geçerli).
 2. Soru anı: sunucu eklerken **ve** paket menüsü ilk açılırken (aynı kod). Kabul edilirse kapanır.
 3. Birden çok paket platform listesi bildirirse platform paket başına mı sorulsun (öneri), sunucu başına tek "tür" mü?
 4. `doctor` yerel↔USB `servers/` `.vars` farkını göstersin mi (salt okunur, otomatik kopya yok)?
