@@ -1021,3 +1021,20 @@ PY
     run comp_menu_actions demo web1 <<<"0"
     [[ "$output" != *"hangi türde"* ]] || { echo "$output"; false; }
 }
+
+@test "başarısız eylem: özet bloğunda NEDEN (betiğin stdout'u / msg) görünür; başarıda ve kapıda görünmez" {
+    export SSHPOCKET_STATE_DIR="$T/state"; UI_RULE='---'
+    mkdir -p "$T/state/demo/web1"
+    printf 'PLAY RECAP\nfatal: [web1]: FAILED! => {"changed": false, "cmd": ["x"], "stdout": "HATA: geri alma zamanlayicisi disarm'"'"'dan ONCE tetiklenmis\\nikinci satir", "msg": "The command exited with a non-zero return code.", "rc": 3}\nweb1 : ok=1 changed=0 unreachable=0 failed=1 skipped=1\n' > "$T/state/demo/web1/last-run.log"
+    run _comp_menu_run_panel demo web1 "$INFO" preview 2 15
+    [[ "$output" == *"❌ Başarısız (çıkış 2)"* && "$output" == *"Neden: HATA: geri alma zamanlayicisi disarm'dan ONCE tetiklenmis"* && "$output" == *"ikinci satir"* ]] || { echo "$output"; false; }
+    # stdout boşsa msg
+    printf 'fatal: [web1]: FAILED! => {"msg": "Failed to connect to the host via ssh"}\n' > "$T/state/demo/web1/last-run.log"
+    run _comp_menu_run_panel demo web1 "$INFO" preview 4 15
+    [[ "$output" == *"Neden: Failed to connect to the host via ssh"* ]] || { echo "$output"; false; }
+    # başarıda ve kapı ret'inde neden satırı yok
+    run _comp_menu_run_panel demo web1 "$INFO" preview 0 15
+    [[ "$output" != *"Neden:"* ]] || false
+    run _comp_menu_run_panel demo web1 "$INFO" preview "${COMP_EXEC_REFUSED:-190}" 1
+    [[ "$output" != *"Neden:"* ]] || false
+}
