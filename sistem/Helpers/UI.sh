@@ -38,6 +38,29 @@ ui_paint() {
     if [ "$on" = 1 ]; then printf '\033[%sm%s\033[0m' "$code" "$text"; else printf '%s' "$text"; fi
 }
 
+# ---- fzf kartları: ortak biçim (bölüm başlığı, etiket sütunu, renklendirici). Renk yalnız fzf etkinken ve NO_COLOR yokken; aksi hâlde düz metin ----
+# ui_card_on → 0: kart renkli çizilir
+ui_card_on() { [ -z "${NO_COLOR:-}" ] && declare -F ui_fzf_enabled >/dev/null && ui_fzf_enabled; }
+# ui_card_head <başlık> → "── başlık ──" (camgöbeği)
+ui_card_head() { printf '%s\n' "$(ui_paint kart 1\;36 "── $1 ──")"; }
+# ui_card_row <etiket> <değer> → " Etiket  : değer" (etiket sütunu 8 karakter, sarı)
+ui_card_row() {
+    local l="$1" pad
+    pad=$((8 - ${#l})); [ "$pad" -gt 0 ] || pad=0   # karakter sayısına göre doldur (printf %-8s Türkçe harflerde bayt sayar)
+    printf ' %s %s\n' "$(ui_paint kart 1\;33 "$l$(printf '%*s' "$pad" '')":)" "$2"
+}
+# ui_card_colorize → stdin'deki HAZIR kart metnini renklendirir (etiketler, bölüm başlıkları, ✅/❌/⚠/⛔); renk kapalıysa aynen geçirir
+ui_card_colorize() {
+    if ! ui_card_on; then cat; return; fi
+    local e=$'\033'
+    sed -E \
+        -e "s/^(Etkiler|Onay|Ön koşul|Son sonuç[^:]*|Zorunlu eksik|Yazılı|Boş|Günlük|Anahtarlar|Özet|Durum|Hedef|Anahtar|Knock|Passphrase|Komut|Port|Kullanıcı|Adres|Key):/${e}[1;33m\1:${e}[0m/" \
+        -e "s/^(Son çalıştırmalar|Son günlüğün sonu)\$/${e}[1;36m── \1 ──${e}[0m/" \
+        -e "s/^([A-Za-z0-9_.-]+)  —  /${e}[1;36m\1${e}[0m  —  /" \
+        -e "s/✅/${e}[1;32m✅${e}[0m/g" -e "s/❌/${e}[1;31m❌${e}[0m/g" \
+        -e "s/^(⚠.*)\$/${e}[33m\1${e}[0m/" -e "s/^(⛔.*)\$/${e}[1;31m\1${e}[0m/"
+}
+
 # Grup adının ekranda görünen karşılığı
 ui_group_title() {
     case "$1" in

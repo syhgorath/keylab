@@ -6,6 +6,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ### Eklendi
 - **Sunucu kartı (ana menü, fzf sağ bölmesi):** her sunucu satırının açıklaması artık genel bir cümle değil, o sunucunun kartı: durum simgesi (menünün mevcut yoklamasından), `kullanıcı@ip:port`, anahtar ve knock durumu, kurulu pakette son preview/apply/audit kaydı ve son Lynis skoru, tam `ssh` komutu. Yalnızca yerel veriyi okur (`server.env`, `components.log`, sonuç klasörü); ssh yapmaz. Kart fzf'te renklidir (bölüm başlıkları camgöbeği, etiketler sarı, durum yeşil/kırmızı); ok tuşlu/numaralı modda ve `NO_COLOR` ile düz kalır. Sunucu menüsündeki **Bağlantı Bilgileri** bloğu da terminalde aynı renk diliyle çizilir.
+- **Aynı kart ve renk dili iç ekranlarda (fzf):** sunucu menüsünün her satırı (Bağlan, Public key, Bilgiler, Keychain, Knock, Paketler) kendi kartını gösterir; paket panelindeki eylem, geçmiş, değişken ve bulgu kartları renklendi (etiket sarı, bölüm başlığı camgöbeği, ✅ yeşil, ❌ kırmızı, ⚠ sarı); **Ayarlar** (değer, kaynak, varsayılan) ve **Sunucuları yönet** (Sil / Yeniden adlandır) kartları eklendi. Ortak parçalar `UI.sh`'ta: `ui_paint`, `ui_card_head`, `ui_card_row`, `ui_card_colorize`, `UI_PICK_HEIGHT`. Ok tuşlu ve numaralı modda ve `NO_COLOR` ile düz kalır.
 - **Değişkenler kartı (paket eylem paneli):** "📝 Değişkenler" satırının sağ bölmesi artık yazılı değer sayısını ve değerleri listeler; paketin uyardığı değer (`warn_if`) ⚠ ile işaretlenir.
 
 ### Değişti

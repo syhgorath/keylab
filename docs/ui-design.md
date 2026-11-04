@@ -142,6 +142,9 @@ Etkileşimli modda ok tuşlu ya da fzf (`UI=auto|fzf|arrows`), değilse numaral�
 
 fzf sürümü `ui_fzf_version` ile okunur. Çok satırlı açıklama dosyaya `\037` ile tek satır olarak yazılır, önizlemede geri çevrilir.
 
+### Kart parçaları (fzf sağ bölmesi): `ui_card_head`, `ui_card_row`, `ui_card_colorize`, `ui_paint`
+Kartlar çok satırlı düz metindir (`UI_PICK_DESCS` öğesi). Renk YALNIZCA fzf etkinken ve `NO_COLOR` yokken eklenir (`ui_card_on`); ok tuşlu/numaralı modda aynı metin düz kalır. `ui_card_head <başlık>` camgöbeği bölüm başlığı, `ui_card_row <etiket> <değer>` sarı etiket sütunu; hazır bir metni renklendirmek için `… | ui_card_colorize` (etiketler `Etkiler:`/`Onay:`…, `✅ ❌ ⚠ ⛔`). Önizleme içeriği dosyadan okunur; kullanıcı verisi komut satırına girmez.
+
 ### Bölgeli ekran: `ui_region_begin <başlık> <gövde> <alt-etiket>` / `ui_region_end <etiket>` / `ui_region_reset`
 Üst bölüm (başlık + gövde metni) sabit çizilir, alt bölüm terminalin **kaydırma bölgesi** (DECSTBM) olur: sorular, `BECOME password:` istemi ve çıktı alt bölgede akar, ekran değişmez. Terminal < 24 satır ya da < 60 sütunsa `begin` 1 döner (çağıran eski akışa düşer). `Ctrl-C` bölgeyi sıfırlar. Test için `SSHPOCKET_ROWS`/`SSHPOCKET_COLS`. Not: fzf'yi canlı tutup altta çalıştırma denendi, `execute` sonrası fzf üst bölgeyi yeniden çizmediği için olmadı.
 

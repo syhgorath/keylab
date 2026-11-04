@@ -77,6 +77,16 @@ ManageServersAction() {
         local -a UI_PICK_DESCS=("Sunucu klasörünü (ayarlar ve içindeki key dosyaları) siler; sunucu adını yazarak onaylarsınız. Keychain kaydı için ayrıca sorulur." "Sunucuya yeni bir ad verir ve key dosyalarını yeni ada çevirir. Keychain kayıtları otomatik taşınmaz, yeniden girmeniz gerekir.")
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local UI_PICK_BACK_DESC="Ana menüye döner."
+        if declare -F ui_card_on >/dev/null && ui_card_on; then
+            # fzf: renkli kart, geniş düzen
+            local names
+            names=$(srv_names 2>/dev/null | tr '\n' ' ')
+            # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+            UI_PICK_DESCS=("$(ui_card_head '🗑️  Sil'; ui_card_row Sunucu "${names:-(yok)}"; printf '\n⚠ Sunucu klasörü (ayarlar ve key dosyaları) silinir.\nSunucu adını yazarak onaylarsınız; Keychain kaydı için ayrıca sorulur.\n')"
+                "$(ui_card_head '✏️  Yeniden adlandır'; ui_card_row Sunucu "${names:-(yok)}"; printf '\nSunucuya yeni ad verir, key dosyaları yeni ada çevrilir.\n⚠ Keychain kayıtları otomatik taşınmaz.\n')")
+            # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+            local UI_PICK_WIDE=1 UI_PICK_TITLE="Ana menü › Sunucuları yönet" UI_PICK_HEIGHT=16
+        fi
         choice=$(ui_pick_arrows 1 "Geri" "Sil" "Yeniden adlandır")
         echo ""
     else

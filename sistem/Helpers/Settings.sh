@@ -125,6 +125,21 @@ _settings_note() {
     esac
 }
 
+# _settings_card <anahtar> <açıklama> → fzf'te ayar satırının kartı: değer, kaynak (ortam/dosya/varsayılan) ve varsayılan; renk ui_paint kart
+_settings_card() {
+    local key="$1" kaynak
+    case "$(settings_source "$key")" in
+        env) kaynak="ortam değişkeni SSHPOCKET_$key (dosya yok sayılır)" ;;
+        default) kaynak="varsayılan" ;;
+        *) kaynak="sshpocket.conf" ;;
+    esac
+    ui_card_head "$(_settings_label "$key")"
+    ui_card_row Değer "$(settings_get "$key")"
+    ui_card_row Kaynak "$kaynak"
+    ui_card_row Varsayılan "$(settings_default "$key")"
+    printf '\n%s\n' "$2"
+}
+
 # Menü eylemi: ⚙️ Ayarlar
 # Eski paket sürümlerini listeler ve silinmesini sorar (güncelleme sonrası soru çıkmadıysa ya da silinemediyse buradan yapılır)
 _settings_prune_packages() {
@@ -152,6 +167,16 @@ SettingsAction() {
             )
             # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
             local UI_PICK_BACK_DESC="Ana menüye döner."
+            if declare -F ui_card_on >/dev/null && ui_card_on; then
+                # fzf: değer/kaynak/varsayılan kartı, geniş düzen
+                # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+                UI_PICK_DESCS=("$(_settings_card STATUS 'Menüde sunucuların yanında 🟢 açık / 🔴 erişilemiyor / 🔒 knock gerekir / ⚪ ayar yok işaretini gösterir. Enter: aç/kapat.')"
+                    "$(_settings_card STATUS_TIMEOUT 'Durum kontrolünün bir sunucu için en çok kaç saniye bekleyeceği (1-5). Enter: değiştir.')"
+                    "$(_settings_card UI 'auto (fzf varsa fzf, yoksa ok tuşları) · fzf · arrows · numbers. Enter: sıradakine geç.')"
+                    "$(ui_card_head '🧹 Eski paket sürümleri'; printf '\nGüncellemelerde yan yana biriken eski sürümleri listeler ve silinmesini sorar\n(etkin + önceki + kilitteki sürüm kalır).\n')")
+                # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+                local UI_PICK_WIDE=1 UI_PICK_TITLE="Ana menü › Ayarlar" UI_PICK_HEIGHT=18
+            fi
             choice=$(ui_pick_arrows 1 "Geri" \
                 "$(printf '%-28s %s%s' "$(_settings_label STATUS)" "$(settings_get STATUS)" "$(_settings_note STATUS)")" \
                 "$(printf '%-28s %s%s' "$(_settings_label STATUS_TIMEOUT)" "$(settings_get STATUS_TIMEOUT)" "$(_settings_note STATUS_TIMEOUT)")" \

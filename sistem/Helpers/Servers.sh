@@ -141,7 +141,7 @@ server_card() {
     key=$(srv_get "$d" "$prefix" KEY)
     [ -n "$key" ] || key="$d/id_ed25519_${n}"
     if [ "${key:0:1}" = "~" ]; then key="$HOME${key:1}"; fi
-    _card_head "🖥️  SUNUCU"
+    ui_card_head "🖥️  SUNUCU"
     case "$mark" in
         🟢) st="$(ui_paint kart 1\;32 '🟢 açık')" ;;
         🔴) st="$(ui_paint kart 1\;31 '🔴 erişilemiyor')" ;;
@@ -149,12 +149,12 @@ server_card() {
         ⚪) st="$(ui_paint kart 1\;33 '⚪ ayar eksik')" ;;
         *)  st="" ;;
     esac
-    [ -z "$st" ] || _card_row "Durum" "$st"
-    _card_row "Hedef" "$user@$ip:$port"
+    [ -z "$st" ] || ui_card_row "Durum" "$st"
+    ui_card_row "Hedef" "$user@$ip:$port"
     knock=kapalı
     if declare -F knock_enabled >/dev/null && knock_enabled "$prefix" "$d" 2>/dev/null; then knock=etkin; fi
-    if [ -f "$key" ]; then _card_row "Anahtar" "$(ui_paint kart 1\;32 '✅ var')"; else _card_row "Anahtar" "$(ui_paint kart 1\;31 '❌ bulunamadı')"; fi
-    _card_row "Knock" "$knock"
+    if [ -f "$key" ]; then ui_card_row "Anahtar" "$(ui_paint kart 1\;32 '✅ var')"; else ui_card_row "Anahtar" "$(ui_paint kart 1\;31 '❌ bulunamadı')"; fi
+    ui_card_row "Knock" "$knock"
     state="${SSHPOCKET_STATE_DIR:-$HOME/.local/share/sshpocket}"
     if [ -f "$d/components.log" ]; then
         while IFS= read -r pkg; do
@@ -165,24 +165,20 @@ server_card() {
     printf '\n%s\n' "$(ui_paint kart 2 "\$ ssh -p $port $user@$ip")"
 }
 
-# _card_head <başlık> / _card_row <etiket> <değer> → kart biçimi (etiket sütunu 9 karakter)
-_card_head() { printf '%s\n' "$(ui_paint kart 1\;36 "── $1 ──")"; }
-_card_row() { printf ' %s %s\n' "$(ui_paint kart 1\;33 "$(printf '%-8s:' "$1")")" "$2"; }
-
 # _server_card_pkg <components.log> <durum-dizini> <paket> <sunucu> → "📦 paket sürüm" bölümü: son preview/apply/audit (ayrı satırlar) + son Lynis skoru
 _server_card_pkg() {
     local log="$1" state="$2" pkg="$3" n="$4" ver sum score act row
     ver=$(awk -F'|' -v p="$pkg" '$2 == p && NF >= 5 { v = $3 } END { print v }' "$log")
     [ -n "$ver" ] || return 0
-    printf '\n'; _card_head "📦 $pkg $ver"
+    printf '\n'; ui_card_head "📦 $pkg $ver"
     for act in preview apply audit; do
         row=$(awk -F'|' -v p="$pkg" -v a="$act" '$2 == p && $4 == a && NF >= 5 { t = substr($1, 6, 5) " " substr($1, 12, 5); r = $5 } END { if (t != "") print t "|" r }' "$log")
         [ -n "$row" ] || continue
-        if [ "${row#*|}" = ok ]; then _card_row "$act" "${row%|*} $(ui_paint kart 1\;32 '✅')"; else _card_row "$act" "${row%|*} $(ui_paint kart 1\;31 '❌')"; fi
+        if [ "${row#*|}" = ok ]; then ui_card_row "$act" "${row%|*} $(ui_paint kart 1\;32 '✅')"; else ui_card_row "$act" "${row%|*} $(ui_paint kart 1\;31 '❌')"; fi
     done
     sum=$(find "$state/$pkg/$n/out/$n" -mindepth 2 -maxdepth 2 -name summary.json 2>/dev/null | sort | tail -n 1)
     if [ -n "$sum" ]; then
         score=$(sed -n 's/.*"hardening_index": *\([0-9][0-9]*\).*/\1/p' "$sum" | head -n 1)
-        [ -z "$score" ] || _card_row "Lynis" "$score (son denetim)"
+        [ -z "$score" ] || ui_card_row "Lynis" "$score (son denetim)"
     fi
 }

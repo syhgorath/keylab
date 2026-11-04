@@ -668,3 +668,23 @@ liste_motoru() {
     UI_PICK_WIDE=1 UI_PICK_HEIGHT=20 run ui_pick_arrows 1 "Geri" "A"
     grep -qx -- '--height=20' "$BATS_TEST_TMPDIR/fzf.args"
 }
+
+@test "ayar kartı: değer, kaynak ve varsayılan; renk kapalıyken düz" {
+    export SSHPOCKET_CONF="$BATS_TEST_TMPDIR/yok.conf" NO_COLOR=1
+    run _settings_card STATUS_TIMEOUT "Açıklama metni."
+    [[ "$output" == *"── Durum kontrol süresi (sn) ──"* && "$output" =~ Değer\ +:\ 1 && "$output" =~ Kaynak\ +:\ varsayılan && "$output" == *"Açıklama metni."* ]] || { echo "$output"; false; }
+    [[ "$output" != *$'\033'* ]] || false
+}
+
+@test "sunucu menüsü kartları: altı satırın kartı (paketli), anahtar/knock/passphrase ve komut" {
+    export NO_COLOR=1 SSHPOCKET_STATE_DIR="$BATS_TEST_TMPDIR/state"
+    ssh_has_passphrase() { return 1; }
+    D="$BATS_TEST_TMPDIR/srv/alpha"; mkdir -p "$D"; touch "$D/id_ed25519_alpha"
+    UI_PICK_DESCS=()
+    _ssh_module_cards ALPHA deploy 192.0.2.7 2222 "$D/id_ed25519_alpha" "$D" 1
+    [ "${#UI_PICK_DESCS[@]}" -eq 6 ]
+    [[ "${UI_PICK_DESCS[0]}" == *"── 🔌 Bağlan ──"* && "${UI_PICK_DESCS[0]}" == *"ssh -p 2222 deploy@192.0.2.7"* && "${UI_PICK_DESCS[0]}" == *"Anahtar : ✅ var"* ]] || { echo "${UI_PICK_DESCS[0]}"; false; }
+    [[ "${UI_PICK_DESCS[5]}" == *"Bu sunucuda henüz paket eylemi çalıştırılmadı."* ]] || { echo "${UI_PICK_DESCS[5]}"; false; }
+    UI_PICK_DESCS=(); _ssh_module_cards ALPHA deploy 192.0.2.7 22 "$D/yok" "$D" 0
+    [ "${#UI_PICK_DESCS[@]}" -eq 5 ]
+}

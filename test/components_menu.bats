@@ -727,7 +727,7 @@ PY
 }
 
 @test "fzf paneli: hazırlık özeti başlıkta, her eylemin kartı sağ bölmede (geniş düzen)" {
-    export SSHPOCKET_STATE_DIR="$T/state"
+    export SSHPOCKET_STATE_DIR="$T/state" NO_COLOR=1
     ui_fzf_enabled() { return 0; }
     ui_arrows_enabled() { return 0; }
     ui_pick_arrows() {
@@ -1031,4 +1031,16 @@ PY
     run _comp_menu_vars_card "$T/m.json" "$T/v.vars"
     [[ "$output" == *"Yazılı: 2 / 3 değişken · ⚠ 1 riskli değer"* && "$output" == *"• a = merhaba"* && "$output" == *"⚠ b = false"* ]] || { echo "$output"; false; }
     [[ "$output" != *"c ="* ]] || false
+}
+
+@test "fzf paneli: kartlar renkli (etiket sarı, eylem adı camgöbeği); NO_COLOR ile düz" {
+    export SSHPOCKET_STATE_DIR="$T/state"
+    ui_fzf_enabled() { return 0; }
+    ui_arrows_enabled() { return 0; }
+    ui_pick_arrows() { for d in "${UI_PICK_DESCS[@]}"; do printf 'D=%s\n' "${d//$'\n'/|}"; done > "$T/panel"; printf 0; }
+    run comp_menu_actions demo web1 </dev/null
+    grep -q $'\033\\[1;36mapply\033\\[0m  —  ' "$T/panel"
+    grep -q $'\033\\[1;33mÖn koşul:\033\\[0m' "$T/panel"
+    NO_COLOR=1 run comp_menu_actions demo web1 </dev/null
+    run ! grep -q $'\033' "$T/panel"
 }
