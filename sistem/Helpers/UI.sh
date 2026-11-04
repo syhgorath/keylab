@@ -69,8 +69,9 @@ ui_fit_wide() {
 }
 
 # ---- fzf kartları: ortak biçim (bölüm başlığı, etiket sütunu, renklendirici). Renk yalnız fzf etkinken ve NO_COLOR yokken; aksi hâlde düz metin ----
-# ui_card_on → 0: kart renkli çizilir
-ui_card_on() { [ -z "${NO_COLOR:-}" ] && declare -F ui_fzf_enabled >/dev/null && ui_fzf_enabled; }
+# ui_card_on → 0: fzf düzeni kullanılıyor (başlık kenarlıkta, bilgi başlık kutusunda, kartlar). YAPI kararıdır; renk ayrıdır:
+# NO_COLOR fzf düzenini kapatmaz, yalnız renkleri kapatır (ui_paint / ui_card_colorize)
+ui_card_on() { declare -F ui_fzf_enabled >/dev/null && ui_fzf_enabled; }
 # ui_card_head <başlık> → "── başlık ──" (camgöbeği)
 ui_card_head() { printf '%s\n' "$(ui_paint kart 1\;36 "── $1 ──")"; }
 # ui_card_row <etiket> <değer> → " Etiket  : değer" (etiket sütunu 8 karakter, sarı)
@@ -81,7 +82,7 @@ ui_card_row() {
 }
 # ui_card_colorize → stdin'deki HAZIR kart metnini renklendirir (etiketler, bölüm başlıkları, ✅/❌/⚠/⛔); renk kapalıysa aynen geçirir
 ui_card_colorize() {
-    if ! ui_card_on; then cat; return; fi
+    if ! ui_card_on || [ -n "${NO_COLOR:-}" ]; then cat; return; fi
     local e=$'\033'
     sed -E \
         -e "s/^(Etkiler|Onay|Ön koşul|Son sonuç[^:]*|Zorunlu eksik|Yazılı|Boş|Günlük|Anahtarlar|Özet|Durum|Hedef|Anahtar|Knock|Passphrase|Komut|Port|Kullanıcı|Adres|Key):/${e}[1;33m\1:${e}[0m/" \

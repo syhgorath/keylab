@@ -728,3 +728,14 @@ liste_motoru() {
     UI_PICK_WIDE=1 UI_SCREEN_TITLE="Ekran" UI_PICK_TITLE="Öncelikli" run ui_pick_arrows 1 "Geri" "A"
     grep -qx -- '--border-label= Öncelikli ' "$BATS_TEST_TMPDIR/fzf.args"
 }
+
+@test "NO_COLOR fzf yapısını kapatmaz: ui_screen yine basmaz (başlık kenarlıkta), yalnız renkler kapanır" {
+    ui_fzf_enabled() { return 0; }
+    export NO_COLOR=1
+    run ui_screen "Ana menü › Ayarlar"
+    [ -z "$output" ]
+    run ui_card_on
+    [ "$status" -eq 0 ]
+    printf 'Etkiler: yok\n✅ iyi\n' | ui_card_colorize > "$BATS_TEST_TMPDIR/out"
+    run ! grep -q $'\033' "$BATS_TEST_TMPDIR/out"
+}
