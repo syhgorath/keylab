@@ -111,6 +111,7 @@ Menu() {
     # geniş düzen: sunucu kartı sağ bölmede tam görünür (dar düzende önizleme 3 satırdı ve kart kesiliyordu)
     # shellcheck disable=SC2034
     local UI_PICK_WIDE=1 UI_PICK_TITLE=""
+    # shellcheck disable=SC2034
     UI_PICK_TITLE=$(ui_group_title "$group")
     picked=$(ui_pick_arrows 1 "Çıkış" "${row_text[@]}")
     if [ -z "$picked" ] || [ "$picked" = "0" ]; then
