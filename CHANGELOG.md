@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.6.21] - 2026-11-04
+
+Bu yama sürümü yalnızca `linux-hardening` 0.12.1'i kilitler (geri alma ve UMASK düzeltmeleri).
+
 ### Değişti
 - **`linux-hardening` 0.12.1 kilitlendi** (`components.lock`; imzalayıcı 0.12.0 ile aynı): geri alma `restore` ufw önceden aktifse `ufw --force reload` yapar; zamanlayıcı `apply` bitmeden tetiklenirse `disarm` HATA yazıp çıkış 3 verir ve `apply` artık başarısız görünür (sshpocket sıfır olmayan çıkışı kayıtta `fail` sayar); `proxmox-host` + `pve_strict=false` iken `login.defs` `UMASK` yazılmaz (0.12.0 ile sertleşmiş hostta mevcut `UMASK 027` geri alınmaz, bkz. paketin `docs/known-issues.md`). Bulgular gerçek VM turunda (V0120-S2-BULGU2/3/4) bulundu; 0.12.1 düzeltmeleri henüz gerçek VM'de denenmedi.
 - **README, README.en ve `docs/hardening-kullanim.md` 3.6.20 / linux-hardening 0.12.0 durumuna getirildi:** kilit sürümü, gerçek VM'de denenenler (Ubuntu 26.04.1 ve Proxmox VE 9: sunucu türü ve zorunlu `allow_from` akışı, `apply_vars`, `pve_firewall_*`, fail2ban) ve denenmeyenler (etkin ban, yetkisiz ağ, küme/misafirli Proxmox, Raspberry Pi), güncelleme paneli ve değişiklik raporu. Yalnızca belge.
