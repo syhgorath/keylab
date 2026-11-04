@@ -341,7 +341,9 @@ ui_describe_entry() {
         ManageServersAction)   printf 'Sunucuları listeler, siler veya yeniden adlandırır (silmede sunucu adını yazarak onaylarsınız).' ;;
         UpdateAction)          printf 'Yeni sürüm var mı bakar; imzalı paketi doğrulayıp onayınızla kurar. Sunucularınıza ve key'"'"'lerinize dokunmaz.' ;;
         SettingsAction)        printf 'Durum göstergesi, kontrol süresi ve menü stilini (fzf/ok tuşu/numara) ayarlar.' ;;
-        ComponentsAction)      printf 'Kurulu paketlerin durumunu gösterir; eksik/eski olanı imzayı doğrulayarak, onayınızla kurar.' ;;
+        ComponentsAction)
+            if declare -F ui_card_on >/dev/null && ui_card_on; then printf 'Paketlerin durumu ve kurulumu; altında sshpocket güncellemesi (imzalı paket, onayınızla), eşitle, eski sürümleri temizle, yeni yayın var mı.'
+            else printf 'Kurulu paketlerin durumunu gösterir; eksik/eski olanı imzayı doğrulayarak, onayınızla kurar.'; fi ;;
         *)                     printf '' ;;
     esac
 }

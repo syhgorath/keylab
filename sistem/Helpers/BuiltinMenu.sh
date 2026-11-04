@@ -7,10 +7,15 @@ RegisterBuiltinMenu() {
     RegisterModules "➕ Yeni sunucu ekle" "MainMenu" "AddServerAction"
     RegisterModules "📥 ~/.ssh/config'ten içe aktar" "MainMenu" "ImportSSHConfigAction"
     RegisterModules "🛠️  Sunucuları yönet (listele/sil/yeniden adlandır)" "MainMenu" "ManageServersAction"
-    RegisterModules "⬆️  Güncellemeleri kontrol et / güncelle" "MainMenu" "UpdateAction"
-    # Paketler yalnızca kilit dosyasında paket varsa menüde görünür
-    if declare -F comp_ids >/dev/null && [ -n "$(comp_ids 2>/dev/null)" ]; then
-        RegisterModules "📦 Paketler (durum / kur)" "MainMenu" "ComponentsAction"
+    # Paketler yalnızca kilit dosyasında paket varsa menüde görünür. fzf düzeninde güncelleme Paketler panelinin ALTINA gömülüdür
+    # (ayrı satır yok); paket yoksa ya da düz modlarda güncelleme eskisi gibi ayrı satırdır.
+    local has_pkgs=0 embed=0
+    if declare -F comp_ids >/dev/null && [ -n "$(comp_ids 2>/dev/null)" ]; then has_pkgs=1; fi
+    if [ "$has_pkgs" = 1 ] && declare -F ui_card_on >/dev/null && ui_card_on && declare -F comp_menu_packages >/dev/null; then embed=1; fi
+    [ "$embed" = 1 ] || RegisterModules "⬆️  Güncellemeleri kontrol et / güncelle" "MainMenu" "UpdateAction"
+    if [ "$has_pkgs" = 1 ]; then
+        if [ "$embed" = 1 ]; then RegisterModules "📦 Paketler ve güncelleme" "MainMenu" "ComponentsAction"
+        else RegisterModules "📦 Paketler (durum / kur)" "MainMenu" "ComponentsAction"; fi
     fi
     RegisterModules "⚙️  Ayarlar" "MainMenu" "SettingsAction"
 }

@@ -1067,7 +1067,8 @@ pkgmenu_setup() {
     pkgmenu_setup 0
     run comp_menu_packages
     [ "$status" -eq 0 ]
-    grep -q '^S=Ana menü › Paketler|H=Kilit: components.lock · 2 paket · 1 eksik/eski/bozuk|N=6|D=5' "$T/rec" || { cat "$T/rec"; false; }   # 2 paket + eşitle + temizle + yeni yayın
+    # 2 paket + sshpocket güncellemesi + eşitle + temizle + yeni yayın (+ Geri)
+    grep -q '^S=Ana menü › Paketler ve güncelleme|H=sshpocket ? · kilit: 2 paket · 1 eksik/eski/bozuk|N=7|D=6' "$T/rec" || { cat "$T/rec"; false; }
 }
 
 @test "paket listesi (fzf): eksik pakete Enter yalnızca o paketi eşitler; kurulu pakete Enter doğrular" {
@@ -1077,4 +1078,30 @@ pkgmenu_setup() {
     grep -q 'doğrulandı' <<< "$(cat "$T/rec")" || true
     [ "$(grep -c '^S=' "$T/rec")" -ge 3 ]
     grep -q 'alpha doğrulandı' "$T/rec"
+}
+
+@test "paket listesi (fzf): paketlerin altındaki sshpocket satırı güncelleme eylemini (UpdateAction) çalıştırır" {
+    pkgmenu_setup 3 0
+    UpdateAction() { echo "UPDATE ÇAĞRILDI"; }
+    run comp_menu_packages <<< $'\n'
+    [[ "$output" == *"UPDATE ÇAĞRILDI"* ]] || { echo "$output"; false; }
+}
+
+@test "ana menü kaydı: fzf + paket varken güncelleme ayrı satır DEĞİL (Paketler ve güncelleme); düz modda ayrı satır" {
+    source "$H/BuiltinMenu.sh"
+    REG="$T/reg"; : > "$REG"
+    RegisterModules() { echo "$3" >> "$REG"; }
+    comp_ids() { echo alpha; }
+    comp_menu_packages() { :; }
+    ui_fzf_enabled() { return 0; }
+    RegisterBuiltinMenu
+    run grep -c UpdateAction "$REG"; [ "$output" = 0 ]
+    grep -q ComponentsAction "$REG"
+    : > "$REG"; ui_fzf_enabled() { return 1; }
+    RegisterBuiltinMenu
+    grep -q UpdateAction "$REG"
+    # paket yoksa fzf'te de güncelleme ayrı satırdır
+    : > "$REG"; ui_fzf_enabled() { return 0; }; comp_ids() { return 0; }
+    RegisterBuiltinMenu
+    grep -q UpdateAction "$REG"; run grep -c ComponentsAction "$REG"; [ "$output" = 0 ]
 }
