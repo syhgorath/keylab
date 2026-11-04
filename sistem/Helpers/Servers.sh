@@ -131,9 +131,9 @@ server_summary() {
 }
 
 # Ana menüde sunucu satırının kartı (fzf sağ bölmesi; ok tuşlu seçicide satırlar " · " ile birleşir). YALNIZCA yerel veri okur: ssh yok.
-# server_card <ad> [durum-simgesi] → çok satırlı metin. Durum simgesi Menu.sh'ın zaten yaptığı yoklamadan gelir.
+# server_card <ad> [durum-simgesi] → çok satırlı metin; fzf etkinse renkli (bkz. ui_paint kart). Durum simgesi Menu.sh'ın zaten yaptığı yoklamadan gelir.
 server_card() {
-    local n="$1" mark="${2:-}" d prefix ip user port key knock state pkg
+    local n="$1" mark="${2:-}" d prefix ip user port key knock state pkg st
     module_name_valid "$n" || return 0
     d="$(servers_dir)/$n"; prefix=$(module_prefix "$n")
     ip=$(srv_get "$d" "$prefix" IP) || return 0
@@ -141,17 +141,20 @@ server_card() {
     key=$(srv_get "$d" "$prefix" KEY)
     [ -n "$key" ] || key="$d/id_ed25519_${n}"
     if [ "${key:0:1}" = "~" ]; then key="$HOME${key:1}"; fi
+    _card_head "🖥️  SUNUCU"
     case "$mark" in
-        🟢) printf 'Durum: 🟢 açık (SSH portu yanıt veriyor)\n' ;;
-        🔴) printf 'Durum: 🔴 erişilemiyor\n' ;;
-        🔒) printf 'Durum: 🔒 knock gerekir\n' ;;
-        ⚪) printf 'Durum: ⚪ ayar eksik\n' ;;
+        🟢) st="$(ui_paint kart 1\;32 '🟢 açık') (SSH portu yanıt veriyor)" ;;
+        🔴) st="$(ui_paint kart 1\;31 '🔴 erişilemiyor')" ;;
+        🔒) st="$(ui_paint kart 1\;33 '🔒 knock gerekir')" ;;
+        ⚪) st="$(ui_paint kart 1\;33 '⚪ ayar eksik')" ;;
+        *)  st="" ;;
     esac
-    printf '%s@%s:%s\n' "$user" "$ip" "$port"
+    [ -z "$st" ] || _card_row "Durum" "$st"
+    _card_row "Hedef" "$user@$ip:$port"
     knock=kapalı
     if declare -F knock_enabled >/dev/null && knock_enabled "$prefix" "$d" 2>/dev/null; then knock=etkin; fi
-    if [ -f "$key" ]; then printf 'Anahtar: ✅ var'; else printf 'Anahtar: ❌ bulunamadı'; fi
-    printf ' · Knock: %s\n' "$knock"
+    if [ -f "$key" ]; then _card_row "Anahtar" "$(ui_paint kart 1\;32 '✅ var')"; else _card_row "Anahtar" "$(ui_paint kart 1\;31 '❌ bulunamadı')"; fi
+    _card_row "Knock" "$knock"
     state="${SSHPOCKET_STATE_DIR:-$HOME/.local/share/sshpocket}"
     if [ -f "$d/components.log" ]; then
         while IFS= read -r pkg; do
@@ -159,25 +162,27 @@ server_card() {
             _server_card_pkg "$d/components.log" "$state" "$pkg" "$n"
         done < <(awk -F'|' 'NF >= 5 && !seen[$2]++ { print $2 }' "$d/components.log")
     fi
-    printf '$ ssh -p %s %s@%s\n' "$port" "$user" "$ip"
+    printf '\n%s\n' "$(ui_paint kart 2 "\$ ssh -p $port $user@$ip")"
 }
 
-# _server_card_pkg <components.log> <durum-dizini> <paket> <sunucu> → "📦 paket sürüm" + son preview/apply/audit satırı (+ son Lynis skoru)
+# _card_head <başlık> / _card_row <etiket> <değer> → kart biçimi (etiket sütunu 9 karakter)
+_card_head() { printf '%s\n' "$(ui_paint kart 1\;36 "── $1 ──")"; }
+_card_row() { printf ' %s %s\n' "$(ui_paint kart 1\;33 "$(printf '%-8s:' "$1")")" "$2"; }
+
+# _server_card_pkg <components.log> <durum-dizini> <paket> <sunucu> → "📦 paket sürüm" bölümü: son preview/apply/audit (ayrı satırlar) + son Lynis skoru
 _server_card_pkg() {
-    local log="$1" state="$2" pkg="$3" n="$4" line sum score
-    line=$(awk -F'|' -v p="$pkg" '$2 == p && NF >= 5 { ver = $3; if ($4 == "preview" || $4 == "apply" || $4 == "audit") last[$4] = substr($1, 6, 5) " " substr($1, 12, 5) (($5 == "ok") ? " ✅" : " ❌") }
-        END { if (ver == "") exit; out = "📦 " p " " ver
-              printf "%s\n", out
-              s = ""
-              if ("preview" in last) s = s "preview " last["preview"]
-              if ("apply" in last) s = s (s == "" ? "" : " · ") "apply " last["apply"]
-              if ("audit" in last) s = s (s == "" ? "" : " · ") "audit " last["audit"]
-              if (s != "") printf "   %s\n", s }' "$log")
-    [ -n "$line" ] || return 0
-    printf '%s\n' "$line"
+    local log="$1" state="$2" pkg="$3" n="$4" ver sum score act row
+    ver=$(awk -F'|' -v p="$pkg" '$2 == p && NF >= 5 { v = $3 } END { print v }' "$log")
+    [ -n "$ver" ] || return 0
+    printf '\n'; _card_head "📦 $pkg $ver"
+    for act in preview apply audit; do
+        row=$(awk -F'|' -v p="$pkg" -v a="$act" '$2 == p && $4 == a && NF >= 5 { t = substr($1, 6, 5) " " substr($1, 12, 5); r = $5 } END { if (t != "") print t "|" r }' "$log")
+        [ -n "$row" ] || continue
+        if [ "${row#*|}" = ok ]; then _card_row "$act" "${row%|*} $(ui_paint kart 1\;32 '✅')"; else _card_row "$act" "${row%|*} $(ui_paint kart 1\;31 '❌')"; fi
+    done
     sum=$(find "$state/$pkg/$n/out/$n" -mindepth 2 -maxdepth 2 -name summary.json 2>/dev/null | sort | tail -n 1)
     if [ -n "$sum" ]; then
         score=$(sed -n 's/.*"hardening_index": *\([0-9][0-9]*\).*/\1/p' "$sum" | head -n 1)
-        [ -z "$score" ] || printf '   Lynis skoru: %s (son denetim)\n' "$score"
+        [ -z "$score" ] || _card_row "Lynis" "$score (son denetim)"
     fi
 }

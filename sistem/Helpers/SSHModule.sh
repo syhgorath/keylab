@@ -7,6 +7,11 @@
 #   id_ed25519_<önek>    -> SSH private key (küçük harf önek)
 # Passphrase: macOS Keychain (hesap: USBMonitor_<ÖNEK>_Passphrase)
 
+# Sunucu menüsü bağlantı bloğu: terminal renkliyse başlık camgöbeği, etiket sarı (ui_paint tty; NO_COLOR/boruda düz)
+_ssh_paint() { if declare -F ui_paint >/dev/null; then ui_paint tty "$1" "$2"; else printf '%s' "$2"; fi; }
+_ssh_info_title() { printf '%s\n' "$(_ssh_paint 1\;36 "$1")"; }
+_ssh_info_row() { printf '  %s%s%s\n' "$(_ssh_paint 1\;33 "$1")" "$2" "$3"; }
+
 # .env dosyasından tek bir anahtarı güvenli okur (eval/source kullanmaz)
 # Parametreler: $1 - dosya, $2 - anahtar adı
 _ssh_env_get() {
@@ -123,15 +128,15 @@ ssh_module_run() {
             fi
         fi
 
-        echo "📡 Bağlantı Bilgileri:"
-        echo "  IP:   ${ip:-(yok)}"
-        echo "  User: ${user:-(yok)}"
-        echo "  Port: $port"
-        echo "  Key:  $ssh_key"
+        _ssh_info_title "📡 Bağlantı Bilgileri:"
+        _ssh_info_row "IP:" "   " "${ip:-(yok)}"
+        _ssh_info_row "User:" " " "${user:-(yok)}"
+        _ssh_info_row "Port:" " " "$port"
+        _ssh_info_row "Key:" "  " "$ssh_key"
         if ssh_has_passphrase "$prefix"; then
-            echo "  Passphrase: ✅ Keychain"
+            _ssh_info_row "Passphrase:" " " "$(_ssh_paint 1\;32 '✅ Keychain')"
         else
-            echo "  Passphrase: ℹ️  Keychain'de yok (ssh gerekirse soracak)"
+            _ssh_info_row "Passphrase:" " " "$(_ssh_paint 2 "ℹ️  Keychain'de yok (ssh gerekirse soracak)")"
         fi
         if [ -n "$problem" ]; then
             echo ""

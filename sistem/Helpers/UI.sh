@@ -22,6 +22,22 @@ ui_footer() {
     if _ui_color "$fd"; then printf '\033[2m%s\033[0m\n' "$1"; else printf '%s\n' "$1"; fi
 }
 
+# ui_paint <kart|tty> <SGR kodu> <metin> → renk açıksa metni ANSI ile sarar, değilse düz yazar. NO_COLOR her zaman düz bırakır.
+#   kart: fzf önizleme kartı (yalnız fzf etkinse; ok tuşlu/numaralı modda kart düz metin kalır)
+#   tty : doğrudan terminale yazılan blok (stdout terminal ise)
+# Kodlar: 1;36 bölüm başlığı (camgöbeği) · 1;33 etiket (sarı) · 1;32 iyi · 1;31 kötü · 2 soluk
+ui_paint() {
+    local mode="$1" code="$2" text="$3" on=1
+    [ -z "${NO_COLOR:-}" ] || on=0
+    if [ "$on" = 1 ]; then
+        case "$mode" in
+            kart) declare -F ui_fzf_enabled >/dev/null && ui_fzf_enabled || on=0 ;;
+            *)    _ui_color 1 || on=0 ;;
+        esac
+    fi
+    if [ "$on" = 1 ]; then printf '\033[%sm%s\033[0m' "$code" "$text"; else printf '%s' "$text"; fi
+}
+
 # Grup adının ekranda görünen karşılığı
 ui_group_title() {
     case "$1" in

@@ -625,14 +625,15 @@ liste_motoru() {
     printf '{\n  "hardening_index": 56\n}\n' > "$BATS_TEST_TMPDIR/state/demo/alpha/out/alpha/20261104-181118/summary.json"
     run server_card alpha 🟢
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Durum: 🟢"* && "$output" == *"deploy@192.0.2.7:2222"* && "$output" == *"Anahtar: ✅ var · Knock: kapalı"* ]] || { echo "$output"; false; }
-    [[ "$output" == *"📦 demo 1.2.0"* && "$output" == *"preview 11-04 15:55 ✅"* && "$output" == *"apply 11-04 16:08 ❌"* ]] || { echo "$output"; false; }
-    [[ "$output" == *"Lynis skoru: 56"* && "$output" == *'$ ssh -p 2222 deploy@192.0.2.7'* ]] || { echo "$output"; false; }
+    [[ "$output" == *"Durum   : 🟢 açık"* && "$output" == *"Hedef   : deploy@192.0.2.7:2222"* && "$output" == *"Anahtar : ✅ var"* && "$output" == *"Knock   : kapalı"* ]] || { echo "$output"; false; }
+    [[ "$output" == *"── 📦 demo 1.2.0 ──"* && "$output" == *"preview : 11-04 15:55 ✅"* && "$output" == *"apply   : 11-04 16:08 ❌"* ]] || { echo "$output"; false; }
+    [[ "$output" == *"Lynis   : 56 (son denetim)"* && "$output" == *'$ ssh -p 2222 deploy@192.0.2.7'* ]] || { echo "$output"; false; }
+    [[ "$output" != *$'\033'* ]] || { echo "renk kodu sızdı (fzf yok)"; false; }
     # geçersiz ad: boş; paket kaydı olmayan sunucuda paket bölümü yok
     [ -z "$(server_card 'x;y')" ]
     mkdir -p "$SSHPOCKET_SERVERS_DIR/beta"; printf 'IP=192.0.2.8\nUSER=root\n' > "$SSHPOCKET_SERVERS_DIR/beta/server.env"
     run server_card beta 🔴
-    [[ "$output" == *"Durum: 🔴"* && "$output" == *"Anahtar: ❌"* && "$output" != *"📦"* ]] || { echo "$output"; false; }
+    [[ "$output" == *"Durum   : 🔴"* && "$output" == *"Anahtar : ❌"* && "$output" != *"📦"* ]] || { echo "$output"; false; }
 }
 
 @test "ui_describe_entry: server:* kartı kullanır, sunucu bilgisi yoksa genel açıklamaya düşer" {
@@ -643,4 +644,17 @@ liste_motoru() {
     [[ "$output" == *"deploy@192.0.2.7:22"* ]] || { echo "$output"; false; }
     run ui_describe_entry server:yok
     [[ "$output" == *"Sunucu menüsünü açar"* ]] || { echo "$output"; false; }
+}
+
+@test "sunucu kartı: renk yalnız fzf etkinken ve NO_COLOR yokken; sunucu menüsü bloğu yalnız terminalde" {
+    export SSHPOCKET_SERVERS_DIR="$BATS_TEST_TMPDIR/srv"
+    mkdir -p "$SSHPOCKET_SERVERS_DIR/alpha"; printf 'IP=192.0.2.7\nUSER=deploy\n' > "$SSHPOCKET_SERVERS_DIR/alpha/server.env"
+    ui_fzf_enabled() { return 0; }
+    run server_card alpha 🟢
+    [[ "$output" == *$'\033[1;36m'* && "$output" == *$'\033[1;32m'* ]] || { echo "$output" | cat -v; false; }
+    NO_COLOR=1 run server_card alpha 🟢
+    [[ "$output" != *$'\033'* ]] || false
+    # ui_paint tty: boruda (stdout terminal değil) düz
+    run ui_paint tty 1\;33 "IP:"
+    [ "$output" = "IP:" ]
 }
