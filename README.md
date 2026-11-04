@@ -129,7 +129,7 @@ Otomatik değildir; siz başlatırsınız:
 ./start.sh --update         # indir → imzayı doğrula → notları göster → onaylarsanız kur
 ```
 
-ya da ana menüden **⬆️ Güncellemeleri kontrol et / güncelle**.
+ya da ana menüden **⬆️ Güncellemeleri kontrol et / güncelle** (fzf düzeninde **📦 Paketler ve güncelleme**'nin altındaki sshpocket satırı).
 
 - Terminalde (en az 24 satır × 60 sütun) güncelleme paneli açılır: imza ve arşiv denetiminden sonra üstte sürüm, imza durumu, paket (`components.lock`) farkları ve CHANGELOG'daki **Dikkat** notları; altta sürüm notları, onay ve kurulum. Paket sürümü değişince kurulum sonunda "ne değişti, hangi sunucum etkileniyor" raporu yazılır (`./start.sh --components report [paket [eski-sürüm]]` ile elle de alınır; yalnızca okur).
 - Paket yalnızca bu reponun GitHub Release'lerinden, HTTPS ile inen ve **bakımcının imza anahtarıyla imzalı** olan

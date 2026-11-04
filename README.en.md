@@ -130,7 +130,7 @@ Never automatic; you start it:
 ./start.sh --update         # download → verify signature → show notes → install if you confirm
 ```
 
-or use **⬆️ Check for updates / update** in the main menu.
+or use **⬆️ Check for updates / update** in the main menu (in the fzf layout: the sshpocket row under **📦 Packages and updates**).
 
 - In a terminal (at least 24 rows × 60 columns) an update panel opens: after the signature and archive checks it shows the version, signature status, package (`components.lock`) differences and the **Dikkat** (caution) notes from the CHANGELOG at the top, and the release notes, confirmation and installation below. When a package version changes, a "what changed, which of my servers are affected" report is printed at the end of the install (also available with `./start.sh --components report [package [old-version]]`; read-only).
 - The package is only the file from this repository's GitHub Releases, fetched over HTTPS and **signed with the
