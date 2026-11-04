@@ -143,7 +143,7 @@ server_card() {
     if [ "${key:0:1}" = "~" ]; then key="$HOME${key:1}"; fi
     _card_head "🖥️  SUNUCU"
     case "$mark" in
-        🟢) st="$(ui_paint kart 1\;32 '🟢 açık') (SSH portu yanıt veriyor)" ;;
+        🟢) st="$(ui_paint kart 1\;32 '🟢 açık')" ;;
         🔴) st="$(ui_paint kart 1\;31 '🔴 erişilemiyor')" ;;
         🔒) st="$(ui_paint kart 1\;33 '🔒 knock gerekir')" ;;
         ⚪) st="$(ui_paint kart 1\;33 '⚪ ayar eksik')" ;;
