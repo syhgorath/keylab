@@ -44,7 +44,7 @@ Menu() {
   
   # Display menu (stderr'e yaz, böylece stdout sadece seçimi içerir)
   if declare -F ui_header >/dev/null; then
-    ui_header "$(ui_group_title "$group")" 2 >&2
+    ui_screen "$(ui_group_title "$group")" 2 >&2
   else
     echo "" >&2
     echo "=== $group ===" >&2

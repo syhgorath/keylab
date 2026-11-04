@@ -22,6 +22,15 @@ ui_footer() {
     if _ui_color "$fd"; then printf '\033[2m%s\033[0m\n' "$1"; else printf '%s\n' "$1"; fi
 }
 
+# ui_screen <yol çubuğu> [fd] → ekran başlığı. fzf etkinse (ui_card_on) BASILMAZ: aynı metin fzf çerçevesinin üst kenarlığında etiket olarak çıkar
+# (UI_SCREEN_TITLE; UI_PICK_TITLE verilmişse o önceliklidir). fzf yoksa (ok tuşlu/numaralı mod) klasik ui_header basılır.
+# Bilgi satırları (özet, uyarı, ileti) fzf modunda çağıranın UI_PICK_HEADER'ına girer (çizimin içine), düz modda eskisi gibi basılır.
+ui_screen() {
+    UI_SCREEN_TITLE="$1"
+    if declare -F ui_card_on >/dev/null && ui_card_on; then return 0; fi
+    ui_header "$@"
+}
+
 # ui_paint <kart|tty> <SGR kodu> <metin> → renk açıksa metni ANSI ile sarar, değilse düz yazar. NO_COLOR her zaman düz bırakır.
 #   kart: fzf önizleme kartı (yalnız fzf etkinse; ok tuşlu/numaralı modda kart düz metin kalır)
 #   tty : doğrudan terminale yazılan blok (stdout terminal ise)
@@ -240,13 +249,17 @@ _ui_pick_fzf() {
         opts+=(--header="$hdr")
         if [ "${ver:-0}" -ge 3500 ]; then
             opts+=(--border=rounded --preview-label=' Açıklama ')
-            [ -z "${UI_PICK_TITLE:-}" ] || opts+=(--border-label=" $UI_PICK_TITLE ")
+            [ -z "${UI_PICK_TITLE:-${UI_SCREEN_TITLE:-}}" ] || opts+=(--border-label=" ${UI_PICK_TITLE:-$UI_SCREEN_TITLE} ")
         else
             opts+=(--border)
         fi
         if [ "${ver:-0}" -ge 5800 ]; then
             opts+=(--list-border=rounded --input-border=rounded --header-border=rounded --input-label=' Ara ')
         fi
+    fi
+    if [ -z "${UI_PICK_WIDE:-}" ] && [ -n "${UI_SCREEN_TITLE:-}" ] && [ "$(ui_fzf_version "$fzf_bin")" -ge 3500 ]; then
+        # dar düzende de başlık kenarlıkta (ui_screen ekranı ayrıca basmaz)
+        opts+=(--border=rounded --border-label=" $UI_SCREEN_TITLE ")
     fi
     [ -z "${UI_PICK_EXPECT:-}" ] || opts+=(--expect="$UI_PICK_EXPECT")
     out=$("$fzf_bin" "${opts[@]}" < "$tmp/list")
@@ -395,8 +408,8 @@ ui_edit_list() {
         labels+=("💾 Kaydet (${#UI_LIST_ITEMS[@]} öğe)"); acts+=(save)
         UI_PICK_DESCS+=("Listeyi kaydeder.")
         clear
-        if declare -F ui_header >/dev/null; then ui_header "${UI_LIST_TITLE:-Liste} › ${UI_LIST_NAME:-}"; fi
-        [ -z "$msg" ] || { echo "$msg"; echo ""; }
+        if declare -F ui_screen >/dev/null; then ui_screen "${UI_LIST_TITLE:-Liste} › ${UI_LIST_NAME:-}"; fi
+        if ! { declare -F ui_card_on >/dev/null && ui_card_on; }; then [ -z "$msg" ] || { echo "$msg"; echo ""; }; fi   # fzf: ileti başlık kutusunda
         # shellcheck disable=SC2034  # ui_pick_arrows / _ui_pick_fzf (dinamik kapsam) okur
         local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_START=1 UI_PICK_BACK_DESC="Kaydetmeden döner."
         # shellcheck disable=SC2034

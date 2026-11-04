@@ -68,10 +68,11 @@ _manage_pick_server() {
 ManageServersAction() {
     local choice name new
     clear
-    if declare -F ui_header >/dev/null; then ui_header "Ana menü › Sunucuları yönet"; else echo "=== Sunucuları yönet ==="; fi
-    echo ""
-    bash "$SISTEM_PATH/ModuleManager.sh" list
-    echo ""
+    local fzf_card=0 srv_list=""
+    if declare -F ui_card_on >/dev/null && ui_card_on; then fzf_card=1; fi
+    if declare -F ui_screen >/dev/null; then ui_screen "Ana menü › Sunucuları yönet"; else echo "=== Sunucuları yönet ==="; fi
+    srv_list=$(bash "$SISTEM_PATH/ModuleManager.sh" list)
+    if [ "$fzf_card" = 0 ]; then echo ""; printf '%s\n' "$srv_list"; echo ""; fi
     if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local -a UI_PICK_DESCS=("Sunucu klasörünü (ayarlar ve içindeki key dosyaları) siler; sunucu adını yazarak onaylarsınız. Keychain kaydı için ayrıca sorulur." "Sunucuya yeni bir ad verir ve key dosyalarını yeni ada çevirir. Keychain kayıtları otomatik taşınmaz, yeniden girmeniz gerekir.")
@@ -85,7 +86,10 @@ ManageServersAction() {
             UI_PICK_DESCS=("$(ui_card_head '🗑️  Sil'; ui_card_row Sunucu "${names:-(yok)}"; printf '\n⚠ Sunucu klasörü (ayarlar ve key dosyaları) silinir.\nSunucu adını yazarak onaylarsınız; Keychain kaydı için ayrıca sorulur.\n')"
                 "$(ui_card_head '✏️  Yeniden adlandır'; ui_card_row Sunucu "${names:-(yok)}"; printf '\nSunucuya yeni ad verir, key dosyaları yeni ada çevrilir.\n⚠ Keychain kayıtları otomatik taşınmaz.\n')")
             # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
-            local UI_PICK_WIDE=1 UI_PICK_TITLE="Ana menü › Sunucuları yönet" UI_PICK_HEIGHT=16
+            local UI_PICK_WIDE=1 UI_PICK_HEIGHT=16 UI_PICK_HEADER=""
+            # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+            UI_PICK_HEADER=$(printf '%s\n' "$srv_list" | sed 's/^ *//' | head -n 8)   # sunucu listesi çizimin içinde (kısa terminalde ui_fit_wide kırpar)
+            ui_fit_wide 3 6
         fi
         choice=$(ui_pick_arrows 1 "Geri" "Sil" "Yeniden adlandır")
         echo ""

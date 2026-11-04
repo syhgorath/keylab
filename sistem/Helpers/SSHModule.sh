@@ -125,14 +125,18 @@ ssh_module_run() {
         if declare -F comp_menu_available >/dev/null && comp_menu_available "$module_dir"; then has_pkgs=1; fi
 
         clear
-        if declare -F ui_header >/dev/null; then
+        if declare -F ui_screen >/dev/null; then
+            ui_screen "Ana menü › $prefix"
+        elif declare -F ui_header >/dev/null; then
             ui_header "Ana menü › $prefix"
         else
             echo "====================================="
             echo "$prefix SSH Bağlantı"
             echo "====================================="
         fi
-        echo ""
+        local fzf_card=0
+        if declare -F ui_card_on >/dev/null && ui_card_on; then fzf_card=1; fi
+        [ "$fzf_card" = 1 ] || echo ""
 
         if [ ! -f "$env_file" ]; then
             problem="Ayar dosyası bulunamadı. 3) ile bilgileri girin."
@@ -155,6 +159,9 @@ ssh_module_run() {
             fi
         fi
 
+        if [ "$fzf_card" = 1 ]; then
+            : # fzf: bağlantı bilgisi ve uyarı çizimin içinde (başlık kutusu), aşağıda UI_PICK_HEADER
+        else
         _ssh_info_title "📡 Bağlantı Bilgileri:"
         _ssh_info_row "IP:" "   " "${ip:-(yok)}"
         _ssh_info_row "User:" " " "${user:-(yok)}"
@@ -165,9 +172,9 @@ ssh_module_run() {
         else
             _ssh_info_row "Passphrase:" " " "$(_ssh_paint 2 "ℹ️  Keychain'de yok (ssh gerekirse soracak)")"
         fi
+        fi
         if [ -n "$problem" ]; then
-            echo ""
-            echo "⚠️  $problem"
+            [ "$fzf_card" = 1 ] || { echo ""; echo "⚠️  $problem"; }
         else
             chmod 600 "$ssh_key" 2>/dev/null
             if ssh_has_passphrase "$prefix"; then ssh_agent_add_retry "$prefix" "$ssh_key"; fi
@@ -196,9 +203,10 @@ ssh_module_run() {
                 UI_PICK_DESCS=()
                 _ssh_module_cards "$prefix" "$user" "$ip" "$port" "$ssh_key" "$module_dir" "$has_pkgs"
                 # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
-                local UI_PICK_WIDE=1 UI_PICK_TITLE="" UI_PICK_HEIGHT=20
-                # shellcheck disable=SC2034
-                UI_PICK_TITLE="Ana menü › $(basename "$module_dir")"
+                local UI_PICK_WIDE=1 UI_PICK_HEIGHT=20 UI_PICK_HEADER=""
+                # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+                UI_PICK_HEADER="${problem:+⚠️  $problem$'\n'}IP: ${ip:-(yok)} · Kullanıcı: ${user:-(yok)} · Port: $port"$'\n'"Key: $ssh_key · Passphrase: $(ssh_has_passphrase "$prefix" && echo '✅ Keychain' || echo 'yok')"
+                ui_fit_wide "$(( ${#pick_items[@]} + 1 ))" 8
             fi
             choice=$(ui_pick_arrows 1 "Geri" "${pick_items[@]}")
             if [ "$choice" = "0" ]; then ui_no_pause; return 0; fi

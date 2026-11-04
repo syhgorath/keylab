@@ -156,8 +156,8 @@ SettingsAction() {
     while true; do
         clear
         if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
-            ui_header "Ana menü › Ayarlar"
-            echo ""
+            ui_screen "Ana menü › Ayarlar"
+            if ! { declare -F ui_card_on >/dev/null && ui_card_on; }; then echo ""; fi
             # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
             local -a UI_PICK_DESCS=(
                 "Menüde sunucuların yanında 🟢 açık / 🔴 erişilemiyor / 🔒 knock gerekir / ⚪ ayar yok işaretini gösterir. Enter: aç/kapat."

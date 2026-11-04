@@ -781,25 +781,28 @@ comp_menu_vars() {
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local -a UI_PICK_DESCS=(${ctl_descs[@]+"${ctl_descs[@]}"} ${var_descs[@]+"${var_descs[@]}"})
         clear
-        if declare -F ui_header >/dev/null; then ui_header "Sunucu › $server › Paketler › $id › Değişkenler"; fi
-        echo ""
+        if declare -F ui_screen >/dev/null; then ui_screen "Sunucu › $server › Paketler › $id › Değişkenler"; fi
+        local fzf_card=0 hid_note=""
+        if declare -F ui_card_on >/dev/null && ui_card_on; then fzf_card=1; fi
+        [ "$fzf_card" = 1 ] || echo ""
         total=$(comp_vars_describe "$COMP_MENU_MF" | grep -c .)
         if [ "$total" -gt "${#all_lines[@]}" ] 2>/dev/null; then
-            echo "ℹ️  $((total - ${#all_lines[@]})) değişken bu sunucunun platformuna uygun olmadığı için gizlendi (yazılı değerleri yine de çalıştırmaya iletilir)."
+            hid_note="ℹ️  $((total - ${#all_lines[@]})) değişken bu sunucunun platformuna uygun olmadığı için gizlendi (yazılı değerleri yine de çalıştırmaya iletilir)."
+            [ "$fzf_card" = 1 ] || echo "$hid_note"   # fzf: aşağıda başlık kutusunda
         fi
-        if [ "$show_ctl" = 1 ]; then
+        if [ "$show_ctl" = 1 ] && [ "$fzf_card" = 0 ]; then
             echo "Gösterilen: ${#lines[@]} / ${#all_lines[@]} değişken · bu sunucuda değiştirilen: $nchg"
             [ "${#lines[@]}" -gt 0 ] || echo "Süzgece uyan değişken yok."
         fi
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local UI_PICK_BACK_DESC="Eylem listesine döner."
         local flash="${COMP_MENU_FLASH:-}"; COMP_MENU_FLASH=""
-        [ -z "$flash" ] || echo "$flash"
+        [ -z "$flash" ] || [ "$fzf_card" = 1 ] || echo "$flash"   # fzf: ileti başlık kutusunda
         # fzf geniş düzeni: yol çubuğu kenarlık etiketi, sağda açıklama, üstte konum özeti, Ctrl-O ile grup seçimi
         # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
         local UI_PICK_WIDE=1 UI_PICK_TITLE="Sunucu › $server › $id › Değişkenler" UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_HEADER=""
         # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
-        UI_PICK_HEADER="${flash:+$flash$'\n'}Grup: $(_comp_menu_group_name "$f_group") · ${#lines[@]}/${#all_lines[@]} değişken · değiştirilen: $nchg"
+        UI_PICK_HEADER="${flash:+$flash$'\n'}${hid_note:+$hid_note$'\n'}Grup: $(_comp_menu_group_name "$f_group") · ${#lines[@]}/${#all_lines[@]} değişken · değiştirilen: $nchg${show_ctl:+$([ "${#lines[@]}" -gt 0 ] || echo ' · süzgece uyan değişken yok')}"
         # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
         if [ -n "$glist" ]; then UI_PICK_EXPECT="ctrl-o"; UI_PICK_EXPECT_HINT="Ctrl-O: grup seç"; fi
         pick=$(_comp_menu_pick "Geri" "${labels[@]}")
@@ -1091,8 +1094,8 @@ comp_menu_server() {
     if [ "${#ids[@]}" -eq 1 ]; then comp_menu_actions "${ids[0]}" "$server"; return $?; fi
     while true; do
         clear
-        if declare -F ui_header >/dev/null; then ui_header "Sunucu › $server › Paketler"; fi
-        echo ""
+        if declare -F ui_screen >/dev/null; then ui_screen "Sunucu › $server › Paketler"; fi
+        if ! { declare -F ui_card_on >/dev/null && ui_card_on; }; then echo ""; fi
         local -a labels=()
         for pick in "${ids[@]}"; do labels+=("$pick $(comp_installed_version "$pick")"); done
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur

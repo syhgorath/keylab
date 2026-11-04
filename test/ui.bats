@@ -705,3 +705,26 @@ liste_motoru() {
     UI_PICK_HEADER=""; SSHPOCKET_ROWS=40 ui_fit_wide 5 10
     [ -z "$UI_PICK_HEADER" ] && [ "$UI_PICK_HEIGHT" -eq $((11 + 5)) ]
 }
+
+@test "ui_screen: fzf yokken klasik başlık basılır, fzf varken basılmaz ama başlık UI_SCREEN_TITLE'a yazılır" {
+    unset UI_SCREEN_TITLE NO_COLOR
+    ui_fzf_enabled() { return 1; }
+    run ui_screen "Ana menü › Ayarlar"
+    [[ "$output" == *"Ana menü › Ayarlar"* && "$output" == *"────"* ]] || { echo "$output"; false; }
+    ui_fzf_enabled() { return 0; }
+    run ui_screen "Ana menü › Ayarlar"
+    [ -z "$output" ]
+    ui_screen "Ana menü › Ayarlar" >/dev/null
+    [ "$UI_SCREEN_TITLE" = "Ana menü › Ayarlar" ]
+}
+
+@test "fzf: başlık (UI_SCREEN_TITLE) dar düzende de kenarlık etiketi olur; UI_PICK_TITLE öncelikli (geniş)" {
+    unset -f _ui_read_key; source "$H/UI.sh"
+    make_fake_fzf
+    export SSHPOCKET_UI=fzf
+    ui_fzf_version() { echo 7405; }
+    UI_SCREEN_TITLE="Ana menü › Ayarlar" run ui_pick_arrows 1 "Geri" "A"
+    grep -qx -- '--border-label= Ana menü › Ayarlar ' "$BATS_TEST_TMPDIR/fzf.args"
+    UI_PICK_WIDE=1 UI_SCREEN_TITLE="Ekran" UI_PICK_TITLE="Öncelikli" run ui_pick_arrows 1 "Geri" "A"
+    grep -qx -- '--border-label= Öncelikli ' "$BATS_TEST_TMPDIR/fzf.args"
+}
