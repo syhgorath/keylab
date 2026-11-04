@@ -210,3 +210,21 @@ PY
     run knock_manage WEB1 "$D" <<< $'1\n\n\n'
     [[ "$output" == *"İKİ KEZ"* ]]
 }
+
+@test "ayar menüsü (ok tuşlu seçici): numara + Enter ile 'Kapat' seçilir, dizi silinir" {
+    export SSHPOCKET_UI=arrows TERM=dumb
+    knock_on; printf '7000\n' > "$SEQ_FILE"
+    run knock_manage WEB1 "$D" < <(printf '2\n')
+    [ "$status" -eq 0 ]
+    [ ! -f "$SEQ_FILE" ]
+    grep -qx 'KNOCK=' "$D/server.env"
+}
+
+@test "ayar menüsü (ok tuşlu seçici): Geri hiçbir şey değiştirmez" {
+    export SSHPOCKET_UI=arrows TERM=dumb
+    knock_on; printf '7000\n' > "$SEQ_FILE"
+    run knock_manage WEB1 "$D" < <(printf '0\n')
+    [ "$status" -eq 0 ]
+    [ -f "$SEQ_FILE" ]
+    grep -qx 'KNOCK=keychain' "$D/server.env"
+}

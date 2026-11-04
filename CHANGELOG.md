@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- **fzf / ok tuşu uyumu (beş ekran):** daha önce yalnız düz `read` ile numara/harf soran yerler ortak seçiciye (`ui_pick`) taşındı; `UI=numbers` ve fzf'siz yedekleri aynen duruyor. **Knock ayarları** menüsü; **sunucu eklerken platform seçimi** (açıklamalar fzf sağ bölmesinde); **sunucu eklerken izinli ağ (CIDR) editörü** artık paket menüsündeki Değişkenler ekranıyla aynı liste editörü; **~/.ssh/config'ten içe aktar** çoklu seçimi (Enter işaretler, "İçe aktar" onaylar); **Sunucuları yönet › Sil / Yeniden adlandır** sunucuyu listeden seçtirir (silmede ad yazarak onay hâlâ gerekir).
+
 ## [3.6.21] - 2026-11-04
 
 Bu yama sürümü yalnızca `linux-hardening` 0.12.1'i kilitler (geri alma ve UMASK düzeltmeleri).

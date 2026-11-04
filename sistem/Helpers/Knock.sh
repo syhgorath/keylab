@@ -115,10 +115,19 @@ knock_manage() {
     else
         echo "Durum: ❌ kapalı"
     fi
-    echo "  1) Diziyi kaydet / güncelle"
-    echo "  2) Kapat (Keychain kaydını sil)"
-    echo "  0) Geri (q)"
-    read -r -p "Seçim [0]: " choice || return 0
+    if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
+        # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+        local -a UI_PICK_DESCS=("Protokol, bekleme ve port dizisini sorar; dizi Keychain'e kaydedilir (ekranda görünmez)." "Keychain'deki diziyi siler ve knock'u kapatır.")
+        # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+        local UI_PICK_BACK_DESC="Sunucu menüsüne döner."
+        choice=$(ui_pick_arrows 1 "Geri" "Diziyi kaydet / güncelle" "Kapat (Keychain kaydını sil)")
+        echo ""
+    else
+        echo "  1) Diziyi kaydet / güncelle"
+        echo "  2) Kapat (Keychain kaydını sil)"
+        echo "  0) Geri (q)"
+        read -r -p "Seçim [0]: " choice || return 0
+    fi
     case "${choice:-0}" in
         1)
             echo ""
