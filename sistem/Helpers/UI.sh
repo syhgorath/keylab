@@ -188,7 +188,7 @@ _ui_pick_fzf() {
         # geniş düzen: sağda önizleme, etiketli çerçeveler (yol çubuğu = kenarlık etiketi); eski fzf'te yalnız sağ önizleme
         local hdr="${UI_PICK_HEADER:-}" ver
         ver=$(ui_fzf_version "$fzf_bin")
-        opts=(--delimiter=$'\t' --with-nth=2.. --layout=reverse --height='85%' --min-height=12
+        opts=(--delimiter=$'\t' --with-nth=2.. --layout=reverse --height="${UI_PICK_HEIGHT:-85%}" --min-height=12
               --no-sort --cycle --prompt='› '
               --preview "awk -v n={1} 'NR==n+1 {gsub(/\037/,\"\\n\"); print}' '$tmp/desc'" --preview-window='right,48%,wrap'
               --bind 'left:abort' --bind "start:pos($sel)")

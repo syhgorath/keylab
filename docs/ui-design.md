@@ -134,6 +134,7 @@ Etkileşimli modda ok tuşlu ya da fzf (`UI=auto|fzf|arrows`), değilse numaral�
 | `UI_PICK_DESCS` (dizi) | Her öğe için açıklama; fzf'te sağ bölmede (çok satırlı olabilir, kart), ok tuşlu seçicide alt satırda tek satır |
 | `UI_PICK_BACK_DESC` | Geri/çıkış satırının açıklaması |
 | `UI_PICK_WIDE=1` | Geniş düzen: sağda önizleme, etiketli çerçeveler (fzf ≥ 0.35 kenarlık etiketi, ≥ 0.58 liste/giriş çerçeveleri; eski fzf'te yalnız sağ önizleme) |
+| `UI_PICK_HEIGHT` | Geniş düzende fzf yüksekliği: satır sayısı ya da yüzde (varsayılan `85%`); kısa listelerde (örn. ana menü) boş alanı keser |
 | `UI_PICK_TITLE` | Yol çubuğu (kenarlık etiketi) |
 | `UI_PICK_HEADER` | Başlık: konum özeti ya da ileti (çok satırlı olabilir) |
 | `UI_PICK_START` | İmlecin başlangıç öğesi (varsayılan 1) |

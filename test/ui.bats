@@ -658,3 +658,13 @@ liste_motoru() {
     run ui_paint tty 1\;33 "IP:"
     [ "$output" = "IP:" ]
 }
+
+@test "fzf geniş düzen: yükseklik varsayılan %85; UI_PICK_HEIGHT verilirse o değer (kısa liste boş alan bırakmaz)" {
+    unset -f _ui_read_key; source "$H/UI.sh"
+    make_fake_fzf
+    export SSHPOCKET_UI=fzf
+    UI_PICK_WIDE=1 run ui_pick_arrows 1 "Geri" "A"
+    grep -qx -- '--height=85%' "$BATS_TEST_TMPDIR/fzf.args"
+    UI_PICK_WIDE=1 UI_PICK_HEIGHT=20 run ui_pick_arrows 1 "Geri" "A"
+    grep -qx -- '--height=20' "$BATS_TEST_TMPDIR/fzf.args"
+}
