@@ -1044,3 +1044,37 @@ PY
     NO_COLOR=1 run comp_menu_actions demo web1 </dev/null
     run ! grep -q $'\033' "$T/panel"
 }
+
+# ---------- Ana menü › Paketler (fzf paket listesi) ----------
+pkgmenu_setup() {
+    export NO_COLOR=1 SISTEM_PATH="$ROOT/sistem"
+    ui_fzf_enabled() { return 0; }; clear() { :; }
+    comp_lock_validate() { return 0; }
+    comp_ids() { printf 'alpha\nbeta\n'; }
+    comp_status() { case "$1" in alpha) echo ok ;; *) echo missing ;; esac; }
+    comp_get() { case "$2" in version) echo "1.2.0" ;; repo) echo "o/$1" ;; esac; }
+    comp_installed_version() { [ "$1" = alpha ] && echo "1.2.0" || true; }
+    comp_verify_installed() { return 0; }
+    comp_cli_sync() { echo "SYNC only=${COMP_SYNC_ONLY:-hepsi}"; }
+    printf '%s\n' "$@" > "$T/pickq"; : > "$T/rec"
+    _comp_menu_pick() {
+        printf 'S=%s|H=%s|N=%s|D=%s\n' "$UI_SCREEN_TITLE" "${UI_PICK_HEADER//$'\n'/;}" "$#" "${#UI_PICK_DESCS[@]}" >> "$T/rec"
+        local first; first=$(head -n 1 "$T/pickq"); sed -i.bak '1d' "$T/pickq"; printf '%s' "${first:-0}"
+    }
+}
+
+@test "paket listesi (fzf): her paket bir satır ve kart, eksik varsa Eşitle satırı; başlık kenarlıkta, özet kutuda" {
+    pkgmenu_setup 0
+    run comp_menu_packages
+    [ "$status" -eq 0 ]
+    grep -q '^S=Ana menü › Paketler|H=Kilit: components.lock · 2 paket · 1 eksik/eski/bozuk|N=6|D=5' "$T/rec" || { cat "$T/rec"; false; }   # 2 paket + eşitle + temizle + yeni yayın
+}
+
+@test "paket listesi (fzf): eksik pakete Enter yalnızca o paketi eşitler; kurulu pakete Enter doğrular" {
+    pkgmenu_setup 2 1 0
+    run comp_menu_packages <<< $'\n'
+    [[ "$output" == *"SYNC only=beta"* ]] || { echo "$output"; false; }
+    grep -q 'doğrulandı' <<< "$(cat "$T/rec")" || true
+    [ "$(grep -c '^S=' "$T/rec")" -ge 3 ]
+    grep -q 'alpha doğrulandı' "$T/rec"
+}

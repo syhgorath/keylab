@@ -158,7 +158,7 @@ Bir ekran aşağıdakilerin hepsini yapıyorsa standarda uyar; kontrol listesi:
 5. **Geri:** `UI_PICK_BACK_DESC` doldurulur.
 6. **Test:** `ui_fzf_enabled` / `ui_pick_arrows` sahtelenip başlık (`UI_SCREEN_TITLE`), `UI_PICK_HEADER` ve `UI_PICK_DESCS` sayısı doğrulanır; `NO_COLOR=1` ile düz çıktı da denenir.
 
-Seçici olmayan metin sayfaları (Paketler durumu, Geçmiş, güncelleme ve çalışma panelleri, sunucu ekleme soruları) bu kuralın dışındadır ve klasik `ui_header` kullanır.
+Seçici olmayan metin sayfaları (Geçmiş, güncelleme ve çalışma panelleri, sunucu ekleme soruları) bu kuralın dışındadır ve klasik `ui_header` kullanır.
 
 ### Bölgeli ekran: `ui_region_begin <başlık> <gövde> <alt-etiket>` / `ui_region_end <etiket>` / `ui_region_reset`
 Üst bölüm (başlık + gövde metni) sabit çizilir, alt bölüm terminalin **kaydırma bölgesi** (DECSTBM) olur: sorular, `BECOME password:` istemi ve çıktı alt bölgede akar, ekran değişmez. Terminal < 24 satır ya da < 60 sütunsa `begin` 1 döner (çağıran eski akışa düşer). `Ctrl-C` bölgeyi sıfırlar. Test için `SSHPOCKET_ROWS`/`SSHPOCKET_COLS`. Not: fzf'yi canlı tutup altta çalıştırma denendi, `execute` sonrası fzf üst bölgeyi yeniden çizmediği için olmadı.

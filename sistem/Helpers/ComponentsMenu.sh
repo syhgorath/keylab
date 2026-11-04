@@ -1091,6 +1091,75 @@ comp_menu_edit_cidr() {
     done
 }
 
+# comp_menu_packages → Ana menü › Paketler (fzf): kilitteki paketler kartlı liste; Enter: kur/onar (onaylı) ya da doğrula; ayrıca toplu eşitle, eski sürümleri temizle, yeni yayın var mı.
+# Hiçbir şey sormadan kurmaz: kurulum/onarım klasik onay sorusunu (comp_cli_sync) korur. Seçici olmayan modda ComponentsAction eski durum sayfasını gösterir.
+comp_menu_packages() {
+    local ids id st want have mark repo pick n msg="" need verdict kd nold
+    local -a idarr labels
+    while true; do
+        comp_lock_validate || return 1
+        ids=$(comp_ids)
+        idarr=(); labels=(); need=0
+        # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+        local -a UI_PICK_DESCS=()
+        while IFS= read -r id; do
+            [ -n "$id" ] || continue
+            st=$(comp_status "$id"); want=$(comp_get "$id" version); have=$(comp_installed_version "$id"); repo=$(comp_get "$id" repo)
+            case "$st" in
+                ok) mark="✅ kurulu" ;;
+                missing) mark="⬇️  kurulmamış"; need=$((need + 1)) ;;
+                outdated) mark="⬆️  güncellenmeli"; need=$((need + 1)) ;;
+                ahead) mark="⚠️  kilitten yeni (geri alınmaz)" ;;
+                broken) mark="❌ dosyalar değişmiş"; need=$((need + 1)) ;;
+                *) mark="$st" ;;
+            esac
+            idarr+=("$id")
+            labels+=("$(printf '%-18s kilit %-8s kurulu %-8s %s' "$id" "$want" "${have:--}" "$mark")")
+            kd="$(comp_dir)/$id"; nold=$(find "$kd" -mindepth 1 -maxdepth 1 -type d ! -name "$want" ! -name '*.bozuk-*' 2>/dev/null | wc -l | tr -d ' ')
+            case "$st" in
+                ok) verdict="Enter: kurulumu doğrula (dosya özetleri)." ;;
+                ahead) verdict="Kurulu sürüm kilitten yeni; sshpocket geri almaz." ;;
+                broken) verdict="Enter: bozuk kurulum kenara alınır, kilitteki sürüm imzası doğrulanarak yeniden kurulur (onay sorulur)." ;;
+                *) verdict="Enter: kilitteki sürüm indirilir, imzası ve sha256'sı doğrulanarak kurulur (onay sorulur)." ;;
+            esac
+            UI_PICK_DESCS+=("$(ui_card_head "📦 $id"; ui_card_row Kilit "$want"; ui_card_row Kurulu "${have:--}"; ui_card_row Durum "$mark"; ui_card_row Depo "$repo"
+                [ "${nold:-0}" -eq 0 ] || ui_card_row Eski "$nold sürüm klasörü diskte (Ayarlar › eski sürümleri temizle)"
+                printf '\n%s\n' "$verdict")")
+        done <<< "$ids"
+        n=${#idarr[@]}
+        if [ "$need" -gt 0 ]; then labels+=("🔄 Kilitteki sürümleri kur / onar ($need paket)"); UI_PICK_DESCS+=("$(ui_card_head '🔄 Eşitle'; printf '\nKurulmamış, eski ya da bozuk %s paketi kilitteki sürüme getirir.\nHer biri için onay sorulur; indirme imza ve sha256 ile doğrulanır.\n' "$need")"); fi
+        labels+=("🧹 Eski paket sürümlerini temizle"); UI_PICK_DESCS+=("$(ui_card_head '🧹 Temizle'; printf '\nGüncellemelerde yan yana biriken eski sürümleri listeler ve silinmesini sorar\n(etkin + önceki + kilitteki sürüm kalır).\n')")
+        labels+=("🔎 Kilitten yeni yayın var mı? (ağ)"); UI_PICK_DESCS+=("$(ui_card_head '🔎 Yeni yayın'; printf '\nGitHub yayınlarına bakar (yalnızca bilgi, ağ gerekir).\nYeni sürüm kurulmaz: yeni sshpocket sürümüyle (kilit güncellenince) gelir.\n')")
+        clear
+        ui_screen "Ana menü › Paketler"
+        # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+        local UI_PICK_WIDE=1 UI_PICK_HEIGHT=16 UI_PICK_BACK_DESC="Ana menüye döner." UI_PICK_HEADER=""
+        # shellcheck disable=SC2034
+        UI_PICK_HEADER="${msg:+$msg$'\n'}Kilit: components.lock · $n paket · $([ "$need" -gt 0 ] && echo "$need eksik/eski/bozuk" || echo 'hepsi tamam')"
+        msg=""
+        ui_fit_wide "$(( ${#labels[@]} + 1 ))" 6
+        pick=$(_comp_menu_pick "Geri" "${labels[@]}")
+        echo ""
+        [ "$pick" -ge 1 ] 2>/dev/null || return 0
+        if [ "$pick" -le "$n" ]; then
+            id="${idarr[$((pick - 1))]}"; st=$(comp_status "$id")
+            case "$st" in
+                ok) if comp_verify_installed "$id" "$(comp_installed_version "$id")"; then msg="✅ $id doğrulandı: dosyalar kurulumdaki gibi."; else msg="❌ $id doğrulanamadı: dosyalar değişmiş (Enter ile onarın)."; fi ;;
+                ahead) msg="⚠️  $id: kurulu sürüm kilitten yeni; dokunulmadı." ;;
+                *) COMP_SYNC_ONLY="$id" comp_cli_sync || true; read -r -p "Devam için Enter..." _ || return 0 ;;
+            esac
+        elif [ "$need" -gt 0 ] && [ "$pick" -eq $((n + 1)) ]; then
+            comp_cli_sync || true; read -r -p "Devam için Enter..." _ || return 0
+        else
+            # kalan iki satır: temizle, yeni yayın (eşitle satırı yoksa kayma: need=0 ise temizle n+1, yeni yayın n+2)
+            local off=$((n + 1)); [ "$need" -gt 0 ] && off=$((n + 2))
+            if [ "$pick" -eq "$off" ]; then bash "$SISTEM_PATH/Main.sh" --components prune || true
+            else comp_cli_check_new || true; fi
+            read -r -p "Devam için Enter..." _ || return 0
+        fi
+    done
+}
+
 # comp_menu_server <önek> <sunucu-klasörü> → kurulu paket(ler)den birini seçtirir
 comp_menu_server() {
     local module_dir="$2" server pick

@@ -121,6 +121,11 @@ ManageServersAction() {
 
 # Paketler: durumu göster, eksik/eski olanı onayla kur (kilitteki sürüm)
 ComponentsAction() {
+    if declare -F ui_card_on >/dev/null && ui_card_on && declare -F comp_menu_packages >/dev/null; then
+        comp_menu_packages   # fzf: kartlı paket listesi (düz modlarda aşağıdaki durum sayfası)
+        ui_no_pause
+        return 0
+    fi
     clear
     if declare -F ui_header >/dev/null; then ui_header "Ana menü › Paketler"; fi
     echo ""
