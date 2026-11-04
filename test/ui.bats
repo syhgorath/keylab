@@ -600,3 +600,17 @@ liste_motoru() {
     run g
     [[ "$output" == *"rc=1"* ]] || false
 }
+
+@test "ok tuşu (gerçek okuyucu): Sunucuları yönet › Yeniden adlandır sunucuyu LİSTEDEN seçtirir, yeni ad yazılır" {
+    unset -f _ui_read_key
+    source "$H/UI.sh"
+    make_sandbox
+    for n in alpha beta; do mkdir -p "$SANDBOX/servers/$n"; printf 'IP=192.0.2.7\nUSER=deploy\nPORT=22\n' > "$SANDBOX/servers/$n/server.env"; done
+    # 2 = Yeniden adlandır · 2 = beta (listeden) · yeni ad
+    run bash -c "export SSHPOCKET_UI=arrows SISTEM_PATH='$SANDBOX/sistem' TERM=xterm; \
+        source '$SANDBOX/sistem/Helpers/Settings.sh'; source '$SANDBOX/sistem/Helpers/Validate.sh'; source '$SANDBOX/sistem/Helpers/Servers.sh'; source '$SANDBOX/sistem/Helpers/UI.sh'; source '$SANDBOX/sistem/Helpers/BuiltinMenu.sh' >/dev/null 2>&1; \
+        ReloadModules(){ :; }; clear(){ :; }; \
+        ManageServersAction" < <(printf '2\n2\ngamma\n')
+    [ -d "$SANDBOX/servers/gamma" ] || { echo "$output"; false; }
+    [ ! -e "$SANDBOX/servers/beta" ] && [ -d "$SANDBOX/servers/alpha" ]
+}

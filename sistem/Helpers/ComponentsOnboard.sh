@@ -32,9 +32,29 @@ _comp_onboard_var_type() {
 
 # _comp_onboard_ask_platform <bilgi> → seçilen platform kimliği (stdout); "" = şimdi değil (hiçbir şey yazılmaz). Menü stderr'e yazılır.
 _comp_onboard_ask_platform() {
-    local info="$1" id label desc i ans def=""
-    local -a ids=()
+    local info="$1" id label desc i ans def="" n
+    local -a ids=() labels=()
     while IFS= read -r id; do [ -n "$id" ] && ids+=("$id"); done < <(comp_info_all "$info" platform_choice)
+    if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
+        # ok tuşlu / fzf seçici: açıklamalar fzf'te sağ bölmede, ok tuşlu seçicide alt satırda
+        # shellcheck disable=SC2034  # ui_pick (dinamik kapsam) okur
+        local -a UI_PICK_DESCS=()
+        for id in "${ids[@]}"; do
+            label=$(comp_info_get "$info" "platform_choice.$id.label")
+            desc=$(comp_info_get "$info" "platform_choice.$id.description")
+            labels+=("$label"); UI_PICK_DESCS+=("$desc")
+            [ "$id" = generic ] && def=1
+        done
+        if [ -n "$def" ]; then labels+=("Bilmiyorum (genel / generic seçilir)"); UI_PICK_DESCS+=("Sunucunun türünden emin değilseniz genel (Ubuntu/Debian) ayarlar seçilir."); fi
+        # shellcheck disable=SC2034
+        local UI_PICK_HEADER="Bu sunucu hangi türde?" UI_PICK_WIDE=1 UI_PICK_BACK_DESC="Hiçbir şey yazılmaz; pakete ilk girişte yine sorulur."
+        n=$(ui_pick "Şimdi değil" "${labels[@]}")
+        if [ "${n:-0}" -ge 1 ] 2>/dev/null; then
+            if [ "$n" -le "${#ids[@]}" ]; then printf '%s' "${ids[$((n - 1))]}"
+            else printf '%s' "generic"; fi
+        fi
+        return 0
+    fi
     {
         echo "Bu sunucu hangi türde?"
         i=1
@@ -89,7 +109,7 @@ _comp_onboard_platform() {
 
 # _comp_onboard_vars <paket> <bilgi> <manifest> <vars-dosyası> <sunucu-klasörü> → onboarding_vars'ı sırayla sorar (dolu olanlar atlanır)
 _comp_onboard_vars() {
-    local pkg="$1" info="$2" mf="$3" vf="$4" dir="$5" n t v out ans server
+    local pkg="$1" info="$2" mf="$3" vf="$4" dir="$5" n t v out ans server line
     local -a names=()
     server=$(basename "$dir")
     while IFS= read -r n; do [ -n "$n" ] && names+=("$n"); done < <(comp_info_all "$info" onboarding_var)
@@ -99,13 +119,21 @@ _comp_onboard_vars() {
         echo ""
         while true; do
             if [ "$t" = "list[cidr]" ]; then
-                # shellcheck disable=SC2034  # comp_menu_edit_cidr (dinamik kapsam) okur
+                # shellcheck disable=SC2034  # comp_menu_edit_cidr / comp_menu_edit_list (dinamik kapsam) okur
                 COMP_MENU_MF="$mf"
                 # shellcheck disable=SC2034
                 COMP_MENU_VARS="$vf"
                 # shellcheck disable=SC2034
                 COMP_MENU_DIR="$dir"
-                comp_menu_edit_cidr "$n" "$server" || true
+                if declare -F _comp_menu_interactive >/dev/null && _comp_menu_interactive; then
+                    # paket menüsündeki Değişkenler ekranıyla aynı editör (ok tuşlu / fzf)
+                    line=$(comp_vars_describe "$mf" "$vf" | awk -F'\t' -v n="$n" '$1 == n && !d { print; d=1 }')
+                    COMP_MENU_FLASH=""
+                    UI_PICK_TITLE="$pkg › sunucu türü ve zorunlu ayarlar" comp_menu_edit_list "$line" "$server" || true
+                    [ -z "${COMP_MENU_FLASH:-}" ] || echo "$COMP_MENU_FLASH"
+                else
+                    comp_menu_edit_cidr "$n" "$server" || true
+                fi
             else
                 echo "$n — $(comp_vars_describe "$mf" | awk -F'\t' -v n="$n" '$1 == n && !d { print $NF; d=1 }')"
                 IFS= read -r -p "Değer (boş = atla): " v || return 1

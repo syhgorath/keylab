@@ -17,6 +17,10 @@ source "$SCRIPT_DIR/Helpers/ModuleFiles.sh"
 source "$SCRIPT_DIR/Helpers/SSHConfigImport.sh"
 # shellcheck source=Helpers/Servers.sh
 source "$SCRIPT_DIR/Helpers/Servers.sh"
+# shellcheck source=Helpers/UI.sh
+source "$SCRIPT_DIR/Helpers/UI.sh"
+# shellcheck source=Helpers/Settings.sh
+source "$SCRIPT_DIR/Helpers/Settings.sh"
 SERVERS_DIR="$(servers_dir)"
 
 if [ ! -f "$CONFIG" ]; then
@@ -33,26 +37,64 @@ if [ "${#aliases[@]}" -eq 0 ]; then
     echo "Joker içermeyen Host kaydı bulunamadı."; exit 0
 fi
 
-echo "Bulunan sunucular ($CONFIG):"
-for i in "${!aliases[@]}"; do
-    printf '  %2d) %-20s %s@%s:%s\n' "$((i + 1))" "${aliases[$i]}" "${users[$i]}" "${hosts[$i]}" "${ports[$i]}"
-done
-echo ""
-read -r -p "İçe aktarılacaklar (örn: 1,3  |  a = hepsi  |  Enter = iptal): " pick
-[ -n "$pick" ] || { echo "İptal edildi."; exit 0; }
-
 selected=()
-if [ "$pick" = "a" ] || [ "$pick" = "A" ]; then
-    for i in "${!aliases[@]}"; do selected+=("$i"); done
-else
-    IFS=', ' read -r -a nums <<< "$pick"
-    for n in "${nums[@]}"; do
-        if [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -ge 1 ] && [ "$n" -le "${#aliases[@]}" ]; then
-            selected+=("$((n - 1))")
+if ui_arrows_enabled; then
+    # ok tuşlu / fzf: Enter bir sunucuyu işaretler/kaldırır; "İçe aktar" satırı onaylar (Esc/geri = iptal)
+    marks=(); for i in "${!aliases[@]}"; do marks+=(0); done
+    cursor=1
+    while true; do
+        labels=(); nsel=0
+        # shellcheck disable=SC2034  # ui_pick (dinamik kapsam) okur
+        UI_PICK_DESCS=()
+        for i in "${!aliases[@]}"; do
+            if [ "${marks[$i]}" = 1 ]; then box="[x]"; nsel=$((nsel + 1)); else box="[ ]"; fi
+            labels+=("$box $(printf '%-20s %s@%s:%s' "${aliases[$i]}" "${users[$i]}" "${hosts[$i]}" "${ports[$i]}")")
+            UI_PICK_DESCS+=("Enter: işaretle / işareti kaldır.${keys[$i]:+ Key: ${keys[$i]}}")
+        done
+        labels+=("☑ Tümünü işaretle / temizle"); UI_PICK_DESCS+=("Hepsini işaretler; hepsi işaretliyse işaretleri kaldırır.")
+        labels+=("✅ İçe aktar ($nsel sunucu)"); UI_PICK_DESCS+=("İşaretli sunucuları servers/ altına yazar. Private key dosyaları kopyalanmaz.")
+        clear
+        ui_header "Ana menü › ~/.ssh/config'ten içe aktar"
+        echo ""
+        # shellcheck disable=SC2034
+        UI_PICK_BACK_DESC="Hiçbir şey içe aktarılmadan döner."
+        pick=$(UI_PICK_START="$cursor" ui_pick "İptal" "${labels[@]}")
+        if [ "${pick:-0}" = 0 ]; then echo "İptal edildi."; exit 0; fi
+        if [ "$pick" -le "${#aliases[@]}" ]; then
+            i=$((pick - 1)); if [ "${marks[$i]}" = 1 ]; then marks[i]=0; else marks[i]=1; fi
+            cursor="$pick"
+        elif [ "$pick" -eq "$(( ${#aliases[@]} + 1 ))" ]; then
+            if [ "$nsel" -eq "${#aliases[@]}" ]; then v=0; else v=1; fi
+            for i in "${!marks[@]}"; do marks[i]=$v; done
+            cursor="$pick"
         else
-            echo "⚠️  Geçersiz seçim atlandı: $n"
+            [ "$nsel" -gt 0 ] || { echo "Önce en az bir sunucu işaretleyin."; sleep 1; cursor="$pick"; continue; }
+            for i in "${!marks[@]}"; do [ "${marks[$i]}" = 1 ] && selected+=("$i"); done
+            break
         fi
     done
+    echo ""
+else
+    echo "Bulunan sunucular ($CONFIG):"
+    for i in "${!aliases[@]}"; do
+        printf '  %2d) %-20s %s@%s:%s\n' "$((i + 1))" "${aliases[$i]}" "${users[$i]}" "${hosts[$i]}" "${ports[$i]}"
+    done
+    echo ""
+    read -r -p "İçe aktarılacaklar (örn: 1,3  |  a = hepsi  |  Enter = iptal): " pick
+    [ -n "$pick" ] || { echo "İptal edildi."; exit 0; }
+
+    if [ "$pick" = "a" ] || [ "$pick" = "A" ]; then
+        for i in "${!aliases[@]}"; do selected+=("$i"); done
+    else
+        IFS=', ' read -r -a nums <<< "$pick"
+        for n in "${nums[@]}"; do
+            if [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -ge 1 ] && [ "$n" -le "${#aliases[@]}" ]; then
+                selected+=("$((n - 1))")
+            else
+                echo "⚠️  Geçersiz seçim atlandı: $n"
+            fi
+        done
+    fi
 fi
 
 imported=0

@@ -111,3 +111,26 @@ CHOICES=',"platform_choices":[{"id":"generic","label":"Debian / Ubuntu"},{"id":"
     [[ "$output" != *"sunucu türü"* ]] || { echo "$output"; false; }
     [ -f "$T/srv3/web8/server.env" ] && [ ! -e "$T/srv3/web8/demo.vars" ]
 }
+
+@test "ok tuşlu seçici: platform ve allow_from paket menüsündeki aynı seçici/liste editörüyle girilir" {
+    mf "$CHOICES"
+    export SSHPOCKET_UI=arrows TERM=dumb
+    clear() { :; }
+    # 2 = Proxmox VE hostu · Enter = onay · 1 = ➕ Ekle · CIDR · 5 = 💾 Kaydet (öğe, ekle, sorgula, temizle, kaydet) · Enter
+    run comp_onboard_all "$D" < <(printf '2\n\n1\n10.1.10.0/24\n5\n\n\n')
+    [ "$status" -eq 0 ]
+    [ "$(comp_vars_get "$VF" demo_platform)" = proxmox-host ]
+    [ "$(comp_vars_get "$VF" allow_from)" = 10.1.10.0/24 ] || { echo "$output"; false; }
+}
+
+@test "ok tuşlu seçici: 'Bilmiyorum' generic yazar, 0 (Şimdi değil) hiçbir şey yazmaz" {
+    mf "$CHOICES"
+    export SSHPOCKET_UI=arrows TERM=dumb
+    clear() { :; }
+    run comp_onboard_all "$D" < <(printf '3\n\n0\nh\n')
+    [ "$(comp_vars_get "$VF" demo_platform)" = generic ] || { echo "$output"; false; }
+    rm -f "$VF"
+    run comp_onboard_all "$D" < <(printf '0\n0\nh\n')
+    [[ "$output" == *"Platform seçilmedi"* ]] || { echo "$output"; false; }
+    [ ! -e "$VF" ] || ! grep -q demo_platform "$VF"
+}

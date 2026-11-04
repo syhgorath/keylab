@@ -49,6 +49,22 @@ ImportSSHConfigAction() {
     ReloadModules
 }
 
+# _manage_pick_server → ok tuşlu / fzf ile bir sunucu seçtirir (stdout: ad; vazgeçilirse boş; seçilecek sunucu yoksa dönüş 1 = elle yazdır)
+_manage_pick_server() {
+    local n pick
+    local -a names=()
+    declare -F srv_names >/dev/null || return 1
+    # shellcheck disable=SC2034  # ui_pick (dinamik kapsam) okur; üst menünün açıklamaları sunucu adlarına karışmasın
+    local -a UI_PICK_DESCS=()
+    # shellcheck disable=SC2034
+    local UI_PICK_BACK_DESC="Hiçbir şey yapılmadan döner."
+    while IFS= read -r n; do [ -n "$n" ] && names+=("$n"); done < <(srv_names)
+    [ "${#names[@]}" -gt 0 ] || return 1
+    pick=$(ui_pick "Vazgeç" "${names[@]}")
+    if [ "${pick:-0}" -ge 1 ] 2>/dev/null && [ "$pick" -le "${#names[@]}" ]; then printf '%s' "${names[$((pick - 1))]}"; fi
+    return 0
+}
+
 ManageServersAction() {
     local choice name new
     clear
@@ -72,12 +88,15 @@ ManageServersAction() {
     case "${choice:-0}" in
         0|q|Q) ui_no_pause ;;   # geri: okunacak çıktı yok
         1)
-            read -r -p "Silinecek modül adı: " name
+            if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled && name=$(_manage_pick_server); then :
+            else read -r -p "Silinecek modül adı: " name; fi
             if [ -n "$name" ]; then bash "$SISTEM_PATH/ModuleManager.sh" remove "$name"; fi
             ;;
         2)
-            read -r -p "Eski ad: " name
-            read -r -p "Yeni ad: " new
+            if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled && name=$(_manage_pick_server); then :
+            else read -r -p "Eski ad: " name; fi
+            new=""
+            if [ -n "$name" ]; then read -r -p "Yeni ad: " new; fi
             if [ -n "$name" ] && [ -n "$new" ]; then
                 bash "$SISTEM_PATH/ModuleManager.sh" rename "$name" "$new"
             fi

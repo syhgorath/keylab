@@ -98,3 +98,33 @@ CONF
     [[ "$output" == *"içe aktarılamadı"* ]]
     [ ! -e "$SSHPOCKET_SERVERS_DIR/evil" ]
 }
+
+# ---------- ok tuşlu / fzf çoklu seçim (UI=arrows; tuşlar stdin'den: numara + Enter) ----------
+two_hosts() {
+    printf 'Host a1\n    HostName 192.0.2.1\n    User u\nHost a2\n    HostName 192.0.2.2\n    User u\n' > "$CFG"
+    export SSHPOCKET_SERVERS_DIR="$BATS_TEST_TMPDIR/servers" SSHPOCKET_MODULES_DIR="$BATS_TEST_TMPDIR/Modules" SSHPOCKET_UI=arrows TERM=dumb
+    mkdir -p "$SSHPOCKET_SERVERS_DIR"
+}
+
+@test "ok tuşlu: işaretlenen sunucu içe aktarılır, işaretlenmeyen aktarılmaz" {
+    two_hosts
+    run bash "$ROOT/sistem/ImportSSHConfig.sh" "$CFG" < <(printf '1\n4\n')
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[x] a1"* && "$output" == *"1 modül oluşturuldu"* ]] || { echo "$output"; false; }
+    [ -f "$SSHPOCKET_SERVERS_DIR/a1/server.env" ]
+    [ ! -e "$SSHPOCKET_SERVERS_DIR/a2" ]
+}
+
+@test "ok tuşlu: 'Tümünü işaretle' hepsini aktarır" {
+    two_hosts
+    run bash "$ROOT/sistem/ImportSSHConfig.sh" "$CFG" < <(printf '3\n4\n')
+    [ -f "$SSHPOCKET_SERVERS_DIR/a1/server.env" ] && [ -f "$SSHPOCKET_SERVERS_DIR/a2/server.env" ]
+}
+
+@test "ok tuşlu: hiçbiri işaretli değilken içe aktar uyarır, 0 iptal eder ve hiçbir şey yazılmaz" {
+    two_hosts
+    run bash "$ROOT/sistem/ImportSSHConfig.sh" "$CFG" < <(printf '4\n0\n')
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Önce en az bir sunucu işaretleyin"* && "$output" == *"İptal edildi"* ]] || { echo "$output"; false; }
+    [ -z "$(ls "$SSHPOCKET_SERVERS_DIR")" ]
+}
