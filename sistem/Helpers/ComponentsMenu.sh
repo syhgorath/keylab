@@ -205,6 +205,7 @@ comp_menu_findings() {
         # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
         local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_START=2 UI_PICK_TITLE="Sunucu › $server › Paketler › $id › Bulgular" UI_PICK_HEADER=""
         UI_PICK_HEADER=$(_comp_menu_findings_lines "$id" "$server" "$info" | sed 's/^ *//')
+        ui_fit_wide "$((n + 2))" 10   # liste en az 10 satır; başlık kısa terminalde kırpılır
         pick=$(ui_pick "Geri" "Yalnız eşlemeli: $([ "$only" -eq 1 ] && echo açık || echo kapalı) ($n gösterilen)" "${labels[@]}")
         [ "$pick" -ge 1 ] 2>/dev/null || return 0
         if [ "$pick" -eq 1 ]; then only=$((1 - only)); continue; fi
@@ -689,8 +690,15 @@ _comp_menu_pick_group() {
     gl=(); while IFS= read -r g; do [ -n "$g" ] && gl+=("$g"); done <<< "$glist"
     gpick=("Tümü" "${gl[@]}" "(grupsuz)")
     # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
-    local -a UI_PICK_DESCS=()
-    local UI_PICK_WIDE="" UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_HEADER="" UI_PICK_TITLE=""
+    local -a UI_PICK_DESCS=("Süzgeci kaldırır: tüm değişkenler listelenir.")
+    for g in "${gl[@]}"; do UI_PICK_DESCS+=("Yalnızca '$g' grubundaki değişkenleri listeler."); done
+    UI_PICK_DESCS+=("Hiçbir gruba bağlı olmayan değişkenleri listeler.")
+    # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+    local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_HEADER="" UI_PICK_HEIGHT="" UI_PICK_BACK_DESC="Grubu değiştirmeden listeye döner."
+    UI_PICK_HEADER="Şimdiki grup: $(_comp_menu_group_name "$f_group")"
+    # shellcheck disable=SC2034
+    local UI_PICK_TITLE="Sunucu › $server › Paketler › $id › Değişkenler › Grup"
+    ui_fit_wide "$(( ${#gpick[@]} + 1 ))" 8
     pick=$(_comp_menu_pick "Geri" "${gpick[@]}")
     if [ "$pick" -ge 1 ] 2>/dev/null; then
         if [ "$pick" -eq 1 ]; then f_group=""
@@ -1102,6 +1110,17 @@ comp_menu_server() {
         local -a UI_PICK_DESCS=()
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local UI_PICK_BACK_DESC="Sunucu menüsüne döner."
+        if declare -F ui_card_on >/dev/null && ui_card_on; then
+            # fzf: paket başına kart (sürüm, bu sunucudaki son preview/apply/audit ve Lynis skoru), geniş düzen
+            for pick in "${ids[@]}"; do
+                UI_PICK_DESCS+=("$(ui_card_head "📦 $pick $(comp_installed_version "$pick")"
+                    if [ -f "$module_dir/components.log" ] && grep -qF "|$pick|" "$module_dir/components.log"; then _server_card_pkg "$module_dir/components.log" "$(_comp_gate_state_dir)" "$pick" "$server" | tail -n +2
+                    else printf ' Bu sunucuda henüz eylem çalıştırılmadı.\n'; fi)")
+            done
+            # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+            local UI_PICK_WIDE=1 UI_PICK_HEIGHT=14
+            ui_fit_wide "$(( ${#labels[@]} + 1 ))" 4
+        fi
         pick=$(_comp_menu_pick "Geri" "${labels[@]}")
         [ "$pick" -ge 1 ] 2>/dev/null || return 0
         comp_menu_actions "${ids[$((pick - 1))]}" "$server"

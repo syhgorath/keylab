@@ -104,20 +104,34 @@ _knock_delay_ok() { [[ "$1" =~ ^[0-9]+$ ]] && [ "$1" -le 5000 ]; }
 
 # Menü: knock ayarları. Parametreler: önek, modül klasörü
 knock_manage() {
-    local prefix="$1" dir="$2" choice seq proto delay account
+    local prefix="$1" dir="$2" choice seq proto delay account intro durum fzf_card=0
     account=$(knock_account "$prefix")
-    echo ""
-    echo "Port knocking: sunucunun SSH portu kapalıyken, önceden kararlaştırılmış bir port"
-    echo "sırasına 'vurarak' açtırma yöntemidir. Sunucu yöneticisi bu sırayı sunucuda tanımlamış olmalı."
-    echo ""
+    if declare -F ui_card_on >/dev/null && ui_card_on; then fzf_card=1; fi
+    intro="Port knocking: sunucunun SSH portu kapalıyken, önceden kararlaştırılmış bir port"$'\n'"sırasına 'vurarak' açtırma yöntemidir. Sunucu yöneticisi bu sırayı sunucuda tanımlamış olmalı."
     if knock_enabled "$prefix" "$dir" && knock_has_sequence "$prefix"; then
-        echo "Durum: ✅ etkin ($(srv_get "$dir" "$prefix" KNOCK_PROTO 2>/dev/null || true), gecikme $(srv_get "$dir" "$prefix" KNOCK_DELAY_MS 2>/dev/null || true) ms; dizi Keychain'de)"
+        durum="Durum: ✅ etkin ($(srv_get "$dir" "$prefix" KNOCK_PROTO 2>/dev/null || true), gecikme $(srv_get "$dir" "$prefix" KNOCK_DELAY_MS 2>/dev/null || true) ms; dizi Keychain'de)"
     else
-        echo "Durum: ❌ kapalı"
+        durum="Durum: ❌ kapalı"
+    fi
+    if [ "$fzf_card" = 1 ]; then
+        clear
+        ui_screen "Ana menü › $(basename "$dir") › Knock ayarları"   # fzf: başlık kenarlıkta, bilgi başlık kutusunda
+    else
+        echo ""; printf '%s\n\n%s\n' "$intro" "$durum"
     fi
     if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local -a UI_PICK_DESCS=("Protokol, bekleme ve port dizisini sorar; dizi Keychain'e kaydedilir (ekranda görünmez)." "Keychain'deki diziyi siler ve knock'u kapatır.")
+        if [ "$fzf_card" = 1 ]; then
+            # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+            UI_PICK_DESCS=("$(ui_card_head '🚪 Diziyi kaydet'; printf '\n1/3 Protokol: tcp (çoğu kurulum) ya da udp\n2/3 Bekleme: vuruşlar arası ms (0-5000)\n3/3 Dizi: sunucu yöneticisinin port sırası,\n    virgülle ayrılmış (örn. 7000,8000,9000)\n\n⚠ Dizi Keychain'"'"'e yazılır; macOS aynı değeri\n  İKİ KEZ isteyebilir.\n')"
+                "$(ui_card_head '🔒 Kapat'; printf '\nKeychain'"'"'deki dizi silinir ve knock devre dışı kalır.\nSunucuya bağlanırken knock gönderilmez.\n')")
+            # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+            local UI_PICK_WIDE=1 UI_PICK_HEIGHT=14 UI_PICK_HEADER=""
+            # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+            UI_PICK_HEADER="$intro"$'\n'"$durum"
+            ui_fit_wide 3 3
+        fi
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local UI_PICK_BACK_DESC="Sunucu menüsüne döner."
         choice=$(ui_pick_arrows 1 "Geri" "Diziyi kaydet / güncelle" "Kapat (Keychain kaydını sil)")

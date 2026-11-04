@@ -228,3 +228,21 @@ PY
     [ -f "$SEQ_FILE" ]
     grep -qx 'KNOCK=keychain' "$D/server.env"
 }
+
+@test "ayar menüsü (fzf standardı): başlık kenarlıkta, açıklama ve durum başlık kutusunda, iki kart; üstte düz metin yok" {
+    export SSHPOCKET_UI=fzf TERM=dumb
+    unset NO_COLOR
+    ui_fzf_enabled() { return 0; }
+    clear() { :; }
+    ui_pick_arrows() {
+        { echo "S=$UI_SCREEN_TITLE"; echo "W=$UI_PICK_WIDE"; echo "H=${UI_PICK_HEADER//$'\n'/|}"; echo "N=${#UI_PICK_DESCS[@]}"; } > "$T/pick"
+        printf 0
+    }
+    run knock_manage WEB1 "$D"
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"Port knocking:"* ]] || { echo "$output"; false; }      # düz metin basılmaz (başlık kutusunda)
+    grep -q "^S=Ana menü › web1 › Knock ayarları" "$T/pick"
+    grep -q "^W=1" "$T/pick"
+    grep -q "^H=Port knocking:.*Durum: ❌ kapalı" "$T/pick"
+    grep -qx "N=2" "$T/pick"
+}

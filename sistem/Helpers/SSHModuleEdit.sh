@@ -87,18 +87,33 @@ ssh_module_edit() {
 # Keychain'deki passphrase kaydını kaydet/güncelle/sil
 # Parametreler: $1 - öneki, $2 - private key yolu (doğrulama için)
 ssh_keychain_manage() {
-    local prefix="$1" ssh_key="$2" choice account
+    local prefix="$1" ssh_key="$2" choice account durum fzf_card=0
     account=$(ssh_keychain_account "$prefix")
-
-    echo ""
+    if declare -F ui_card_on >/dev/null && ui_card_on; then fzf_card=1; fi
     if ssh_has_passphrase "$prefix"; then
-        echo "Keychain kaydı: ✅ var ($account)"
+        durum="Keychain kaydı: ✅ var ($account)"
     else
-        echo "Keychain kaydı: ❌ yok"
+        durum="Keychain kaydı: ❌ yok"
+    fi
+    if [ "$fzf_card" = 1 ]; then
+        clear
+        ui_screen "Ana menü › ${prefix} › Keychain passphrase"   # fzf: başlık kenarlıkta, durum başlık kutusunda
+    else
+        echo ""; echo "$durum"
     fi
     if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local -a UI_PICK_DESCS=("Passphrase'i Keychain'e kaydeder veya günceller; kayıttan sonra key'i açarak doğrular." "Keychain'deki passphrase kaydını siler (key dosyası silinmez).")
+        if [ "$fzf_card" = 1 ]; then
+            # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+            UI_PICK_DESCS=("$(ui_card_head '🔑 Kaydet / güncelle'; ui_card_row Hesap "$account"; printf '\nPassphrase güvenli sorulur (ekranda görünmez);\nkayıttan sonra key agent'"'"'tan çıkarılıp yeniden eklenerek doğrulanır.\n')"
+                "$(ui_card_head '🗑️  Sil'; ui_card_row Hesap "$account"; printf '\nKeychain'"'"'deki passphrase kaydı silinir.\n⚠ Key dosyası silinmez.\n')")
+            # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+            local UI_PICK_WIDE=1 UI_PICK_HEIGHT=14 UI_PICK_HEADER=""
+            # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+            UI_PICK_HEADER="$durum"
+            ui_fit_wide 3 3
+        fi
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local UI_PICK_BACK_DESC="Sunucu menüsüne döner."
         choice=$(ui_pick_arrows 1 "Geri" "Kaydet / güncelle" "Sil")
