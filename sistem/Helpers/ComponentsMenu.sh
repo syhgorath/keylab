@@ -265,6 +265,24 @@ _comp_menu_action_card() {
     _comp_menu_action_card_tail "$1" "$2" "$3" "$4"
 }
 
+# _comp_menu_vars_card <component.json> <vars-dosyası> → "Değişkenler" satırının kartı: kaç değişken yazılı, YAZILI değerler (⚠ = paketin uyardığı değer)
+# Yalnızca okur (tek awk geçişi). Dosyada yazılı olmayan değişkenler varsayılanda kalır ve listelenmez.
+_comp_menu_vars_card() {
+    local mf="$1" vf="$2" max=12
+    [ -f "$vf" ] || { printf 'Henüz değer yazılmadı: tüm değişkenler varsayılanda.'; return 0; }
+    comp_vars_describe "$mf" "$vf" 2>/dev/null | awk -F'\t' -v VF="$vf" -v MAX="$max" '
+        BEGIN { while ((getline l < VF) > 0) { i = index(l, "="); if (i > 1) v[substr(l, 1, i - 1)] = substr(l, i + 1) } }
+        { total++ }
+        ($1 in v) { w++; val = v[$1]; if (length(val) > 44) val = substr(val, 1, 43) "…"
+                    mark = ($7 != "" && v[$1] == $7) ? "⚠" : "•"
+                    if (mark == "⚠") warn++
+                    if (w <= MAX) line[w] = mark " " $1 " = " val }
+        END { printf "Yazılı: %d / %d değişken%s\n", w, total, (warn > 0 ? " · ⚠ " warn " riskli değer" : "")
+              for (i = 1; i <= w && i <= MAX; i++) print line[i]
+              if (w > MAX) printf "… ve %d tane daha\n", w - MAX
+              print "(Yazılmayanlar varsayılanda; ⚠ = paketin uyardığı değer)" }'
+}
+
 # _comp_menu_history_card <paket> <sunucu> → Geçmiş satırının kartı: son 5 çalıştırma ve son günlüğün son 8 satırı (fzf sağ bölmesi)
 _comp_menu_history_card() {
     local id="$1" server="$2" log t v act res sdir n=0
@@ -550,7 +568,7 @@ comp_menu_actions() {
             local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_START=1 UI_PICK_TITLE="Sunucu › $server › Paketler › $id $COMP_MENU_VER" UI_PICK_HEADER=""
             UI_PICK_HEADER=$(_comp_menu_prep_text "$id" "$server" "$info" "$missing" | while IFS= read -r m; do _comp_menu_wrap "$(( ${SSHPOCKET_COLS:-$(tput cols 2>/dev/null || echo 80)} - 6 ))" "   " "$m"; done)
             [ "$hidden" -eq 0 ] || UI_PICK_HEADER="$UI_PICK_HEADER"$'\n'"ℹ️  $hidden eylem bu platforma uygun olmadığı için gizlendi"
-            UI_PICK_DESCS+=("Paket değişkenlerini görüntüler ve düzenler (${COMP_MENU_VARS##*/}); değerler kaydedilmeden önce doğrulanır."$'\n'"Zorunlu eksik: $(printf '%s' "${missing:-yok}" | tr '\n' ' ')")
+            UI_PICK_DESCS+=("Paket değişkenlerini görüntüler ve düzenler (${COMP_MENU_VARS##*/}); değerler kaydedilmeden önce doğrulanır."$'\n'"Zorunlu eksik: $(printf '%s' "${missing:-yok}" | tr '\n' ' ')"$'\n'"$(_comp_menu_vars_card "$COMP_MENU_MF" "$COMP_MENU_VARS")")
             for name in "${names[@]}"; do UI_PICK_DESCS+=("$(_comp_menu_action_card "$info" "$id" "$server" "$name" "$missing")"); done
             [ "$ko" = 0 ] || UI_PICK_DESCS+=("preview'ı sonra audit'i art arda çalıştırır; sonunda tek özet (değişecek sayısı, Lynis puanı, bulgular)."$'\n'"Her ikisinin kendi onayı/kapısı aynen geçerlidir.")
             UI_PICK_DESCS+=("$(_comp_menu_history_card "$id" "$server")")

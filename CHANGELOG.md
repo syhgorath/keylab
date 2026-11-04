@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **Sunucu kartı (ana menü, fzf sağ bölmesi):** her sunucu satırının açıklaması artık genel bir cümle değil, o sunucunun kartı: durum simgesi (menünün mevcut yoklamasından), `kullanıcı@ip:port`, anahtar ve knock durumu, kurulu pakette son preview/apply/audit kaydı ve son Lynis skoru, tam `ssh` komutu. Yalnızca yerel veriyi okur (`server.env`, `components.log`, sonuç klasörü); ssh yapmaz.
+- **Değişkenler kartı (paket eylem paneli):** "📝 Değişkenler" satırının sağ bölmesi artık yazılı değer sayısını ve değerleri listeler; paketin uyardığı değer (`warn_if`) ⚠ ile işaretlenir.
+
 ### Değişti
 - **fzf / ok tuşu uyumu (beş ekran):** daha önce yalnız düz `read` ile numara/harf soran yerler ortak seçiciye (`ui_pick`) taşındı; `UI=numbers` ve fzf'siz yedekleri aynen duruyor. **Knock ayarları** menüsü; **sunucu eklerken platform seçimi** (açıklamalar fzf sağ bölmesinde); **sunucu eklerken izinli ağ (CIDR) editörü** artık paket menüsündeki Değişkenler ekranıyla aynı liste editörü; **~/.ssh/config'ten içe aktar** çoklu seçimi (Enter işaretler, "İçe aktar" onaylar); **Sunucuları yönet › Sil / Yeniden adlandır** sunucuyu listeden seçtirir (silmede ad yazarak onay hâlâ gerekir).
 

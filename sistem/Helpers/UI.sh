@@ -255,7 +255,13 @@ _ui_pick_builtin() {
 # Ana menü girdileri için açıklama. Parametre: işlev adı (server:<ad> dahil)
 ui_describe_entry() {
     case "$1" in
-        server:*)              printf 'Sunucu menüsünü açar: bağlan, key gönder, bilgileri güncelle, Keychain passphrase, knock ayarları.' ;;
+        server:*)
+            # kart: yerel veriden (bkz. server_card); yoksa genel açıklama. $2 = durum simgesi
+            if declare -F server_card >/dev/null && [ -n "$(server_card "${1#server:}" "${2:-}" 2>/dev/null)" ]; then
+                server_card "${1#server:}" "${2:-}" 2>/dev/null
+            else
+                printf 'Sunucu menüsünü açar: bağlan, key gönder, bilgileri güncelle, Keychain passphrase, knock ayarları.'
+            fi ;;
         AddServerAction)       printf "Yeni sunucu ekler: IP/kullanıcı/port sorar, isterseniz ed25519 key üretir, passphrase'i Keychain'e kaydeder." ;;
         ImportSSHConfigAction) printf '%s' 'SSH config dosyasındaki (~/.ssh/config) sunucuları buraya aktarır; private key dosyaları kopyalanmaz, yolları kaydedilir.' ;;
         ManageServersAction)   printf 'Sunucuları listeler, siler veya yeniden adlandırır (silmede sunucu adını yazarak onaylarsınız).' ;;

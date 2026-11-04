@@ -614,3 +614,33 @@ liste_motoru() {
     [ -d "$SANDBOX/servers/gamma" ] || { echo "$output"; false; }
     [ ! -e "$SANDBOX/servers/beta" ] && [ -d "$SANDBOX/servers/alpha" ]
 }
+
+@test "sunucu kartı: kimlik, anahtar/knock, paket geçmişi ve son Lynis skoru yerel veriden; ssh yok" {
+    export SSHPOCKET_SERVERS_DIR="$BATS_TEST_TMPDIR/srv" SSHPOCKET_STATE_DIR="$BATS_TEST_TMPDIR/state"
+    mkdir -p "$SSHPOCKET_SERVERS_DIR/alpha" "$BATS_TEST_TMPDIR/state/demo/alpha/out/alpha/20261104-100000" "$BATS_TEST_TMPDIR/state/demo/alpha/out/alpha/20261104-181118"
+    printf 'IP=192.0.2.7\nUSER=deploy\nPORT=2222\n' > "$SSHPOCKET_SERVERS_DIR/alpha/server.env"
+    touch "$SSHPOCKET_SERVERS_DIR/alpha/id_ed25519_alpha"
+    printf '2026-11-04T15:55:06Z|demo|1.2.0|preview|ok\n2026-11-04T16:08:03Z|demo|1.2.0|apply|fail\n' > "$SSHPOCKET_SERVERS_DIR/alpha/components.log"
+    printf '{"hardening_index": 41}\n' > "$BATS_TEST_TMPDIR/state/demo/alpha/out/alpha/20261104-100000/summary.json"
+    printf '{\n  "hardening_index": 56\n}\n' > "$BATS_TEST_TMPDIR/state/demo/alpha/out/alpha/20261104-181118/summary.json"
+    run server_card alpha 🟢
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Durum: 🟢"* && "$output" == *"deploy@192.0.2.7:2222"* && "$output" == *"Anahtar: ✅ var · Knock: kapalı"* ]] || { echo "$output"; false; }
+    [[ "$output" == *"📦 demo 1.2.0"* && "$output" == *"preview 11-04 15:55 ✅"* && "$output" == *"apply 11-04 16:08 ❌"* ]] || { echo "$output"; false; }
+    [[ "$output" == *"Lynis skoru: 56"* && "$output" == *'$ ssh -p 2222 deploy@192.0.2.7'* ]] || { echo "$output"; false; }
+    # geçersiz ad: boş; paket kaydı olmayan sunucuda paket bölümü yok
+    [ -z "$(server_card 'x;y')" ]
+    mkdir -p "$SSHPOCKET_SERVERS_DIR/beta"; printf 'IP=192.0.2.8\nUSER=root\n' > "$SSHPOCKET_SERVERS_DIR/beta/server.env"
+    run server_card beta 🔴
+    [[ "$output" == *"Durum: 🔴"* && "$output" == *"Anahtar: ❌"* && "$output" != *"📦"* ]] || { echo "$output"; false; }
+}
+
+@test "ui_describe_entry: server:* kartı kullanır, sunucu bilgisi yoksa genel açıklamaya düşer" {
+    export SSHPOCKET_SERVERS_DIR="$BATS_TEST_TMPDIR/srv"
+    mkdir -p "$SSHPOCKET_SERVERS_DIR/alpha"
+    printf 'IP=192.0.2.7\nUSER=deploy\n' > "$SSHPOCKET_SERVERS_DIR/alpha/server.env"
+    run ui_describe_entry server:alpha 🟢
+    [[ "$output" == *"deploy@192.0.2.7:22"* ]] || { echo "$output"; false; }
+    run ui_describe_entry server:yok
+    [[ "$output" == *"Sunucu menüsünü açar"* ]] || { echo "$output"; false; }
+}

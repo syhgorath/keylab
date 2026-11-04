@@ -69,7 +69,7 @@ Menu() {
     done
     wait
   fi
-  local row_text=()
+  local row_text=() row_mark=()
   i=1
   while [ $i -le $count ]; do
     local func_name="${module_array[$i]}"
@@ -81,6 +81,7 @@ Menu() {
     local mark=""
     if [ -n "$status_dir" ] && [ -f "$status_dir/$i" ]; then
       mark="$(cat "$status_dir/$i") "
+      row_mark[i - 1]="${mark% }"
     fi
     local detail=""
     case "$func_name" in
@@ -102,7 +103,7 @@ Menu() {
     local di=0
     while [ "$di" -lt "$count" ]; do
       # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
-      UI_PICK_DESCS[di]=$(ui_describe_entry "${module_array[$((di + 1))]}")
+      UI_PICK_DESCS[di]=$(ui_describe_entry "${module_array[$((di + 1))]}" "${row_mark[$di]:-}")
       di=$((di + 1))
     done
     # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur

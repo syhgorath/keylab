@@ -1021,3 +1021,14 @@ PY
     run comp_menu_actions demo web1 <<<"0"
     [[ "$output" != *"hangi türde"* ]] || { echo "$output"; false; }
 }
+
+@test "değişkenler kartı: yazılı değer sayısı, değerler, ⚠ paketin uyardığı değer; dosya yoksa söyler" {
+    setup_state
+    printf '{"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"ansible","inventory_group":"x","profiles":[{"id":"u","status":"supported"}],"actions":{"preview":{"cmd":"a","effects":[]}},"vars":[{"name":"a","type":"string","default":"x"},{"name":"b","type":"bool","default":true,"warn_if":false},{"name":"c","type":"int","default":1}]}' > "$T/m.json"
+    run _comp_menu_vars_card "$T/m.json" "$T/yok.vars"
+    [[ "$output" == *"Henüz değer yazılmadı"* ]] || { echo "$output"; false; }
+    printf 'a=merhaba\nb=false\n' > "$T/v.vars"
+    run _comp_menu_vars_card "$T/m.json" "$T/v.vars"
+    [[ "$output" == *"Yazılı: 2 / 3 değişken · ⚠ 1 riskli değer"* && "$output" == *"• a = merhaba"* && "$output" == *"⚠ b = false"* ]] || { echo "$output"; false; }
+    [[ "$output" != *"c ="* ]] || false
+}
