@@ -688,3 +688,20 @@ liste_motoru() {
     UI_PICK_DESCS=(); _ssh_module_cards ALPHA deploy 192.0.2.7 22 "$D/yok" "$D" 0
     [ "${#UI_PICK_DESCS[@]}" -eq 5 ]
 }
+
+@test "ui_fit_wide: kısa terminalde başlık kısaltılır ve liste en az 10 satır kalır; uzun terminalde başlık tam" {
+    local hdr=$'bir\niki\nüç\ndört\nbeş\naltı\nyedi\nsekiz\ndokuz'
+    UI_PICK_HEADER="$hdr"; UI_PICK_HEIGHT=""
+    SSHPOCKET_ROWS=25 ui_fit_wide 17 10
+    # izin verilen başlık: 24 - 11 - 10 = 3 satır → 2 satır + "… +N" satırı
+    [ "$(printf '%s\n' "$UI_PICK_HEADER" | wc -l | tr -d ' ')" -eq 3 ]
+    [[ "$UI_PICK_HEADER" == "bir"$'\n'"iki"$'\n'"… +7 satır"* ]] || { echo "$UI_PICK_HEADER"; false; }
+    [ "$UI_PICK_HEIGHT" -eq 24 ]
+    UI_PICK_HEADER="$hdr"; UI_PICK_HEIGHT=""
+    SSHPOCKET_ROWS=60 ui_fit_wide 17 10
+    [ "$UI_PICK_HEADER" = "$hdr" ]
+    [ "$UI_PICK_HEIGHT" -eq $((11 + 9 + 17)) ]
+    # başlık yoksa yalnızca yükseklik
+    UI_PICK_HEADER=""; SSHPOCKET_ROWS=40 ui_fit_wide 5 10
+    [ -z "$UI_PICK_HEADER" ] && [ "$UI_PICK_HEIGHT" -eq $((11 + 5)) ]
+}

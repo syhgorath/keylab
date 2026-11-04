@@ -38,6 +38,27 @@ ui_paint() {
     if [ "$on" = 1 ]; then printf '\033[%sm%s\033[0m' "$code" "$text"; else printf '%s' "$text"; fi
 }
 
+# ui_fit_wide <liste-satırı> [en-az-liste=10] → geniş fzf düzeninde (UI_PICK_WIDE) başlığı terminal yüksekliğine sığdırır: liste en az N satır görünür.
+# Çağıranın UI_PICK_HEADER'ını (gerekirse baştaki satırları tutup kısaltarak) ve UI_PICK_HEIGHT'ını dinamik kapsamla ayarlar. <liste-satırı>: Geri dahil öğe sayısı.
+# Çerçeve payı: üst/alt kenar 2 + Ara kutusu 4 + başlık kutusu 2 + ipucu satırı 1 + liste kutusu 2 = 11. Test için SSHPOCKET_ROWS.
+ui_fit_wide() {
+    local nlist="$1" minl="${2:-10}" rows chrome=11 allowed nh keep hdr want max
+    rows="${SSHPOCKET_ROWS:-$(tput lines 2>/dev/null)}"; [[ "$rows" =~ ^[0-9]+$ ]] || rows=24
+    [ "$minl" -le "$nlist" ] || minl="$nlist"
+    max=$((rows - 1))
+    allowed=$((max - chrome - minl)); [ "$allowed" -ge 1 ] || allowed=1
+    hdr="${UI_PICK_HEADER:-}"
+    nh=0; [ -z "$hdr" ] || nh=$(printf '%s\n' "$hdr" | awk 'END { print NR }')
+    if [ "$nh" -gt "$allowed" ]; then
+        keep=$((allowed - 1)); [ "$keep" -ge 1 ] || keep=1
+        hdr="$(printf '%s\n' "$hdr" | head -n "$keep")"$'\n'"… +$((nh - keep)) satır (ayrıntı: Geçmiş ve son sonuçlar)"
+        nh=$((keep + 1))
+    fi
+    want=$((chrome + nh + nlist)); [ "$want" -le "$max" ] || want="$max"
+    # shellcheck disable=SC2034  # _ui_pick_fzf (çağıranın dinamik kapsamı) okur
+    UI_PICK_HEADER="$hdr"; UI_PICK_HEIGHT="$want"
+}
+
 # ---- fzf kartları: ortak biçim (bölüm başlığı, etiket sütunu, renklendirici). Renk yalnız fzf etkinken ve NO_COLOR yokken; aksi hâlde düz metin ----
 # ui_card_on → 0: kart renkli çizilir
 ui_card_on() { [ -z "${NO_COLOR:-}" ] && declare -F ui_fzf_enabled >/dev/null && ui_fzf_enabled; }
