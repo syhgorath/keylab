@@ -62,7 +62,7 @@ ui_fit_wide() {
     [ "$(_ui_term_cols)" -ge "$UI_NARROW_COLS" ] || pv="$UI_NARROW_PREVIEW"
     [ "$minl" -le "$nlist" ] || minl="$nlist"
     max=$((rows - 1))
-    allowed=$((max - pv - chrome - minl)); [ "$allowed" -ge 1 ] || allowed=1
+    allowed=$((max - pv - chrome - minl)); [ "$allowed" -ge 3 ] || allowed=3   # çok küçük terminalde bile başlığın ilk 3 satırı (en önemli bilgi) kalır
     hdr="${UI_PICK_HEADER:-}"
     nh=0; [ -z "$hdr" ] || nh=$(printf '%s\n' "$hdr" | awk 'END { print NR }')
     if [ "$nh" -gt "$allowed" ]; then
