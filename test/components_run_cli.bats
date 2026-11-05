@@ -309,7 +309,8 @@ CASES
     FAKE_SKEW=-1800 FAKE_TZ_OUT=$'Timezone=Europe/Istanbul\nNTPSynchronized=yes' run comp_cli_run demo preview web1 </dev/null
     [ "$status" -eq 0 ]
     [[ "$output" == *"saat dilimi: Europe/Istanbul"* ]] || false
-    [[ "$output" == *"Bu bilgisayar:"* && "$output" == *"Fark: 30 dk 0 sn geride"* ]] || false
+    # sahte ssh uzak saati kendi `date`'iyle üretir, sshpocket yerel saati sonra okur: saniye arada dönerse fark 1-2 sn kayar (yavaş runner'da olur)
+    [[ "$output" == *"Bu bilgisayar:"* && "$output" =~ Fark:\ 30\ dk\ [0-2]\ sn\ geride ]] || { echo "$output"; false; }
     [[ "$output" == *"TOTP/2FA"* ]] || false
     [[ "$output" == *"ssh -t -p 22 -i "*"ziya@10.1.10.193 'sudo systemctl restart chrony; sleep 8; sudo chronyc makestep; date -u'"* ]] || false
     [[ "$output" != *"NTPSynchronized=no"* ]] || false
