@@ -175,7 +175,8 @@ SettingsAction() {
                     "$(_settings_card UI 'auto (fzf varsa fzf, yoksa ok tuşları) · fzf · arrows · numbers. Enter: sıradakine geç.')"
                     "$(ui_card_head '🧹 Eski paket sürümleri'; printf '\nGüncellemelerde yan yana biriken eski sürümleri listeler ve silinmesini sorar\n(etkin + önceki + kilitteki sürüm kalır).\n')")
                 # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
-                local UI_PICK_WIDE=1 UI_PICK_TITLE="Ana menü › Ayarlar" UI_PICK_HEIGHT=18
+                local UI_PICK_WIDE=1 UI_PICK_TITLE="Ana menü › Ayarlar" UI_PICK_HEIGHT="" UI_PICK_HEADER=""
+                ui_fit_wide 6 6
             fi
             choice=$(ui_pick_arrows 1 "Geri" \
                 "$(printf '%-28s %s%s' "$(_settings_label STATUS)" "$(settings_get STATUS)" "$(_settings_note STATUS)")" \

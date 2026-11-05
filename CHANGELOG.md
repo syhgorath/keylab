@@ -4,6 +4,13 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Düzeltildi
+- **fzf kartı gereksiz yere alta düşüyordu:** fzf'in `<N(...)` eşiği terminalin değil önizleme penceresinin genişliğine bakar; sağ önizleme %48 olduğundan eşik fiilen ~208 sütundu (120 sütunda kart alta iniyordu). Eşik artık önizleme genişliğine göre ayarlı (`<48` = terminalde 100 sütun).
+
+### Değişti
+- **fzf pencereleri kompakt ve duyarlı:** sığıyorsa liste solda kart sağda, sığmıyorsa kart alta; yükseklik ekran başına sabit değil ortak kuralla (`ui_fit_wide`) liste satırı kadar, liste en az 10 satır görünür (ana menü, Ayarlar, platform seçimi, değer seçici, liste editörü, Değişkenler dahil). Dar düzende kart satırı liste için en çok 12 satır ayrıldıktan sonra kalan yeri alır.
+- **Çok geniş terminalde (160 sütundan fazla) fzf genişliği sınırlanır ve ortalanır** (`UI_MAX_COLS`, `--margin`); satırlar 250 sütunda aşırı uzamaz.
+
 ## [3.6.22] - 2026-11-05
 
 Bu yama sürümü yalnızca arayüzdür (paket kilidi 0.12.1 değişmedi): fzf'te sunucu ve eylem kartları, renk dili, ortak ekran kuralı (yol çubuğu bir kez, bilgi başlık kutusunda), dar terminalde kartın alta alınması, başarısız eylemde `Neden:` satırı ve güncellemenin Paketler panelinin altına alınması.
@@ -14,7 +21,7 @@ Bu yama sürümü yalnızca arayüzdür (paket kilidi 0.12.1 değişmedi): fzf't
 - **Değişkenler kartı (paket eylem paneli):** "📝 Değişkenler" satırının sağ bölmesi artık yazılı değer sayısını ve değerleri listeler; paketin uyardığı değer (`warn_if`) ⚠ ile işaretlenir.
 
 ### Değişti
-- **Dar terminalde (100 sütundan az) fzf kartı alta alınır:** sağdaki kart ~38 sütuna sıkışıp satırları kırıyordu; artık liste tam genişlikte, kart altta 10 satır (fzf `<100(down,…)` alternatif yerleşimi). Sabit yükseklikli ekranlara kart satırları eklenir, terminal yüksekliğini aşmaz; `ui_fit_wide` başlık payını dar terminalde buna göre düşürür.
+- **Dar terminalde (100 sütundan az) fzf kartı alta alınır:** sağdaki kart ~38 sütuna sıkışıp satırları kırıyordu; artık liste tam genişlikte, kart altta 10 satır (fzf `<48(down,…)` önizleme-genişliği eşiği). Sabit yükseklikli ekranlara kart satırları eklenir, terminal yüksekliğini aşmaz; `ui_fit_wide` başlık payını dar terminalde buna göre düşürür.
 - **Başarısız eylem sonuç panelinde NEDEN görünür:** `❌ Başarısız (çıkış N)` satırının altına `Neden: …` eklendi; Ansible `fatal` satırındaki betik çıktısı (örn. rollback `disarm`'ın `HATA: geri alma zamanlayıcısı … tetiklenmiş` iletisi) ya da `msg` en çok 3 satır gösterilir. Daha önce bu metin yalnızca günlükte (`last-run.log`) ve kaydırma bölgesinin `fatal` satırında kalıyordu. Başarıda ve kapı reddinde görünmez.
 - **fzf / ok tuşu uyumu (beş ekran):** daha önce yalnız düz `read` ile numara/harf soran yerler ortak seçiciye (`ui_pick`) taşındı; `UI=numbers` ve fzf'siz yedekleri aynen duruyor. **Knock ayarları** menüsü; **sunucu eklerken platform seçimi** (açıklamalar fzf sağ bölmesinde); **sunucu eklerken izinli ağ (CIDR) editörü** artık paket menüsündeki Değişkenler ekranıyla aynı liste editörü; **~/.ssh/config'ten içe aktar** çoklu seçimi (Enter işaretler, "İçe aktar" onaylar); **Sunucuları yönet › Sil / Yeniden adlandır** sunucuyu listeden seçtirir (silmede ad yazarak onay hâlâ gerekir).
 
