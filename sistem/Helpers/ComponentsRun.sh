@@ -90,5 +90,14 @@ comp_run_build_argv() {
         fi
         [ "${rest#*|}" = "yes" ] && COMP_RUN_INTERACTIVE=1
     done < <(comp_info_all "$info" invoke)
+    # requires_sudo: sudo parolası Ansible'ın kendi isteminden ('BECOME password:') alınır (standart §5). Paket invoke.append'e
+    # --ask-become-pass yazmamış olsa da eklenir; yoksa parolalı sudo'da eylem istem çıkmadan "Missing sudo password" ile düşerdi.
+    if [ "$(comp_action_get "$info" "$action" sudo)" = "yes" ]; then
+        local has_ask=0
+        for w in "${COMP_RUN_ARGV[@]}"; do
+            if [ "$w" = "--ask-become-pass" ] || [ "$w" = "-K" ]; then has_ask=1; fi
+        done
+        if [ "$has_ask" = 0 ]; then COMP_RUN_ARGV+=(--ask-become-pass); COMP_RUN_INTERACTIVE=1; fi
+    fi
     return 0
 }

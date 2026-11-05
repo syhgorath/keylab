@@ -85,7 +85,14 @@ tmpleft() { ls -d "$T"/tmp/sshpocket-run.* 2>/dev/null | wc -l | tr -d ' '; }
     [[ "$output" == *"NOPASSWD"* ]] || false
     local noask="${INFO/invoke=--ask-become-pass||yes|yes/}"
     [ "$noask" != "$INFO" ]
+    # invoke yok ama eylem requires_sudo ise sshpocket --ask-become-pass'i kendisi ekler: açıklama yine yazılır
     run comp_exec_action "$noask" demo 1.0.0 preview </dev/null
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Sudo parolası istenecek"* ]] || false
+    # ne invoke ne requires_sudo: parola istemi ve açıklama yok
+    local nosudo="${noask/action.preview.sudo=yes/action.preview.sudo=no}"
+    [ "$nosudo" != "$noask" ]
+    run comp_exec_action "$nosudo" demo 1.0.0 preview </dev/null
     [ "$status" -eq 0 ]
     [[ "$output" != *"Sudo parolası"* ]] || false
 }
