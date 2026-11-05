@@ -663,10 +663,25 @@ liste_motoru() {
     unset -f _ui_read_key; source "$H/UI.sh"
     make_fake_fzf
     export SSHPOCKET_UI=fzf
+    export SSHPOCKET_COLS=130 SSHPOCKET_ROWS=50   # geniş terminal: kart sağda
     UI_PICK_WIDE=1 run ui_pick_arrows 1 "Geri" "A"
     grep -qx -- '--height=85%' "$BATS_TEST_TMPDIR/fzf.args"
     UI_PICK_WIDE=1 UI_PICK_HEIGHT=20 run ui_pick_arrows 1 "Geri" "A"
     grep -qx -- '--height=20' "$BATS_TEST_TMPDIR/fzf.args"
+    # kart yerleşimi: geniş = sağ %48; dar (<100 sütun) = alta, 10 satır
+    grep -qx -- '--preview-window=right,48%,wrap,<100(down,10,wrap,border-top)' "$BATS_TEST_TMPDIR/fzf.args"
+}
+
+@test "fzf dar terminal (<100 sütun): sabit yüksekliğe kart satırları (10) eklenir, terminal yüksekliğini aşmaz; yüzde olan değişmez" {
+    unset -f _ui_read_key; source "$H/UI.sh"
+    make_fake_fzf
+    export SSHPOCKET_UI=fzf SSHPOCKET_COLS=80 SSHPOCKET_ROWS=40
+    UI_PICK_WIDE=1 UI_PICK_HEIGHT=20 run ui_pick_arrows 1 "Geri" "A"
+    grep -qx -- '--height=30' "$BATS_TEST_TMPDIR/fzf.args"
+    UI_PICK_WIDE=1 UI_PICK_HEIGHT=35 run ui_pick_arrows 1 "Geri" "A"
+    grep -qx -- '--height=39' "$BATS_TEST_TMPDIR/fzf.args"          # rows-1 ile sınırlı
+    UI_PICK_WIDE=1 run ui_pick_arrows 1 "Geri" "A"
+    grep -qx -- '--height=85%' "$BATS_TEST_TMPDIR/fzf.args"
 }
 
 @test "ayar kartı: değer, kaynak ve varsayılan; renk kapalıyken düz" {
@@ -692,6 +707,7 @@ liste_motoru() {
 @test "ui_fit_wide: kısa terminalde başlık kısaltılır ve liste en az 10 satır kalır; uzun terminalde başlık tam" {
     local hdr=$'bir\niki\nüç\ndört\nbeş\naltı\nyedi\nsekiz\ndokuz'
     UI_PICK_HEADER="$hdr"; UI_PICK_HEIGHT=""
+    export SSHPOCKET_COLS=130   # geniş terminal: kart sağda, başlık payı değişmez
     SSHPOCKET_ROWS=25 ui_fit_wide 17 10
     # izin verilen başlık: 24 - 11 - 10 = 3 satır → 2 satır + "… +N" satırı
     [ "$(printf '%s\n' "$UI_PICK_HEADER" | wc -l | tr -d ' ')" -eq 3 ]
@@ -738,4 +754,26 @@ liste_motoru() {
     [ "$status" -eq 0 ]
     printf 'Etkiler: yok\n✅ iyi\n' | ui_card_colorize > "$BATS_TEST_TMPDIR/out"
     run ! grep -q $'\033' "$BATS_TEST_TMPDIR/out"
+}
+
+@test "ui_fit_wide dar terminal (<100 sütun): kart alta alınacağından başlık payı 10 satır azalır, yükseklik üst sınırı 10 düşer" {
+    local hdr=$'bir\niki\nüç\ndört\nbeş\naltı\nyedi\nsekiz\ndokuz'
+    UI_PICK_HEADER="$hdr"; UI_PICK_HEIGHT=""
+    # rows 40, cols 80: max=39, pv=10, allowed=39-10-11-10=8 → 7 satır + "…" ; want=min(11+8+17, 39-10)=29
+    SSHPOCKET_COLS=80 SSHPOCKET_ROWS=40 ui_fit_wide 17 10
+    [ "$(printf '%s\n' "$UI_PICK_HEADER" | wc -l | tr -d ' ')" -eq 8 ]
+    [[ "$UI_PICK_HEADER" == *"… +2 satır"* ]] || { echo "$UI_PICK_HEADER"; false; }
+    [ "$UI_PICK_HEIGHT" -eq 29 ]
+}
+
+@test "dar düzende kart satırı dinamik: liste önce (en çok 8 satır), kart kalan yer; 4 ile 10 arası" {
+    unset -f _ui_read_key; source "$H/UI.sh"
+    [ "$(_ui_narrow_pv 24 7)" -eq 5 ]      # 24-1-11-7
+    [ "$(_ui_narrow_pv 50 7)" -eq 10 ]     # üst sınır
+    [ "$(_ui_narrow_pv 14 12)" -eq 4 ]     # çok kısa terminal: alt sınır
+    [ "$(_ui_narrow_pv 30 3)" -eq 10 ]
+    make_fake_fzf
+    export SSHPOCKET_UI=fzf SSHPOCKET_COLS=40 SSHPOCKET_ROWS=24
+    UI_PICK_WIDE=1 run ui_pick_arrows 1 "Geri" A B C D E F
+    grep -qx -- '--preview-window=right,48%,wrap,<100(down,5,wrap,border-top)' "$BATS_TEST_TMPDIR/fzf.args"
 }
