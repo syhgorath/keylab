@@ -48,7 +48,9 @@ ui_paint() {
 }
 
 # Terminal boyutu (test için SSHPOCKET_ROWS / SSHPOCKET_COLS). Dar terminalde (UI_NARROW_COLS sütundan az) sağ kart yerine kart ALTA alınır (sabit UI_NARROW_PREVIEW satır).
-UI_NARROW_COLS=100; UI_NARROW_PREVIEW=10
+# UI_MAX_COLS: çok geniş terminalde (örn. 250 sütun) fzf bu genişliğe sınırlanır ve ortalanır (satırlar aşırı uzamaz).
+# fzf'in `<N(...)` eşiği ÖNİZLEME penceresinin genişliğine bakar (terminale değil): sağ önizleme %48 olduğundan eşik = UI_NARROW_COLS*48/100.
+UI_NARROW_COLS=100; UI_NARROW_PREVIEW=10; UI_MAX_COLS=160; UI_PREVIEW_PCT=48
 _ui_term_rows() { local r="${SSHPOCKET_ROWS:-$(tput lines 2>/dev/null)}"; [[ "$r" =~ ^[0-9]+$ ]] || r=24; printf '%s' "$r"; }
 # _ui_narrow_pv <terminal-satırı> <liste-satırı> → dar düzende kartın satır sayısı: ÖNCE liste (en çok 8 satır) görünsün, kart kalan yeri alsın (en az 4, en çok UI_NARROW_PREVIEW)
 _ui_narrow_pv() {
@@ -265,7 +267,7 @@ _ui_pick_fzf() {
         ver=$(ui_fzf_version "$fzf_bin")
         opts=(--delimiter=$'\t' --with-nth=2.. --layout=reverse --height="$hgt" --min-height=12
               --no-sort --cycle --prompt='› '
-              --preview "awk -v n={1} 'NR==n+1 {gsub(/\037/,\"\\n\"); print}' '$tmp/desc'" --preview-window="right,48%,wrap,<$UI_NARROW_COLS(down,$npv,wrap,border-top)"
+              --preview "awk -v n={1} 'NR==n+1 {gsub(/\037/,\"\\n\"); print}' '$tmp/desc'" --preview-window="right,$UI_PREVIEW_PCT%,wrap,<$((UI_NARROW_COLS * UI_PREVIEW_PCT / 100))(down,$npv,wrap,border-top)"
               --bind 'left:abort' --bind "start:pos($sel)")
         hdr="${hdr:+$hdr$'\n'}Enter: aç · ←/Esc: geri · yazarak ara${UI_PICK_EXPECT_HINT:+ · $UI_PICK_EXPECT_HINT}"
         opts+=(--header="$hdr")
@@ -282,6 +284,9 @@ _ui_pick_fzf() {
     if [ -z "${UI_PICK_WIDE:-}" ] && [ -n "${UI_SCREEN_TITLE:-}" ] && [ "$(ui_fzf_version "$fzf_bin")" -ge 3500 ]; then
         # dar düzende de başlık kenarlıkta (ui_screen ekranı ayrıca basmaz)
         opts+=(--border=rounded --border-label=" $UI_SCREEN_TITLE ")
+    fi
+    if [ -n "${UI_PICK_WIDE:-}" ] && [ "$(_ui_term_cols)" -gt "$UI_MAX_COLS" ]; then
+        opts+=(--margin="0,$(( ($(_ui_term_cols) - UI_MAX_COLS) / 2 ))")   # çok geniş terminal: azami genişlik, ortalı
     fi
     [ -z "${UI_PICK_EXPECT:-}" ] || opts+=(--expect="$UI_PICK_EXPECT")
     out=$("$fzf_bin" "${opts[@]}" < "$tmp/list")

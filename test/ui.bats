@@ -669,7 +669,7 @@ liste_motoru() {
     UI_PICK_WIDE=1 UI_PICK_HEIGHT=20 run ui_pick_arrows 1 "Geri" "A"
     grep -qx -- '--height=20' "$BATS_TEST_TMPDIR/fzf.args"
     # kart yerleşimi: geniş = sağ %48; dar (<100 sütun) = alta, 10 satır
-    grep -qx -- '--preview-window=right,48%,wrap,<100(down,10,wrap,border-top)' "$BATS_TEST_TMPDIR/fzf.args"
+    grep -qx -- '--preview-window=right,48%,wrap,<48(down,10,wrap,border-top)' "$BATS_TEST_TMPDIR/fzf.args"
 }
 
 @test "fzf dar terminal (<100 sütun): sabit yüksekliğe kart satırları (10) eklenir, terminal yüksekliğini aşmaz; yüzde olan değişmez" {
@@ -775,5 +775,20 @@ liste_motoru() {
     make_fake_fzf
     export SSHPOCKET_UI=fzf SSHPOCKET_COLS=40 SSHPOCKET_ROWS=24
     UI_PICK_WIDE=1 run ui_pick_arrows 1 "Geri" A B C D E F
-    grep -qx -- '--preview-window=right,48%,wrap,<100(down,5,wrap,border-top)' "$BATS_TEST_TMPDIR/fzf.args"
+    grep -qx -- '--preview-window=right,48%,wrap,<48(down,5,wrap,border-top)' "$BATS_TEST_TMPDIR/fzf.args"
+}
+
+@test "fzf geniş düzen: 160 sütundan geniş terminalde azami genişlik (--margin ile ortalı); daha dar terminalde margin yok" {
+    unset -f _ui_read_key; source "$H/UI.sh"
+    make_fake_fzf
+    export SSHPOCKET_UI=fzf SSHPOCKET_ROWS=50
+    SSHPOCKET_COLS=254 UI_PICK_WIDE=1 run ui_pick_arrows 1 "Geri" "A"
+    grep -qx -- '--margin=0,47' "$BATS_TEST_TMPDIR/fzf.args"            # (254-160)/2
+    SSHPOCKET_COLS=130 UI_PICK_WIDE=1 run ui_pick_arrows 1 "Geri" "A"
+    run ! grep -q -- '--margin' "$BATS_TEST_TMPDIR/fzf.args"
+}
+
+@test "fzf önizleme eşiği terminal genişliğine karşılık gelir: <48 = önizleme %48 iken terminal 100 sütundan dar" {
+    unset -f _ui_read_key; source "$H/UI.sh"
+    [ $((UI_NARROW_COLS * UI_PREVIEW_PCT / 100)) -eq 48 ]
 }
