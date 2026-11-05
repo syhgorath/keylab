@@ -845,6 +845,7 @@ comp_menu_vars() {
         UI_PICK_HEADER="${flash:+$flash$'\n'}${hid_note:+$hid_note$'\n'}Grup: $(_comp_menu_group_name "$f_group") · ${#lines[@]}/${#all_lines[@]} değişken · değiştirilen: $nchg${show_ctl:+$([ "${#lines[@]}" -gt 0 ] || echo ' · süzgece uyan değişken yok')}"
         # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
         if [ -n "$glist" ]; then UI_PICK_EXPECT="ctrl-o"; UI_PICK_EXPECT_HINT="Ctrl-O: grup seç"; fi
+        ui_fit_wide "$(( ${#labels[@]} + 1 ))" 10   # uzun liste: kullanılabilir yüksekliğin tamamı; kısa liste kompakt
         pick=$(_comp_menu_pick "Geri" "${labels[@]}")
         if [ "$pick" = "key:ctrl-o" ]; then _comp_menu_pick_group; continue; fi
         [ "$pick" -ge 1 ] 2>/dev/null || return 0
@@ -999,9 +1000,10 @@ _comp_menu_pick_value() {
         UI_PICK_DESCS+=("Bu sunucu için yazılı değeri siler; paket varsayılanı kullanılır${d:+ ($d)}.")
     fi
     # shellcheck disable=SC2034  # ui_pick_arrows / _ui_pick_fzf (dinamik kapsam) okur
-    local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_START="$start" UI_PICK_BACK_DESC="Değeri değiştirmeden listeye döner."
+    local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_START="$start" UI_PICK_BACK_DESC="Değeri değiştirmeden listeye döner." UI_PICK_HEIGHT=""
     # shellcheck disable=SC2034
     local UI_PICK_TITLE="${UI_PICK_TITLE:+$UI_PICK_TITLE › }$n" UI_PICK_HEADER="$t · yazılı: ${cur:-(yok)}${d:+ · varsayılan: $d}"
+    ui_fit_wide "$(( ${#labels[@]} + 1 ))" 3
     pick=$(_comp_menu_pick "Geri (değiştirme)" "${labels[@]}")
     if ! [ "$pick" -ge 1 ] 2>/dev/null; then printf ''
     elif [ "$pick" -le "${#choices[@]}" ]; then printf '%s' "${choices[$((pick - 1))]}"

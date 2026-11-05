@@ -8,6 +8,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 - **fzf kartı gereksiz yere alta düşüyordu:** fzf'in `<N(...)` eşiği terminalin değil önizleme penceresinin genişliğine bakar; sağ önizleme %48 olduğundan eşik fiilen ~208 sütundu (120 sütunda kart alta iniyordu). Eşik artık önizleme genişliğine göre ayarlı (`<48` = terminalde 100 sütun).
 
 ### Değişti
+- **fzf pencereleri kompakt ve duyarlı:** sığıyorsa liste solda kart sağda, sığmıyorsa kart alta; yükseklik ekran başına sabit değil ortak kuralla (`ui_fit_wide`) liste satırı kadar, liste en az 10 satır görünür (ana menü, Ayarlar, platform seçimi, değer seçici, liste editörü, Değişkenler dahil). Dar düzende kart satırı liste için en çok 12 satır ayrıldıktan sonra kalan yeri alır.
 - **Çok geniş terminalde (160 sütundan fazla) fzf genişliği sınırlanır ve ortalanır** (`UI_MAX_COLS`, `--margin`); satırlar 250 sütunda aşırı uzamaz.
 
 ## [3.6.22] - 2026-11-05

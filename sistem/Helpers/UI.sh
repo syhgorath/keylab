@@ -55,7 +55,7 @@ _ui_term_rows() { local r="${SSHPOCKET_ROWS:-$(tput lines 2>/dev/null)}"; [[ "$r
 # _ui_narrow_pv <terminal-satırı> <liste-satırı> → dar düzende kartın satır sayısı: ÖNCE liste (en çok 8 satır) görünsün, kart kalan yeri alsın (en az 4, en çok UI_NARROW_PREVIEW)
 _ui_narrow_pv() {
     local lr="$2" pv
-    [ "$lr" -le 8 ] || lr=8
+    [ "$lr" -le 12 ] || lr=12
     pv=$(( $1 - 1 - 11 - lr )); [ "$pv" -ge 4 ] || pv=4; [ "$pv" -le "$UI_NARROW_PREVIEW" ] || pv="$UI_NARROW_PREVIEW"
     printf '%s' "$pv"
 }
@@ -440,11 +440,12 @@ ui_edit_list() {
         if declare -F ui_screen >/dev/null; then ui_screen "${UI_LIST_TITLE:-Liste} › ${UI_LIST_NAME:-}"; fi
         if ! { declare -F ui_card_on >/dev/null && ui_card_on; }; then [ -z "$msg" ] || { echo "$msg"; echo ""; }; fi   # fzf: ileti başlık kutusunda
         # shellcheck disable=SC2034  # ui_pick_arrows / _ui_pick_fzf (dinamik kapsam) okur
-        local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_START=1 UI_PICK_BACK_DESC="Kaydetmeden döner."
+        local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_START=1 UI_PICK_BACK_DESC="Kaydetmeden döner." UI_PICK_HEIGHT=""
         # shellcheck disable=SC2034
         local UI_PICK_HEADER=""
         UI_PICK_HEADER="${msg:+$msg$'\n'}${UI_LIST_META:-}$([ "$UI_LIST_DIRTY" = 1 ] && echo ' · ✏️ kaydedilmedi')"
         msg=""
+        ui_fit_wide "$(( ${#labels[@]} + 1 ))" 6
         pick=$(ui_pick "Vazgeç (kaydetme)" "${labels[@]}")
         if ! [ "$pick" -ge 1 ] 2>/dev/null; then rm -f -- "$tmpm"; return 1; fi
         act="${acts[$((pick - 1))]}"

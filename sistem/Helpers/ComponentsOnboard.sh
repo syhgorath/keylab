@@ -47,7 +47,8 @@ _comp_onboard_ask_platform() {
         done
         if [ -n "$def" ]; then labels+=("Bilmiyorum (genel / generic seçilir)"); UI_PICK_DESCS+=("Sunucunun türünden emin değilseniz genel (Ubuntu/Debian) ayarlar seçilir."); fi
         # shellcheck disable=SC2034
-        local UI_PICK_HEADER="Bu sunucu hangi türde?" UI_PICK_WIDE=1 UI_PICK_BACK_DESC="Hiçbir şey yazılmaz; pakete ilk girişte yine sorulur." UI_PICK_TITLE="Sunucu ekle › sunucu türü"
+        local UI_PICK_HEIGHT="" UI_PICK_HEADER="Bu sunucu hangi türde?" UI_PICK_WIDE=1 UI_PICK_BACK_DESC="Hiçbir şey yazılmaz; pakete ilk girişte yine sorulur." UI_PICK_TITLE="Sunucu ekle › sunucu türü"
+        ui_fit_wide "$(( ${#labels[@]} + 1 ))" 4
         n=$(ui_pick "Şimdi değil" "${labels[@]}")
         if [ "${n:-0}" -ge 1 ] 2>/dev/null; then
             if [ "$n" -le "${#ids[@]}" ]; then printf '%s' "${ids[$((n - 1))]}"
