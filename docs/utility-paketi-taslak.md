@@ -65,7 +65,7 @@ Sunucunun **temel sistem ayarlarını** (saat dilimi, locale, NTP) sshpocket men
 | Değişkenlerde parola/anahtar yok | §5 (yok) |
 | `requirements.txt` hash'li, `--only-binary :all:` | `ansible-core` sabit, şablondaki gibi |
 | Sürüm üçlüsü, arşiv kökü `<id>-<sürüm>/` | `release.sh` kopyası |
-| `ssh-keygen -Y sign -n sshpocket-component` | aynı imzalayıcı anahtar kullanılmaz kararı: kilit PR'ında imzalayıcı satırı açıkça yazılır |
+| `ssh-keygen -Y sign -n sshpocket-component` | `release.sh` kopyası imzalar; imzalayıcı açık anahtar kilit PR'ında (`components.lock` `signers`) açıkça yazılır (hangi anahtar kullanılacağı §10'a eklendi) |
 | Geri alma belgelenmiş, kapsamı dürüst | §5 `geri_yukle` |
 | Kilit PR'ı tek satır | evet (kod değişikliği gerekmez, hedef) |
 
@@ -75,4 +75,5 @@ Sunucunun **temel sistem ayarlarını** (saat dilimi, locale, NTP) sshpocket men
 3. **Locale kapsamı:** yalnız `LANG` mi, `LC_*` ayrı ayrı mı?
 4. **Onay:** `yes-no` yeterli mi, yoksa sunucu adı yazdırılsın mı?
 5. **Profiller:** Debian 13, Proxmox VE, Raspberry Pi v0.1'de var mı? (Pi'de `timesyncd` olabilir; chrony kurma kararı gerekir.)
-6. **Doğrulanmayanlar:** NTS-KE portu; utility + hardening'in gerçek sunucuda birlikte çalışması.
+6. **İmzalayıcı anahtar:** linux-hardening ile aynı yayın anahtarı mı, utility için ayrı anahtar mı? (Anahtarlar ve parolalar kullanıcıdadır.)
+7. **Doğrulanmayanlar:** NTS-KE portu; utility + hardening'in gerçek sunucuda birlikte çalışması.
