@@ -1,7 +1,7 @@
 # Taslak: `utility` paketi (saat dilimi, locale, NTP)
 
-> **Durum: TASLAK, kod yok.** Hazırlayan: sshpocket oturumu; linux-hardening tarafının görüşü koordinatör oturumu üzerinden alındı (2026-11-05).
-> Karar bekleyenler en altta (§10). Standart: [package-standard.md](package-standard.md) (§12 kontrol listesi bölüm 9'da eşlenmiştir).
+> **Durum: TASLAK, kararlar verildi (2026-11-05, kullanıcı), kod yok.** Hazırlayan: sshpocket oturumu; linux-hardening tarafının görüşü koordinatör oturumu üzerinden alındı.
+> Kararlar §10'da; yazım işi ayrı bir oturuma verilir (bkz. `utility-yeni-oturum-brief.md`). Standart: [package-standard.md](package-standard.md) (§12 kontrol listesi bölüm 9'da eşlenmiştir).
 
 ## 1. Amaç
 Sunucunun **temel sistem ayarlarını** (saat dilimi, locale, NTP) sshpocket menüsünden, önizleyerek ve onayla yönetmek. Düşük risk: bu ayarlar **erişimi kesmez** (ssh/ufw/PAM dokunulmaz), bu yüzden `linux-hardening`'deki geri alma güvenlik ağı (zamanlayıcılı rollback) **taşınmaz**; yerine `--check` önizleme, değiştirmeden önce yedek ve idempotent apply vardır.
@@ -19,8 +19,8 @@ Sunucunun **temel sistem ayarlarını** (saat dilimi, locale, NTP) sshpocket men
 
 ## 3. Kapsam (v0.1)
 - **Saat dilimi:** `utility_timezone` (örn. `Europe/Istanbul`); `timedatectl set-timezone`.
-- **Locale:** `utility_locale` (örn. `en_US.UTF-8`); gerekirse `locale-gen`, `update-locale`.
-- **NTP:** `chrony` (Ubuntu 26.04: chrony 4.8 hazır, timesyncd kurulu değil; `confdir /etc/chrony/conf.d`, `sourcedir /etc/chrony/sources.d` zaten tanımlı). Kaynak listesi `utility_ntp_servers` → `sources.d/utility.sources` (`server`/`pool` satırları). Boş liste = dağıtım varsayılanı, dosya yazılmaz.
+- **Locale:** `utility_locale` = yalnız **`LANG`** (örn. `en_US.UTF-8`); gerekirse `locale-gen`, `update-locale LANG=…`. `LC_*` ayrı ayrı yönetilmez (v0.1).
+- **NTP:** `chrony` (Ubuntu 26.04: chrony 4.8 hazır, timesyncd kurulu değil; **Debian 13'te varsayılan `systemd-timesyncd` olabilir: chrony kurulumu, timesyncd'nin devre dışı bırakılması ve `conf.d`/`sources.d` bildirimlerinin varlığı DOĞRULANMADI, yeni oturum gerçek bir Debian 13 üzerinde doğrulamalı**; `confdir /etc/chrony/conf.d`, `sourcedir /etc/chrony/sources.d` zaten tanımlı). Kaynak listesi `utility_ntp_servers` → `sources.d/utility.sources` (`server`/`pool` satırları). Boş liste = dağıtım varsayılanı, dosya yazılmaz.
 - **Kapsam DIŞI (v0.1):** hostname, apt kaynakları, kullanıcı/paket yönetimi, `makestep` (hardening'de), NTS (bkz. §7), Windows/macOS hedefleri.
 
 ## 4. Manifest taslağı (`component.json`)
@@ -28,10 +28,10 @@ Sunucunun **temel sistem ayarlarını** (saat dilimi, locale, NTP) sshpocket men
 |---|---|
 | `id` / `runner` | `utility` / `ansible` |
 | `inventory_group` | `utility` |
-| `profiles` | `ubuntu-26.04` supported; `debian-13` planned (Proxmox/Raspberry Pi için §10) |
+| `profiles` | `ubuntu-26.04` supported, `debian-13` supported (Debian 13 doğrulaması gerçek VM'de yapılana kadar `planned` kalır, kabul ölçütü); Proxmox VE ve Raspberry Pi **sonra** |
 | Eylemler | `durum` (salt okunur), `preview` (`--check`), `apply` (değiştirir), `geri_yukle` (yedekten) |
 | `durum` çıktısı | `keyvalue-line`: `utility.durum timezone=… locale=… ntp_servis=… ntp_senkron=yes\|no offset_ms=… kaynak_sayisi=…` (değerler `^[A-Za-z0-9_.:+-]{0,64}$`) |
-| `apply` | `effects: ["changes-config"]` (+ `installs-package` yalnız chrony yoksa), `requires_sudo: true`, `confirm: yes-no` (aşağıda §6), `requires: ["preview"]` |
+| `apply` | `effects: ["changes-config"]` (+ `installs-package` yalnız chrony yoksa), `requires_sudo: true`, `confirm: yes-no` (§6, karar), `requires: ["preview"]` |
 | Değişkenler | `utility_timezone` (string), `utility_locale` (string), `utility_ntp_servers` (`list[string]`), `utility_backup` (bool, varsayılan true) |
 | `required: true` | **Kullanılmaz** (tüm eylemleri kapatır). Gerçekten zorunlu değişken doğarsa eylem düzeyinde `requires_vars` |
 | `platform_choices` | v0.1'de yok (tek profil); Proxmox/Pi'de platforma özel varsayılan gerekirse sonra |
@@ -43,13 +43,13 @@ Sunucunun **temel sistem ayarlarını** (saat dilimi, locale, NTP) sshpocket men
 - **Erişim:** ssh/ufw/PAM'a dokunulmaz; `hardening-rollback`'e ihtiyaç yok. Yanlış NTP kaynağının en kötü sonucu saat senkronunun kaybıdır (ssh sertifikaları/TOTP/apt "Not live until" etkilenebilir), erişim kaybı değil.
 - **Gizli veri:** yok (parola/anahtar değişkeni olmaz); sonuç klasörü gerekmez.
 
-## 6. Onay seviyesi (öneri)
-`apply` için `yes-no` (sunucu adı yazdırma `linux-hardening`'in erişim kesme riski içindir; burada kapsam dar). Önerilmeyen ama düşünülen: saat dilimi değişimi auditd'li sunucuda `time-change` kaydı üretir (beklenen); `warnings`'te yazılır.
+## 6. Onay seviyesi (KARAR: `yes-no`)
+`apply` için `yes-no`; sunucu adı yazdırma yok (`linux-hardening`'deki sunucu adı onayı erişim kesme riski içindir; burada kapsam dar, risk düşük ve yedekli). Not: saat dilimi değişimi auditd'li sunucuda `time-change` kaydı üretir (beklenen); `warnings`'te yazılır.
 
 ## 7. linux-hardening ile etkileşim (koordinatör üzerinden doğrulandı, 2026-11-05)
 1. auditd `/etc/localtime`, `adjtimex`, `settimeofday`, `clock_settime` izler → utility saat dilimini değiştirirse auditd'li sunucuda `time-change` kaydı çıkar (**beklenen**, uyarıda yazılı).
 2. `hardening_ufw_outgoing_deny` (varsayılan kapalı) açıkken yalnız **123/udp** çıkışı izinli. NTS-KE için `hardening_ufw_outgoing_allow`'a ekleme gerekir (**NTS-KE portu 4460/tcp doğrulanmadı**) → v0.1'de NTS yok, ancak `utility_ntp_servers` kaynakları 123/udp'ye ihtiyaç duyar; `outgoing_deny` açıksa uyarı.
-3. Proxmox'ta hardening `time` yine yalnız rapor; utility Proxmox'u v0.1'de **desteklemez** (planned).
+3. Proxmox'ta hardening `time` yine yalnız rapor; utility Proxmox ve Raspberry Pi'yi v0.1'de **desteklemez** (sonra). Pi'de varsayılan `systemd-timesyncd` olabilir; chrony kurma kararı o zaman verilir.
 4. NTP kaynak/politikasını hardening bilerek yazmaz (CIS "yetkili NTP" ⏸️); aday `hardening_chrony_servers` linux-hardening'de yapılmaz, utility'ye bırakılır (kullanıcı onayı gerekir; **şimdilik değişiklik yok**).
 
 ## 8. Depo, yayın, test
@@ -69,11 +69,14 @@ Sunucunun **temel sistem ayarlarını** (saat dilimi, locale, NTP) sshpocket men
 | Geri alma belgelenmiş, kapsamı dürüst | §5 `geri_yukle` |
 | Kilit PR'ı tek satır | evet (kod değişikliği gerekmez, hedef) |
 
-## 10. Açık sorular (karar bekleyen)
-1. **Kim yazar?** sshpocket oturumu, yeni ayrı oturum ya da `linuxhadening-main` (kullanıcı kararı).
-2. **İlk sürüm kapsamı:** saat dilimi + locale + NTP üçü birden mi, yoksa önce yalnız saat dilimi ve NTP mi?
-3. **Locale kapsamı:** yalnız `LANG` mi, `LC_*` ayrı ayrı mı?
-4. **Onay:** `yes-no` yeterli mi, yoksa sunucu adı yazdırılsın mı?
-5. **Profiller:** Debian 13, Proxmox VE, Raspberry Pi v0.1'de var mı? (Pi'de `timesyncd` olabilir; chrony kurma kararı gerekir.)
-6. **İmzalayıcı anahtar:** linux-hardening ile aynı yayın anahtarı mı, utility için ayrı anahtar mı? (Anahtarlar ve parolalar kullanıcıdadır.)
-7. **Doğrulanmayanlar:** NTS-KE portu; utility + hardening'in gerçek sunucuda birlikte çalışması.
+## 10. Kararlar (2026-11-05, kullanıcı)
+| # | Soru | Karar |
+|---|---|---|
+| 1 | Kim yazar? | **Yeni, ayrı oturum** (sshpocket ve linux-hardening oturumları meşgul kalır); şablon repodan türetir |
+| 2 | v0.1 kapsamı | Saat dilimi + locale + NTP **üçü birden**; hostname ve NTS dışarıda |
+| 3 | Locale | Yalnız `LANG`; `LC_*` yok |
+| 4 | Apply onayı | `yes-no`; sunucu adı yazdırma yok (düşük risk, yedekli) |
+| 5 | Profiller | v0.1: **Ubuntu ve Debian**; Proxmox ve Raspberry Pi sonra (Pi'de timesyncd notu yukarıda) |
+| 6 | İmzalayıcı anahtar | linux-hardening ile **aynı** anahtar (kilitte aynı `sshpocket-component` imzalayıcı satırı); anahtar ve parola kullanıcıdadır, ajan dokunmaz |
+
+**Hâlâ doğrulanmamış:** NTS-KE portu (v0.1 dışı); Debian 13'te chrony/timesyncd durumu; utility + hardening'in gerçek sunucuda birlikte çalışması.
