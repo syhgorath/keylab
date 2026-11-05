@@ -4,7 +4,11 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **`utility` 0.1.0 kilitlendi** (`components.lock`; imzalayıcı `linux-hardening` ile aynı): saat dilimi, locale (`LANG`) ve NTP (chrony `sources.d` drop-in); eylemler `durum`, `preview`, `apply` (evet/hayır onayı, `preview` ön koşulu), `geri_yukle`; Ubuntu 26.04 ve Debian 13 (Proxmox VE paket tarafından reddedilir). Manifestte `required` değişken ve `requires_vars` yok: tüm eylemler açık. Docker LAB'da sshpocket üzerinden `durum`, `preview`, `apply`, ikinci `preview` (changed=0) denendi; **sshpocket menüsüyle gerçek VM turu henüz yapılmadı.** Paketin kendi Python ortamı (farklı `requirements.txt` özeti) ilk kullanımda ayrıca kurulur (~10 MB indirme, ~90 MB disk).
+
 ### Düzeltildi
+- **Sunucu başına paket seçicisinde (iki ve daha çok paket kurulu) kart başlığı iki kez yazılıyordu** (`── 📦 paket sürüm ──`); tek paket varken bu ekran açılmadığından fark edilmemişti. Test eklendi.
 - **fzf kartı gereksiz yere alta düşüyordu:** fzf'in `<N(...)` eşiği terminalin değil önizleme penceresinin genişliğine bakar; sağ önizleme %48 olduğundan eşik fiilen ~208 sütundu (120 sütunda kart alta iniyordu). Eşik artık önizleme genişliğine göre ayarlı (`<48` = terminalde 100 sütun).
 
 ### Değişti

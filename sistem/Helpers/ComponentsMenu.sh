@@ -1220,7 +1220,7 @@ comp_menu_server() {
             # fzf: paket başına kart (sürüm, bu sunucudaki son preview/apply/audit ve Lynis skoru), geniş düzen
             for pick in "${ids[@]}"; do
                 UI_PICK_DESCS+=("$(ui_card_head "📦 $pick $(comp_installed_version "$pick")"
-                    if [ -f "$module_dir/components.log" ] && grep -qF "|$pick|" "$module_dir/components.log"; then _server_card_pkg "$module_dir/components.log" "$(_comp_gate_state_dir)" "$pick" "$server" | tail -n +2
+                    if [ -f "$module_dir/components.log" ] && grep -qF "|$pick|" "$module_dir/components.log"; then _server_card_pkg "$module_dir/components.log" "$(_comp_gate_state_dir)" "$pick" "$server" | tail -n +3   # boş satır ve kendi başlığı atlanır (kart başlığı yukarıda)
                     else printf ' Bu sunucuda henüz eylem çalıştırılmadı.\n'; fi)")
             done
             # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur

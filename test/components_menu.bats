@@ -1122,3 +1122,18 @@ pkgmenu_setup() {
     run _comp_menu_run_panel demo web1 "$INFO" preview "${COMP_EXEC_REFUSED:-190}" 1
     [[ "$output" != *"Neden:"* ]] || false
 }
+
+@test "paket seçici (fzf, birden çok paket): her paketin kartı TEK başlıkla; kayıt varsa son preview/apply, yoksa 'henüz eylem çalıştırılmadı'" {
+    export NO_COLOR=1 SSHPOCKET_STATE_DIR="$T/state"
+    ui_fzf_enabled() { return 0; }; clear() { :; }
+    comp_menu_installed() { printf 'demo\nother\n'; }
+    comp_installed_version() { case "$1" in demo) echo 1.0.0 ;; other) echo 0.1.0 ;; esac; }
+    printf '2026-11-04T15:55:06Z|demo|1.0.0|preview|ok\n2026-11-04T16:08:03Z|demo|1.0.0|apply|fail\n' > "$D/components.log"
+    _comp_menu_pick() { { printf 'N=%s|D=%s\n' "$#" "${#UI_PICK_DESCS[@]}"; for d in "${UI_PICK_DESCS[@]}"; do echo "--"; echo "$d"; done; } > "$T/pk"; printf 0; }
+    run comp_menu_server web1 "$D"
+    [ "$status" -eq 0 ]
+    grep -q '^N=3|D=2' "$T/pk"
+    [ "$(grep -c '── 📦 demo 1.0.0 ──' "$T/pk")" -eq 1 ]            # başlık ikilenmez
+    grep -q 'preview : 11-04 15:55 ✅' "$T/pk" && grep -q 'apply   : 11-04 16:08 ❌' "$T/pk"
+    grep -q '── 📦 other 0.1.0 ──' "$T/pk" && grep -q 'henüz eylem çalıştırılmadı' "$T/pk"
+}
