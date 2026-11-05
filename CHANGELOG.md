@@ -10,6 +10,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 - **Değişkenler kartı (paket eylem paneli):** "📝 Değişkenler" satırının sağ bölmesi artık yazılı değer sayısını ve değerleri listeler; paketin uyardığı değer (`warn_if`) ⚠ ile işaretlenir.
 
 ### Değişti
+- **Başarısız eylem sonuç panelinde NEDEN görünür:** `❌ Başarısız (çıkış N)` satırının altına `Neden: …` eklendi; Ansible `fatal` satırındaki betik çıktısı (örn. rollback `disarm`'ın `HATA: geri alma zamanlayıcısı … tetiklenmiş` iletisi) ya da `msg` en çok 3 satır gösterilir. Daha önce bu metin yalnızca günlükte (`last-run.log`) ve kaydırma bölgesinin `fatal` satırında kalıyordu. Başarıda ve kapı reddinde görünmez.
 - **fzf / ok tuşu uyumu (beş ekran):** daha önce yalnız düz `read` ile numara/harf soran yerler ortak seçiciye (`ui_pick`) taşındı; `UI=numbers` ve fzf'siz yedekleri aynen duruyor. **Knock ayarları** menüsü; **sunucu eklerken platform seçimi** (açıklamalar fzf sağ bölmesinde); **sunucu eklerken izinli ağ (CIDR) editörü** artık paket menüsündeki Değişkenler ekranıyla aynı liste editörü; **~/.ssh/config'ten içe aktar** çoklu seçimi (Enter işaretler, "İçe aktar" onaylar); **Sunucuları yönet › Sil / Yeniden adlandır** sunucuyu listeden seçtirir (silmede ad yazarak onay hâlâ gerekir).
 
 ## [3.6.21] - 2026-11-04

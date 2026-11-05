@@ -394,9 +394,36 @@ _comp_menu_progress_lines() {
     if [ "$n" -gt 0 ] && [ "$preview" -eq 1 ]; then printf '    Toplam %s: %s\n' "$word" "$total"; fi
 }
 
+# _comp_menu_fail_reason <günlük> → başarısız Ansible koşusunun NEDENİ (en çok 3 satır, satır başına en çok 150 karakter); bulunamazsa hiçbir şey yazmaz.
+# Son `fatal: [...]: FAILED! => {json}` satırından önce `stdout` (betiğin kendi iletisi, örn. "HATA: ...") sonra `msg` alınır; yalnız okur.
+_comp_menu_fail_reason() {
+    [ -f "$1" ] && command -v python3 >/dev/null 2>&1 || return 0
+    python3 -I - "$1" <<'PY' 2>/dev/null || true
+import json, sys
+last = None
+with open(sys.argv[1], encoding="utf-8", errors="replace") as f:
+    for line in f:
+        if line.startswith("fatal:") and "=> " in line:
+            last = line.split("=> ", 1)[1]
+if last:
+    try:
+        d = json.loads(last)
+    except ValueError:
+        sys.exit(0)
+    text = (d.get("stdout") or "").strip() or (d.get("msg") or "").strip()
+    out = []
+    for l in text.splitlines():
+        l = "".join(ch for ch in l if ch.isprintable()).strip()
+        if l:
+            out.append(l if len(l) <= 150 else l[:149] + "…")
+    for l in out[:3]:
+        print(l)
+PY
+}
+
 # _comp_menu_run_panel <paket> <sunucu> <bilgi> <eylem> <çıkış-kodu> <saniye> → çalışma bitince tek bakışta sonuç paneli (ok/changed/failed, sonuç anahtarları, günlük, sıradaki adım)
 _comp_menu_run_panel() {
-    local id="$1" server="$2" info="$3" name="$4" rc="$5" secs="$6" log recap last rest nxt a r status
+    local id="$1" server="$2" info="$3" name="$4" rc="$5" secs="$6" log recap last rest nxt a r status reason
     log="$(_comp_gate_state_dir)/$id/$server/last-run.log"
     if [ "$rc" -eq 0 ]; then status="✅ Başarılı"
     elif [ "$rc" -eq "${COMP_EXEC_REFUSED:-190}" ]; then status="⛔ Çalıştırılmadı (kapı/onay/hazırlık; ayrıntı yukarıdaki iletide)"
@@ -409,6 +436,11 @@ _comp_menu_run_panel() {
     if [ -f "$log" ]; then
         recap=$(grep -E '^[^ ]+ +: ok=' "$log" 2>/dev/null | tail -n 1 | sed -E 's/^[^:]+: *//; s/ +/ /g')
         [ -z "$recap" ] || printf '  Özet: %s\n' "$recap"
+    fi
+    if [ "$rc" -ne 0 ] && [ "$rc" -ne "${COMP_EXEC_REFUSED:-190}" ]; then
+        # ❌ başarısızsa: betiğin kendi nedeni (örn. "HATA: …") özette de görünsün; ayrıntı günlükte
+        reason=$(_comp_menu_fail_reason "$log")
+        [ -z "$reason" ] || { printf '  Neden: %s\n' "$(printf '%s\n' "$reason" | head -n 1)"; printf '%s\n' "$reason" | tail -n +2 | sed 's/^/         /'; }
     fi
     _comp_menu_progress_lines "$info" "$name" "$log"
     if last=$(comp_exec_last_result "$id" "$server" "$name" 2>/dev/null); then
