@@ -205,6 +205,7 @@ comp_menu_findings() {
         # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
         local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_START=2 UI_PICK_TITLE="Sunucu › $server › Paketler › $id › Bulgular" UI_PICK_HEADER=""
         UI_PICK_HEADER=$(_comp_menu_findings_lines "$id" "$server" "$info" | sed 's/^ *//')
+        ui_fit_wide "$((n + 2))" 10   # liste en az 10 satır; başlık kısa terminalde kırpılır
         pick=$(ui_pick "Geri" "Yalnız eşlemeli: $([ "$only" -eq 1 ] && echo açık || echo kapalı) ($n gösterilen)" "${labels[@]}")
         [ "$pick" -ge 1 ] 2>/dev/null || return 0
         if [ "$pick" -eq 1 ]; then only=$((1 - only)); continue; fi
@@ -265,6 +266,24 @@ _comp_menu_action_card() {
     _comp_menu_action_card_tail "$1" "$2" "$3" "$4"
 }
 
+# _comp_menu_vars_card <component.json> <vars-dosyası> → "Değişkenler" satırının kartı: kaç değişken yazılı, YAZILI değerler (⚠ = paketin uyardığı değer)
+# Yalnızca okur (tek awk geçişi). Dosyada yazılı olmayan değişkenler varsayılanda kalır ve listelenmez.
+_comp_menu_vars_card() {
+    local mf="$1" vf="$2" max=12
+    [ -f "$vf" ] || { printf 'Henüz değer yazılmadı: tüm değişkenler varsayılanda.'; return 0; }
+    comp_vars_describe "$mf" "$vf" 2>/dev/null | awk -F'\t' -v VF="$vf" -v MAX="$max" '
+        BEGIN { while ((getline l < VF) > 0) { i = index(l, "="); if (i > 1) v[substr(l, 1, i - 1)] = substr(l, i + 1) } }
+        { total++ }
+        ($1 in v) { w++; val = v[$1]; if (length(val) > 44) val = substr(val, 1, 43) "…"
+                    mark = ($7 != "" && v[$1] == $7) ? "⚠" : "•"
+                    if (mark == "⚠") warn++
+                    if (w <= MAX) line[w] = mark " " $1 " = " val }
+        END { printf "Yazılı: %d / %d değişken%s\n", w, total, (warn > 0 ? " · ⚠ " warn " riskli değer" : "")
+              for (i = 1; i <= w && i <= MAX; i++) print line[i]
+              if (w > MAX) printf "… ve %d tane daha\n", w - MAX
+              print "(Yazılmayanlar varsayılanda; ⚠ = paketin uyardığı değer)" }'
+}
+
 # _comp_menu_history_card <paket> <sunucu> → Geçmiş satırının kartı: son 5 çalıştırma ve son günlüğün son 8 satırı (fzf sağ bölmesi)
 _comp_menu_history_card() {
     local id="$1" server="$2" log t v act res sdir n=0
@@ -288,7 +307,8 @@ _comp_menu_prep_text() {
     if [ -n "$missing" ]; then
         while IFS= read -r m; do [ -n "$m" ] && echo "❌ $m (zorunlu, yazılmadı)"; done <<< "$missing"
     else echo "✅ Zorunlu değişkenler tamam"; fi
-    { _comp_menu_status_lines "$id" "$server" "$info"; _comp_menu_score_lines "$id" "$server"; _comp_menu_findings_lines "$id" "$server" "$info"; } | sed 's/^ *//'
+    # önem sırası: puan, bulgular, sonra eylem durumları (başlık kısa terminalde kırpılırsa son satırlar gider)
+    { _comp_menu_score_lines "$id" "$server"; _comp_menu_findings_lines "$id" "$server" "$info"; _comp_menu_status_lines "$id" "$server" "$info"; } | sed 's/^ *//'
 }
 
 # ---- Çalışma paneli (fzf): üst bölüm sabit çizilir, alt bölüm terminalin KAYDIRMA BÖLGESİ olur (genel parça: UI.sh ui_region_*) ----
@@ -374,9 +394,36 @@ _comp_menu_progress_lines() {
     if [ "$n" -gt 0 ] && [ "$preview" -eq 1 ]; then printf '    Toplam %s: %s\n' "$word" "$total"; fi
 }
 
+# _comp_menu_fail_reason <günlük> → başarısız Ansible koşusunun NEDENİ (en çok 3 satır, satır başına en çok 150 karakter); bulunamazsa hiçbir şey yazmaz.
+# Son `fatal: [...]: FAILED! => {json}` satırından önce `stdout` (betiğin kendi iletisi, örn. "HATA: ...") sonra `msg` alınır; yalnız okur.
+_comp_menu_fail_reason() {
+    [ -f "$1" ] && command -v python3 >/dev/null 2>&1 || return 0
+    python3 -I - "$1" <<'PY' 2>/dev/null || true
+import json, sys
+last = None
+with open(sys.argv[1], encoding="utf-8", errors="replace") as f:
+    for line in f:
+        if line.startswith("fatal:") and "=> " in line:
+            last = line.split("=> ", 1)[1]
+if last:
+    try:
+        d = json.loads(last)
+    except ValueError:
+        sys.exit(0)
+    text = (d.get("stdout") or "").strip() or (d.get("msg") or "").strip()
+    out = []
+    for l in text.splitlines():
+        l = "".join(ch for ch in l if ch.isprintable()).strip()
+        if l:
+            out.append(l if len(l) <= 150 else l[:149] + "…")
+    for l in out[:3]:
+        print(l)
+PY
+}
+
 # _comp_menu_run_panel <paket> <sunucu> <bilgi> <eylem> <çıkış-kodu> <saniye> → çalışma bitince tek bakışta sonuç paneli (ok/changed/failed, sonuç anahtarları, günlük, sıradaki adım)
 _comp_menu_run_panel() {
-    local id="$1" server="$2" info="$3" name="$4" rc="$5" secs="$6" log recap last rest nxt a r status
+    local id="$1" server="$2" info="$3" name="$4" rc="$5" secs="$6" log recap last rest nxt a r status reason
     log="$(_comp_gate_state_dir)/$id/$server/last-run.log"
     if [ "$rc" -eq 0 ]; then status="✅ Başarılı"
     elif [ "$rc" -eq "${COMP_EXEC_REFUSED:-190}" ]; then status="⛔ Çalıştırılmadı (kapı/onay/hazırlık; ayrıntı yukarıdaki iletide)"
@@ -389,6 +436,11 @@ _comp_menu_run_panel() {
     if [ -f "$log" ]; then
         recap=$(grep -E '^[^ ]+ +: ok=' "$log" 2>/dev/null | tail -n 1 | sed -E 's/^[^:]+: *//; s/ +/ /g')
         [ -z "$recap" ] || printf '  Özet: %s\n' "$recap"
+    fi
+    if [ "$rc" -ne 0 ] && [ "$rc" -ne "${COMP_EXEC_REFUSED:-190}" ]; then
+        # ❌ başarısızsa: betiğin kendi nedeni (örn. "HATA: …") özette de görünsün; ayrıntı günlükte
+        reason=$(_comp_menu_fail_reason "$log")
+        [ -z "$reason" ] || { printf '  Neden: %s\n' "$(printf '%s\n' "$reason" | head -n 1)"; printf '%s\n' "$reason" | tail -n +2 | sed 's/^/         /'; }
     fi
     _comp_menu_progress_lines "$info" "$name" "$log"
     if last=$(comp_exec_last_result "$id" "$server" "$name" 2>/dev/null); then
@@ -547,14 +599,15 @@ comp_menu_actions() {
             # fzf paneli: yol çubuğu, hazırlık özeti başlıkta, seçili eylemin kartı sağ bölmede
             local -a UI_PICK_DESCS=()
             # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
-            local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_START=1 UI_PICK_TITLE="Sunucu › $server › Paketler › $id $COMP_MENU_VER" UI_PICK_HEADER=""
+            local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_START=1 UI_PICK_TITLE="Sunucu › $server › Paketler › $id $COMP_MENU_VER" UI_PICK_HEADER="" UI_PICK_HEIGHT=""
             UI_PICK_HEADER=$(_comp_menu_prep_text "$id" "$server" "$info" "$missing" | while IFS= read -r m; do _comp_menu_wrap "$(( ${SSHPOCKET_COLS:-$(tput cols 2>/dev/null || echo 80)} - 6 ))" "   " "$m"; done)
             [ "$hidden" -eq 0 ] || UI_PICK_HEADER="$UI_PICK_HEADER"$'\n'"ℹ️  $hidden eylem bu platforma uygun olmadığı için gizlendi"
-            UI_PICK_DESCS+=("Paket değişkenlerini görüntüler ve düzenler (${COMP_MENU_VARS##*/}); değerler kaydedilmeden önce doğrulanır."$'\n'"Zorunlu eksik: $(printf '%s' "${missing:-yok}" | tr '\n' ' ')")
-            for name in "${names[@]}"; do UI_PICK_DESCS+=("$(_comp_menu_action_card "$info" "$id" "$server" "$name" "$missing")"); done
+            ui_fit_wide "$(( ${#labels[@]} + 1 ))" 10   # liste en az 10 satır görünsün; başlık kısa terminalde kısaltılır
+            UI_PICK_DESCS+=("Paket değişkenlerini görüntüler ve düzenler (${COMP_MENU_VARS##*/}); değerler kaydedilmeden önce doğrulanır."$'\n'"$(printf 'Zorunlu eksik: %s\n' "$(printf '%s' "${missing:-yok}" | tr '\n' ' ')" | ui_card_colorize)"$'\n'"$(_comp_menu_vars_card "$COMP_MENU_MF" "$COMP_MENU_VARS" | ui_card_colorize)")
+            for name in "${names[@]}"; do UI_PICK_DESCS+=("$(_comp_menu_action_card "$info" "$id" "$server" "$name" "$missing" | ui_card_colorize)"); done
             [ "$ko" = 0 ] || UI_PICK_DESCS+=("preview'ı sonra audit'i art arda çalıştırır; sonunda tek özet (değişecek sayısı, Lynis puanı, bulgular)."$'\n'"Her ikisinin kendi onayı/kapısı aynen geçerlidir.")
-            UI_PICK_DESCS+=("$(_comp_menu_history_card "$id" "$server")")
-            if _comp_menu_findings_load "$id" "$server" "$info"; then UI_PICK_DESCS+=("$(_comp_menu_findings_lines "$id" "$server" "$info" | sed 's/^ *//')"$'\n'"Enter: listeyi aç"); fi
+            UI_PICK_DESCS+=("$(_comp_menu_history_card "$id" "$server" | ui_card_colorize)")
+            if _comp_menu_findings_load "$id" "$server" "$info"; then UI_PICK_DESCS+=("$(_comp_menu_findings_lines "$id" "$server" "$info" | sed 's/^ *//' | ui_card_colorize)"$'\n'"Enter: listeyi aç"); fi
         fi
         pick=$(_comp_menu_pick "Geri" "${labels[@]}")
         [ "$pick" -ge 1 ] 2>/dev/null || return 0
@@ -669,8 +722,15 @@ _comp_menu_pick_group() {
     gl=(); while IFS= read -r g; do [ -n "$g" ] && gl+=("$g"); done <<< "$glist"
     gpick=("Tümü" "${gl[@]}" "(grupsuz)")
     # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
-    local -a UI_PICK_DESCS=()
-    local UI_PICK_WIDE="" UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_HEADER="" UI_PICK_TITLE=""
+    local -a UI_PICK_DESCS=("Süzgeci kaldırır: tüm değişkenler listelenir.")
+    for g in "${gl[@]}"; do UI_PICK_DESCS+=("Yalnızca '$g' grubundaki değişkenleri listeler."); done
+    UI_PICK_DESCS+=("Hiçbir gruba bağlı olmayan değişkenleri listeler.")
+    # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+    local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_HEADER="" UI_PICK_HEIGHT="" UI_PICK_BACK_DESC="Grubu değiştirmeden listeye döner."
+    UI_PICK_HEADER="Şimdiki grup: $(_comp_menu_group_name "$f_group")"
+    # shellcheck disable=SC2034
+    local UI_PICK_TITLE="Sunucu › $server › Paketler › $id › Değişkenler › Grup"
+    ui_fit_wide "$(( ${#gpick[@]} + 1 ))" 8
     pick=$(_comp_menu_pick "Geri" "${gpick[@]}")
     if [ "$pick" -ge 1 ] 2>/dev/null; then
         if [ "$pick" -eq 1 ]; then f_group=""
@@ -761,25 +821,28 @@ comp_menu_vars() {
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local -a UI_PICK_DESCS=(${ctl_descs[@]+"${ctl_descs[@]}"} ${var_descs[@]+"${var_descs[@]}"})
         clear
-        if declare -F ui_header >/dev/null; then ui_header "Sunucu › $server › Paketler › $id › Değişkenler"; fi
-        echo ""
+        if declare -F ui_screen >/dev/null; then ui_screen "Sunucu › $server › Paketler › $id › Değişkenler"; fi
+        local fzf_card=0 hid_note=""
+        if declare -F ui_card_on >/dev/null && ui_card_on; then fzf_card=1; fi
+        [ "$fzf_card" = 1 ] || echo ""
         total=$(comp_vars_describe "$COMP_MENU_MF" | grep -c .)
         if [ "$total" -gt "${#all_lines[@]}" ] 2>/dev/null; then
-            echo "ℹ️  $((total - ${#all_lines[@]})) değişken bu sunucunun platformuna uygun olmadığı için gizlendi (yazılı değerleri yine de çalıştırmaya iletilir)."
+            hid_note="ℹ️  $((total - ${#all_lines[@]})) değişken bu sunucunun platformuna uygun olmadığı için gizlendi (yazılı değerleri yine de çalıştırmaya iletilir)."
+            [ "$fzf_card" = 1 ] || echo "$hid_note"   # fzf: aşağıda başlık kutusunda
         fi
-        if [ "$show_ctl" = 1 ]; then
+        if [ "$show_ctl" = 1 ] && [ "$fzf_card" = 0 ]; then
             echo "Gösterilen: ${#lines[@]} / ${#all_lines[@]} değişken · bu sunucuda değiştirilen: $nchg"
             [ "${#lines[@]}" -gt 0 ] || echo "Süzgece uyan değişken yok."
         fi
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local UI_PICK_BACK_DESC="Eylem listesine döner."
         local flash="${COMP_MENU_FLASH:-}"; COMP_MENU_FLASH=""
-        [ -z "$flash" ] || echo "$flash"
+        [ -z "$flash" ] || [ "$fzf_card" = 1 ] || echo "$flash"   # fzf: ileti başlık kutusunda
         # fzf geniş düzeni: yol çubuğu kenarlık etiketi, sağda açıklama, üstte konum özeti, Ctrl-O ile grup seçimi
         # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
         local UI_PICK_WIDE=1 UI_PICK_TITLE="Sunucu › $server › $id › Değişkenler" UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_HEADER=""
         # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
-        UI_PICK_HEADER="${flash:+$flash$'\n'}Grup: $(_comp_menu_group_name "$f_group") · ${#lines[@]}/${#all_lines[@]} değişken · değiştirilen: $nchg"
+        UI_PICK_HEADER="${flash:+$flash$'\n'}${hid_note:+$hid_note$'\n'}Grup: $(_comp_menu_group_name "$f_group") · ${#lines[@]}/${#all_lines[@]} değişken · değiştirilen: $nchg${show_ctl:+$([ "${#lines[@]}" -gt 0 ] || echo ' · süzgece uyan değişken yok')}"
         # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
         if [ -n "$glist" ]; then UI_PICK_EXPECT="ctrl-o"; UI_PICK_EXPECT_HINT="Ctrl-O: grup seç"; fi
         pick=$(_comp_menu_pick "Geri" "${labels[@]}")
@@ -1060,6 +1123,78 @@ comp_menu_edit_cidr() {
     done
 }
 
+# comp_menu_packages → Ana menü › Paketler ve güncelleme (fzf): kilitteki paketler kartlı liste; Enter: kur/onar (onaylı) ya da doğrula.
+# Altında sshpocket'in kendi güncellemesi (UpdateAction: imzalı paket, onaylı; sürüm değişirse paketler eşitlenir) ve toplu eşitle, eski sürümleri temizle, yeni yayın var mı.
+# Hiçbir şey sormadan kurmaz: kurulum/onarım klasik onay sorusunu (comp_cli_sync) korur. Seçici olmayan modda ComponentsAction eski durum sayfasını gösterir.
+comp_menu_packages() {
+    local ids id st want have mark repo pick n msg="" need verdict kd nold act
+    local -a idarr labels acts
+    while true; do
+        comp_lock_validate || return 1
+        ids=$(comp_ids)
+        idarr=(); labels=(); acts=(); need=0
+        # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
+        local -a UI_PICK_DESCS=()
+        while IFS= read -r id; do
+            [ -n "$id" ] || continue
+            st=$(comp_status "$id"); want=$(comp_get "$id" version); have=$(comp_installed_version "$id"); repo=$(comp_get "$id" repo)
+            case "$st" in
+                ok) mark="✅ kurulu" ;;
+                missing) mark="⬇️  kurulmamış"; need=$((need + 1)) ;;
+                outdated) mark="⬆️  güncellenmeli"; need=$((need + 1)) ;;
+                ahead) mark="⚠️  kilitten yeni (geri alınmaz)" ;;
+                broken) mark="❌ dosyalar değişmiş"; need=$((need + 1)) ;;
+                *) mark="$st" ;;
+            esac
+            idarr+=("$id"); acts+=("pkg:$id")
+            labels+=("$(printf '%-18s kilit %-8s kurulu %-8s %s' "$id" "$want" "${have:--}" "$mark")")
+            kd="$(comp_dir)/$id"; nold=$(find "$kd" -mindepth 1 -maxdepth 1 -type d ! -name "$want" ! -name '*.bozuk-*' 2>/dev/null | wc -l | tr -d ' ')
+            case "$st" in
+                ok) verdict="Enter: kurulumu doğrula (dosya özetleri)." ;;
+                ahead) verdict="Kurulu sürüm kilitten yeni; sshpocket geri almaz." ;;
+                broken) verdict="Enter: bozuk kurulum kenara alınır, kilitteki sürüm imzası doğrulanarak yeniden kurulur (onay sorulur)." ;;
+                *) verdict="Enter: kilitteki sürüm indirilir, imzası ve sha256'sı doğrulanarak kurulur (onay sorulur)." ;;
+            esac
+            UI_PICK_DESCS+=("$(ui_card_head "📦 $id"; ui_card_row Kilit "$want"; ui_card_row Kurulu "${have:--}"; ui_card_row Durum "$mark"; ui_card_row Depo "$repo"
+                [ "${nold:-0}" -eq 0 ] || ui_card_row Eski "$nold sürüm klasörü diskte (🧹 Eski paket sürümlerini temizle)"
+                printf '\n%s\n' "$verdict")")
+        done <<< "$ids"
+        n=${#idarr[@]}
+        # paketlerin ALTINDA: sshpocket güncellemesi
+        labels+=("⬆️  sshpocket ${SCRIPT_VERSION:-?} — güncellemeleri kontrol et / güncelle"); acts+=(update)
+        UI_PICK_DESCS+=("$(ui_card_head '⬆️  sshpocket'; ui_card_row Sürüm "${SCRIPT_VERSION:-?}"; ui_card_row Paketler "$n kilitte"
+            printf '\nYeni sürüm var mı bakar (ağ); imzalı paketi doğrulayıp onayınızla kurar.\nSunucularınıza ve key'"'"'lerinize dokunmaz.\nSürüm değişirse paketler kilitteki sürüme eşitlenir ve eski sürümler temizlenir.\n')")
+        if [ "$need" -gt 0 ]; then labels+=("🔄 Kilitteki sürümleri kur / onar ($need paket)"); acts+=(sync); UI_PICK_DESCS+=("$(ui_card_head '🔄 Eşitle'; printf '\nKurulmamış, eski ya da bozuk %s paketi kilitteki sürüme getirir.\nHer biri için onay sorulur; indirme imza ve sha256 ile doğrulanır.\n' "$need")"); fi
+        labels+=("🧹 Eski paket sürümlerini temizle"); acts+=(prune); UI_PICK_DESCS+=("$(ui_card_head '🧹 Temizle'; printf '\nGüncellemelerde yan yana biriken eski sürümleri listeler ve silinmesini sorar\n(etkin + önceki + kilitteki sürüm kalır).\n')")
+        labels+=("🔎 Kilitten yeni yayın var mı? (ağ)"); acts+=(newrel); UI_PICK_DESCS+=("$(ui_card_head '🔎 Yeni yayın'; printf '\nGitHub yayınlarına bakar (yalnızca bilgi, ağ gerekir).\nYeni sürüm kurulmaz: yeni sshpocket sürümüyle (kilit güncellenince) gelir.\n')")
+        clear
+        ui_screen "Ana menü › Paketler ve güncelleme"
+        # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+        local UI_PICK_WIDE=1 UI_PICK_HEIGHT=16 UI_PICK_BACK_DESC="Ana menüye döner." UI_PICK_HEADER=""
+        # shellcheck disable=SC2034
+        UI_PICK_HEADER="${msg:+$msg$'\n'}sshpocket ${SCRIPT_VERSION:-?} · kilit: $n paket · $([ "$need" -gt 0 ] && echo "$need eksik/eski/bozuk" || echo 'paketler tamam')"
+        msg=""
+        ui_fit_wide "$(( ${#labels[@]} + 1 ))" 6
+        pick=$(_comp_menu_pick "Geri" "${labels[@]}")
+        echo ""
+        [ "$pick" -ge 1 ] 2>/dev/null || return 0
+        act="${acts[$((pick - 1))]}"
+        case "$act" in
+            pkg:*)
+                id="${act#pkg:}"; st=$(comp_status "$id")
+                case "$st" in
+                    ok) if comp_verify_installed "$id" "$(comp_installed_version "$id")"; then msg="✅ $id doğrulandı: dosyalar kurulumdaki gibi."; else msg="❌ $id doğrulanamadı: dosyalar değişmiş (Enter ile onarın)."; fi ;;
+                    ahead) msg="⚠️  $id: kurulu sürüm kilitten yeni; dokunulmadı." ;;
+                    *) COMP_SYNC_ONLY="$id" comp_cli_sync || true; read -r -p "Devam için Enter..." _ || return 0 ;;
+                esac ;;
+            update) UpdateAction; read -r -p "Devam için Enter..." _ || return 0 ;;
+            sync) comp_cli_sync || true; read -r -p "Devam için Enter..." _ || return 0 ;;
+            prune) bash "$SISTEM_PATH/Main.sh" --components prune || true; read -r -p "Devam için Enter..." _ || return 0 ;;
+            newrel) comp_cli_check_new || true; read -r -p "Devam için Enter..." _ || return 0 ;;
+        esac
+    done
+}
+
 # comp_menu_server <önek> <sunucu-klasörü> → kurulu paket(ler)den birini seçtirir
 comp_menu_server() {
     local module_dir="$2" server pick
@@ -1071,14 +1206,25 @@ comp_menu_server() {
     if [ "${#ids[@]}" -eq 1 ]; then comp_menu_actions "${ids[0]}" "$server"; return $?; fi
     while true; do
         clear
-        if declare -F ui_header >/dev/null; then ui_header "Sunucu › $server › Paketler"; fi
-        echo ""
+        if declare -F ui_screen >/dev/null; then ui_screen "Sunucu › $server › Paketler"; fi
+        if ! { declare -F ui_card_on >/dev/null && ui_card_on; }; then echo ""; fi
         local -a labels=()
         for pick in "${ids[@]}"; do labels+=("$pick $(comp_installed_version "$pick")"); done
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local -a UI_PICK_DESCS=()
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local UI_PICK_BACK_DESC="Sunucu menüsüne döner."
+        if declare -F ui_card_on >/dev/null && ui_card_on; then
+            # fzf: paket başına kart (sürüm, bu sunucudaki son preview/apply/audit ve Lynis skoru), geniş düzen
+            for pick in "${ids[@]}"; do
+                UI_PICK_DESCS+=("$(ui_card_head "📦 $pick $(comp_installed_version "$pick")"
+                    if [ -f "$module_dir/components.log" ] && grep -qF "|$pick|" "$module_dir/components.log"; then _server_card_pkg "$module_dir/components.log" "$(_comp_gate_state_dir)" "$pick" "$server" | tail -n +2
+                    else printf ' Bu sunucuda henüz eylem çalıştırılmadı.\n'; fi)")
+            done
+            # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+            local UI_PICK_WIDE=1 UI_PICK_HEIGHT=14
+            ui_fit_wide "$(( ${#labels[@]} + 1 ))" 4
+        fi
         pick=$(_comp_menu_pick "Geri" "${labels[@]}")
         [ "$pick" -ge 1 ] 2>/dev/null || return 0
         comp_menu_actions "${ids[$((pick - 1))]}" "$server"

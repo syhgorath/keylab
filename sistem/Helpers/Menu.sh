@@ -44,7 +44,7 @@ Menu() {
   
   # Display menu (stderr'e yaz, böylece stdout sadece seçimi içerir)
   if declare -F ui_header >/dev/null; then
-    ui_header "$(ui_group_title "$group")" 2 >&2
+    ui_screen "$(ui_group_title "$group")" 2 >&2
   else
     echo "" >&2
     echo "=== $group ===" >&2
@@ -69,7 +69,7 @@ Menu() {
     done
     wait
   fi
-  local row_text=()
+  local row_text=() row_mark=()
   i=1
   while [ $i -le $count ]; do
     local func_name="${module_array[$i]}"
@@ -81,6 +81,7 @@ Menu() {
     local mark=""
     if [ -n "$status_dir" ] && [ -f "$status_dir/$i" ]; then
       mark="$(cat "$status_dir/$i") "
+      row_mark[i - 1]="${mark% }"
     fi
     local detail=""
     case "$func_name" in
@@ -102,11 +103,18 @@ Menu() {
     local di=0
     while [ "$di" -lt "$count" ]; do
       # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
-      UI_PICK_DESCS[di]=$(ui_describe_entry "${module_array[$((di + 1))]}")
+      UI_PICK_DESCS[di]=$(ui_describe_entry "${module_array[$((di + 1))]}" "${row_mark[$di]:-}")
       di=$((di + 1))
     done
     # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
     local UI_PICK_BACK_DESC="Uygulamadan çıkar (USB çıkarma denenir)."
+    # geniş düzen: sunucu kartı sağ bölmede tam görünür (dar düzende önizleme 3 satırdı ve kart kesiliyordu)
+    # shellcheck disable=SC2034
+    local UI_PICK_WIDE=1 UI_PICK_TITLE="" UI_PICK_HEIGHT=""
+    # shellcheck disable=SC2034
+    UI_PICK_HEIGHT=$(( count + 8 < 20 ? 20 : count + 8 ))   # satır sayısı kadar + kart yüksekliği (ekranın %85'i kısa listede boş kalıyordu)
+    # shellcheck disable=SC2034
+    UI_PICK_TITLE=$(ui_group_title "$group")
     picked=$(ui_pick_arrows 1 "Çıkış" "${row_text[@]}")
     if [ -z "$picked" ] || [ "$picked" = "0" ]; then
       echo -n "exit"

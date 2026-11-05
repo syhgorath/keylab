@@ -129,3 +129,56 @@ server_summary() {
         printf '%s@%s' "$user" "$ip"
     fi
 }
+
+# Ana menüde sunucu satırının kartı (fzf sağ bölmesi; ok tuşlu seçicide satırlar " · " ile birleşir). YALNIZCA yerel veri okur: ssh yok.
+# server_card <ad> [durum-simgesi] → çok satırlı metin; fzf etkinse renkli (bkz. ui_paint kart). Durum simgesi Menu.sh'ın zaten yaptığı yoklamadan gelir.
+server_card() {
+    local n="$1" mark="${2:-}" d prefix ip user port key knock state pkg st
+    module_name_valid "$n" || return 0
+    d="$(servers_dir)/$n"; prefix=$(module_prefix "$n")
+    ip=$(srv_get "$d" "$prefix" IP) || return 0
+    user=$(srv_get "$d" "$prefix" USER); port=$(srv_get "$d" "$prefix" PORT); port="${port:-22}"
+    key=$(srv_get "$d" "$prefix" KEY)
+    [ -n "$key" ] || key="$d/id_ed25519_${n}"
+    if [ "${key:0:1}" = "~" ]; then key="$HOME${key:1}"; fi
+    ui_card_head "🖥️  SUNUCU"
+    case "$mark" in
+        🟢) st="$(ui_paint kart 1\;32 '🟢 açık')" ;;
+        🔴) st="$(ui_paint kart 1\;31 '🔴 erişilemiyor')" ;;
+        🔒) st="$(ui_paint kart 1\;33 '🔒 knock gerekir')" ;;
+        ⚪) st="$(ui_paint kart 1\;33 '⚪ ayar eksik')" ;;
+        *)  st="" ;;
+    esac
+    [ -z "$st" ] || ui_card_row "Durum" "$st"
+    ui_card_row "Hedef" "$user@$ip:$port"
+    knock=kapalı
+    if declare -F knock_enabled >/dev/null && knock_enabled "$prefix" "$d" 2>/dev/null; then knock=etkin; fi
+    if [ -f "$key" ]; then ui_card_row "Anahtar" "$(ui_paint kart 1\;32 '✅ var')"; else ui_card_row "Anahtar" "$(ui_paint kart 1\;31 '❌ bulunamadı')"; fi
+    ui_card_row "Knock" "$knock"
+    state="${SSHPOCKET_STATE_DIR:-$HOME/.local/share/sshpocket}"
+    if [ -f "$d/components.log" ]; then
+        while IFS= read -r pkg; do
+            [ -n "$pkg" ] || continue
+            _server_card_pkg "$d/components.log" "$state" "$pkg" "$n"
+        done < <(awk -F'|' 'NF >= 5 && !seen[$2]++ { print $2 }' "$d/components.log")
+    fi
+    printf '\n%s\n' "$(ui_paint kart 2 "\$ ssh -p $port $user@$ip")"
+}
+
+# _server_card_pkg <components.log> <durum-dizini> <paket> <sunucu> → "📦 paket sürüm" bölümü: son preview/apply/audit (ayrı satırlar) + son Lynis skoru
+_server_card_pkg() {
+    local log="$1" state="$2" pkg="$3" n="$4" ver sum score act row
+    ver=$(awk -F'|' -v p="$pkg" '$2 == p && NF >= 5 { v = $3 } END { print v }' "$log")
+    [ -n "$ver" ] || return 0
+    printf '\n'; ui_card_head "📦 $pkg $ver"
+    for act in preview apply audit; do
+        row=$(awk -F'|' -v p="$pkg" -v a="$act" '$2 == p && $4 == a && NF >= 5 { t = substr($1, 6, 5) " " substr($1, 12, 5); r = $5 } END { if (t != "") print t "|" r }' "$log")
+        [ -n "$row" ] || continue
+        if [ "${row#*|}" = ok ]; then ui_card_row "$act" "${row%|*} $(ui_paint kart 1\;32 '✅')"; else ui_card_row "$act" "${row%|*} $(ui_paint kart 1\;31 '❌')"; fi
+    done
+    sum=$(find "$state/$pkg/$n/out/$n" -mindepth 2 -maxdepth 2 -name summary.json 2>/dev/null | sort | tail -n 1)
+    if [ -n "$sum" ]; then
+        score=$(sed -n 's/.*"hardening_index": *\([0-9][0-9]*\).*/\1/p' "$sum" | head -n 1)
+        [ -z "$score" ] || ui_card_row "Lynis" "$score (son denetim)"
+    fi
+}

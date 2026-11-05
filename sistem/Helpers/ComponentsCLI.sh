@@ -102,6 +102,7 @@ comp_cli_sync() {
     [ -n "$ids" ] || return 0
     while IFS= read -r id <&3; do
         [ -n "$id" ] || continue
+        [ -z "${COMP_SYNC_ONLY:-}" ] || [ "$id" = "$COMP_SYNC_ONLY" ] || continue   # menü: tek paketi eşitle
         st=$(comp_status "$id"); want=$(comp_get "$id" version)
         case "$st" in
             ok) continue ;;

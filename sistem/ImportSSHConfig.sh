@@ -54,8 +54,8 @@ if ui_arrows_enabled; then
         labels+=("☑ Tümünü işaretle / temizle"); UI_PICK_DESCS+=("Hepsini işaretler; hepsi işaretliyse işaretleri kaldırır.")
         labels+=("✅ İçe aktar ($nsel sunucu)"); UI_PICK_DESCS+=("İşaretli sunucuları servers/ altına yazar. Private key dosyaları kopyalanmaz.")
         clear
-        ui_header "Ana menü › ~/.ssh/config'ten içe aktar"
-        echo ""
+        ui_screen "Ana menü › ~/.ssh/config'ten içe aktar"
+        if ! { declare -F ui_card_on >/dev/null && ui_card_on; }; then echo ""; fi
         # shellcheck disable=SC2034
         UI_PICK_BACK_DESC="Hiçbir şey içe aktarılmadan döner."
         pick=$(UI_PICK_START="$cursor" ui_pick "İptal" "${labels[@]}")

@@ -7,10 +7,15 @@ RegisterBuiltinMenu() {
     RegisterModules "➕ Yeni sunucu ekle" "MainMenu" "AddServerAction"
     RegisterModules "📥 ~/.ssh/config'ten içe aktar" "MainMenu" "ImportSSHConfigAction"
     RegisterModules "🛠️  Sunucuları yönet (listele/sil/yeniden adlandır)" "MainMenu" "ManageServersAction"
-    RegisterModules "⬆️  Güncellemeleri kontrol et / güncelle" "MainMenu" "UpdateAction"
-    # Paketler yalnızca kilit dosyasında paket varsa menüde görünür
-    if declare -F comp_ids >/dev/null && [ -n "$(comp_ids 2>/dev/null)" ]; then
-        RegisterModules "📦 Paketler (durum / kur)" "MainMenu" "ComponentsAction"
+    # Paketler yalnızca kilit dosyasında paket varsa menüde görünür. fzf düzeninde güncelleme Paketler panelinin ALTINA gömülüdür
+    # (ayrı satır yok); paket yoksa ya da düz modlarda güncelleme eskisi gibi ayrı satırdır.
+    local has_pkgs=0 embed=0
+    if declare -F comp_ids >/dev/null && [ -n "$(comp_ids 2>/dev/null)" ]; then has_pkgs=1; fi
+    if [ "$has_pkgs" = 1 ] && declare -F ui_card_on >/dev/null && ui_card_on && declare -F comp_menu_packages >/dev/null; then embed=1; fi
+    [ "$embed" = 1 ] || RegisterModules "⬆️  Güncellemeleri kontrol et / güncelle" "MainMenu" "UpdateAction"
+    if [ "$has_pkgs" = 1 ]; then
+        if [ "$embed" = 1 ]; then RegisterModules "📦 Paketler ve güncelleme" "MainMenu" "ComponentsAction"
+        else RegisterModules "📦 Paketler (durum / kur)" "MainMenu" "ComponentsAction"; fi
     fi
     RegisterModules "⚙️  Ayarlar" "MainMenu" "SettingsAction"
 }
@@ -68,15 +73,29 @@ _manage_pick_server() {
 ManageServersAction() {
     local choice name new
     clear
-    if declare -F ui_header >/dev/null; then ui_header "Ana menü › Sunucuları yönet"; else echo "=== Sunucuları yönet ==="; fi
-    echo ""
-    bash "$SISTEM_PATH/ModuleManager.sh" list
-    echo ""
+    local fzf_card=0 srv_list=""
+    if declare -F ui_card_on >/dev/null && ui_card_on; then fzf_card=1; fi
+    if declare -F ui_screen >/dev/null; then ui_screen "Ana menü › Sunucuları yönet"; else echo "=== Sunucuları yönet ==="; fi
+    srv_list=$(bash "$SISTEM_PATH/ModuleManager.sh" list)
+    if [ "$fzf_card" = 0 ]; then echo ""; printf '%s\n' "$srv_list"; echo ""; fi
     if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled; then
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local -a UI_PICK_DESCS=("Sunucu klasörünü (ayarlar ve içindeki key dosyaları) siler; sunucu adını yazarak onaylarsınız. Keychain kaydı için ayrıca sorulur." "Sunucuya yeni bir ad verir ve key dosyalarını yeni ada çevirir. Keychain kayıtları otomatik taşınmaz, yeniden girmeniz gerekir.")
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local UI_PICK_BACK_DESC="Ana menüye döner."
+        if declare -F ui_card_on >/dev/null && ui_card_on; then
+            # fzf: renkli kart, geniş düzen
+            local names
+            names=$(srv_names 2>/dev/null | tr '\n' ' ')
+            # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+            UI_PICK_DESCS=("$(ui_card_head '🗑️  Sil'; ui_card_row Sunucu "${names:-(yok)}"; printf '\n⚠ Sunucu klasörü (ayarlar ve key dosyaları) silinir.\nSunucu adını yazarak onaylarsınız; Keychain kaydı için ayrıca sorulur.\n')"
+                "$(ui_card_head '✏️  Yeniden adlandır'; ui_card_row Sunucu "${names:-(yok)}"; printf '\nSunucuya yeni ad verir, key dosyaları yeni ada çevrilir.\n⚠ Keychain kayıtları otomatik taşınmaz.\n')")
+            # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+            local UI_PICK_WIDE=1 UI_PICK_HEIGHT=16 UI_PICK_HEADER=""
+            # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
+            UI_PICK_HEADER=$(printf '%s\n' "$srv_list" | sed 's/^ *//' | head -n 8)   # sunucu listesi çizimin içinde (kısa terminalde ui_fit_wide kırpar)
+            ui_fit_wide 3 6
+        fi
         choice=$(ui_pick_arrows 1 "Geri" "Sil" "Yeniden adlandır")
         echo ""
     else
@@ -107,6 +126,11 @@ ManageServersAction() {
 
 # Paketler: durumu göster, eksik/eski olanı onayla kur (kilitteki sürüm)
 ComponentsAction() {
+    if declare -F ui_card_on >/dev/null && ui_card_on && declare -F comp_menu_packages >/dev/null; then
+        comp_menu_packages   # fzf: kartlı paket listesi (düz modlarda aşağıdaki durum sayfası)
+        ui_no_pause
+        return 0
+    fi
     clear
     if declare -F ui_header >/dev/null; then ui_header "Ana menü › Paketler"; fi
     echo ""

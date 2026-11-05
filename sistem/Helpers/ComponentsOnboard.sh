@@ -47,7 +47,7 @@ _comp_onboard_ask_platform() {
         done
         if [ -n "$def" ]; then labels+=("Bilmiyorum (genel / generic seçilir)"); UI_PICK_DESCS+=("Sunucunun türünden emin değilseniz genel (Ubuntu/Debian) ayarlar seçilir."); fi
         # shellcheck disable=SC2034
-        local UI_PICK_HEADER="Bu sunucu hangi türde?" UI_PICK_WIDE=1 UI_PICK_BACK_DESC="Hiçbir şey yazılmaz; pakete ilk girişte yine sorulur."
+        local UI_PICK_HEADER="Bu sunucu hangi türde?" UI_PICK_WIDE=1 UI_PICK_BACK_DESC="Hiçbir şey yazılmaz; pakete ilk girişte yine sorulur." UI_PICK_TITLE="Sunucu ekle › sunucu türü"
         n=$(ui_pick "Şimdi değil" "${labels[@]}")
         if [ "${n:-0}" -ge 1 ] 2>/dev/null; then
             if [ "$n" -le "${#ids[@]}" ]; then printf '%s' "${ids[$((n - 1))]}"
@@ -158,8 +158,10 @@ comp_onboard_package() {
     ver=$(comp_info_get "$info" version)
     mf="$(comp_dir)/$pkg/$ver/component.json"
     vf=$(comp_vars_file "$dir" "$pkg")
-    echo ""
-    echo "── $pkg: sunucu türü ve zorunlu ayarlar ──"
+    if ! { declare -F ui_card_on >/dev/null && ui_card_on; }; then
+        echo ""
+        echo "── $pkg: sunucu türü ve zorunlu ayarlar ──"   # fzf: başlık kenarlıkta
+    fi
     _comp_onboard_platform "$pkg" "$info" "$mf" "$vf" || true
     _comp_onboard_vars "$pkg" "$info" "$mf" "$vf" "$dir"
 }

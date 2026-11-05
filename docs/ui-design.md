@@ -134,12 +134,31 @@ Etkileşimli modda ok tuşlu ya da fzf (`UI=auto|fzf|arrows`), değilse numaral�
 | `UI_PICK_DESCS` (dizi) | Her öğe için açıklama; fzf'te sağ bölmede (çok satırlı olabilir, kart), ok tuşlu seçicide alt satırda tek satır |
 | `UI_PICK_BACK_DESC` | Geri/çıkış satırının açıklaması |
 | `UI_PICK_WIDE=1` | Geniş düzen: sağda önizleme, etiketli çerçeveler (fzf ≥ 0.35 kenarlık etiketi, ≥ 0.58 liste/giriş çerçeveleri; eski fzf'te yalnız sağ önizleme) |
+| `UI_PICK_HEIGHT` | Geniş düzende fzf yüksekliği: satır sayısı ya da yüzde (varsayılan `85%`); kısa listelerde (örn. ana menü) boş alanı keser |
 | `UI_PICK_TITLE` | Yol çubuğu (kenarlık etiketi) |
 | `UI_PICK_HEADER` | Başlık: konum özeti ya da ileti (çok satırlı olabilir) |
 | `UI_PICK_START` | İmlecin başlangıç öğesi (varsayılan 1) |
 | `UI_PICK_EXPECT`, `UI_PICK_EXPECT_HINT` | fzf kısayolu (`--expect`, örn. `ctrl-o`) ve başlıktaki ipucu; basılırsa `ui_pick` `key:<ad>` döner (numaralı menüde elle yazılan değer kabul edilmez) |
 
 fzf sürümü `ui_fzf_version` ile okunur. Çok satırlı açıklama dosyaya `\037` ile tek satır olarak yazılır, önizlemede geri çevrilir.
+
+### Kart parçaları (fzf sağ bölmesi): `ui_card_head`, `ui_card_row`, `ui_card_colorize`, `ui_paint`
+Kartlar çok satırlı düz metindir (`UI_PICK_DESCS` öğesi). Renk YALNIZCA fzf etkinken ve `NO_COLOR` yokken eklenir (`ui_card_on`); ok tuşlu/numaralı modda aynı metin düz kalır. `ui_card_head <başlık>` camgöbeği bölüm başlığı, `ui_card_row <etiket> <değer>` sarı etiket sütunu; hazır bir metni renklendirmek için `… | ui_card_colorize` (etiketler `Etkiler:`/`Onay:`…, `✅ ❌ ⚠ ⛔`). Önizleme içeriği dosyadan okunur; kullanıcı verisi komut satırına girmez.
+
+### Ekran başlığı ve bilgi satırları: `ui_screen`
+Her seçici ekranı `ui_header` yerine `ui_screen "<yol çubuğu>"` çağırır. fzf etkinse başlık BASILMAZ; `UI_SCREEN_TITLE` olarak saklanır ve fzf çerçevesinin üst kenarlığında etiket olur (`UI_PICK_TITLE` verilmişse o önceliklidir). Bilgi satırları (özet, uyarı, ileti) fzf modunda ekranın `UI_PICK_HEADER`'ına (başlık kutusu) girer, düz modda eskisi gibi `echo` ile basılır: `ui_card_on` ile dallanılır. Kısa terminalde başlığı kırpmak ve liste için en az N satır ayırmak için `ui_fit_wide <liste-satırı> [en-az]`.
+
+### Ekran yazma kuralı (yeni bir fzf seçici ekranı eklerken)
+Bir ekran aşağıdakilerin hepsini yapıyorsa standarda uyar; kontrol listesi:
+
+1. **Başlık:** `clear` sonra `ui_screen "<yol çubuğu>"` (asla doğrudan `ui_header`). Yol çubuğu fzf çerçevesinin üst kenarlığında bir kez görünür.
+2. **Bilgi çizimin içinde:** özet, uyarı, ileti ve durum satırları `UI_PICK_HEADER` (başlık kutusu) olur. Düz modda aynı metin `echo` ile basılır; dallanma `ui_card_on` ile (`fzf_card=1`). Çerçevenin üstüne düz satır basılmaz.
+3. **Kartlar:** her seçenek için `UI_PICK_DESCS` öğesi; fzf'te `ui_card_head` / `ui_card_row` (ya da hazır metin için `… | ui_card_colorize`), ok tuşlu/numaralı modda tek satırlık açıklama kalır (`ui_card_on` ile dallan).
+4. **Geniş düzen ve yükseklik:** `UI_PICK_WIDE=1`; başlık ve liste uzunsa `ui_fit_wide <liste-satırı> [en-az-satır]` (liste en az N satır görünür, kısa terminalde başlık kırpılır); kısa listede `UI_PICK_HEIGHT`.
+5. **Geri:** `UI_PICK_BACK_DESC` doldurulur.
+6. **Test:** `ui_fzf_enabled` / `ui_pick_arrows` sahtelenip başlık (`UI_SCREEN_TITLE`), `UI_PICK_HEADER` ve `UI_PICK_DESCS` sayısı doğrulanır; `NO_COLOR=1` ile düz çıktı da denenir.
+
+Seçici olmayan metin sayfaları (Geçmiş, güncelleme ve çalışma panelleri, sunucu ekleme soruları) bu kuralın dışındadır ve klasik `ui_header` kullanır.
 
 ### Bölgeli ekran: `ui_region_begin <başlık> <gövde> <alt-etiket>` / `ui_region_end <etiket>` / `ui_region_reset`
 Üst bölüm (başlık + gövde metni) sabit çizilir, alt bölüm terminalin **kaydırma bölgesi** (DECSTBM) olur: sorular, `BECOME password:` istemi ve çıktı alt bölgede akar, ekran değişmez. Terminal < 24 satır ya da < 60 sütunsa `begin` 1 döner (çağıran eski akışa düşer). `Ctrl-C` bölgeyi sıfırlar. Test için `SSHPOCKET_ROWS`/`SSHPOCKET_COLS`. Not: fzf'yi canlı tutup altta çalıştırma denendi, `execute` sonrası fzf üst bölgeyi yeniden çizmediği için olmadı.

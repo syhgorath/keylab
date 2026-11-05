@@ -727,7 +727,7 @@ PY
 }
 
 @test "fzf paneli: hazırlık özeti başlıkta, her eylemin kartı sağ bölmede (geniş düzen)" {
-    export SSHPOCKET_STATE_DIR="$T/state"
+    export SSHPOCKET_STATE_DIR="$T/state" NO_COLOR=1
     ui_fzf_enabled() { return 0; }
     ui_arrows_enabled() { return 0; }
     ui_pick_arrows() {
@@ -1020,4 +1020,105 @@ PY
     [ "$(comp_vars_get "$D/demo.vars" demo_platform)" = proxmox-host ]
     run comp_menu_actions demo web1 <<<"0"
     [[ "$output" != *"hangi türde"* ]] || { echo "$output"; false; }
+}
+
+@test "değişkenler kartı: yazılı değer sayısı, değerler, ⚠ paketin uyardığı değer; dosya yoksa söyler" {
+    setup_state
+    printf '{"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"ansible","inventory_group":"x","profiles":[{"id":"u","status":"supported"}],"actions":{"preview":{"cmd":"a","effects":[]}},"vars":[{"name":"a","type":"string","default":"x"},{"name":"b","type":"bool","default":true,"warn_if":false},{"name":"c","type":"int","default":1}]}' > "$T/m.json"
+    run _comp_menu_vars_card "$T/m.json" "$T/yok.vars"
+    [[ "$output" == *"Henüz değer yazılmadı"* ]] || { echo "$output"; false; }
+    printf 'a=merhaba\nb=false\n' > "$T/v.vars"
+    run _comp_menu_vars_card "$T/m.json" "$T/v.vars"
+    [[ "$output" == *"Yazılı: 2 / 3 değişken · ⚠ 1 riskli değer"* && "$output" == *"• a = merhaba"* && "$output" == *"⚠ b = false"* ]] || { echo "$output"; false; }
+    [[ "$output" != *"c ="* ]] || false
+}
+
+@test "fzf paneli: kartlar renkli (etiket sarı, eylem adı camgöbeği); NO_COLOR ile düz" {
+    export SSHPOCKET_STATE_DIR="$T/state"
+    ui_fzf_enabled() { return 0; }
+    ui_arrows_enabled() { return 0; }
+    ui_pick_arrows() { for d in "${UI_PICK_DESCS[@]}"; do printf 'D=%s\n' "${d//$'\n'/|}"; done > "$T/panel"; printf 0; }
+    run comp_menu_actions demo web1 </dev/null
+    grep -q $'\033\\[1;36mapply\033\\[0m  —  ' "$T/panel"
+    grep -q $'\033\\[1;33mÖn koşul:\033\\[0m' "$T/panel"
+    NO_COLOR=1 run comp_menu_actions demo web1 </dev/null
+    run ! grep -q $'\033' "$T/panel"
+}
+
+# ---------- Ana menü › Paketler (fzf paket listesi) ----------
+pkgmenu_setup() {
+    export NO_COLOR=1 SISTEM_PATH="$ROOT/sistem"
+    ui_fzf_enabled() { return 0; }; clear() { :; }
+    comp_lock_validate() { return 0; }
+    comp_ids() { printf 'alpha\nbeta\n'; }
+    comp_status() { case "$1" in alpha) echo ok ;; *) echo missing ;; esac; }
+    comp_get() { case "$2" in version) echo "1.2.0" ;; repo) echo "o/$1" ;; esac; }
+    comp_installed_version() { [ "$1" = alpha ] && echo "1.2.0" || true; }
+    comp_verify_installed() { return 0; }
+    comp_cli_sync() { echo "SYNC only=${COMP_SYNC_ONLY:-hepsi}"; }
+    printf '%s\n' "$@" > "$T/pickq"; : > "$T/rec"
+    _comp_menu_pick() {
+        printf 'S=%s|H=%s|N=%s|D=%s\n' "$UI_SCREEN_TITLE" "${UI_PICK_HEADER//$'\n'/;}" "$#" "${#UI_PICK_DESCS[@]}" >> "$T/rec"
+        local first; first=$(head -n 1 "$T/pickq"); sed -i.bak '1d' "$T/pickq"; printf '%s' "${first:-0}"
+    }
+}
+
+@test "paket listesi (fzf): her paket bir satır ve kart, eksik varsa Eşitle satırı; başlık kenarlıkta, özet kutuda" {
+    pkgmenu_setup 0
+    run comp_menu_packages
+    [ "$status" -eq 0 ]
+    # 2 paket + sshpocket güncellemesi + eşitle + temizle + yeni yayın (+ Geri)
+    grep -q '^S=Ana menü › Paketler ve güncelleme|H=sshpocket ? · kilit: 2 paket · 1 eksik/eski/bozuk|N=7|D=6' "$T/rec" || { cat "$T/rec"; false; }
+}
+
+@test "paket listesi (fzf): eksik pakete Enter yalnızca o paketi eşitler; kurulu pakete Enter doğrular" {
+    pkgmenu_setup 2 1 0
+    run comp_menu_packages <<< $'\n'
+    [[ "$output" == *"SYNC only=beta"* ]] || { echo "$output"; false; }
+    grep -q 'doğrulandı' <<< "$(cat "$T/rec")" || true
+    [ "$(grep -c '^S=' "$T/rec")" -ge 3 ]
+    grep -q 'alpha doğrulandı' "$T/rec"
+}
+
+@test "paket listesi (fzf): paketlerin altındaki sshpocket satırı güncelleme eylemini (UpdateAction) çalıştırır" {
+    pkgmenu_setup 3 0
+    UpdateAction() { echo "UPDATE ÇAĞRILDI"; }
+    run comp_menu_packages <<< $'\n'
+    [[ "$output" == *"UPDATE ÇAĞRILDI"* ]] || { echo "$output"; false; }
+}
+
+@test "ana menü kaydı: fzf + paket varken güncelleme ayrı satır DEĞİL (Paketler ve güncelleme); düz modda ayrı satır" {
+    source "$H/BuiltinMenu.sh"
+    REG="$T/reg"; : > "$REG"
+    RegisterModules() { echo "$3" >> "$REG"; }
+    comp_ids() { echo alpha; }
+    comp_menu_packages() { :; }
+    ui_fzf_enabled() { return 0; }
+    RegisterBuiltinMenu
+    run grep -c UpdateAction "$REG"; [ "$output" = 0 ]
+    grep -q ComponentsAction "$REG"
+    : > "$REG"; ui_fzf_enabled() { return 1; }
+    RegisterBuiltinMenu
+    grep -q UpdateAction "$REG"
+    # paket yoksa fzf'te de güncelleme ayrı satırdır
+    : > "$REG"; ui_fzf_enabled() { return 0; }; comp_ids() { return 0; }
+    RegisterBuiltinMenu
+    grep -q UpdateAction "$REG"; run grep -c ComponentsAction "$REG"; [ "$output" = 0 ]
+}
+
+@test "başarısız eylem: özet bloğunda NEDEN (betiğin stdout'u / msg) görünür; başarıda ve kapıda görünmez" {
+    export SSHPOCKET_STATE_DIR="$T/state"; UI_RULE='---'
+    mkdir -p "$T/state/demo/web1"
+    printf 'PLAY RECAP\nfatal: [web1]: FAILED! => {"changed": false, "cmd": ["x"], "stdout": "HATA: geri alma zamanlayicisi disarm'"'"'dan ONCE tetiklenmis\\nikinci satir", "msg": "The command exited with a non-zero return code.", "rc": 3}\nweb1 : ok=1 changed=0 unreachable=0 failed=1 skipped=1\n' > "$T/state/demo/web1/last-run.log"
+    run _comp_menu_run_panel demo web1 "$INFO" preview 2 15
+    [[ "$output" == *"❌ Başarısız (çıkış 2)"* && "$output" == *"Neden: HATA: geri alma zamanlayicisi disarm'dan ONCE tetiklenmis"* && "$output" == *"ikinci satir"* ]] || { echo "$output"; false; }
+    # stdout boşsa msg
+    printf 'fatal: [web1]: FAILED! => {"msg": "Failed to connect to the host via ssh"}\n' > "$T/state/demo/web1/last-run.log"
+    run _comp_menu_run_panel demo web1 "$INFO" preview 4 15
+    [[ "$output" == *"Neden: Failed to connect to the host via ssh"* ]] || { echo "$output"; false; }
+    # başarıda ve kapı ret'inde neden satırı yok
+    run _comp_menu_run_panel demo web1 "$INFO" preview 0 15
+    [[ "$output" != *"Neden:"* ]] || false
+    run _comp_menu_run_panel demo web1 "$INFO" preview "${COMP_EXEC_REFUSED:-190}" 1
+    [[ "$output" != *"Neden:"* ]] || false
 }

@@ -22,6 +22,76 @@ ui_footer() {
     if _ui_color "$fd"; then printf '\033[2m%s\033[0m\n' "$1"; else printf '%s\n' "$1"; fi
 }
 
+# ui_screen <yol çubuğu> [fd] → ekran başlığı. fzf etkinse (ui_card_on) BASILMAZ: aynı metin fzf çerçevesinin üst kenarlığında etiket olarak çıkar
+# (UI_SCREEN_TITLE; UI_PICK_TITLE verilmişse o önceliklidir). fzf yoksa (ok tuşlu/numaralı mod) klasik ui_header basılır.
+# Bilgi satırları (özet, uyarı, ileti) fzf modunda çağıranın UI_PICK_HEADER'ına girer (çizimin içine), düz modda eskisi gibi basılır.
+ui_screen() {
+    UI_SCREEN_TITLE="$1"
+    if declare -F ui_card_on >/dev/null && ui_card_on; then return 0; fi
+    ui_header "$@"
+}
+
+# ui_paint <kart|tty> <SGR kodu> <metin> → renk açıksa metni ANSI ile sarar, değilse düz yazar. NO_COLOR her zaman düz bırakır.
+#   kart: fzf önizleme kartı (yalnız fzf etkinse; ok tuşlu/numaralı modda kart düz metin kalır)
+#   tty : doğrudan terminale yazılan blok (stdout terminal ise)
+# Kodlar: 1;36 bölüm başlığı (camgöbeği) · 1;33 etiket (sarı) · 1;32 iyi · 1;31 kötü · 2 soluk
+ui_paint() {
+    local mode="$1" code="$2" text="$3" on=1
+    [ -z "${NO_COLOR:-}" ] || on=0
+    if [ "$on" = 1 ]; then
+        case "$mode" in
+            kart) declare -F ui_fzf_enabled >/dev/null && ui_fzf_enabled || on=0 ;;
+            *)    _ui_color 1 || on=0 ;;
+        esac
+    fi
+    if [ "$on" = 1 ]; then printf '\033[%sm%s\033[0m' "$code" "$text"; else printf '%s' "$text"; fi
+}
+
+# ui_fit_wide <liste-satırı> [en-az-liste=10] → geniş fzf düzeninde (UI_PICK_WIDE) başlığı terminal yüksekliğine sığdırır: liste en az N satır görünür.
+# Çağıranın UI_PICK_HEADER'ını (gerekirse baştaki satırları tutup kısaltarak) ve UI_PICK_HEIGHT'ını dinamik kapsamla ayarlar. <liste-satırı>: Geri dahil öğe sayısı.
+# Çerçeve payı: üst/alt kenar 2 + Ara kutusu 4 + başlık kutusu 2 + ipucu satırı 1 + liste kutusu 2 = 11. Test için SSHPOCKET_ROWS.
+ui_fit_wide() {
+    local nlist="$1" minl="${2:-10}" rows chrome=11 allowed nh keep hdr want max
+    rows="${SSHPOCKET_ROWS:-$(tput lines 2>/dev/null)}"; [[ "$rows" =~ ^[0-9]+$ ]] || rows=24
+    [ "$minl" -le "$nlist" ] || minl="$nlist"
+    max=$((rows - 1))
+    allowed=$((max - chrome - minl)); [ "$allowed" -ge 1 ] || allowed=1
+    hdr="${UI_PICK_HEADER:-}"
+    nh=0; [ -z "$hdr" ] || nh=$(printf '%s\n' "$hdr" | awk 'END { print NR }')
+    if [ "$nh" -gt "$allowed" ]; then
+        keep=$((allowed - 1)); [ "$keep" -ge 1 ] || keep=1
+        hdr="$(printf '%s\n' "$hdr" | head -n "$keep")"$'\n'"… +$((nh - keep)) satır (ayrıntı: Geçmiş ve son sonuçlar)"
+        nh=$((keep + 1))
+    fi
+    want=$((chrome + nh + nlist)); [ "$want" -le "$max" ] || want="$max"
+    # shellcheck disable=SC2034  # _ui_pick_fzf (çağıranın dinamik kapsamı) okur
+    UI_PICK_HEADER="$hdr"; UI_PICK_HEIGHT="$want"
+}
+
+# ---- fzf kartları: ortak biçim (bölüm başlığı, etiket sütunu, renklendirici). Renk yalnız fzf etkinken ve NO_COLOR yokken; aksi hâlde düz metin ----
+# ui_card_on → 0: fzf düzeni kullanılıyor (başlık kenarlıkta, bilgi başlık kutusunda, kartlar). YAPI kararıdır; renk ayrıdır:
+# NO_COLOR fzf düzenini kapatmaz, yalnız renkleri kapatır (ui_paint / ui_card_colorize)
+ui_card_on() { declare -F ui_fzf_enabled >/dev/null && ui_fzf_enabled; }
+# ui_card_head <başlık> → "── başlık ──" (camgöbeği)
+ui_card_head() { printf '%s\n' "$(ui_paint kart 1\;36 "── $1 ──")"; }
+# ui_card_row <etiket> <değer> → " Etiket  : değer" (etiket sütunu 8 karakter, sarı)
+ui_card_row() {
+    local l="$1" pad
+    pad=$((8 - ${#l})); [ "$pad" -gt 0 ] || pad=0   # karakter sayısına göre doldur (printf %-8s Türkçe harflerde bayt sayar)
+    printf ' %s %s\n' "$(ui_paint kart 1\;33 "$l$(printf '%*s' "$pad" '')":)" "$2"
+}
+# ui_card_colorize → stdin'deki HAZIR kart metnini renklendirir (etiketler, bölüm başlıkları, ✅/❌/⚠/⛔); renk kapalıysa aynen geçirir
+ui_card_colorize() {
+    if ! ui_card_on || [ -n "${NO_COLOR:-}" ]; then cat; return; fi
+    local e=$'\033'
+    sed -E \
+        -e "s/^(Etkiler|Onay|Ön koşul|Son sonuç[^:]*|Zorunlu eksik|Yazılı|Boş|Günlük|Anahtarlar|Özet|Durum|Hedef|Anahtar|Knock|Passphrase|Komut|Port|Kullanıcı|Adres|Key):/${e}[1;33m\1:${e}[0m/" \
+        -e "s/^(Son çalıştırmalar|Son günlüğün sonu)\$/${e}[1;36m── \1 ──${e}[0m/" \
+        -e "s/^([A-Za-z0-9_.-]+)  —  /${e}[1;36m\1${e}[0m  —  /" \
+        -e "s/✅/${e}[1;32m✅${e}[0m/g" -e "s/❌/${e}[1;31m❌${e}[0m/g" \
+        -e "s/^(⚠.*)\$/${e}[33m\1${e}[0m/" -e "s/^(⛔.*)\$/${e}[1;31m\1${e}[0m/"
+}
+
 # Grup adının ekranda görünen karşılığı
 ui_group_title() {
     case "$1" in
@@ -172,7 +242,7 @@ _ui_pick_fzf() {
         # geniş düzen: sağda önizleme, etiketli çerçeveler (yol çubuğu = kenarlık etiketi); eski fzf'te yalnız sağ önizleme
         local hdr="${UI_PICK_HEADER:-}" ver
         ver=$(ui_fzf_version "$fzf_bin")
-        opts=(--delimiter=$'\t' --with-nth=2.. --layout=reverse --height='85%' --min-height=12
+        opts=(--delimiter=$'\t' --with-nth=2.. --layout=reverse --height="${UI_PICK_HEIGHT:-85%}" --min-height=12
               --no-sort --cycle --prompt='› '
               --preview "awk -v n={1} 'NR==n+1 {gsub(/\037/,\"\\n\"); print}' '$tmp/desc'" --preview-window='right,48%,wrap'
               --bind 'left:abort' --bind "start:pos($sel)")
@@ -180,13 +250,17 @@ _ui_pick_fzf() {
         opts+=(--header="$hdr")
         if [ "${ver:-0}" -ge 3500 ]; then
             opts+=(--border=rounded --preview-label=' Açıklama ')
-            [ -z "${UI_PICK_TITLE:-}" ] || opts+=(--border-label=" $UI_PICK_TITLE ")
+            [ -z "${UI_PICK_TITLE:-${UI_SCREEN_TITLE:-}}" ] || opts+=(--border-label=" ${UI_PICK_TITLE:-$UI_SCREEN_TITLE} ")
         else
             opts+=(--border)
         fi
         if [ "${ver:-0}" -ge 5800 ]; then
             opts+=(--list-border=rounded --input-border=rounded --header-border=rounded --input-label=' Ara ')
         fi
+    fi
+    if [ -z "${UI_PICK_WIDE:-}" ] && [ -n "${UI_SCREEN_TITLE:-}" ] && [ "$(ui_fzf_version "$fzf_bin")" -ge 3500 ]; then
+        # dar düzende de başlık kenarlıkta (ui_screen ekranı ayrıca basmaz)
+        opts+=(--border=rounded --border-label=" $UI_SCREEN_TITLE ")
     fi
     [ -z "${UI_PICK_EXPECT:-}" ] || opts+=(--expect="$UI_PICK_EXPECT")
     out=$("$fzf_bin" "${opts[@]}" < "$tmp/list")
@@ -255,13 +329,21 @@ _ui_pick_builtin() {
 # Ana menü girdileri için açıklama. Parametre: işlev adı (server:<ad> dahil)
 ui_describe_entry() {
     case "$1" in
-        server:*)              printf 'Sunucu menüsünü açar: bağlan, key gönder, bilgileri güncelle, Keychain passphrase, knock ayarları.' ;;
+        server:*)
+            # kart: yerel veriden (bkz. server_card); yoksa genel açıklama. $2 = durum simgesi
+            if declare -F server_card >/dev/null && [ -n "$(server_card "${1#server:}" "${2:-}" 2>/dev/null)" ]; then
+                server_card "${1#server:}" "${2:-}" 2>/dev/null
+            else
+                printf 'Sunucu menüsünü açar: bağlan, key gönder, bilgileri güncelle, Keychain passphrase, knock ayarları.'
+            fi ;;
         AddServerAction)       printf "Yeni sunucu ekler: IP/kullanıcı/port sorar, isterseniz ed25519 key üretir, passphrase'i Keychain'e kaydeder." ;;
         ImportSSHConfigAction) printf '%s' 'SSH config dosyasındaki (~/.ssh/config) sunucuları buraya aktarır; private key dosyaları kopyalanmaz, yolları kaydedilir.' ;;
         ManageServersAction)   printf 'Sunucuları listeler, siler veya yeniden adlandırır (silmede sunucu adını yazarak onaylarsınız).' ;;
         UpdateAction)          printf 'Yeni sürüm var mı bakar; imzalı paketi doğrulayıp onayınızla kurar. Sunucularınıza ve key'"'"'lerinize dokunmaz.' ;;
         SettingsAction)        printf 'Durum göstergesi, kontrol süresi ve menü stilini (fzf/ok tuşu/numara) ayarlar.' ;;
-        ComponentsAction)      printf 'Kurulu paketlerin durumunu gösterir; eksik/eski olanı imzayı doğrulayarak, onayınızla kurar.' ;;
+        ComponentsAction)
+            if declare -F ui_card_on >/dev/null && ui_card_on; then printf 'Paketlerin durumu ve kurulumu; altında sshpocket güncellemesi (imzalı paket, onayınızla), eşitle, eski sürümleri temizle, yeni yayın var mı.'
+            else printf 'Kurulu paketlerin durumunu gösterir; eksik/eski olanı imzayı doğrulayarak, onayınızla kurar.'; fi ;;
         *)                     printf '' ;;
     esac
 }
@@ -329,8 +411,8 @@ ui_edit_list() {
         labels+=("💾 Kaydet (${#UI_LIST_ITEMS[@]} öğe)"); acts+=(save)
         UI_PICK_DESCS+=("Listeyi kaydeder.")
         clear
-        if declare -F ui_header >/dev/null; then ui_header "${UI_LIST_TITLE:-Liste} › ${UI_LIST_NAME:-}"; fi
-        [ -z "$msg" ] || { echo "$msg"; echo ""; }
+        if declare -F ui_screen >/dev/null; then ui_screen "${UI_LIST_TITLE:-Liste} › ${UI_LIST_NAME:-}"; fi
+        if ! { declare -F ui_card_on >/dev/null && ui_card_on; }; then [ -z "$msg" ] || { echo "$msg"; echo ""; }; fi   # fzf: ileti başlık kutusunda
         # shellcheck disable=SC2034  # ui_pick_arrows / _ui_pick_fzf (dinamik kapsam) okur
         local UI_PICK_WIDE=1 UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_START=1 UI_PICK_BACK_DESC="Kaydetmeden döner."
         # shellcheck disable=SC2034

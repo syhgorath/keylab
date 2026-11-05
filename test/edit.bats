@@ -207,3 +207,53 @@ STUB
     run bash "$H/askpass.sh"; [ "$output" = "gizli" ]
     run bash "$H/askpass.sh"; [ "$output" = "gizli" ]
 }
+
+# ---------- ssh_module_edit (fzf alan listesi editörü) ----------
+fzf_edit_setup() {
+    printf 'WEB1_IP=1.1.1.1\nWEB1_USER=pi\nWEB1_PORT=2200\n' > "$ENVF"
+    export NO_COLOR=1
+    ui_fzf_enabled() { return 0; }
+    clear() { :; }
+    printf '%s\n' "$@" > "$BATS_TEST_TMPDIR/pickq"; : > "$BATS_TEST_TMPDIR/hdr"
+    ui_pick_arrows() {
+        # $(…) alt kabuğunda çağrıldığı için kuyruk dosyada tutulur
+        printf 'S=%s|H=%s|N=%s\n' "$UI_SCREEN_TITLE" "${UI_PICK_HEADER//$'\n'/;}" "${#UI_PICK_DESCS[@]}" >> "$BATS_TEST_TMPDIR/hdr"
+        local first; first=$(head -n 1 "$BATS_TEST_TMPDIR/pickq"); sed -i.bak '1d' "$BATS_TEST_TMPDIR/pickq"
+        printf '%s' "${first:-0}"
+    }
+}
+
+@test "edit (fzf): tek alan değiştirilir (Port) ve Kaydet ile yazılır; diğer alanlar korunur" {
+    fzf_edit_setup 3 5
+    run ssh_module_edit WEB1 "$MD" <<< $'2222\n'
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"✅ Güncellendi: pi@1.1.1.1:2222"* ]] || { echo "$output"; false; }
+    run _ssh_env_get "$ENVF" WEB1_PORT; [ "$output" = "2222" ]
+    run _ssh_env_get "$ENVF" WEB1_IP;   [ "$output" = "1.1.1.1" ]
+    grep -q '^S=Ana menü › web1 › Bilgileri güncelle|H=Hedef: pi@1.1.1.1:2200|N=5' "$BATS_TEST_TMPDIR/hdr"
+    grep -q 'kaydedilmedi' "$BATS_TEST_TMPDIR/hdr"       # port değişince ikinci çizimde işaretlenir
+}
+
+@test "edit (fzf): geçersiz IP reddedilir, nedeni başlık kutusunda görünür ve hiçbir şey yazılmaz" {
+    fzf_edit_setup 1 0
+    run ssh_module_edit WEB1 "$MD" <<< $'bad host;rm\n'
+    [ "$status" -eq 0 ]
+    run _ssh_env_get "$ENVF" WEB1_IP; [ "$output" = "1.1.1.1" ]
+    grep -q '⚠️' "$BATS_TEST_TMPDIR/hdr"
+}
+
+@test "edit (fzf): kaydedilmemiş değişiklikle Vazgeç onay ister; h ile döner, e ile hiçbir şey yazmadan çıkar" {
+    fzf_edit_setup 3 0 0
+    run ssh_module_edit WEB1 "$MD" <<< $'2222\nh\ne\n'
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Vazgeçildi: hiçbir şey yazılmadı."* ]] || { echo "$output"; false; }
+    run _ssh_env_get "$ENVF" WEB1_PORT; [ "$output" = "2200" ]
+}
+
+@test "edit (fzf yokken): klasik dört soru aynen çalışır" {
+    unset -f ui_fzf_enabled 2>/dev/null || true
+    printf 'WEB1_IP=1.1.1.1\nWEB1_USER=pi\nWEB1_PORT=2200\n' > "$ENVF"
+    run ssh_module_edit WEB1 "$MD" <<< $'\n\n3333\n'
+    [ "$status" -eq 0 ]
+    run _ssh_env_get "$ENVF" WEB1_PORT; [ "$output" = "3333" ]
+}

@@ -614,3 +614,128 @@ liste_motoru() {
     [ -d "$SANDBOX/servers/gamma" ] || { echo "$output"; false; }
     [ ! -e "$SANDBOX/servers/beta" ] && [ -d "$SANDBOX/servers/alpha" ]
 }
+
+@test "sunucu kartı: kimlik, anahtar/knock, paket geçmişi ve son Lynis skoru yerel veriden; ssh yok" {
+    export SSHPOCKET_SERVERS_DIR="$BATS_TEST_TMPDIR/srv" SSHPOCKET_STATE_DIR="$BATS_TEST_TMPDIR/state"
+    mkdir -p "$SSHPOCKET_SERVERS_DIR/alpha" "$BATS_TEST_TMPDIR/state/demo/alpha/out/alpha/20261104-100000" "$BATS_TEST_TMPDIR/state/demo/alpha/out/alpha/20261104-181118"
+    printf 'IP=192.0.2.7\nUSER=deploy\nPORT=2222\n' > "$SSHPOCKET_SERVERS_DIR/alpha/server.env"
+    touch "$SSHPOCKET_SERVERS_DIR/alpha/id_ed25519_alpha"
+    printf '2026-11-04T15:55:06Z|demo|1.2.0|preview|ok\n2026-11-04T16:08:03Z|demo|1.2.0|apply|fail\n' > "$SSHPOCKET_SERVERS_DIR/alpha/components.log"
+    printf '{"hardening_index": 41}\n' > "$BATS_TEST_TMPDIR/state/demo/alpha/out/alpha/20261104-100000/summary.json"
+    printf '{\n  "hardening_index": 56\n}\n' > "$BATS_TEST_TMPDIR/state/demo/alpha/out/alpha/20261104-181118/summary.json"
+    run server_card alpha 🟢
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Durum   : 🟢 açık"* && "$output" == *"Hedef   : deploy@192.0.2.7:2222"* && "$output" == *"Anahtar : ✅ var"* && "$output" == *"Knock   : kapalı"* ]] || { echo "$output"; false; }
+    [[ "$output" == *"── 📦 demo 1.2.0 ──"* && "$output" == *"preview : 11-04 15:55 ✅"* && "$output" == *"apply   : 11-04 16:08 ❌"* ]] || { echo "$output"; false; }
+    [[ "$output" == *"Lynis   : 56 (son denetim)"* && "$output" == *'$ ssh -p 2222 deploy@192.0.2.7'* ]] || { echo "$output"; false; }
+    [[ "$output" != *$'\033'* ]] || { echo "renk kodu sızdı (fzf yok)"; false; }
+    # geçersiz ad: boş; paket kaydı olmayan sunucuda paket bölümü yok
+    [ -z "$(server_card 'x;y')" ]
+    mkdir -p "$SSHPOCKET_SERVERS_DIR/beta"; printf 'IP=192.0.2.8\nUSER=root\n' > "$SSHPOCKET_SERVERS_DIR/beta/server.env"
+    run server_card beta 🔴
+    [[ "$output" == *"Durum   : 🔴"* && "$output" == *"Anahtar : ❌"* && "$output" != *"📦"* ]] || { echo "$output"; false; }
+}
+
+@test "ui_describe_entry: server:* kartı kullanır, sunucu bilgisi yoksa genel açıklamaya düşer" {
+    export SSHPOCKET_SERVERS_DIR="$BATS_TEST_TMPDIR/srv"
+    mkdir -p "$SSHPOCKET_SERVERS_DIR/alpha"
+    printf 'IP=192.0.2.7\nUSER=deploy\n' > "$SSHPOCKET_SERVERS_DIR/alpha/server.env"
+    run ui_describe_entry server:alpha 🟢
+    [[ "$output" == *"deploy@192.0.2.7:22"* ]] || { echo "$output"; false; }
+    run ui_describe_entry server:yok
+    [[ "$output" == *"Sunucu menüsünü açar"* ]] || { echo "$output"; false; }
+}
+
+@test "sunucu kartı: renk yalnız fzf etkinken ve NO_COLOR yokken; sunucu menüsü bloğu yalnız terminalde" {
+    export SSHPOCKET_SERVERS_DIR="$BATS_TEST_TMPDIR/srv"
+    mkdir -p "$SSHPOCKET_SERVERS_DIR/alpha"; printf 'IP=192.0.2.7\nUSER=deploy\n' > "$SSHPOCKET_SERVERS_DIR/alpha/server.env"
+    ui_fzf_enabled() { return 0; }
+    run server_card alpha 🟢
+    [[ "$output" == *$'\033[1;36m'* && "$output" == *$'\033[1;32m'* ]] || { echo "$output" | cat -v; false; }
+    NO_COLOR=1 run server_card alpha 🟢
+    [[ "$output" != *$'\033'* ]] || false
+    # ui_paint tty: boruda (stdout terminal değil) düz
+    run ui_paint tty 1\;33 "IP:"
+    [ "$output" = "IP:" ]
+}
+
+@test "fzf geniş düzen: yükseklik varsayılan %85; UI_PICK_HEIGHT verilirse o değer (kısa liste boş alan bırakmaz)" {
+    unset -f _ui_read_key; source "$H/UI.sh"
+    make_fake_fzf
+    export SSHPOCKET_UI=fzf
+    UI_PICK_WIDE=1 run ui_pick_arrows 1 "Geri" "A"
+    grep -qx -- '--height=85%' "$BATS_TEST_TMPDIR/fzf.args"
+    UI_PICK_WIDE=1 UI_PICK_HEIGHT=20 run ui_pick_arrows 1 "Geri" "A"
+    grep -qx -- '--height=20' "$BATS_TEST_TMPDIR/fzf.args"
+}
+
+@test "ayar kartı: değer, kaynak ve varsayılan; renk kapalıyken düz" {
+    export SSHPOCKET_CONF="$BATS_TEST_TMPDIR/yok.conf" NO_COLOR=1
+    run _settings_card STATUS_TIMEOUT "Açıklama metni."
+    [[ "$output" == *"── Durum kontrol süresi (sn) ──"* && "$output" =~ Değer\ +:\ 1 && "$output" =~ Kaynak\ +:\ varsayılan && "$output" == *"Açıklama metni."* ]] || { echo "$output"; false; }
+    [[ "$output" != *$'\033'* ]] || false
+}
+
+@test "sunucu menüsü kartları: altı satırın kartı (paketli), anahtar/knock/passphrase ve komut" {
+    export NO_COLOR=1 SSHPOCKET_STATE_DIR="$BATS_TEST_TMPDIR/state"
+    ssh_has_passphrase() { return 1; }
+    D="$BATS_TEST_TMPDIR/srv/alpha"; mkdir -p "$D"; touch "$D/id_ed25519_alpha"
+    UI_PICK_DESCS=()
+    _ssh_module_cards ALPHA deploy 192.0.2.7 2222 "$D/id_ed25519_alpha" "$D" 1
+    [ "${#UI_PICK_DESCS[@]}" -eq 6 ]
+    [[ "${UI_PICK_DESCS[0]}" == *"── 🔌 Bağlan ──"* && "${UI_PICK_DESCS[0]}" == *"ssh -p 2222 deploy@192.0.2.7"* && "${UI_PICK_DESCS[0]}" == *"Anahtar : ✅ var"* ]] || { echo "${UI_PICK_DESCS[0]}"; false; }
+    [[ "${UI_PICK_DESCS[5]}" == *"Bu sunucuda henüz paket eylemi çalıştırılmadı."* ]] || { echo "${UI_PICK_DESCS[5]}"; false; }
+    UI_PICK_DESCS=(); _ssh_module_cards ALPHA deploy 192.0.2.7 22 "$D/yok" "$D" 0
+    [ "${#UI_PICK_DESCS[@]}" -eq 5 ]
+}
+
+@test "ui_fit_wide: kısa terminalde başlık kısaltılır ve liste en az 10 satır kalır; uzun terminalde başlık tam" {
+    local hdr=$'bir\niki\nüç\ndört\nbeş\naltı\nyedi\nsekiz\ndokuz'
+    UI_PICK_HEADER="$hdr"; UI_PICK_HEIGHT=""
+    SSHPOCKET_ROWS=25 ui_fit_wide 17 10
+    # izin verilen başlık: 24 - 11 - 10 = 3 satır → 2 satır + "… +N" satırı
+    [ "$(printf '%s\n' "$UI_PICK_HEADER" | wc -l | tr -d ' ')" -eq 3 ]
+    [[ "$UI_PICK_HEADER" == "bir"$'\n'"iki"$'\n'"… +7 satır"* ]] || { echo "$UI_PICK_HEADER"; false; }
+    [ "$UI_PICK_HEIGHT" -eq 24 ]
+    UI_PICK_HEADER="$hdr"; UI_PICK_HEIGHT=""
+    SSHPOCKET_ROWS=60 ui_fit_wide 17 10
+    [ "$UI_PICK_HEADER" = "$hdr" ]
+    [ "$UI_PICK_HEIGHT" -eq $((11 + 9 + 17)) ]
+    # başlık yoksa yalnızca yükseklik
+    UI_PICK_HEADER=""; SSHPOCKET_ROWS=40 ui_fit_wide 5 10
+    [ -z "$UI_PICK_HEADER" ] && [ "$UI_PICK_HEIGHT" -eq $((11 + 5)) ]
+}
+
+@test "ui_screen: fzf yokken klasik başlık basılır, fzf varken basılmaz ama başlık UI_SCREEN_TITLE'a yazılır" {
+    unset UI_SCREEN_TITLE NO_COLOR
+    ui_fzf_enabled() { return 1; }
+    run ui_screen "Ana menü › Ayarlar"
+    [[ "$output" == *"Ana menü › Ayarlar"* && "$output" == *"────"* ]] || { echo "$output"; false; }
+    ui_fzf_enabled() { return 0; }
+    run ui_screen "Ana menü › Ayarlar"
+    [ -z "$output" ]
+    ui_screen "Ana menü › Ayarlar" >/dev/null
+    [ "$UI_SCREEN_TITLE" = "Ana menü › Ayarlar" ]
+}
+
+@test "fzf: başlık (UI_SCREEN_TITLE) dar düzende de kenarlık etiketi olur; UI_PICK_TITLE öncelikli (geniş)" {
+    unset -f _ui_read_key; source "$H/UI.sh"
+    make_fake_fzf
+    export SSHPOCKET_UI=fzf
+    ui_fzf_version() { echo 7405; }
+    UI_SCREEN_TITLE="Ana menü › Ayarlar" run ui_pick_arrows 1 "Geri" "A"
+    grep -qx -- '--border-label= Ana menü › Ayarlar ' "$BATS_TEST_TMPDIR/fzf.args"
+    UI_PICK_WIDE=1 UI_SCREEN_TITLE="Ekran" UI_PICK_TITLE="Öncelikli" run ui_pick_arrows 1 "Geri" "A"
+    grep -qx -- '--border-label= Öncelikli ' "$BATS_TEST_TMPDIR/fzf.args"
+}
+
+@test "NO_COLOR fzf yapısını kapatmaz: ui_screen yine basmaz (başlık kenarlıkta), yalnız renkler kapanır" {
+    ui_fzf_enabled() { return 0; }
+    export NO_COLOR=1
+    run ui_screen "Ana menü › Ayarlar"
+    [ -z "$output" ]
+    run ui_card_on
+    [ "$status" -eq 0 ]
+    printf 'Etkiler: yok\n✅ iyi\n' | ui_card_colorize > "$BATS_TEST_TMPDIR/out"
+    run ! grep -q $'\033' "$BATS_TEST_TMPDIR/out"
+}
