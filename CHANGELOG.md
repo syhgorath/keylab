@@ -4,6 +4,15 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.6.23] - 2026-11-05
+
+Bu yama sürümü `utility` 0.1.0 paketini kilitler ve fzf arayüz düzenini düzeltir (3.6.22'den sonra bulunan hatalar).
+
+### Dikkat
+- **`utility` sshpocket menüsüyle gerçek VM'de henüz DENENMEDİ.** Paket sahibi paketi gerçek VM'lerde (Ubuntu 26.04, Debian 13.7) doğrudan playbook ile denedi; sshpocket tarafında yalnızca Docker LAB'da (Ubuntu 26.04 konteyneri) CLI üzerinden `durum`, `preview`, `apply`, ikinci `preview` (changed=0) çalıştırıldı. Proxmox'ta, `linux-hardening` uygulanmış VM'de birlikte ve ufw giden-reddi açıkken denenmedi. Menüden gerçek VM turu (ubuntutest ve debiantest) bu sürümden sonra yapılacak.
+- **fzf duyarlı düzeninin son hâli gerçek terminalde elle teyit edilmedi:** 3.6.22'yi kullanıcı 120×30 ve 254×66 pencerelerde denedi ve eşik hatasını (kartın gereksiz alta düşmesi) buldu; düzeltme ve yükseklik kuralı birim testleri, sahte fzf ve sahte pty ile doğrulandı, düzeltilmiş görünüm gerçek pencerede henüz görülmedi.
+- `utility` kendi Python ortamını ister (farklı `requirements.txt` özeti): ilk kullanımda "Kurulsun mu? [e/H]" sorusu (~10 MB indirme, ~90 MB disk).
+
 ### Eklendi
 - **`utility` 0.1.0 kilitlendi** (`components.lock`; imzalayıcı `linux-hardening` ile aynı): saat dilimi, locale (`LANG`) ve NTP (chrony `sources.d` drop-in); eylemler `durum`, `preview`, `apply` (evet/hayır onayı, `preview` ön koşulu), `geri_yukle`; Ubuntu 26.04 ve Debian 13 (Proxmox VE paket tarafından reddedilir). Manifestte `required` değişken ve `requires_vars` yok: tüm eylemler açık. Docker LAB'da sshpocket üzerinden `durum`, `preview`, `apply`, ikinci `preview` (changed=0) denendi; **sshpocket menüsüyle gerçek VM turu henüz yapılmadı.** Paketin kendi Python ortamı (farklı `requirements.txt` özeti) ilk kullanımda ayrıca kurulur (~10 MB indirme, ~90 MB disk).
 
