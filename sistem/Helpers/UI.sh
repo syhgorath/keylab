@@ -47,15 +47,22 @@ ui_paint() {
     if [ "$on" = 1 ]; then printf '\033[%sm%s\033[0m' "$code" "$text"; else printf '%s' "$text"; fi
 }
 
+# Terminal boyutu (test için SSHPOCKET_ROWS / SSHPOCKET_COLS). Dar terminalde (UI_NARROW_COLS sütundan az) sağ kart yerine kart ALTA alınır (sabit UI_NARROW_PREVIEW satır).
+UI_NARROW_COLS=100; UI_NARROW_PREVIEW=10
+_ui_term_rows() { local r="${SSHPOCKET_ROWS:-$(tput lines 2>/dev/null)}"; [[ "$r" =~ ^[0-9]+$ ]] || r=24; printf '%s' "$r"; }
+_ui_term_cols() { local c="${SSHPOCKET_COLS:-$(tput cols 2>/dev/null)}"; [[ "$c" =~ ^[0-9]+$ ]] || c=80; printf '%s' "$c"; }
+
 # ui_fit_wide <liste-satırı> [en-az-liste=10] → geniş fzf düzeninde (UI_PICK_WIDE) başlığı terminal yüksekliğine sığdırır: liste en az N satır görünür.
 # Çağıranın UI_PICK_HEADER'ını (gerekirse baştaki satırları tutup kısaltarak) ve UI_PICK_HEIGHT'ını dinamik kapsamla ayarlar. <liste-satırı>: Geri dahil öğe sayısı.
 # Çerçeve payı: üst/alt kenar 2 + Ara kutusu 4 + başlık kutusu 2 + ipucu satırı 1 + liste kutusu 2 = 11. Test için SSHPOCKET_ROWS.
 ui_fit_wide() {
-    local nlist="$1" minl="${2:-10}" rows chrome=11 allowed nh keep hdr want max
-    rows="${SSHPOCKET_ROWS:-$(tput lines 2>/dev/null)}"; [[ "$rows" =~ ^[0-9]+$ ]] || rows=24
+    local nlist="$1" minl="${2:-10}" rows chrome=11 allowed nh keep hdr want max pv=0
+    rows=$(_ui_term_rows)
+    # dar terminalde kart alta alınır (aşağıda _ui_pick_fzf yüksekliğe UI_NARROW_PREVIEW ekler): başlık payı ve üst sınır ona göre
+    [ "$(_ui_term_cols)" -ge "$UI_NARROW_COLS" ] || pv="$UI_NARROW_PREVIEW"
     [ "$minl" -le "$nlist" ] || minl="$nlist"
     max=$((rows - 1))
-    allowed=$((max - chrome - minl)); [ "$allowed" -ge 1 ] || allowed=1
+    allowed=$((max - pv - chrome - minl)); [ "$allowed" -ge 1 ] || allowed=1
     hdr="${UI_PICK_HEADER:-}"
     nh=0; [ -z "$hdr" ] || nh=$(printf '%s\n' "$hdr" | awk 'END { print NR }')
     if [ "$nh" -gt "$allowed" ]; then
@@ -63,7 +70,7 @@ ui_fit_wide() {
         hdr="$(printf '%s\n' "$hdr" | head -n "$keep")"$'\n'"… +$((nh - keep)) satır (ayrıntı: Geçmiş ve son sonuçlar)"
         nh=$((keep + 1))
     fi
-    want=$((chrome + nh + nlist)); [ "$want" -le "$max" ] || want="$max"
+    want=$((chrome + nh + nlist)); [ "$want" -le $((max - pv)) ] || want=$((max - pv))
     # shellcheck disable=SC2034  # _ui_pick_fzf (çağıranın dinamik kapsamı) okur
     UI_PICK_HEADER="$hdr"; UI_PICK_HEIGHT="$want"
 }
@@ -240,11 +247,15 @@ _ui_pick_fzf() {
           --bind 'left:abort' --bind "start:pos($sel)")
     if [ -n "${UI_PICK_WIDE:-}" ]; then
         # geniş düzen: sağda önizleme, etiketli çerçeveler (yol çubuğu = kenarlık etiketi); eski fzf'te yalnız sağ önizleme
-        local hdr="${UI_PICK_HEADER:-}" ver
+        local hdr="${UI_PICK_HEADER:-}" ver hgt="${UI_PICK_HEIGHT:-85%}"
+        if [ "$(_ui_term_cols)" -lt "$UI_NARROW_COLS" ] && [[ "$hgt" =~ ^[0-9]+$ ]]; then
+            # dar terminal: kart alta alındı, listeye ayrılan satırlar korunsun diye sabit yüksekliğe kart satırları eklenir
+            hgt=$((hgt + UI_NARROW_PREVIEW)); [ "$hgt" -le $(( $(_ui_term_rows) - 1 )) ] || hgt=$(( $(_ui_term_rows) - 1 ))
+        fi
         ver=$(ui_fzf_version "$fzf_bin")
-        opts=(--delimiter=$'\t' --with-nth=2.. --layout=reverse --height="${UI_PICK_HEIGHT:-85%}" --min-height=12
+        opts=(--delimiter=$'\t' --with-nth=2.. --layout=reverse --height="$hgt" --min-height=12
               --no-sort --cycle --prompt='› '
-              --preview "awk -v n={1} 'NR==n+1 {gsub(/\037/,\"\\n\"); print}' '$tmp/desc'" --preview-window='right,48%,wrap'
+              --preview "awk -v n={1} 'NR==n+1 {gsub(/\037/,\"\\n\"); print}' '$tmp/desc'" --preview-window="right,48%,wrap,<$UI_NARROW_COLS(down,$UI_NARROW_PREVIEW,wrap,border-top)"
               --bind 'left:abort' --bind "start:pos($sel)")
         hdr="${hdr:+$hdr$'\n'}Enter: aç · ←/Esc: geri · yazarak ara${UI_PICK_EXPECT_HINT:+ · $UI_PICK_EXPECT_HINT}"
         opts+=(--header="$hdr")
