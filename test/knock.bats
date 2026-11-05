@@ -233,6 +233,7 @@ PY
     export SSHPOCKET_UI=fzf TERM=dumb
     unset NO_COLOR
     ui_fzf_enabled() { return 0; }
+    ui_arrows_enabled() { return 0; }   # fzf kurulu olmayan ortamda (CI) da seçici dalı seçilsin
     clear() { :; }
     ui_pick_arrows() {
         { echo "S=$UI_SCREEN_TITLE"; echo "W=$UI_PICK_WIDE"; echo "H=${UI_PICK_HEADER//$'\n'/|}"; echo "N=${#UI_PICK_DESCS[@]}"; } > "$T/pick"
