@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Düzeltildi
+- **`requires_sudo: true` eylemleri sudo parolası sormuyordu (parolalı sudo'da düşüyordu):** ansible runner `--ask-become-pass`'i yalnızca paket `invoke.append`'e yazmışsa ekliyordu (`linux-hardening` yazıyor, `utility` yazmıyordu); parolalı sudo'lu sunucuda `utility preview/apply/geri_yukle` `BECOME password:` istemi çıkmadan "Missing sudo password" ile düşüyor, NOPASSWD sunucuda sessizce geçiyordu. Standart (§5) `requires_sudo`'nun parolayı Ansible'ın kendi isteminden alacağını söylüyordu; sshpocket artık `requires_sudo` eylemde `--ask-become-pass`'i kendisi ekler (paket yazdıysa ikilenmez, sudo gerektirmeyen eyleme eklenmez). Docker LAB'da parolalı sudo ile doğrulandı. Test eklendi.
+
 ## [3.6.23] - 2026-11-05
 
 Bu yama sürümü `utility` 0.1.0 paketini kilitler ve fzf arayüz düzenini düzeltir (3.6.22'den sonra bulunan hatalar).
