@@ -31,11 +31,19 @@ _ssh_module_cards() {
         printf '\nProtokol, bekleme ve dizi ayarlanır (dizi Keychain'"'"'de).\n')")
     if [ "$has_pkgs" = "1" ]; then
         state="${SSHPOCKET_STATE_DIR:-$HOME/.local/share/sshpocket}"
-        UI_PICK_DESCS+=("$(ui_card_head '🛡️  Paketler'
-            if [ -f "$dir/components.log" ]; then
-                while IFS= read -r pkg; do [ -n "$pkg" ] && _server_card_pkg "$dir/components.log" "$state" "$pkg" "$(basename "$dir")"; done < <(awk -F'|' 'NF >= 5 && !seen[$2]++ { print $2 }' "$dir/components.log")
-            else printf ' Bu sunucuda henüz paket eylemi çalıştırılmadı.\n'; fi
-            printf '\nÖnizleme, uygulama, durum ve denetim eylemleri;\nher biri onay ve ön kontrollerden geçer.\n')")
+        local cat cname
+        shift 7
+        [ "$#" -gt 0 ] || set -- paketler
+        for cat in "$@"; do
+            cname=$(printf '%s\n' "${COMP_MENU_CATEGORIES[@]}" | awk -F'|' -v c="$cat" '$2 == c { print $3 }')
+            UI_PICK_DESCS+=("$(ui_card_head "${cname:-🛡️  Paketler}"
+                if [ -f "$dir/components.log" ]; then
+                    while IFS= read -r pkg; do
+                        [ -n "$pkg" ] && [ "$(comp_menu_category "$pkg")" = "$cat" ] && _server_card_pkg "$dir/components.log" "$state" "$pkg" "$(basename "$dir")"
+                    done < <(awk -F'|' 'NF >= 5 && !seen[$2]++ { print $2 }' "$dir/components.log")
+                else printf ' Bu sunucuda henüz paket eylemi çalıştırılmadı.\n'; fi
+                printf '\nÖnizleme, uygulama, durum ve denetim eylemleri;\nher biri onay ve ön kontrollerden geçer.\n')")
+        done
     fi
 }
 
@@ -122,7 +130,16 @@ ssh_module_run() {
 
     while true; do
         local ip="" user="" port="22" ssh_key="$default_key" custom_key problem="" verr choice has_pkgs=0
-        if declare -F comp_menu_available >/dev/null && comp_menu_available "$module_dir"; then has_pkgs=1; fi
+        local -a pkg_cats=() pkg_cat_labels=()
+        if declare -F comp_menu_available >/dev/null && comp_menu_available "$module_dir"; then
+            has_pkgs=1
+            local crow
+            while IFS= read -r crow; do
+                [ -n "$crow" ] || continue
+                pkg_cats+=("${crow%%|*}"); pkg_cat_labels+=("${crow#*|}")
+            done < <(comp_menu_categories)
+            [ "${#pkg_cats[@]}" -gt 0 ] || { pkg_cats=(paketler); pkg_cat_labels=("🛡️  Paketler (sertleştirme vb.)"); }
+        fi
 
         clear
         if declare -F ui_screen >/dev/null; then
@@ -195,13 +212,16 @@ ssh_module_run() {
             local -a pick_items=("Bağlan" "Public key'i sunucuya gönder" "Bilgileri güncelle (IP / kullanıcı / port / key yolu)" \
                 "Keychain passphrase'ini güncelle / sil" "Knock ayarları (port knocking)")
             if [ "$has_pkgs" = "1" ]; then
-                pick_items+=("🛡️  Paketler (sertleştirme vb.)")
-                UI_PICK_DESCS+=("Kurulu paketlerin eylemlerini bu sunucuda çalıştırır (önizleme, uygulama, durum...); her eylem onay ve ön kontrollerden geçer.")
+                local ci
+                for ci in "${!pkg_cat_labels[@]}"; do
+                    pick_items+=("${pkg_cat_labels[$ci]}")
+                    UI_PICK_DESCS+=("Kurulu paketlerin eylemlerini bu sunucuda çalıştırır (önizleme, uygulama, durum...); her eylem onay ve ön kontrollerden geçer.")
+                done
             fi
             if declare -F ui_card_on >/dev/null && ui_card_on; then
                 # fzf: satır başına renkli kart, geniş düzen (ok tuşlu/numaralı modda yukarıdaki tek satırlık açıklamalar kalır)
                 UI_PICK_DESCS=()
-                _ssh_module_cards "$prefix" "$user" "$ip" "$port" "$ssh_key" "$module_dir" "$has_pkgs"
+                _ssh_module_cards "$prefix" "$user" "$ip" "$port" "$ssh_key" "$module_dir" "$has_pkgs" "${pkg_cats[@]}"
                 # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
                 local UI_PICK_WIDE=1 UI_PICK_HEIGHT=20 UI_PICK_HEADER=""
                 # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
@@ -216,7 +236,10 @@ ssh_module_run() {
             echo "  3) Bilgileri güncelle (IP / kullanıcı / port / key yolu)"
             echo "  4) Keychain passphrase'ini güncelle / sil"
             echo "  5) Knock ayarları (port knocking)"
-            if [ "$has_pkgs" = "1" ]; then echo "  6) 🛡️  Paketler (sertleştirme vb.)"; fi
+            if [ "$has_pkgs" = "1" ]; then
+                local ci
+                for ci in "${!pkg_cat_labels[@]}"; do echo "  $((ci + 6))) ${pkg_cat_labels[$ci]}"; done
+            fi
             echo "  0) Geri (q)"
             if declare -F ui_footer >/dev/null; then ui_footer "numara yaz + Enter (boş = 1 Bağlan) · 0 veya q = geri"; fi
             if ! read -r -p "Seçim [1]: " choice; then return 0; fi
@@ -237,8 +260,10 @@ ssh_module_run() {
             3) ssh_module_edit "$prefix" "$module_dir"; read -r -p "Devam için Enter..." _ || return 0 ;;
             4) ssh_keychain_manage "$prefix" "$ssh_key"; read -r -p "Devam için Enter..." _ || return 0 ;;
             5) knock_manage "$prefix" "$module_dir"; read -r -p "Devam için Enter..." _ || return 0 ;;
-            6)
-                if [ "$has_pkgs" = "1" ]; then comp_menu_server "$prefix" "$module_dir"; else ui_no_pause; return 0; fi
+            [6-9])
+                if [ "$has_pkgs" = "1" ] && [ -n "${pkg_cats[$((choice - 6))]:-}" ]; then
+                    comp_menu_server "$prefix" "$module_dir" "${pkg_cats[$((choice - 6))]}"
+                else ui_no_pause; return 0; fi
                 ;;
             *) ui_no_pause; return 0 ;;
         esac

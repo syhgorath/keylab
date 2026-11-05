@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **Paket bildirimi `menu` alanı (S1):** `"menu": {"category": "hardening|kurulum|paketler", "title", "order"}`. Sunucu menüsündeki tek "🛡️ Paketler" satırı, kurulu paketi olan sabit kategorilere bölünür (🛡️ Sertleştirme, 🧰 Kurulum merkezi, 🛡️ Paketler); `menu` olmayan paketler (linux-hardening 0.12.1, utility 0.1.0) bugünkü satırda kalır, davranış değişmez. Kategori içinde paketler `order`'a göre sıralanır. Doğrulayıcı alanı okur ve bozuksa reddeder (`docs/package-standard.md` §4). Gerçek terminalde fzf'li görünüm elle denenmedi; birim testleri ve seçim akışı sahte paketlerle doğrulandı.
+
 ## [3.6.23] - 2026-11-05
 
 Bu yama sürümü `utility` 0.1.0 paketini kilitler ve fzf arayüz düzenini düzeltir (3.6.22'den sonra bulunan hatalar).

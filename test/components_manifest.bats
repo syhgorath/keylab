@@ -334,3 +334,23 @@ SCRIPT_BASE='{"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"script",
     printf '%s,"actions":{"a":{"cmd":"scripts/a.sh","effects":[],"outputs":{"dir_var":"d"}}},"vars":[{"name":"d","type":"path"}]}' "$SCRIPT_BASE" > "$T/s5.json"
     run comp_manifest_info "$T/s5.json" demo 1.0.0; [ "$status" -ne 0 ]; [[ "$output" == *"dir_var script runner"* ]] || false
 }
+
+# ---------- menu: kategori / başlık / sıra (S1) ----------
+@test "menu: kategori, başlık ve sıra okunur; yoksa satır üretilmez" {
+    mf "{$BASE,$ok_act,\"menu\":{\"category\":\"kurulum\",\"title\":\"Kurulum merkezi\",\"order\":20}}"
+    valid
+    [ "$(comp_info_get "$output" menu.category)" = "kurulum" ]
+    [ "$(comp_info_get "$output" menu.title)" = "Kurulum merkezi" ]
+    [ "$(comp_info_get "$output" menu.order)" = "20" ]
+    mf "{$BASE,$ok_act}"
+    valid
+    [ -z "$(comp_info_get "$output" menu.category)" ]
+}
+
+@test "menu: sabit liste dışı kategori, bilinmeyen alan, kötü sıra ve nesne olmayan değer reddedilir" {
+    mf "{$BASE,$ok_act,\"menu\":{\"category\":\"oyunlar\"}}"; invalid
+    mf "{$BASE,$ok_act,\"menu\":{\"category\":\"kurulum\",\"renk\":1}}"; invalid
+    mf "{$BASE,$ok_act,\"menu\":{\"order\":1000}}"; invalid
+    mf "{$BASE,$ok_act,\"menu\":{\"order\":true}}"; invalid
+    mf "{$BASE,$ok_act,\"menu\":\"kurulum\"}"; invalid
+}
