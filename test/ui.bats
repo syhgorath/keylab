@@ -765,3 +765,15 @@ liste_motoru() {
     [[ "$UI_PICK_HEADER" == *"… +2 satır"* ]] || { echo "$UI_PICK_HEADER"; false; }
     [ "$UI_PICK_HEIGHT" -eq 29 ]
 }
+
+@test "dar düzende kart satırı dinamik: liste önce (en çok 8 satır), kart kalan yer; 4 ile 10 arası" {
+    unset -f _ui_read_key; source "$H/UI.sh"
+    [ "$(_ui_narrow_pv 24 7)" -eq 5 ]      # 24-1-11-7
+    [ "$(_ui_narrow_pv 50 7)" -eq 10 ]     # üst sınır
+    [ "$(_ui_narrow_pv 14 12)" -eq 4 ]     # çok kısa terminal: alt sınır
+    [ "$(_ui_narrow_pv 30 3)" -eq 10 ]
+    make_fake_fzf
+    export SSHPOCKET_UI=fzf SSHPOCKET_COLS=40 SSHPOCKET_ROWS=24
+    UI_PICK_WIDE=1 run ui_pick_arrows 1 "Geri" A B C D E F
+    grep -qx -- '--preview-window=right,48%,wrap,<100(down,5,wrap,border-top)' "$BATS_TEST_TMPDIR/fzf.args"
+}
