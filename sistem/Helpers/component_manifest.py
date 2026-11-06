@@ -14,6 +14,7 @@ MAX_BYTES = 256 * 1024
 EFFECTS = ("installs-package", "changes-config", "destructive")
 CONFIRMS = ("none", "yes-no", "type-server-name")
 RUNNERS = ("ansible", "script")
+MENU_CATEGORIES = ("hardening", "kurulum", "paketler")   # sunucu menüsündeki sabit kategoriler (S1); belirtilmezse paketler
 STATUSES = ("supported", "planned")
 VAR_SCALARS = ("string", "bool", "int", "path", "cidr", "enum")
 
@@ -526,6 +527,31 @@ def main():
             "yes" if e.get("required") is True else "no",
             "yes" if e.get("interactive") is True else "no"))
 
+    # --- menu: sunucu menüsünde paketin kategorisi, adı ve sırası (S1) ---
+    menu_lines = []
+    mn = d.get("menu")
+    if mn is not None:
+        if not isinstance(mn, dict):
+            err("menu nesne olmalı")
+        else:
+            for k in mn:
+                if k not in ("category", "title", "order"):
+                    err("menu: bilinmeyen alan: %s" % k)
+            cat = mn.get("category", "paketler")
+            if cat not in MENU_CATEGORIES:
+                err("menu.category şunlardan biri olmalı: %s" % ", ".join(MENU_CATEGORIES))
+            else:
+                menu_lines.append("menu.category=%s" % cat)
+            if "title" in mn:
+                if text_ok(mn["title"], "menu.title", 60) is not False and is_str(mn["title"]):
+                    menu_lines.append("menu.title=%s" % mn["title"])
+            if "order" in mn:
+                o = mn["order"]
+                if not is_int(o) or not 0 <= o <= 999:
+                    err("menu.order 0-999 arası tamsayı olmalı")
+                else:
+                    menu_lines.append("menu.order=%d" % o)
+
     if errors:
         for m in errors:
             print(m, file=sys.stderr)
@@ -535,7 +561,7 @@ def main():
         out.append("inventory_group=%s" % group)
     if req_py:
         out.append("requires.python=%s" % req_py)
-    out += prof_lines + act_lines + var_lines + plat_lines + inv_lines
+    out += prof_lines + act_lines + var_lines + plat_lines + inv_lines + menu_lines
     print("\n".join(out))
     return 0
 

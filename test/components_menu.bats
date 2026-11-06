@@ -1137,3 +1137,54 @@ pkgmenu_setup() {
     grep -q 'preview : 11-04 15:55 ✅' "$T/pk" && grep -q 'apply   : 11-04 16:08 ❌' "$T/pk"
     grep -q '── 📦 other 0.1.0 ──' "$T/pk" && grep -q 'henüz eylem çalıştırılmadı' "$T/pk"
 }
+
+# ---------- S1: menu.category ile sunucu menüsü kategorileri ----------
+mk_cat_pkg() {   # <id> <kategori|-> [order]
+    mkdir -p "$T/comps/$1/1.0.0"
+    local m="\"menu\":{\"category\":\"$2\"${3:+,\"order\":$3}},"
+    [ "$2" = "-" ] && m=""
+    printf '{"id":"%s","version":"1.0.0","sshpocket_api":1,"runner":"ansible",%s"profiles":[{"id":"ubuntu-26.04","status":"supported"}],"actions":{"audit":{"cmd":"ansible-playbook a.yml","effects":[]}}}\n' "$1" "$m" > "$T/comps/$1/1.0.0/component.json"
+}
+
+@test "kategori: menu yoksa paketler; menu.category okunur; kategoriler sabit sırayla ve yalnız paketi olanlar" {
+    mk_cat_pkg old -; mk_cat_pkg kur kurulum; mk_cat_pkg hard hardening
+    comp_ids() { printf 'old\nkur\nhard\n'; }
+    comp_installed_version() { printf '1.0.0'; }
+    [ "$(comp_menu_category old)" = "paketler" ]
+    [ "$(comp_menu_category kur)" = "kurulum" ]
+    run comp_menu_categories
+    [ "$(printf '%s\n' "$output" | cut -d'|' -f1 | paste -sd, -)" = "hardening,kurulum,paketler" ]
+    [[ "$output" == *"hardening|🛡️  Sertleştirme"* ]] || false
+    [[ "$output" == *"kurulum|🧰 Kurulum merkezi"* ]] || false
+    comp_ids() { printf 'kur\n'; }
+    run comp_menu_categories
+    [ "$output" = "kurulum|🧰 Kurulum merkezi" ]
+}
+
+@test "kategori: comp_menu_installed süzer ve menu.order'a göre sıralar (eşitlikte kilit sırası)" {
+    mk_cat_pkg a kurulum 30; mk_cat_pkg b kurulum 10; mk_cat_pkg c kurulum; mk_cat_pkg d hardening
+    comp_ids() { printf 'a\nb\nc\nd\n'; }
+    comp_installed_version() { printf '1.0.0'; }
+    [ "$(comp_menu_installed kurulum | paste -sd, -)" = "b,a,c" ]
+    [ "$(comp_menu_installed hardening)" = "d" ]
+}
+
+@test "sunucu menüsü: iki kategori iki satır; 7 ikinci kategoriyi comp_menu_server'a kategoriyle verir" {
+    mk_cat_pkg kur kurulum; mk_cat_pkg hard hardening
+    comp_ids() { printf 'kur\nhard\n'; }
+    comp_installed_version() { printf '1.0.0'; }
+    comp_menu_server() { echo "MENU:$1:$3" >> "$T/menucalls"; }
+    run ssh_module_run WEB1 "$D" <<<$'7\n\n0'
+    [[ "$output" == *"6) 🛡️  Sertleştirme"* ]] || false
+    [[ "$output" == *"7) 🧰 Kurulum merkezi"* ]] || false
+    [ "$(cat "$T/menucalls")" = "MENU:WEB1:kurulum" ]
+}
+
+@test "sunucu girişi: kategori verilirse yalnız o kategorinin paketleri listelenir" {
+    mk_cat_pkg kur kurulum; mk_cat_pkg hard hardening
+    comp_ids() { printf 'kur\nhard\n'; }
+    comp_installed_version() { printf '1.0.0'; }
+    comp_menu_actions() { echo "ACT:$1" >> "$T/menucalls"; }
+    run comp_menu_server WEB1 "$D" hardening <<<"0"
+    [ "$(cat "$T/menucalls")" = "ACT:hard" ]
+}

@@ -5,11 +5,53 @@
 
 # comp_menu_installed → kurulu paket kimlikleri (satır satır)
 comp_menu_installed() {
-    local id
+    local id cat="${1:-}" ord
     while IFS= read -r id; do
         [ -n "$id" ] || continue
-        [ -n "$(comp_installed_version "$id")" ] && printf '%s\n' "$id"
-    done < <(comp_ids 2>/dev/null)
+        [ -n "$(comp_installed_version "$id")" ] || continue
+        if [ -n "$cat" ] && [ "$(comp_menu_category "$id")" != "$cat" ]; then continue; fi
+        ord=$(comp_info_get "$(_comp_menu_info_of "$id")" menu.order 2>/dev/null)
+        printf '%s|%s\n' "${ord:-500}" "$id"
+    done < <(comp_ids 2>/dev/null) | sort -t'|' -k1,1n -s | cut -d'|' -f2
+    return 0
+}
+
+# Sunucu menüsündeki sabit kategoriler (sıra numarası, kimlik, simge+ad). Bildirimde menu.category yoksa "paketler".
+COMP_MENU_CATEGORIES=(
+    "10|hardening|🛡️  Sertleştirme"
+    "20|kurulum|🧰 Kurulum merkezi"
+    "90|paketler|🛡️  Paketler (sertleştirme vb.)"
+)
+
+# _comp_menu_info_of <paket> → kurulu sürümün bildirim satırları (bütünlük doğrulaması yok: yalnız sınıflandırma/ad; eylemler comp_prepare ile doğrulanır)
+_comp_menu_info_of() {
+    local ver
+    ver=$(comp_installed_version "$1")
+    [ -n "$ver" ] && [ -f "$(comp_dir)/$1/$ver/component.json" ] || return 1
+    comp_manifest_info "$(comp_dir)/$1/$ver/component.json" "$1" "$ver" 2>/dev/null
+}
+
+# comp_menu_category <paket> → kategori kimliği (menu.category ya da paketler)
+comp_menu_category() {
+    local c
+    c=$(comp_info_get "$(_comp_menu_info_of "$1")" menu.category 2>/dev/null)
+    printf '%s' "${c:-paketler}"
+}
+
+# comp_menu_title <paket> → menu.title ya da paket kimliği
+comp_menu_title() {
+    local t
+    t=$(comp_info_get "$(_comp_menu_info_of "$1")" menu.title 2>/dev/null)
+    printf '%s' "${t:-$1}"
+}
+
+# comp_menu_categories → kurulu paketi olan kategoriler, sıra numarasına göre: "kimlik|simge+ad" satırları
+comp_menu_categories() {
+    local row cat
+    for row in "${COMP_MENU_CATEGORIES[@]}"; do
+        cat=$(printf '%s' "$row" | cut -d'|' -f2)
+        [ -n "$(comp_menu_installed "$cat")" ] && printf '%s|%s\n' "$cat" "${row#*|*|}"
+    done
     return 0
 }
 
@@ -1197,13 +1239,13 @@ comp_menu_packages() {
     done
 }
 
-# comp_menu_server <önek> <sunucu-klasörü> → kurulu paket(ler)den birini seçtirir
+# comp_menu_server <önek> <sunucu-klasörü> [kategori] → kurulu paket(ler)den (kategoriye göre süzülmüş) birini seçtirir
 comp_menu_server() {
-    local module_dir="$2" server pick
+    local module_dir="$2" cat="${3:-}" server pick
     local -a ids
     server=$(basename "$module_dir")
     ids=()
-    while IFS= read -r pick; do [ -n "$pick" ] && ids+=("$pick"); done < <(comp_menu_installed)
+    while IFS= read -r pick; do [ -n "$pick" ] && ids+=("$pick"); done < <(comp_menu_installed "$cat")
     [ "${#ids[@]}" -gt 0 ] || { echo "Kurulu paket yok. Ana menü › Paketler ile kurun." >&2; return 0; }
     if [ "${#ids[@]}" -eq 1 ]; then comp_menu_actions "${ids[0]}" "$server"; return $?; fi
     while true; do
