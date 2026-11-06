@@ -22,7 +22,7 @@ module_write_files() {
     local modules_dir="$1" name="$2" ip="$3" user="$4" port="$5" key="${6:-}"
 
     if ! module_name_valid "$name"; then
-        echo "geçersiz modül adı: '$name'" >&2; return 1
+        echo "geçersiz sunucu adı: '$name'" >&2; return 1
     fi
     ssh_validate_target "$ip" "$user" "$port" || return 1
     case "$key" in *$'\n'*) echo "geçersiz key yolu" >&2; return 1 ;; esac

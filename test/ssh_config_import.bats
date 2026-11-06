@@ -110,7 +110,7 @@ two_hosts() {
     two_hosts
     run bash "$ROOT/sistem/ImportSSHConfig.sh" "$CFG" < <(printf '1\n4\n')
     [ "$status" -eq 0 ]
-    [[ "$output" == *"[x] a1"* && "$output" == *"1 modül oluşturuldu"* ]] || { echo "$output"; false; }
+    [[ "$output" == *"[x] a1"* && "$output" == *"1 sunucu eklendi"* ]] || { echo "$output"; false; }
     [ -f "$SSHPOCKET_SERVERS_DIR/a1/server.env" ]
     [ ! -e "$SSHPOCKET_SERVERS_DIR/a2" ]
 }

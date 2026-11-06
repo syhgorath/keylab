@@ -5,6 +5,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Değişti
+- **"Modül" yerine "sunucu":** README'de (TR/EN) ve ekrandaki iletilerde (sunucu ekleme, silme, içe aktarma, güncelleme onayı, key yolu sorusu) eski "modül" terimi sunucu oldu; `servers/<ad>/` düzeniyle uyumlu. Dosya adları (`ModuleGenerator.sh`, `ModuleManager.sh`) ve iç adlar değişmedi. README'ye paketlerin imzalı olduğu ve istemci denemesinin yalnız macOS'ta olduğu notu eklendi.
 - **README sadeleşti:** ayrıntılı bölümler `docs/` altına taşındı (`paketler.md`, `test-edilen-ortamlar.md`, `guncelleme.md`, `eski-duzenden-tasima.md`; İngilizce karşılıkları `docs/en/`). Logo ve hardening görseli eklendi (`img/`, küçültülmüş; release arşivine girmez: `.gitattributes`), rozetler: ci, sürüm, indirme, yıldız, lisans. CI satırı Ubuntu 26.04'e güncellendi. Elle denenen/denenmeyen listesi içerik olarak değişmedi, yalnızca taşındı.
 
 ### Eklendi
