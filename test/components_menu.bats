@@ -1188,3 +1188,50 @@ mk_cat_pkg() {   # <id> <kategori|-> [order]
     run comp_menu_server WEB1 "$D" hardening <<<"0"
     [ "$(cat "$T/menucalls")" = "ACT:hard" ]
 }
+
+# ---------- S2: yazılım kataloğu (items[]) ----------
+mk_items_pkg() {
+    cat > "$T/m.json" <<'JSON'
+{"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"ansible",
+ "profiles":[{"id":"ubuntu-26.04","status":"supported"}],
+ "item_var":"yazilim","mode_var":"mod",
+ "vars":[{"name":"yazilim","type":"enum","values":["nginx","redis"]},{"name":"mod","type":"enum","values":["native","docker"]}],
+ "items":[{"id":"nginx","label":"Nginx","modes":["native","docker"],"actions":["durum"]},{"id":"redis","label":"Redis","modes":["docker"]}],
+ "actions":{"durum":{"cmd":"ansible-playbook d.yml","effects":[]},"kur":{"cmd":"ansible-playbook k.yml","effects":["installs-package"]}}}
+JSON
+    cp "$T/m.json" "$T/comps/demo/1.0.0/component.json"
+    INFO=$(comp_manifest_info "$T/m.json" demo 1.0.0)
+}
+
+@test "katalog: yazılım+mod seçilir, panel yalnız yazılımın eylemleriyle ve koşuya özel değişkenle açılır" {
+    mk_items_pkg
+    _comp_menu_actions_panel() { printf '%s|%s|%s\n' "$COMP_MENU_ITEM_ACTIONS" "${COMP_CTX_RUNSET//$'\n'/;}" "$1" >> "$T/panel"; }
+    run comp_menu_actions demo web1 <<<$'1\n2\n0'      # nginx → mod docker, sonra Geri
+    [ "$status" -eq 0 ]
+    [ "$(cat "$T/panel")" = "durum|yazilim=nginx;mod=docker|demo" ]
+}
+
+@test "katalog: tek modlu yazılımda mod sorulmaz; eylem listesi tanımsızsa tüm eylemler" {
+    mk_items_pkg
+    _comp_menu_actions_panel() { printf '%s|%s\n' "$COMP_MENU_ITEM_ACTIONS" "${COMP_CTX_RUNSET//$'\n'/;}" >> "$T/panel"; }
+    run comp_menu_actions demo web1 <<<$'2\n0'
+    [ "$(cat "$T/panel")" = "|yazilim=redis;mod=docker" ]
+}
+
+@test "katalog yoksa comp_menu_actions doğrudan paneli açar" {
+    _comp_menu_actions_panel() { echo PANEL >> "$T/panel"; }
+    run comp_menu_actions demo web1 <<<"0"
+    [ "$(cat "$T/panel")" = "PANEL" ]
+}
+
+@test "kapı comp_gate_run_sets: geçerli seçim satır olur; katalog dışı/yanlış mod/izinsiz eylem/yabancı ad reddedilir" {
+    mk_items_pkg
+    COMP_CTX_RUNSET=$'yazilim=nginx\nmod=docker'
+    run comp_gate_run_sets "$INFO" durum; [ "$status" -eq 0 ]; [ "$output" = $'yazilim=nginx\nmod=docker' ]
+    run comp_gate_run_sets "$INFO" kur; [ "$status" -ne 0 ]                       # nginx için kur tanımlı değil
+    COMP_CTX_RUNSET=$'yazilim=mysql'; run comp_gate_run_sets "$INFO" durum; [ "$status" -ne 0 ]
+    COMP_CTX_RUNSET=$'yazilim=nginx\nmod=vm'; run comp_gate_run_sets "$INFO" durum; [ "$status" -ne 0 ]
+    COMP_CTX_RUNSET=$'baska=1'; run comp_gate_run_sets "$INFO" durum; [ "$status" -ne 0 ]
+    COMP_CTX_RUNSET=$'mod=docker'; run comp_gate_run_sets "$INFO" durum; [ "$status" -ne 0 ]   # yazılımsız mod
+    COMP_CTX_RUNSET=""; run comp_gate_run_sets "$INFO" durum; [ "$status" -eq 0 ]; [ -z "$output" ]
+}

@@ -152,7 +152,8 @@ _comp_exec_script() {
 _comp_exec_body() {
     local info="$1" id="$2" ver="$3" action="$4" kv
     local server="$COMP_CTX_SERVER" pkg="$COMP_CTX_PKGDIR" bindir="${COMP_CTX_BINDIR:-}" runner work sdir vf inv group dir_var outdir log w prog rc line
-    local -a sets warn_names applied
+    local -a sets warn_names applied runsets
+    local rs
     local refused="$COMP_EXEC_REFUSED"
 
     runner=$(comp_info_get "$info" runner)
@@ -198,6 +199,14 @@ _comp_exec_body() {
     applied=()
     while IFS= read -r kv; do [ -n "$kv" ] && applied+=("$kv"); done < <(comp_gate_apply_vars "$info" "$action" "${COMP_CTX_VALUES:-/dev/null}")
     for kv in ${applied[@]+"${applied[@]}"}; do sets+=(--set "$kv"); done
+    # katalog (S2): seçilen yazılım/mod bu koşuya özel verilir (.vars'a yazılmaz); kapı: comp_gate_run_sets
+    runsets=()
+    if [ -n "${COMP_CTX_RUNSET:-}" ]; then
+        if ! rs=$(comp_gate_run_sets "$info" "$action"); then return "$refused"; fi
+        while IFS= read -r kv; do [ -n "$kv" ] && runsets+=("$kv"); done <<< "$rs"
+        for kv in ${runsets[@]+"${runsets[@]}"}; do sets+=(--set "$kv"); done
+        if [ "${#runsets[@]}" -gt 0 ]; then { echo "ℹ️  Bu koşuya özel (değişken dosyanıza YAZILMAZ):"; printf '    %s\n' "${runsets[@]}"; } >&2; fi
+    fi
     warn_names=()
     # Salt okunur, başka eylemin ön koşulu olmayan eylemler (rollback_status vb.) zorunlu değişken istemez; değer verilmişse yine doğrulanır
     if ! comp_gate_required_applies "$info" "$action"; then sets+=(--no-required); fi
@@ -246,7 +255,7 @@ _comp_exec_body() {
     # ---- çalıştır (günlük kullanıcı klasöründe, izin 600; kullanıcı terminali çıktıyı olduğu gibi görür) ----
     log="$sdir/last-run.log"
     ( umask 077; : > "$log" ) || return "$refused"
-    for kv in ${applied[@]+"${applied[@]}"}; do printf 'bu koşuya özel: %s\n' "$kv" >> "$log"; done
+    for kv in ${applied[@]+"${applied[@]}"} ${runsets[@]+"${runsets[@]}"}; do printf 'bu koşuya özel: %s\n' "$kv" >> "$log"; done
     {
         cd "$pkg" && env PYTHONDONTWRITEBYTECODE=1 ANSIBLE_CONFIG="$pkg/ansible.cfg" ANSIBLE_HOST_KEY_CHECKING=True ANSIBLE_TIMEOUT="${ANSIBLE_TIMEOUT:-30}" PATH="$bindir:$PATH" "${COMP_RUN_ARGV[@]}"
     } 2>&1 | tee -a "$log"
