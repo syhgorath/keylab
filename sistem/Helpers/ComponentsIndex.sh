@@ -128,7 +128,7 @@ _comp_index_field() {
 }
 
 # comp_index_eval <id> → "<karar>|<ayrıntı>"
-#   unknown (indekste yok/kilitte yok) | yanked | needs-sshpocket|<sürüm> | other-repo | below-floor|<sürüm> | conflict | upgrade|<sürüm> | current
+#   unknown (indekste yok/kilitte yok) | yanked | needs-sshpocket|<sürüm> | other-repo | below-floor|<sürüm> | conflict | upgrade|<sürüm> (kurulu paket) | install|<sürüm> (kurulu değil) | current
 comp_index_eval() {
     local id="$1" iver irepo isha ireq yanked lockv lockrepo locksha have me
     iver=$(_comp_index_field "$id" 4)
@@ -142,7 +142,8 @@ comp_index_eval() {
     if [ "$irepo" != "$lockrepo" ]; then echo "other-repo|$irepo"; return 0; fi
     if [ "$(comp_version_cmp "$iver" "$lockv")" = "-1" ]; then echo "below-floor|$iver"; return 0; fi
     if [ "$iver" = "$lockv" ] && [ "$isha" != "$locksha" ]; then echo "conflict|$iver"; return 0; fi
-    if [ -z "$have" ] || [ "$(comp_version_cmp "$iver" "$have")" = "1" ]; then echo "upgrade|$iver"; return 0; fi
+    if [ -z "$have" ]; then echo "install|$iver"; return 0; fi
+    if [ "$(comp_version_cmp "$iver" "$have")" = "1" ]; then echo "upgrade|$iver"; return 0; fi
     echo "current|$iver"
 }
 
@@ -150,6 +151,7 @@ comp_index_eval() {
 comp_index_verdict_text() {
     case "$1" in
         upgrade) printf '⬆️  yükseltilebilir → %s' "$2" ;;
+        install) printf '📥 kurulabilir → %s (kurmak için: upgrade <paket>)' "$2" ;;
         current) printf '✅ güncel' ;;
         yanked) printf '🚫 indeks %s sürümünü önermiyor (yanked)' "$2" ;;
         needs-sshpocket) printf '⏸️  sshpocket %s gerekli' "$2" ;;
@@ -160,11 +162,13 @@ comp_index_verdict_text() {
     esac
 }
 
-# comp_index_report → paket başına satır yazar; "yükseltilebilir" kimliklerini COMP_INDEX_UPGRADABLE'a koyar
+# comp_index_report → paket başına satır yazar; KURULU paketlerden yükseltilebilir olanları COMP_INDEX_UPGRADABLE'a,
+# kurulu olmayıp kurulabilir olanları COMP_INDEX_INSTALLABLE'a koyar (ikincisi YALNIZ adı açıkça verilince kurulur)
 COMP_INDEX_UPGRADABLE=""
+COMP_INDEX_INSTALLABLE=""
 comp_index_report() {
     local id v d have
-    COMP_INDEX_UPGRADABLE=""
+    COMP_INDEX_UPGRADABLE=""; COMP_INDEX_INSTALLABLE=""
     while IFS= read -r id; do
         [ -n "$id" ] || continue
         v=$(comp_index_eval "$id"); d="${v#*|}"; v="${v%%|*}"
@@ -172,6 +176,7 @@ comp_index_report() {
         have=$(comp_installed_version "$id")
         printf '  %-20s kurulu %-8s %s\n' "$id" "${have:--}" "$(comp_index_verdict_text "$v" "$d")"
         [ "$v" != "upgrade" ] || COMP_INDEX_UPGRADABLE="$COMP_INDEX_UPGRADABLE$id"$'\n'
+        [ "$v" != "install" ] || COMP_INDEX_INSTALLABLE="$COMP_INDEX_INSTALLABLE$id"$'\n'
     done < <(printf '%s\n' "$COMP_INDEX_PARSED" | awk -F'|' '$1=="pkg" {print $2}')
     return 0
 }
@@ -201,13 +206,15 @@ comp_cli_update() {
     [ "$rc" -eq 0 ] || return 1
     echo "Paket indeksi (seri $COMP_INDEX_SERIAL, geçerlilik: $(printf '%s\n' "$COMP_INDEX_PARSED" | awk -F'|' '$1=="meta" {print $4; exit}'))"
     comp_index_report
-    if [ -n "$COMP_INDEX_UPGRADABLE" ]; then echo ""; echo "Yükseltmek için: ./start.sh --components upgrade"; fi
+    if [ -n "$COMP_INDEX_UPGRADABLE" ]; then echo ""; echo "Kurulu paketleri yükseltmek için: ./start.sh --components upgrade"; fi
+    if [ -n "$COMP_INDEX_INSTALLABLE" ]; then echo ""; echo "Kurulu olmayan paketi kurmak için adını verin: ./start.sh --components upgrade <paket>"; fi
     return 0
 }
 
 # comp_cli_upgrade [--yes] [paket…] → 0 hata yok, 1 en az bir ret/hata
+# Adsız çağrı YALNIZ kurulu paketleri yükseltir (apt upgrade gibi); kurulu olmayan paket yalnız adı verilirse kurulur.
 comp_cli_upgrade() {
-    local yes=0 id v d rc ok=0 skipped=0 failed=0 oldv newv a
+    local yes=0 id v d rc ok=0 skipped=0 failed=0 oldv newv a cands
     local -a want=() reported=()
     for a in "$@"; do
         case "$a" in
@@ -221,7 +228,12 @@ comp_cli_upgrade() {
     [ "$rc" -ne 2 ] || return 0
     [ "$rc" -eq 0 ] || return 1
     comp_index_report
-    if [ -z "$COMP_INDEX_UPGRADABLE" ]; then echo "Yükseltilebilir paket yok."; return 0; fi
+    cands="$COMP_INDEX_UPGRADABLE"
+    for id in ${want[@]+"${want[@]}"}; do   # açıkça adı verilen, kurulu olmayan paket de aday olur
+        if printf '%s' "$COMP_INDEX_INSTALLABLE" | grep -qxF -- "$id"; then cands="$cands$id"$'\n'; fi
+        printf '%s' "$cands" | grep -qxF -- "$id" || echo "ℹ️  $id: indekste kurulabilir ya da yükseltilebilir sürüm yok."
+    done
+    if [ -z "$cands" ]; then echo "Yükseltilebilir paket yok."; [ -z "$COMP_INDEX_INSTALLABLE" ] || echo "Kurulu olmayan paketi kurmak için adını verin: upgrade <paket>"; return 0; fi
     while IFS= read -r id <&3; do
         [ -n "$id" ] || continue
         if [ "${#want[@]}" -gt 0 ]; then
@@ -239,7 +251,7 @@ comp_cli_upgrade() {
         else
             echo "⚠️  $id kurulamadı (eski sürüm olduğu gibi duruyor)"; failed=$((failed + 1))
         fi
-    done 3<<< "$COMP_INDEX_UPGRADABLE"
+    done 3<<< "$cands"
     if declare -F comp_report_pkg >/dev/null; then
         for id in ${reported[@]+"${reported[@]}"}; do echo ""; comp_report_pkg "$id" "$(comp_report_prev_version "$id")" || true; done
     fi
