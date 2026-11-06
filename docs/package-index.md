@@ -187,7 +187,7 @@ index-publish.sh refresh                                      # içerik aynı, s
 index-publish.sh --dry-run ...                                # yazmadan ne yapacağını gösterir
 ```
 
-Seçenekler: `--archive <yol> --sig <yol>` (yerel dosyalar; yoksa GitHub Release'ten indirilir), `--requires-sshpocket X.Y.Z`, `--platforms a,b,c` (yoksa arşivdeki `component.json` profillerinden), `--valid-days N` (≤ 90, varsayılan 60), `--yes` (onay sorma). Anahtar: `INDEX_SIGNING_KEY` (yoksa `PAKET_SIGNING_KEY`); aynı yolda `.pub` dosyası bulunmalı. `yank` komutu **sonraya** (şema alanı hazır; şimdilik elle `--yanked` yok).
+`release-publish.sh` bu betiği **`--yes` ile çağırır** (kendi y/N yayın onayı yeterlidir; `sign` ikinci onay isteyip etkileşimsiz pencerede düşmesin). Seçenekler: `--archive <yol> --sig <yol>` (yerel dosyalar; yoksa GitHub Release'ten indirilir), `--requires-sshpocket X.Y.Z`, `--platforms a,b,c` (yoksa arşivdeki `component.json` profillerinden), `--valid-days N` (≤ 90, varsayılan 60), `--yes` (onay sorma). Anahtar: `INDEX_SIGNING_KEY` (yoksa `PAKET_SIGNING_KEY`); aynı yolda `.pub` dosyası bulunmalı. `yank` komutu **sonraya** (şema alanı hazır; şimdilik elle `--yanked` yok).
 
 `add` (anahtar gerekmez):
 1. Ön koşullar: indeks deposu temiz, `main`'de, `git pull --ff-only` yapılmış; `id`/`sürüm`/`depo` biçimleri geçerli.
@@ -212,7 +212,7 @@ Paketin `scripts/release-publish.sh`'ı (utility/kurulum/linux-hardening) **`gh 
 # 6) indeks: paket yayını doğrulandıktan sonra (indeks hatası Release'i geçersiz kılmaz; tek başına yeniden çalıştırılabilir)
 INDEX_PUBLISH="${SSHPOCKET_INDEX_DIR:-$HOME/Developer/sshpocket-index}/scripts/index-publish.sh"
 [ -x "$INDEX_PUBLISH" ] || die "index-publish.sh bulunamadı ($INDEX_PUBLISH); Release yayımlandı, indeks elle: SSHPOCKET_INDEX_DIR ayarlayın"
-"$INDEX_PUBLISH" "$ID" "$VERSION" "$REPO" --archive "$ARCHIVE" --sig "$ARCHIVE.sig"
+"$INDEX_PUBLISH" "$ID" "$VERSION" "$REPO" --archive "$ARCHIVE" --sig "$ARCHIVE.sig" --yes   # betiğin başındaki y/N zaten onaydır
 ```
 
 - `--dry-run` modunda da "Yapılacaklar" listesine **6)** adımı eklenir ve çağrıya `--dry-run` iletilir.
