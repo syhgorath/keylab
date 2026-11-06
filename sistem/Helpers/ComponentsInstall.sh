@@ -108,16 +108,22 @@ comp_verify_installed() {
     fi
 }
 
-# Arşivi kurar. Parametreler: id, sürüm, arşiv, imza
-# Sıra: kilit sürümüyle aynı mı → imza+özet → geri sürüm yok → arşiv denetimi → aç → bildirim kimliği/sürümü → yerleştir → current
+# Arşivi kurar. Parametreler: id, sürüm, arşiv, imza [beklenen-sha256: doğrulanmış indeksten]
+# Sıra: sürüm kilitle uyumlu mu → imza+özet → geri sürüm yok → arşiv denetimi → aç → bildirim kimliği/sürümü → yerleştir → current
+# Beklenen özet yoksa sürüm TAM kilit sürümü olmalı. Varsa sürüm ≥ kilit sürümü; kilit sürümüne eşitse özet kilitteki de olmalı.
 comp_install_archive() {
-    local id="$1" ver="$2" archive="$3" sig="$4" base tmp locked inst cmp rc
+    local id="$1" ver="$2" archive="$3" sig="$4" expected="${5:-}" base tmp locked inst cmp rc
     if ! comp_id_valid "$id" || ! comp_version_valid "$ver"; then echo "geçersiz kimlik/sürüm" >&2; return 1; fi
     comp_lock_validate || return 1
     comp_known "$id" || { echo "paket kilit dosyasında yok: $id" >&2; return 1; }
     locked=$(comp_get "$id" version)
-    if [ "$ver" != "$locked" ]; then echo "sürüm kilitle uyuşmuyor ($ver, kilit: $locked)" >&2; return 1; fi
-    comp_verify "$id" "$archive" "$sig" || return 1
+    if [ -z "$expected" ]; then
+        if [ "$ver" != "$locked" ]; then echo "sürüm kilitle uyuşmuyor ($ver, kilit: $locked)" >&2; return 1; fi
+    else
+        if [ "$(comp_version_cmp "$ver" "$locked")" = "-1" ]; then echo "sürüm kilit tabanının altında ($ver, kilit: $locked)" >&2; return 1; fi
+        if [ "$ver" = "$locked" ] && [ "$expected" != "$(comp_get "$id" sha256)" ]; then echo "özet kilitle uyuşmuyor ($id $ver)" >&2; return 1; fi
+    fi
+    comp_verify "$id" "$archive" "$sig" "$expected" || return 1
 
     inst=$(comp_installed_version "$id")
     if [ -n "$inst" ]; then

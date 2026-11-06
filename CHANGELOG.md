@@ -4,6 +4,16 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **İmzalı paket indeksi istemcisi** (`docs/package-index.md`): `./start.sh --components update` (indeksi alır, doğrular, "yükseltilebilir" listesi), `upgrade [--yes] [paket…]` (onaylı yükseltme), `list` önbellekteki indeksi de gösterir. Menüde "Paketler ve güncelleme" altında iki yeni giriş. Doğrulama zinciri: indeks imzası (ad alanı `sshpocket-index`, yeni `sistem/index_signers`) → şema/süre → seri (geri alma/çatallanma reddi) → paket sha256 (indeks) → paket imzası (**kilitteki** imzacı) → geri sürüm yok. İndeks hatasında güncelleme yapılmaz, kurulu paketler çalışır. Sessiz otomatik kurulum yoktur.
+- Testte gerçek ağ yok: `comp_index_download` işlevi, `SSHPOCKET_INDEX_URL`, `SSHPOCKET_INDEX_SIGNERS`, `SSHPOCKET_INDEX_NOW`.
+
+### Değişti
+- `components.lock` artık **taban**: kurulu sürüm kilit sürümünden **büyük veya eşit** olabilir (çalıştırma kapısı ve `comp_status`); `comp_verify` / `comp_install_archive` doğrulanmış indeksten beklenen sha256 alır. Kilit sürümüne eşit sürümde özet yine kilitteki olmalıdır; paket imzacısı her zaman kilitten gelir. Kilitte olmayan paket indeksten kurulamaz.
+
+### Dikkat
+- **Gerçek GitHub/raw adresinden indeks hiç alınmadı** (`syhgorath/sshpocket-index` deposu ve ilk indeks ayrı oturumda hazırlanıyor); istemci yalnızca sahte indeks/paketle ve bats ile denendi. Menü girişleri fzf'li gerçek terminalde elle denenmedi.
+
 ## [3.6.24] - 2026-11-06
 
 Bu sürüm paket kataloğu altyapısını (menü kategorileri, yazılım kataloğu, form), `requires_sudo` parola düzeltmesini, CI/README güncellemelerini ve **iki paket kilidini** getirir: yeni **`kurulum 0.1.0`** ve **`linux-hardening 0.13.0`** (`utility 0.1.0` aynı kaldı).

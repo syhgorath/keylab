@@ -135,6 +135,7 @@ Girdi: `update`, `upgrade`, `list` (listede ağ adımı 1–3 atlanıp önbellek
 8. **Paket başına değerlendirme** (yalnızca **kilitte olan** paketler; kilitte olmayan indeks girdisi "tanınmayan paket, yok sayıldı" bilgisiyle atlanır):
    1. `yanked: true` → aday yok; kurulu sürüm bu sürümse uyarı ("yanked: <sürüm> artık önerilmiyor").
    2. `requires_sshpocket` > çalışan `VERSION` → aday yok; "sshpocket X.Y.Z gerekli".
+   2b. İndeksteki `repo` kilitteki `repo` ile **aynı değil** → aday yok, paket yok sayılır ("indeks başka depo gösteriyor"); indeks kaynağı değiştiremez.
    3. `version` < kilit sürümü → **yok say** + uyarı ("indeks kilit tabanının altında"); kilit asla alçaltılmaz.
    4. `version` == kilit sürümü ve `sha256` ≠ kilit `sha256` → paket için **hata** ("indeks ve kilit çelişiyor"); o paket yükseltilmez.
    5. `version` > kurulu sürüm (ya da kurulu yok ve `version` ≥ kilit) → **yükseltilebilir** (`kurulu → yeni`).
@@ -239,7 +240,14 @@ Beklenen: `serial: 1`; üç paket; `kurulum` ve `linux-hardening` sha256'ları `
 **MVP (3.7.0):** §3–§9 (indeks, imza, seri, `valid_until`, doğrulama zinciri, `components update|upgrade|list`, `index-publish.sh add/sign/refresh`), ilk indeks, uçtan uca deneme.
 **Sonraya:** `testing` kanalı, `yank` komutu, menüde "yükseltilebilir" cilası, çevrimdışı önbellek cilası, kilitte olmayan paketi indeksten tanıtma (imzacı keşfi), üçüncü taraf indeksleri (bkz. platform vizyonu).
 
-## 12. 2. aşama test listesi (istemci)
+## 12. 2. aşama test listesi (istemci; `test/components_index.bats`, 40 test)
 
 Her madde bir bats testi (indirme `comp_download` yerine koyma kalıbıyla, imza testte üretilen anahtarla):
 imza geçersiz / yanlış ad alanı (`sshpocket-component` imzası indeksi geçmez) · eski seri · aynı seri farklı içerik · süresi dolmuş · `valid_until` > 90 gün · gelecekte `issued_at` · yinelenen JSON anahtarı · `asset` adı kuralı · kilit altı sürüm yok sayılır · kilit sürümünde özet çelişkisi · `yanked` · `requires_sshpocket` büyük · kilitte olmayan paket yok sayılır · özet uyuşmazlığı · paket imzası kilit imzacısıyla · geri sürüm yok · kurulum atomikliği (hata → `current` değişmez) · `index_signers` boş → kapalı · ağ hatasında kurulu paket çalışır · `upgrade` onay vermeden kurmaz · bash 3.2 uyumu.
+
+## 13. Uygulama notları (3.7.0 istemcisi)
+
+- Kod: `sistem/Helpers/ComponentsIndex.sh` (akış), `sistem/Helpers/component_index.py` (şema/süre doğrulama; imza bash'te önce doğrulanır).
+- `update`/`upgrade`/`list` çıkış kodları: `0` başarı ya da özellik kapalı; `1` indeks hatası (fail-closed) ya da en az bir paket atlandı/kurulamadı; `2` kullanım hatası.
+- Test geçersiz kılmaları: `comp_index_download` (işlev), `SSHPOCKET_INDEX_URL`, `SSHPOCKET_INDEX_SIGNERS`, `SSHPOCKET_INDEX_NOW` (epoch), `SCRIPT_VERSION`.
+- Önbellek: `components/.index/{index.json,index.json.sig,state}`; `list` ağsız, her çağrıda imza+süre+seri yeniden doğrulanır.

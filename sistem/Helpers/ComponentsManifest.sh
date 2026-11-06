@@ -45,8 +45,8 @@ comp_prepare() {
     comp_known "$id" || { echo "paket kilit dosyasında yok: $id" >&2; return 1; }
     ver=$(comp_installed_version "$id")
     [ -n "$ver" ] || { echo "paket kurulu değil: $id" >&2; return 1; }
-    if [ "$ver" != "$(comp_get "$id" version)" ]; then
-        echo "kurulu sürüm kilitle uyuşmuyor ($ver)" >&2; return 1
+    if [ "$(comp_version_cmp "$ver" "$(comp_get "$id" version)")" = "-1" ]; then
+        echo "kurulu sürüm kilit tabanının altında ($ver)" >&2; return 1
     fi
     comp_verify_installed "$id" "$ver" || return 1
     comp_manifest_info "$(comp_dir)/$id/$ver/component.json" "$id" "$ver"

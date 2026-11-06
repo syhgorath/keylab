@@ -94,6 +94,8 @@ source "$SISTEM_PATH/Helpers/ComponentsOnboard.sh"
 source "$SISTEM_PATH/Helpers/ComponentsReport.sh"
 # shellcheck source=Helpers/ComponentsCLI.sh
 source "$SISTEM_PATH/Helpers/ComponentsCLI.sh"
+# shellcheck source=Helpers/ComponentsIndex.sh
+source "$SISTEM_PATH/Helpers/ComponentsIndex.sh"
 # shellcheck source=Helpers/Doctor.sh
 source "$SISTEM_PATH/Helpers/Doctor.sh"
 # shellcheck source=Autoload.sh
