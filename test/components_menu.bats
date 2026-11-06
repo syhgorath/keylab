@@ -1195,8 +1195,8 @@ mk_items_pkg() {
 {"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"ansible",
  "profiles":[{"id":"ubuntu-26.04","status":"supported"}],
  "item_var":"yazilim","mode_var":"mod",
- "vars":[{"name":"yazilim","type":"enum","values":["nginx","redis"]},{"name":"mod","type":"enum","values":["native","docker"]}],
- "items":[{"id":"nginx","label":"Nginx","modes":["native","docker"],"actions":["durum"]},{"id":"redis","label":"Redis","modes":["docker"]}],
+ "vars":[{"name":"yazilim","type":"enum","values":["nginx","redis"]},{"name":"mod","type":"enum","values":["native","docker"]},{"name":"port","type":"int","min":1,"max":65535},{"name":"gizli","type":"string"}],
+ "items":[{"id":"nginx","label":"Nginx","modes":["native","docker"],"actions":["durum"],"params":["port"]},{"id":"redis","label":"Redis","modes":["docker"]}],
  "actions":{"durum":{"cmd":"ansible-playbook d.yml","effects":[]},"kur":{"cmd":"ansible-playbook k.yml","effects":["installs-package"]}}}
 JSON
     cp "$T/m.json" "$T/comps/demo/1.0.0/component.json"
@@ -1234,4 +1234,24 @@ JSON
     COMP_CTX_RUNSET=$'baska=1'; run comp_gate_run_sets "$INFO" durum; [ "$status" -ne 0 ]
     COMP_CTX_RUNSET=$'mod=docker'; run comp_gate_run_sets "$INFO" durum; [ "$status" -ne 0 ]   # yazılımsız mod
     COMP_CTX_RUNSET=""; run comp_gate_run_sets "$INFO" durum; [ "$status" -eq 0 ]; [ -z "$output" ]
+}
+
+@test "kapı comp_gate_run_sets (S3): yalnız seçili yazılımın params listesindeki değişken geçer" {
+    mk_items_pkg
+    COMP_CTX_RUNSET=$'yazilim=nginx\nport=8080'
+    run comp_gate_run_sets "$INFO" durum; [ "$status" -eq 0 ]; [ "$output" = $'yazilim=nginx\nport=8080' ]
+    COMP_CTX_RUNSET=$'yazilim=nginx\ngizli=x'; run comp_gate_run_sets "$INFO" durum; [ "$status" -ne 0 ]   # tanımlı ama params'ta yok
+    COMP_CTX_RUNSET=$'yazilim=redis\nport=8080'; run comp_gate_run_sets "$INFO" durum; [ "$status" -ne 0 ]  # redis'in params'ı yok
+    COMP_CTX_RUNSET=$'port=8080'; run comp_gate_run_sets "$INFO" durum; [ "$status" -ne 0 ]               # yazılımsız
+    COMP_CTX_RUNSET=$'yazilim=nginx\nyok=1'; run comp_gate_run_sets "$INFO" durum; [ "$status" -ne 0 ]    # tanımsız ad
+}
+
+@test "koşuya özel parametre: tür/aralık comp_run_vars ile doğrulanır; değer .vars'a yazılmaz" {
+    mk_items_pkg
+    : > "$T/v"; before=$(cat "$T/v")
+    run comp_run_vars "$T/m.json" "$T/v" "$T/out.json" --set yazilim=nginx --set port=8080; [ "$status" -eq 0 ]
+    grep -q '"port": 8080' "$T/out.json"
+    run comp_run_vars "$T/m.json" "$T/v" "$T/out2.json" --set port=abc; [ "$status" -ne 0 ]
+    run comp_run_vars "$T/m.json" "$T/v" "$T/out3.json" --set port=70000; [ "$status" -ne 0 ]
+    [ "$(cat "$T/v")" = "$before" ]
 }
