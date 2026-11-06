@@ -1255,3 +1255,34 @@ JSON
     run comp_run_vars "$T/m.json" "$T/v" "$T/out3.json" --set port=70000; [ "$status" -ne 0 ]
     [ "$(cat "$T/v")" = "$before" ]
 }
+
+# ---------- S4: katalog formu (yalnız seçili yazılımın params alanları) ----------
+@test "form: katalogdan girilen yazılımın Değişkenler ekranı yalnız params alanlarını gösterir ve değer yazılır" {
+    mk_items_pkg
+    : > "$D/demo.vars"
+    COMP_MENU_VARS_ONLY="port"; COMP_MENU_VARS_TITLE="Nginx › Ayarlar"
+    _comp_menu_ctx demo web1 "$INFO"
+    run comp_menu_vars demo web1 "$INFO" <<<$'1\n8080\n0'
+    [[ "$output" == *"port"* ]] || false
+    [[ "$output" != *"gizli"* ]] || false
+    [[ "$output" != *"yazilim"* ]] || false
+    [[ "$output" == *"Nginx › Ayarlar"* ]] || [[ "$output" != *"Değişkenler"* ]] || false
+    [ "$(comp_vars_get "$D/demo.vars" port)" = "8080" ]
+}
+
+@test "form: params yoksa (COMP_MENU_VARS_ONLY boş) tüm değişkenler listelenir" {
+    mk_items_pkg
+    : > "$D/demo.vars"
+    COMP_MENU_VARS_ONLY=""
+    _comp_menu_ctx demo web1 "$INFO"
+    run comp_menu_vars demo web1 "$INFO" <<<"0"
+    [[ "$output" == *"gizli"* ]] || false
+    [[ "$output" == *"port"* ]] || false
+}
+
+@test "katalog: yazılım seçilince panel, params alanlarıyla sınırlı form bağlamıyla açılır" {
+    mk_items_pkg
+    _comp_menu_actions_panel() { printf '%s|%s\n' "$COMP_MENU_VARS_ONLY" "$COMP_MENU_VARS_TITLE" >> "$T/panel"; }
+    run comp_menu_actions demo web1 <<<$'1\n1\n0'
+    [ "$(cat "$T/panel")" = "port|Nginx › Ayarlar" ]
+}
