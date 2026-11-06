@@ -416,3 +416,50 @@ PY
     [ "$status" -eq 2 ]
     [[ "$output" == *"update"* && "$output" == *"upgrade"* ]]
 }
+
+# base_setup'ın aksine paket KURULU DEĞİL (yalnızca kilit + yayımlı sürümler)
+nothing_setup() {
+    SHA10=$(make_pkg 1.0.0); SHA11=$(make_pkg 1.1.0)
+    set_lock 1.0.0 "$SHA10"
+}
+
+@test "upgrade: adsız çağrı kurulu OLMAYAN paketi kurmaz (apt upgrade gibi)" {
+    nothing_setup; idx 5 0 60 "$(entry 1.1.0 "$SHA11")"
+    run comp_cli_upgrade --yes
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Yükseltilebilir paket yok"* ]]
+    [[ "$output" == *"upgrade <paket>"* ]]
+    [ -z "$(comp_installed_version demo)" ]
+    [ ! -e "$T/components/demo" ]
+}
+
+@test "update/list: kurulu olmayan paket 'kurulabilir' görünür, 'yükseltilebilir' değil" {
+    nothing_setup; idx 5 0 60 "$(entry 1.1.0 "$SHA11")"
+    run comp_cli_update
+    [[ "$output" == *"kurulabilir → 1.1.0"* ]]
+    [[ "$output" != *"yükseltilebilir → 1.1.0"* ]]
+    [[ "$output" == *"upgrade <paket>"* ]]
+    run comp_cli_list
+    [[ "$output" == *"indeks: 📥 kurulabilir → 1.1.0"* ]]
+}
+
+@test "upgrade <paket>: kurulu olmayan paket yalnız adı açıkça verilince kurulur" {
+    nothing_setup; idx 5 0 60 "$(entry 1.1.0 "$SHA11")"
+    run comp_cli_upgrade --yes demo
+    [ "$status" -eq 0 ]
+    [ "$(comp_installed_version demo)" = "1.1.0" ]
+}
+
+@test "upgrade <paket>: kurulu olmayan paket için onay sorulur; hayır denirse kurulmaz" {
+    nothing_setup; idx 5 0 60 "$(entry 1.1.0 "$SHA11")"
+    run comp_cli_upgrade demo <<< "n"
+    [ "$status" -ne 0 ]
+    [ -z "$(comp_installed_version demo)" ]
+}
+
+@test "upgrade <paket>: indekste olmayan ad için bilgi verir, hiçbir şey kurmaz" {
+    nothing_setup; idx 5 0 60 "$(entry 1.1.0 "$SHA11")"
+    run comp_cli_upgrade --yes baska
+    [[ "$output" == *"baska: indekste kurulabilir ya da yükseltilebilir sürüm yok"* ]]
+    [ -z "$(comp_installed_version demo)" ]
+}

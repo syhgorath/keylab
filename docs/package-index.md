@@ -15,7 +15,7 @@ Bugün bir paket sürümü yayımlanınca üç iş gerekir: paket yayını → `
 | **Paket imzası** (`<asset>.sig`) | Arşivin gerçekten bakımcıdan geldiğini kanıtlar (ad alanı `sshpocket-component`). |
 
 Değişmez ilkeler:
-1. **Sessiz otomatik kurulum yok.** İndeks yalnızca "yükseltilebilir" bilgisi üretir; kurulum kullanıcı onayıyla (`upgrade`).
+1. **Sessiz otomatik kurulum yok.** İndeks yalnızca "yükseltilebilir" / "kurulabilir" bilgisi üretir; kurulum kullanıcı onayıyla (`upgrade`). `upgrade` (adsız) apt'teki gibi **yalnız kurulu paketleri** yükseltir; kurulu olmayan paket **yalnız adı açıkça verilince** kurulur (`upgrade <paket>`).
 2. **Fail-closed.** İndeksle ilgili her hata (ağ, imza, seri, süre, biçim) güncellemeyi durdurur; **kurulu paketler çalışmaya devam eder** ve hiçbir dosya değişmez.
 3. **İndeks yeni güven üretmez.** Paket imzacısı yalnızca kilitten gelir. İndeks yeni bir paket kimliği ya da yeni bir imzacı **ekleyemez** (MVP: yalnızca kilitteki paketler).
 4. **Geri sürüm yok.** Kurulu sürümün altına ve kilit tabanının altına inilmez.
@@ -138,10 +138,10 @@ Girdi: `update`, `upgrade`, `list` (listede ağ adımı 1–3 atlanıp önbellek
    2b. İndeksteki `repo` kilitteki `repo` ile **aynı değil** → aday yok, paket yok sayılır ("indeks başka depo gösteriyor"); indeks kaynağı değiştiremez.
    3. `version` < kilit sürümü → **yok say** + uyarı ("indeks kilit tabanının altında"); kilit asla alçaltılmaz.
    4. `version` == kilit sürümü ve `sha256` ≠ kilit `sha256` → paket için **hata** ("indeks ve kilit çelişiyor"); o paket yükseltilmez.
-   5. `version` > kurulu sürüm (ya da kurulu yok ve `version` ≥ kilit) → **yükseltilebilir** (`kurulu → yeni`).
+   5. Paket **kurulu** ve `version` > kurulu sürüm → **yükseltilebilir** (`kurulu → yeni`). Paket **kurulu değil** (ve `version` ≥ kilit; 8.3 ile garanti) → **kurulabilir** (`list`/`update` "kurulabilir → X" gösterir; adsız `upgrade` kurmaz).
    6. Aksi → güncel.
 
-`upgrade [paket…] [--yes]`: adım 1–8, sonra seçilen her yükseltilebilir paket için **kullanıcı onayı** (sürüm geçişi, `requires_sshpocket`, kaynak depo gösterilir; `--yes` yalnızca etkileşimsiz kullanımda onay yerine geçer, **varsayılan değildir**), ardından:
+`upgrade [paket…] [--yes]`: adım 1–8, sonra adsızsa her **yükseltilebilir (kurulu)** paket için; adlar verilmişse yalnız o adlar için (kurulabilir olanlar dahil) **kullanıcı onayı** (sürüm geçişi, `requires_sshpocket`, kaynak depo gösterilir; `--yes` yalnızca etkileşimsiz kullanımda onay yerine geçer, **varsayılan değildir**), ardından:
 
 9. **Paketi indir:** `https://github.com/<repo>/releases/download/v<version>/<asset>` ve `<asset>.sig` (HTTPS, boyut sınırı mevcut `comp_download` ile, 50 MiB).
 10. **Özet:** arşivin sha256'sı indeks `sha256`'sına eşit (ve `version == kilit` ise kilit `sha256`'sına da).
