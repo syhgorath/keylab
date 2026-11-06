@@ -18,6 +18,7 @@ MENU_CATEGORIES = ("hardening", "kurulum", "paketler")   # sunucu menüsündeki 
 STATUSES = ("supported", "planned")
 VAR_SCALARS = ("string", "bool", "int", "path", "cidr", "enum")
 
+RE_ITEM = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
 RE_ID = re.compile(r"^[a-z][a-z0-9-]{0,63}$")
 RE_VERSION = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 RE_NAME = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
@@ -527,6 +528,75 @@ def main():
             "yes" if e.get("required") is True else "no",
             "yes" if e.get("interactive") is True else "no"))
 
+    # --- items: yazılım kataloğu (S2). item_var/mode_var: seçilen yazılım ve mod koşuya özel bu değişkenlere yazılır (.vars'a yazılmaz) ---
+    item_lines = []
+    its = d.get("items")
+    if its is not None:
+        if not isinstance(its, list) or not 1 <= len(its) <= 30:
+            err("items 1-30 öğeli liste olmalı")
+            its = []
+        iv, mv = d.get("item_var"), d.get("mode_var")
+        if not (is_str(iv) and iv in var_specs and var_specs[iv][0] in ("string", "enum")):
+            err("items için item_var tanımlı bir string/enum değişkenin adı olmalı")
+            iv = None
+        if mv is not None and not (is_str(mv) and mv in var_specs and var_specs[mv][0] in ("string", "enum") and mv != iv):
+            err("mode_var tanımlı, item_var'dan farklı bir string/enum değişkenin adı olmalı")
+            mv = None
+        if iv:
+            item_lines.append("item_var=%s" % iv)
+        if mv:
+            item_lines.append("mode_var=%s" % mv)
+        seen_items = set()
+        for i, it in enumerate(its):
+            w = "items[%d]" % i
+            if not isinstance(it, dict):
+                err("%s nesne olmalı" % w)
+                continue
+            for k in it:
+                if k not in ("id", "label", "description", "modes", "actions", "params"):
+                    err("%s: bilinmeyen alan: %s" % (w, k))
+            iid = it.get("id")
+            if not (is_str(iid) and RE_ITEM.match(iid)) or iid in seen_items:
+                err("%s: id geçersiz ya da yinelenmiş" % w)
+                continue
+            seen_items.add(iid)
+            if iv and var_specs[iv][0] == "enum" and iid not in var_specs[iv][1].get("values", []):
+                err("%s: %s, item_var enum değerlerinde yok" % (w, iid))
+            if text_ok(it.get("label"), w + ".label", 60):
+                item_lines.append("item=%s|%s" % (iid, it["label"]))
+            if "description" in it and text_ok(it["description"], w + ".description"):
+                item_lines.append("item.%s.description=%s" % (iid, it["description"]))
+            modes = it.get("modes")
+            if modes is not None:
+                if not isinstance(modes, list) or not 1 <= len(modes) <= 5 or not all(is_str(m) and RE_ITEM.match(m) for m in modes) or len(set(modes)) != len(modes):
+                    err("%s: modes 1-5 benzersiz küçük harfli kimlik olmalı" % w)
+                elif not mv:
+                    err("%s: modes için mode_var gerekir" % w)
+                else:
+                    if var_specs[mv][0] == "enum":
+                        for m in modes:
+                            if m not in var_specs[mv][1].get("values", []):
+                                err("%s: mod %s, mode_var enum değerlerinde yok" % (w, m))
+                    item_lines.append("item.%s.modes=%s" % (iid, ",".join(modes)))
+            acts = it.get("actions")
+            if acts is not None:
+                if not isinstance(acts, list) or not acts or not all(is_str(a) and a in actions for a in acts):
+                    err("%s: actions boş olmayan, tanımlı eylem adları listesi olmalı" % w)
+                else:
+                    for a in acts:
+                        for r in (actions[a].get("requires") or []) if isinstance(actions[a], dict) and isinstance(actions[a].get("requires"), list) else []:
+                            if r not in acts:
+                                err("%s: %s eyleminin ön koşulu %s da actions içinde olmalı" % (w, a, r))
+                    item_lines.append("item.%s.actions=%s" % (iid, ",".join(acts)))
+            prm = it.get("params")
+            if prm is not None:
+                if not isinstance(prm, list) or len(prm) > 12 or not all(is_str(x) and x in var_specs for x in prm):
+                    err("%s: params en çok 12 tanımlı değişken adı olmalı" % w)
+                else:
+                    item_lines.append("item.%s.params=%s" % (iid, ",".join(prm)))
+    elif "item_var" in d or "mode_var" in d:
+        err("item_var/mode_var yalnızca items ile birlikte kullanılır")
+
     # --- menu: sunucu menüsünde paketin kategorisi, adı ve sırası (S1) ---
     menu_lines = []
     mn = d.get("menu")
@@ -561,7 +631,7 @@ def main():
         out.append("inventory_group=%s" % group)
     if req_py:
         out.append("requires.python=%s" % req_py)
-    out += prof_lines + act_lines + var_lines + plat_lines + inv_lines + menu_lines
+    out += prof_lines + act_lines + var_lines + plat_lines + inv_lines + item_lines + menu_lines
     print("\n".join(out))
     return 0
 

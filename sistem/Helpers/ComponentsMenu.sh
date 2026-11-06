@@ -573,7 +573,7 @@ _comp_menu_kontrol() {
 }
 
 # comp_menu_actions <paket> <sunucu> → hazırlık durumu + (📝 Değişkenler | eylemler); seçileni çalıştırır; geri dönene kadar döngü
-comp_menu_actions() {
+_comp_menu_actions_panel() {
     local id="$1" server="$2" info name pick i act eff req missing m plat hidden fz=0 rc hedef ko=0
     local -a names labels
     info=$(comp_prepare "$id") || { echo "Paket doğrulanamadı: $id (./start.sh --components list)" >&2; return 1; }
@@ -590,6 +590,7 @@ comp_menu_actions() {
     plat=$(comp_vars_platform "$COMP_MENU_MF" "$COMP_MENU_VARS" 2>/dev/null) || plat=""
     while IFS= read -r name; do
         [ -n "$name" ] || continue
+        if [ -n "${COMP_MENU_ITEM_ACTIONS:-}" ]; then case ",$COMP_MENU_ITEM_ACTIONS," in *",$name,"*) ;; *) continue ;; esac; fi
         if comp_action_on_platform "$info" "$name" "$plat"; then names+=("$name"); else hidden=$((hidden + 1)); fi
     done < <(comp_info_all "$info" action)
     [ "${#names[@]}" -gt 0 ] || { echo "Pakette eylem yok." >&2; return 1; }
@@ -1236,6 +1237,62 @@ comp_menu_packages() {
             prune) bash "$SISTEM_PATH/Main.sh" --components prune || true; read -r -p "Devam için Enter..." _ || return 0 ;;
             newrel) comp_cli_check_new || true; read -r -p "Devam için Enter..." _ || return 0 ;;
         esac
+    done
+}
+
+# comp_menu_actions <paket> <sunucu> → paketin eylem paneli; bildirimde items[] (katalog) varsa önce yazılım seçtirir (S2)
+comp_menu_actions() {
+    local id="$1" server="$2" info
+    info=$(comp_prepare "$id") || { echo "Paket doğrulanamadı: $id (./start.sh --components list)" >&2; return 1; }
+    if [ -n "$(comp_info_all "$info" item)" ]; then comp_menu_items "$id" "$server" "$info"; return $?; fi
+    _comp_menu_actions_panel "$id" "$server"
+}
+
+# comp_menu_items <paket> <sunucu> <bilgi> → yazılım kataloğu: yazılım (ve birden çok modu varsa mod) seçilir; sonra yalnız o yazılımın eylemleri paneli açılır.
+# Seçim eylem çalıştırılırken COMP_CTX_RUNSET ile koşuya özel verilir (item_var/mode_var; değişken dosyasına yazılmaz).
+comp_menu_items() {
+    local id="$1" server="$2" info="$3" row iid label pick mode modes n
+    local -a ids labels descs mlist
+    while true; do
+        ids=(); labels=(); descs=()
+        while IFS= read -r row; do
+            [ -n "$row" ] || continue
+            iid="${row%%|*}"; label="${row#*|}"
+            ids+=("$iid"); labels+=("$label")
+            modes=$(comp_info_get "$info" "item.$iid.modes")
+            descs+=("$(comp_info_get "$info" "item.$iid.description")${modes:+$'\n'Modlar: ${modes//,/, }}")
+        done < <(comp_info_all "$info" item)
+        clear
+        if declare -F ui_screen >/dev/null; then ui_screen "Sunucu › $server › $id › Yazılım kataloğu"; fi
+        # shellcheck disable=SC2034  # ui_pick_arrows / _ui_pick_fzf (dinamik kapsam) okur
+        local -a UI_PICK_DESCS=("${descs[@]}")
+        # shellcheck disable=SC2034
+        local UI_PICK_BACK_DESC="Paket listesine döner."
+        if declare -F ui_card_on >/dev/null && ui_card_on; then
+            # shellcheck disable=SC2034
+            local UI_PICK_WIDE=1 UI_PICK_HEIGHT=14
+            ui_fit_wide "$(( ${#labels[@]} + 1 ))" 4
+        fi
+        pick=$(_comp_menu_pick "Geri" "${labels[@]}")
+        [ "$pick" -ge 1 ] 2>/dev/null || return 0
+        iid="${ids[$((pick - 1))]}"
+        mode=""
+        modes=$(comp_info_get "$info" "item.$iid.modes")
+        if [ -n "$modes" ]; then
+            IFS=, read -r -a mlist <<< "$modes"
+            if [ "${#mlist[@]}" -gt 1 ]; then
+                # shellcheck disable=SC2034
+                local -a UI_PICK_DESCS=()
+                n=$(_comp_menu_pick "Geri" "${mlist[@]}")
+                [ "$n" -ge 1 ] 2>/dev/null || continue
+                mode="${mlist[$((n - 1))]}"
+            else mode="${mlist[0]}"; fi
+        fi
+        COMP_CTX_RUNSET="$(comp_info_get "$info" item_var)=$iid"
+        [ -z "$mode" ] || COMP_CTX_RUNSET="$COMP_CTX_RUNSET"$'\n'"$(comp_info_get "$info" mode_var)=$mode"
+        COMP_MENU_ITEM_ACTIONS="$(comp_info_get "$info" "item.$iid.actions")"
+        _comp_menu_actions_panel "$id" "$server"
+        COMP_CTX_RUNSET=""; COMP_MENU_ITEM_ACTIONS=""
     done
 }
 

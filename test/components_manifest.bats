@@ -354,3 +354,32 @@ SCRIPT_BASE='{"id":"demo","version":"1.0.0","sshpocket_api":1,"runner":"script",
     mf "{$BASE,$ok_act,\"menu\":{\"order\":true}}"; invalid
     mf "{$BASE,$ok_act,\"menu\":\"kurulum\"}"; invalid
 }
+
+# ---------- items[]: yazılım kataloğu (S2) ----------
+ITEMVARS='"vars":[{"name":"yazilim","type":"enum","values":["nginx","redis"]},{"name":"mod","type":"enum","values":["native","docker"],"default":"native"},{"name":"port","type":"int"}]'
+ITEMACTS='"actions":{"durum":{"cmd":"ansible-playbook d.yml","effects":[]},"preview":{"cmd":"ansible-playbook p.yml --check","effects":[]},"kur":{"cmd":"ansible-playbook k.yml","effects":["installs-package"],"requires":["preview"]}}'
+items_mf() { mf "{$BASE,$ITEMACTS,$ITEMVARS,\"item_var\":\"yazilim\",\"mode_var\":\"mod\",\"items\":[$1]}"; }
+
+@test "items: katalog okunur (etiket, açıklama, mod, eylem, parametre)" {
+    items_mf '{"id":"nginx","label":"Nginx","description":"Web sunucusu","modes":["native","docker"],"actions":["durum","preview","kur"],"params":["port"]},{"id":"redis","label":"Redis"}'
+    valid
+    [ "$(comp_info_get "$output" item_var)" = "yazilim" ]
+    [ "$(comp_info_all "$output" item | paste -sd, -)" = "nginx|Nginx,redis|Redis" ]
+    [ "$(comp_info_get "$output" item.nginx.modes)" = "native,docker" ]
+    [ "$(comp_info_get "$output" item.nginx.actions)" = "durum,preview,kur" ]
+    [ "$(comp_info_get "$output" item.nginx.params)" = "port" ]
+    [ "$(comp_info_get "$output" item.nginx.description)" = "Web sunucusu" ]
+}
+
+@test "items: geçersiz katalog reddedilir" {
+    items_mf '{"id":"nginx","label":"N"},{"id":"nginx","label":"N2"}'; invalid                       # yinelenen kimlik
+    items_mf '{"id":"mysql","label":"M"}'; invalid                                                   # item_var enum'unda yok
+    items_mf '{"id":"nginx","label":"N","modes":["vm"]}'; invalid                                    # mode_var enum'unda yok
+    items_mf '{"id":"nginx","label":"N","actions":["yok"]}'; invalid                                 # tanımsız eylem
+    items_mf '{"id":"nginx","label":"N","actions":["kur"]}'; invalid                                 # ön koşul (preview) listede yok
+    items_mf '{"id":"nginx","label":"N","params":["yokdeg"]}'; invalid                               # tanımsız değişken
+    items_mf '{"id":"nginx","label":"N","renk":1}'; invalid                                          # bilinmeyen alan
+    mf "{$BASE,$ITEMACTS,$ITEMVARS,\"items\":[{\"id\":\"nginx\",\"label\":\"N\"}]}"; invalid        # item_var yok
+    mf "{$BASE,$ITEMACTS,$ITEMVARS,\"item_var\":\"yazilim\"}"; invalid                              # items yok
+    mf "{$BASE,$ITEMACTS,$ITEMVARS,\"item_var\":\"yazilim\",\"items\":[]}"; invalid                 # boş katalog
+}
