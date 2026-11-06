@@ -4,14 +4,25 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.6.24] - 2026-11-06
+
+Bu sürüm paket kataloğu altyapısını (menü kategorileri, yazılım kataloğu, form), `requires_sudo` parola düzeltmesini ve CI/README güncellemelerini getirir. **`components.lock` değişmedi** (linux-hardening 0.12.1, utility 0.1.0); yeni özellikleri kullanacak paketler (`kurulum` vb.) ayrı bir kilit sürümüyle gelecek.
+
+### Dikkat
+- **Yeni manifest alanlarını (`menu`, `items`, `item_var`, `mode_var`) henüz hiçbir gerçek paket kullanmıyor.** Menü kategorileri, katalog ve form yalnız birim testleri ve sahte paketlerle doğrulandı; gerçek bir paketle ve gerçek terminalde fzf'li görünüm elle DENENMEDİ. linux-hardening ve utility `menu` yazmadığı için sunucu menüsü bugünkü "Paketler" satırıyla aynen çalışır.
+- **`requires_sudo` düzeltmesi** Docker LAB'da (parolalı sudo yapılmış Ubuntu 26.04 konteyneri) doğrulandı; gerçek bir VM'de menüden denenmedi. Parolalı sudo'lu sunucuda `utility` artık `BECOME password:` ister; NOPASSWD sunucuda Enter yeterli.
+- **Ekrandaki "modül" iletileri "sunucu" oldu** (sunucu ekleme, silme, içe aktarma, güncelleme onayı); testlerle doğrulandı, gerçek terminalde akış elle denenmedi.
+- **CI** artık `ubuntu-26.04` runner'ında ve `permissions: contents: read` ile çalışır (code-scanning'deki 3 uyarı kapandı). Ayrı olarak, GitHub'ın "AI security scan" koşusu aylık kota nedeniyle hata verebilir; kodla ilgili değildir.
+
 ### Değişti
+- **CI:** `ubuntu-24.04` yerine `ubuntu-26.04` runner (projenin hedef sürümü; bash 5.3) ve iş akışına `permissions: contents: read` (en az ayrıcalık).
 - **"Modül" yerine "sunucu":** README'de (TR/EN) ve ekrandaki iletilerde (sunucu ekleme, silme, içe aktarma, güncelleme onayı, key yolu sorusu) eski "modül" terimi sunucu oldu; `servers/<ad>/` düzeniyle uyumlu. Dosya adları (`ModuleGenerator.sh`, `ModuleManager.sh`) ve iç adlar değişmedi. README'ye paketlerin imzalı olduğu ve istemci denemesinin yalnız macOS'ta olduğu notu eklendi.
 - **README sadeleşti:** ayrıntılı bölümler `docs/` altına taşındı (`paketler.md`, `test-edilen-ortamlar.md`, `guncelleme.md`, `eski-duzenden-tasima.md`; İngilizce karşılıkları `docs/en/`). Logo ve hardening görseli eklendi (`img/`, küçültülmüş; release arşivine girmez: `.gitattributes`), rozetler: ci, sürüm, indirme, yıldız, lisans. CI satırı Ubuntu 26.04'e güncellendi. Elle denenen/denenmeyen listesi içerik olarak değişmedi, yalnızca taşındı.
 
 ### Eklendi
 - **Paket bildirimi `menu` alanı (S1):** `"menu": {"category": "hardening|kurulum|paketler", "title", "order"}`. Sunucu menüsündeki tek "🛡️ Paketler" satırı, kurulu paketi olan sabit kategorilere bölünür (🛡️ Sertleştirme, 🧰 Kurulum merkezi, 🛡️ Paketler); `menu` olmayan paketler (linux-hardening 0.12.1, utility 0.1.0) bugünkü satırda kalır, davranış değişmez. Kategori içinde paketler `order`'a göre sıralanır. Doğrulayıcı alanı okur ve bozuksa reddeder (`docs/package-standard.md` §4). Gerçek terminalde fzf'li görünüm elle denenmedi; birim testleri ve seçim akışı sahte paketlerle doğrulandı.
 - **Yazılım kataloğu `items[]` (S2):** bildirimde `item_var`/`mode_var` + `items[{id,label,description,modes,actions,params}]`. Paket paneli açılırken yazılım (ve mod) seçtirilir, yalnız o yazılımın eylemleri listelenir; seçim eylem çalışırken koşuya özel (`.vars`'a yazılmadan) verilir ve kapıdan geçer (`comp_gate_run_sets`). Katalogu olmayan paketler (linux-hardening, utility) aynen çalışır. Gerçek paketle uçtan uca ve gerçek terminalde elle DENENMEDİ (`kurulum` paketi bekleniyor); birim testleri ve sahte paketler.
-- **Koşuya özel parametre (S3):** seçilen yazılımın `params` listesindeki tanımlı değişkenler, eylem çalışırken `.vars` dosyasına YAZILMADAN verilir (`COMP_CTX_RUNSET`; kapı `comp_gate_run_sets`). Tür/aralık mevcut doğrulayıcıyla denetlenir; listede olmayan ad, yazılımsız parametre ve başka yazılımın parametresi hiçbir şey çalıştırmaz. Değerleri toplayan form S4'te; şu an değerler yalnız kapı/doğrulama düzeyinde testlidir, menüden verilemez, gerçek paketle DENENMEDİ.
+- **Koşuya özel parametre (S3):** seçilen yazılımın `params` listesindeki tanımlı değişkenler, eylem çalışırken `.vars` dosyasına YAZILMADAN verilir (`COMP_CTX_RUNSET`; kapı `comp_gate_run_sets`). Tür/aralık mevcut doğrulayıcıyla denetlenir; listede olmayan ad, yazılımsız parametre ve başka yazılımın parametresi hiçbir şey çalıştırmaz. Menüden bu değerleri koşuya özel verecek bir ekran YOK: S4 formu değerleri normal `.vars` dosyasına yazar; kapı hazır, gerçek paketle DENENMEDİ.
 - **Katalog formu (S4):** katalogdan bir yazılım seçilince panelin 📝 Değişkenler ekranı yalnız o yazılımın `params` alanlarını gösterir (mevcut alan-listesi editörü: tür/aralık doğrulaması, varsayılan, açıklama, fzf kartı; başlık "<yazılım> › Ayarlar"). Gerçek `kurulum` paketiyle ve gerçek terminalde fzf'li görünüm DENENMEDİ; birim testleri sahte paketle.
 
 ### Düzeltildi
