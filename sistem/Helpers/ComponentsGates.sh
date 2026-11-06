@@ -257,9 +257,10 @@ comp_gate_apply_vars_notice() {
 }
 
 # comp_gate_run_sets <bilgi> <eylem> → katalogtan (S2) seçilen yazılım/mod için "ad=değer" satırları (COMP_CTX_RUNSET, satır satır).
-# Yalnızca item_var/mode_var adları kabul edilir; yazılım katalogda, mod yazılımın modlarında, eylem yazılımın eylemlerinde olmalı. Başarısızlıkta 1 (hiçbir şey çalışmaz).
+# item_var/mode_var ve seçili yazılımın params listesindeki değişken adları kabul edilir; yazılım katalogda, mod yazılımın modlarında, eylem yazılımın eylemlerinde olmalı. Başarısızlıkta 1 (hiçbir şey çalışmaz).
 comp_gate_run_sets() {
-    local info="$1" action="$2" kv k v iv mv item="" mode="" acts
+    local info="$1" action="$2" kv k v iv mv item="" mode="" acts pp
+    local -a params=()
     [ -n "${COMP_CTX_RUNSET:-}" ] || return 0
     iv=$(comp_info_get "$info" item_var); mv=$(comp_info_get "$info" mode_var)
     while IFS= read -r kv; do
@@ -267,7 +268,7 @@ comp_gate_run_sets() {
         k="${kv%%=*}"; v="${kv#*=}"
         if [ -n "$iv" ] && [ "$k" = "$iv" ]; then item="$v"
         elif [ -n "$mv" ] && [ "$k" = "$mv" ]; then mode="$v"
-        else echo "Koşuya özel değişken kabul edilmedi: $k" >&2; return 1; fi
+        else params+=("$kv"); fi
     done <<< "$COMP_CTX_RUNSET"
     if [ -n "$item" ]; then
         comp_info_all "$info" item | grep -q "^${item}|" || { echo "Katalogda olmayan yazılım: $item" >&2; return 1; }
@@ -275,7 +276,18 @@ comp_gate_run_sets() {
         if [ -n "$acts" ]; then case ",$acts," in *",$action,"*) ;; *) echo "$item için '$action' eylemi tanımlı değil." >&2; return 1 ;; esac; fi
         if [ -n "$mode" ]; then case ",$(comp_info_get "$info" "item.$item.modes")," in *",$mode,"*) ;; *) echo "$item için geçersiz mod: $mode" >&2; return 1 ;; esac; fi
     elif [ -n "$mode" ]; then echo "Mod yazılımsız verilemez." >&2; return 1; fi
+    if [ "${#params[@]}" -gt 0 ]; then
+        # parametre (S3): yalnız seçili yazılımın params listesindeki tanımlı değişkenler; tür/aralık component_run.py vars --set ile doğrulanır
+        [ -n "$item" ] || { echo "Parametre yazılımsız verilemez." >&2; return 1; }
+        pp=$(comp_info_get "$info" "item.$item.params")
+        for kv in "${params[@]}"; do
+            k="${kv%%=*}"
+            case ",$pp," in *",$k,"*) ;; *) echo "Koşuya özel değişken kabul edilmedi: $k" >&2; return 1 ;; esac
+            [ "$k" != "$iv" ] && [ "$k" != "$mv" ] || { echo "Koşuya özel değişken kabul edilmedi: $k" >&2; return 1; }
+        done
+    fi
     [ -z "$item" ] || printf '%s=%s\n' "$iv" "$item"
     [ -z "$mode" ] || printf '%s=%s\n' "$mv" "$mode"
+    [ "${#params[@]}" -eq 0 ] || printf '%s\n' "${params[@]}"
     return 0
 }
