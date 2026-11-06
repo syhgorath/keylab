@@ -105,7 +105,11 @@ Kurallar: `effects` boş olmayan eylem onaysız çalışmaz; `destructive` ve `c
 - Türler: `string`, `bool`, `int`, `path`, `cidr`, `list[<tür>]`, `enum` (+ `values`).
 - sshpocket değeri **kendisi doğrular** (tür, aralık, `required`); geçersiz değer çalıştırmayı başlatmaz.
 - **Gizli değer yoktur:** `secret` türü bu sürümde **yok**. Parola/anahtar paket değişkeni olamaz; sshpocket bunları
-  değişken dosyasına yazmaz.
+  değişken dosyasına yazmaz. **İstisna: parola ÖZETİ** (örn. `grub-mkpasswd-pbkdf2` çıktısı): adı `_hash`, `_digest` veya
+  `_checksum` ile biten `string` değişken özet taşıyabilir, **düz parola taşıyamaz** (paket, düz parolayı kabul etmemeli ve
+  biçimi doğrulamalı). Özet de sunucu klasöründeki değişken dosyasında düz metin durur (izin 600, USB'deyse USB'nin şifrelenmesi önerilir);
+  **zayıf bir parolanın özeti çevrimdışı kırılabilir**, bu yüzden paketin belgesi güçlü parola önermelidir. Doğrulayıcı yalnızca bu
+  ek adlara sahip değişkenleri gevşetir; adı `parola/token/anahtar` içeren diğer metin değişkenleri uyarılmaya devam eder.
 - `warn_if`: değer buna eşitse arayüz uyarı gösterir ve onay ister. Onay **yalnızca yapılandırmayı değiştiren** eylemlerde (`effects`'te `installs-package` dışında bir şey olan, örn. `apply`) sorulur; salt okunur eylemler (`preview`, durum/rapor) ve yalnızca araç kuran eylemler (`audit`) sormaz, risk onayı asıl değişikliğin yapıldığı eylemde alınır. **Varsayılanı `warn_if`'e eşit olan değişken her çalıştırmada uyarı tetikler**: varsayılandan sapmayı yakalamak için `warn_if`'i varsayılanın TERSİ yapın.
 - `required: true`: değişken zorunludur; eksikse **değiştiren eylemler ve başka bir eylemin ön koşulu olan eylemler** (örn. `preview`) çalışmaz. Salt okunur durum eylemleri (örn. `rollback_status`) zorunlu değişken olmadan da çalışır (verilen değerler yine doğrulanır). Bir değişkeni zorunlu yapan paket, bu eylemlerin onu kullandığından emin olmalıdır.
 - Değerler kullanıcı klasöründe geçici, izni 600 olan bir değişken dosyasıyla verilir, iş bitince silinir.

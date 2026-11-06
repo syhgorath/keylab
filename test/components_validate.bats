@@ -161,6 +161,19 @@ val() { run python3 -I "$VAL" "$@"; }
     [[ "$output" == *"demo_password_file: adı parola/anahtar/token izlenimi veriyor"* ]] || false
 }
 
+@test "parola ÖZETİ adları (_hash/_digest/_checksum) uyarılmaz; düz parola/token adları ve '_hash' ile bitmeyenler uyarılmaya devam eder" {
+    jedit "$P/component.json" 'd["vars"]=d["vars"]+[{"name":"demo_password_hash","type":"string"}, {"name":"demo_api_token_digest","type":"string"}, {"name":"demo_password","type":"string"}, {"name":"demo_hash_password","type":"string"}, {"name":"demo_secret_hashed","type":"string"}]'
+    printf -- '- hosts: all\n  vars: {a: "{{ demo_password_hash }} {{ demo_api_token_digest }}"}\n  tasks: []\n' > "$P/playbooks/h.yml"
+    val "$P"
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"demo_password_hash: adı parola"* ]] || false
+    [[ "$output" != *"demo_api_token_digest: adı parola"* ]] || false
+    [[ "$output" == *"demo_password_hash (string, parola ÖZETİ: düz parola olamaz)"* ]] || false
+    [[ "$output" == *"demo_password: adı parola/anahtar/token izlenimi veriyor"* ]] || false
+    [[ "$output" == *"demo_hash_password: adı parola/anahtar/token izlenimi veriyor"* ]] || false
+    [[ "$output" == *"demo_secret_hashed: adı parola/anahtar/token izlenimi veriyor"* ]] || false
+}
+
 @test "uyarı: outputs.format var ama playbook'ta SSHPOCKET_RESULT çıktısı yok" {
     printf -- '- hosts: all\n  tasks: []\n' > "$P/playbooks/s.yml"
     val "$P"
