@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   shellcheck:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
       - name: ShellCheck kur (sabit sürüm, sha256 doğrulamalı)
@@ -19,7 +19,7 @@ jobs:
       - name: Syntax check (bash -n)
         run: for f in start.sh start.command sistem/*.sh sistem/Helpers/*.sh; do bash -n "$f"; done
   tests:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
       - name: Install bats
