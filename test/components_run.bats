@@ -245,3 +245,32 @@ CASES
         [ ! -e "$T/inv3" ]
     done
 }
+
+# ---------- requires_sudo → sudo parolası istemi (paket invoke yazmasa da) ----------
+sudo_manifest() {
+    cat > "$T/ms.json" <<JSON
+{"id":"util","version":"1.0.0","sshpocket_api":1,"runner":"ansible","inventory_group":"util",
+ "profiles":[{"id":"ubuntu-26.04","status":"supported"}],
+ "actions":{
+  "durum":{"cmd":"ansible-playbook playbooks/durum.yml","effects":[],"requires_sudo":false},
+  "apply":{"cmd":"ansible-playbook playbooks/apply.yml","effects":["changes-config"],"requires_sudo":true,"requires":["durum"]}},
+ "vars":[{"name":"util_x","type":"string"}]$1}
+JSON
+    SINFO=$(comp_manifest_info "$T/ms.json" util 1.0.0)
+}
+
+@test "requires_sudo: paket invoke yazmasa da --ask-become-pass eklenir ve eylem etkileşimli olur; sudo gerektirmeyen eyleme eklenmez" {
+    sudo_manifest ""
+    comp_run_build_argv "$SINFO" apply /tmp/inv web1 /tmp/v.json
+    [[ " ${COMP_RUN_ARGV[*]} " == *" --ask-become-pass "* ]] || { echo "${COMP_RUN_ARGV[*]}"; false; }
+    [ "$COMP_RUN_INTERACTIVE" -eq 1 ]
+    comp_run_build_argv "$SINFO" durum /tmp/inv web1 /tmp/v.json
+    [[ " ${COMP_RUN_ARGV[*]} " != *"--ask-become-pass"* ]] || { echo "${COMP_RUN_ARGV[*]}"; false; }
+    [ "$COMP_RUN_INTERACTIVE" -eq 0 ]
+}
+
+@test "requires_sudo: paket zaten --ask-become-pass yazdıysa ikilenmez" {
+    sudo_manifest ',"invoke":{"append":[{"arg":"--ask-become-pass","required":true,"interactive":true}]}'
+    comp_run_build_argv "$SINFO" apply /tmp/inv web1 /tmp/v.json
+    [ "$(printf '%s\n' "${COMP_RUN_ARGV[@]}" | grep -c -- '--ask-become-pass')" -eq 1 ]
+}

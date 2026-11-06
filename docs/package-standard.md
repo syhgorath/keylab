@@ -80,7 +80,7 @@ Alan tablosu (`*` zorunlu):
 |---|---|
 | `cmd` * | Paket köküne göre çalıştırılacak komut; sshpocket kabuğa **dizge olarak vermez**, sözcüklere ayırıp doğrudan çalıştırır |
 | `effects` * | `[]` salt okunur · `installs-package` · `changes-config` · `destructive` (birden çok olabilir; menü **hepsini** gösterir) |
-| `requires_sudo` | sudo parolası gerekir; Ansible'ın kendi isteminden alınır (diske/komut satırına/Keychain'e yazılmaz) |
+| `requires_sudo` | sudo parolası gerekir; Ansible'ın kendi isteminden alınır (diske/komut satırına/Keychain'e yazılmaz). `ansible` runner'da bu eylemde sshpocket `--ask-become-pass` ekler (paketin `invoke.append`'e yazması gerekmez; yazdıysa ikilenmez): NOPASSWD sunucuda istemde Enter yeterli. `requires_sudo` yoksa/false ise istem çıkmaz |
 | `requires[]` | Ön koşul eylemler; **zorlamayı sshpocket yapar** (önizleme başarılı olmadan `apply` açılmaz) |
 | `confirm` | `none` \| `yes-no` \| `type-server-name` (yıkıcı/geri dönüşü zor işler için sunucu adı yazdırılır) |
 | `interactive` | Kullanıcıdan istem bekler; sshpocket gizli/sessiz çalıştırmaz, terminali devreder |
