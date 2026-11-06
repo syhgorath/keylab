@@ -15,6 +15,7 @@ Bu sürüm **imzalı paket indeksini** getirir: paket sürümleri artık sshpock
 
 ### Değişti
 - `components.lock` artık **taban**: kurulu sürüm kilit sürümünden **büyük veya eşit** olabilir (çalıştırma kapısı ve `comp_status`); `comp_verify` / `comp_install_archive` doğrulanmış indeksten beklenen sha256 alır. Kilit sürümüne eşit sürümde özet yine kilitteki olmalıdır; paket imzacısı her zaman kilitten gelir; indeks yeni paket ya da yeni imzacı ekleyemez, kilitte olmayan paket indeksten kurulamaz; indeksin depo adı kilitteki ile aynı olmalıdır.
+- **`upgrade` (adsız) yalnız KURULU paketleri yükseltir** (apt gibi); kurulu olmayan paket `update`/`list`'te "kurulabilir → X" görünür ve yalnız adı verilince kurulur: `upgrade [--yes] <paket>`.
 - `--components sync` değişmedi: kilit sürümünü kurar (çevrimdışı/ilk kurulum yolu).
 
 ### Dikkat
