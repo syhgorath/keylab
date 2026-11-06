@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- **README sadeleşti:** ayrıntılı bölümler `docs/` altına taşındı (`paketler.md`, `test-edilen-ortamlar.md`, `guncelleme.md`, `eski-duzenden-tasima.md`; İngilizce karşılıkları `docs/en/`). Logo ve hardening görseli eklendi (`img/`, küçültülmüş; release arşivine girmez: `.gitattributes`), rozetler: ci, sürüm, indirme, yıldız, lisans. CI satırı Ubuntu 26.04'e güncellendi. Elle denenen/denenmeyen listesi içerik olarak değişmedi, yalnızca taşındı.
+
 ### Eklendi
 - **Paket bildirimi `menu` alanı (S1):** `"menu": {"category": "hardening|kurulum|paketler", "title", "order"}`. Sunucu menüsündeki tek "🛡️ Paketler" satırı, kurulu paketi olan sabit kategorilere bölünür (🛡️ Sertleştirme, 🧰 Kurulum merkezi, 🛡️ Paketler); `menu` olmayan paketler (linux-hardening 0.12.1, utility 0.1.0) bugünkü satırda kalır, davranış değişmez. Kategori içinde paketler `order`'a göre sıralanır. Doğrulayıcı alanı okur ve bozuksa reddeder (`docs/package-standard.md` §4). Gerçek terminalde fzf'li görünüm elle denenmedi; birim testleri ve seçim akışı sahte paketlerle doğrulandı.
 - **Yazılım kataloğu `items[]` (S2):** bildirimde `item_var`/`mode_var` + `items[{id,label,description,modes,actions,params}]`. Paket paneli açılırken yazılım (ve mod) seçtirilir, yalnız o yazılımın eylemleri listelenir; seçim eylem çalışırken koşuya özel (`.vars`'a yazılmadan) verilir ve kapıdan geçer (`comp_gate_run_sets`). Katalogu olmayan paketler (linux-hardening, utility) aynen çalışır. Gerçek paketle uçtan uca ve gerçek terminalde elle DENENMEDİ (`kurulum` paketi bekleniyor); birim testleri ve sahte paketler.

@@ -1,5 +1,7 @@
 # linux-hardening: kullanım notları
 
+<p align="center"><img src="../img/hardening.jpg" alt="linux-hardening" width="640"></p>
+
 `linux-hardening` paketini sshpocket üzerinden bir sunucuda çalıştırırken bilinmesi gerekenler. Bu belge deneyimlerden (gerçek bir Ubuntu 26.04 VM'inde
 `rollback_status` → `preview` → `apply`) çıkarıldı; paketin kendi belgesi için paketin `README.md`/`HOWTO.md` dosyalarına bakın.
 

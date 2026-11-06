@@ -1,6 +1,11 @@
+<p align="center"><img src="img/logo.jpg" alt="sshpocket" width="140"></p>
+
 # sshpocket
 
 [![ci](https://github.com/syhgorath/sshpocket/actions/workflows/ci.yml/badge.svg)](https://github.com/syhgorath/sshpocket/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/syhgorath/sshpocket)](https://github.com/syhgorath/sshpocket/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/syhgorath/sshpocket/total)](https://github.com/syhgorath/sshpocket/releases)
+[![Stars](https://img.shields.io/github/stars/syhgorath/sshpocket?style=flat)](https://github.com/syhgorath/sshpocket/stargazers)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 🇹🇷 [Türkçe](README.md) · 🇬🇧 English
@@ -18,20 +23,6 @@ Every server is a *module*: drop a module folder in and it shows up in the menu 
 
 > **It does not auto-start.** macOS, Linux and modern Windows do not run scripts when a USB drive
 > is plugged in (by design). Start it manually: `./start.sh`, or double-click `start.command` in Finder.
-
-## Tested environments
-
-| Environment | Status |
-|---|---|
-| **Intel Mac (x86_64), macOS 15.7.9, bash 3.2.57, OpenSSH 9.9p2** | ✅ Developed and manually tried |
-| **Apple Silicon (arm64, Apple M5 Pro), macOS 27.0.1 and 27.2, bash 3.2.57, OpenSSH 10.3p1 / 10.5p1** | ✅ Manually tried: `--doctor`, `ssh-add` with the passphrase from the Keychain, `--components sync` and `run` (`audit` → `preview` → `apply` → second `preview` on an Ubuntu 26.04.1 VM, including password sudo with sudo-rs; `apply` and `audit` on a Proxmox VE 9.2.21 VM; these on 27.0.1. On macOS 27.2 `--doctor` was re-run; also tried by hand on 27.2: **opening a Terminal window** from the server menu, **double-clicking `start.command`** in Finder, the **fzf look** of the `🛡️ Packages` menu; with 3.6.20 from the USB: the server-type and `allow_from` questions, `apply`, `pve_firewall_*`). ⚠️ Not tried by hand: the arrow-key (non-fzf) look of the `🛡️ Packages` menu, knocking against a real server |
-| **Apple Silicon (arm64), macOS 26.6.2, bash 3.2.57, OpenSSH 10.3p1 (GitHub Actions)** | ✅ **Automated tests** (Bats + ShellCheck, on every PR). ⚠️ Not tried by hand: the Keychain permission dialog, opening Terminal, double-clicking `start.command` |
-| Ubuntu 24.04 (CI only: ShellCheck + Bats tests) | ✅ automated |
-| Running on Linux (no Keychain/`osascript`/`diskutil`) | ❌ Not supported |
-| Target server: Ubuntu 26.04.1 (linux-hardening) | ✅ fresh install on a real VM: Lynis 58 → 76, second run `changed=0`, password sudo-rs |
-| Target server: Proxmox VE 9 (Debian 13, inside a VM; linux-hardening `proxmox-host` platform) | ✅ `apply` and `audit` (Lynis 82–84), `pve_firewall_preview` / `pve_firewall_apply` (rollback safety net armed → new ssh connection and web UI verified → disarmed; second preview `changed=0`), web UI and container creation fine. ⚠️ Clustered Proxmox and real hardware not tried; Raspberry Pi not tried |
-
-If you hit a problem on Apple Silicon or a newer macOS, please open an issue (with the macOS version, `uname -m` and `bash --version`).
 
 ## Requirements
 
@@ -93,10 +84,9 @@ The generator asks for IP/user/port, can create an ed25519 key and stores the pa
   (search + description preview pane). The style is set under ⚙️ Settings (`UI`: `auto` · `fzf` · `arrows` · `numbers`) or with `SSHPOCKET_UI=numbers ./start.sh`;
   use `numbers` if a terminal misbehaves.
 - **`./start.sh --doctor`:** prerequisite check (ssh tools, Python range, venv, disk, network); read-only, installs nothing.
-- **Packages (infrastructure):** safe install of signed, locked (`components.lock`) packages: `./start.sh --components list|sync|check-new|prune`; clean up old version folders with `./start.sh --components prune [--dry-run] [--yes]` (the active, the previous and the locked version are kept); it is also offered after an update and available from **Settings › Eski paket sürümlerini temizle** (clean up old package versions); run an installed package's action: `./start.sh --components run <package> <action> <server>` (connects to the server; preview/confirmation gates apply).
-  `linux-hardening 0.12.1` and `utility 0.1.0` (time zone, `LANG` locale, NTP/chrony; Ubuntu 26.04 and Debian 13; tried on real VMs by the package owner with the playbook directly; a real-VM run through the sshpocket menu has not been done yet) are in the lock. With sshpocket 3.6.20 it was tried on real VMs (Ubuntu 26.04.1 and a single-node Proxmox VE 9): the server-type and allowed-network question (when adding a server and on first open), ⛔ when `hardening_ssh_allow_from` is empty, `apply` and a second `preview` (`changed=0`), `hardening_pve_apply` being passed only for that run on Proxmox (and not on Ubuntu), `pve_firewall_*` and the fail2ban settings (`ignoreip` empty + yours, `bantime` 10 min; **an active ban was not tried**). (The 0.9.0 area switches (`hardening_<area>_enabled`) and the permanent-removal actions (`kaldir_onizle`, `kaldir`, `kaldir_geri_yukle`) were tried on real Ubuntu 26.04 and Proxmox VE 9 VMs in earlier rounds; the detailed results below are for 0.8.4; every action tried through sshpocket on the Docker LAB; on real VMs, Ubuntu 26.04 and a single-node Proxmox VE 9, the `audit` → `preview` → `apply` → second `preview` (`changed=0`) cycle was tried, Lynis about 61→83 on Ubuntu and 84 on Proxmox. Also verified on 0.8.4: platform-based menu filtering (`pve_firewall_*` and the Proxmox variables are hidden on Ubuntu), the six per-server switches (`false` writes nothing and does not delete what was already written), the legal banner surviving a reboot on Proxmox, `hardening_pve_web_exclusive` (a same-subnet client that is not on the list can no longer reach 8006 and 3128) and an extra firewall port. **Known limits:** `kernel_modules_disabled` is deliberately refused on Proxmox; `false` does not undo a change that was already applied; **an active fail2ban ban, rejection from an unlisted network, Proxmox with guest VMs/CTs, a Docker VM, Raspberry Pi, an HA cluster and some Ubuntu options (`apt_upgrade`, `restrict_compilers` with a real `gcc`, `auditd_immutable`, `aide_audit_tools`) were not tried**). Usage and the **access-network trap**: [docs/hardening-kullanim.md](docs/hardening-kullanim.md) (Turkish); standard: [docs/package-standard.md](docs/package-standard.md).
-- **Server type and allowed network:** if a package declares a platform list (linux-hardening 0.12.0: Ubuntu/Debian, Proxmox VE, Raspberry Pi), the server type is asked when adding a server and, for older servers, the first time the package menu opens ("Not now" writes nothing). **`hardening_ssh_allow_from` is required:** while empty, `preview`, `apply` and `pve_firewall_*` stop with ⛔ before any ssh (`audit` and `rollback_*` are not affected); suggestions come from the address the server sees you at and are never written silently. On Proxmox, `apply` passes the selected platform's `hardening_pve_apply=true` for that run only (the warning is shown before the server-name confirmation and nothing is written to your `.vars` file). Details: [docs/sunucu-ekleme-platform-secimi.md](docs/sunucu-ekleme-platform-secimi.md) and [docs/hardening-kullanim.md](docs/hardening-kullanim.md) (Turkish).
-- Automated tests (Bats, bash 5 and macOS bash 3.2) + ShellCheck run in CI on every PR.
+- **Packages and updates:** signed, locked (`components.lock`) packages (currently `linux-hardening` and `utility`) live under **📦 Packages and updates** in the main menu; every action goes through preview and confirmation gates, and the sudo password comes from Ansible's own prompt. Commands, platform choice and the mandatory `hardening_ssh_allow_from`: [docs/en/packages.md](docs/en/packages.md) · hardening usage and the **access-network trap**: [docs/hardening-kullanim.md](docs/hardening-kullanim.md) (Turkish).
+- **Tested on:** macOS (Intel and Apple Silicon) by hand; macOS (bash 3.2) and Ubuntu 26.04 in CI. What was tried and **what was not**: [docs/en/tested-environments.md](docs/en/tested-environments.md).
+- Automated tests (Bats, bash 5.3 on Linux and macOS bash 3.2) + ShellCheck run in CI on every PR.
 
 ## Sending the key to the server
 
@@ -109,38 +99,14 @@ The generator asks for IP/user/port, can create an ed25519 key and stores the pa
 - Setting `PasswordAuthentication no` on the server is **deliberately not automated.** Do it by hand
   after you have confirmed that key login works, or you may lock yourself out.
 
-## Migrating from the old layout (pre-v3 → `servers/`)
+## Coming from an older version
 
-Your old `sistem/Modules/<name>/` servers are migrated **automatically**; no export/import needed.
-
-```bash
-./start.sh --migrate --dry-run   # see what would happen (changes nothing)
-./start.sh --migrate             # asks for confirmation, then migrates
-```
-
-Keys are copied and verified, old folders are **not deleted** (`servers/.migrated-<date>/`). Keychain passphrases stay valid.
-Once you have verified everything works, delete that folder yourself (it holds copies of the keys).
+Servers from before v3 (`sistem/Modules/<name>/`) are migrated **automatically** (`./start.sh --migrate --dry-run`, then `./start.sh --migrate`); old folders are not deleted. Details: [docs/en/migrating.md](docs/en/migrating.md).
 
 ## Updating
 
-Never automatic; you start it:
-
-```bash
-./start.sh --check-update   # only looks (exit code 10 if a newer version exists)
-./start.sh --update         # download → verify signature → show notes → install if you confirm
-```
-
-or use **⬆️ Check for updates / update** in the main menu (in the fzf layout: the sshpocket row under **📦 Packages and updates**).
-
-- In a terminal (at least 24 rows × 60 columns) an update panel opens: after the signature and archive checks it shows the version, signature status, package (`components.lock`) differences and the **Dikkat** (caution) notes from the CHANGELOG at the top, and the release notes, confirmation and installation below. When a package version changes, a "what changed, which of my servers are affected" report is printed at the end of the install (also available with `./start.sh --components report [package [old-version]]`; read-only).
-- The package is only the file from this repository's GitHub Releases, fetched over HTTPS and **signed with the
-  maintainer's release key** (`ssh-keygen -Y verify`). If it cannot be verified nothing is unpacked or installed.
-  If no signing key is configured, updating is **disabled**.
-- Your servers (`servers/`), settings (`sshpocket.conf`) and keys are kept. A backup of the code (`.update-backup/`, no secrets) is taken first
-  and restored on failure.
-- It never downgrades, and rejects archives containing `..`, absolute paths or symlinks.
-- A write-protected USB cannot be updated (by design).
-- Note: the updater ships with `v2.2.0`; older copies need one manual update first.
+Never automatic; you start it: `./start.sh --check-update` (only looks) and `./start.sh --update` (download → verify signature → show notes → install if you confirm), or **⬆️ Check for updates / update** in the main menu.
+Packages come only from this repo's GitHub Releases over HTTPS and must be **signed with the maintainer's key** (`ssh-keygen -Y verify`); if verification fails nothing is installed, and updating is **disabled** when no signing key is defined. Your servers, settings and keys are kept; on failure the code backup is restored. Details: [docs/en/updating.md](docs/en/updating.md).
 
 ### Verifying your first download
 `--update` verifies signatures itself, but it cannot verify your **first copy** (the archive you downloaded from the Release page): that trust rests on GitHub and HTTPS.
@@ -181,6 +147,8 @@ sistem/Helpers/            logging, menu, registry, validation, SSH, eject helpe
 servers/<name>/            per server: server.env, id_ed25519_<name>   (old: sistem/Modules/<name>/ → ./start.sh --migrate)
 sistem/templates/          server.env.example template
 test/                      Bats tests (bats test)
+docs/                      detailed docs (packages, updating, tested environments, standard)
+img/                       README images (not part of the release archive)
 ```
 
 ## Development

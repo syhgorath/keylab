@@ -1,0 +1,13 @@
+# Eski düzenden taşıma (v3 öncesi → `servers/`)
+
+Ana sayfa: [README](../README.md).
+
+Eski `sistem/Modules/<ad>/` sunucularınız **otomatik** taşınır; dışa/içe aktarma gerekmez.
+
+```bash
+./start.sh --migrate --dry-run   # önce ne olacağını gör (hiçbir şey değişmez)
+./start.sh --migrate             # onay isteyip taşır
+```
+
+Key'ler kopyalanıp doğrulanır, eski klasörler **silinmez** (`servers/.migrated-<tarih>/`). Keychain'deki passphrase'ler aynen geçerlidir.
+Doğruladıktan sonra o klasörü (key kopyaları içerir) kendiniz silin.

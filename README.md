@@ -1,6 +1,11 @@
+<p align="center"><img src="img/logo.jpg" alt="sshpocket" width="140"></p>
+
 # sshpocket
 
 [![ci](https://github.com/syhgorath/sshpocket/actions/workflows/ci.yml/badge.svg)](https://github.com/syhgorath/sshpocket/actions/workflows/ci.yml)
+[![Sürüm](https://img.shields.io/github/v/release/syhgorath/sshpocket)](https://github.com/syhgorath/sshpocket/releases/latest)
+[![İndirme](https://img.shields.io/github/downloads/syhgorath/sshpocket/total)](https://github.com/syhgorath/sshpocket/releases)
+[![Yıldız](https://img.shields.io/github/stars/syhgorath/sshpocket?style=flat)](https://github.com/syhgorath/sshpocket/stargazers)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 🇹🇷 Türkçe · 🇬🇧 [English](README.en.md)
@@ -18,20 +23,6 @@ Her sunucu bir *modüldür*; modül klasörünü eklediğinizde menüde kendili�
 
 > **Otomatik başlamaz.** macOS, Linux ve modern Windows USB takılınca script çalıştırmaz (güvenlik gereği).
 > Elle başlatın: `./start.sh` ya da Finder'da `start.command` dosyasına çift tıklayın.
-
-## Test edilen ortamlar
-
-| Ortam | Durum |
-|---|---|
-| **Intel Mac (x86_64), macOS 15.7.9, bash 3.2.57, OpenSSH 9.9p2** | ✅ Geliştirildi ve elle denendi |
-| **Apple Silicon (arm64, Apple M5 Pro), macOS 27.0.1 ve 27.2, bash 3.2.57, OpenSSH 10.3p1 / 10.5p1** | ✅ Elle denendi: `--doctor`, Keychain'deki passphrase ile `ssh-add`, `--components sync` ve `run` (Ubuntu 26.04.1 VM'inde `audit` → `preview` → `apply` → ikinci `preview`; parolalı sudo-rs dahil; Proxmox VE 9.2.21 VM'inde `apply` ve `audit`; bunlar 27.0.1'de. macOS 27.2'de `--doctor` yeniden denendi; ayrıca 27.2'de elle denendi: modül menüsünden **Terminal penceresi açma**, Finder'da **`start.command` çift tıklama**, `🛡️ Paketler` menüsünün **fzf görünümü**; sürüm 3.6.20 ile USB'den: sunucu türü ve `allow_from` soruları, `apply`, `pve_firewall_*`). ⚠️ Elle denenmedi: `🛡️ Paketler` menüsünün ok tuşlu (fzf'siz) görünümü, gerçek sunucuda knock |
-| **Apple Silicon (arm64), macOS 26.6.2, bash 3.2.57, OpenSSH 10.3p1 (GitHub Actions)** | ✅ **Otomatik testler** (Bats + ShellCheck, her PR'da). ⚠️ Elle/gerçek denenmedi: Keychain izin penceresi, Terminal açma, `start.command` çift tıklama |
-| Ubuntu 24.04 (yalnızca CI: ShellCheck + Bats testleri) | ✅ otomatik |
-| Linux üzerinde kullanım (Keychain/`osascript`/`diskutil` yok) | ❌ Desteklenmiyor |
-| Hedef sunucu: Ubuntu 26.04.1 (linux-hardening) | ✅ gerçek VM'de taze kurulum: Lynis 58 → 76, ikinci koşu `changed=0`, parolalı sudo-rs |
-| Hedef sunucu: Proxmox VE 9 (Debian 13, bir VM içinde; linux-hardening `proxmox-host` platformu) | ✅ `apply` ve `audit` (Lynis 82–84), `pve_firewall_preview` / `pve_firewall_apply` (geri alma güvenlik ağı kuruldu → yeni ssh bağlantısı ve web arayüzü doğrulandı → kapatıldı; ikinci önizleme `changed=0`), web arayüzü ve CT oluşturma sorunsuz. ⚠️ Kümeli Proxmox, gerçek donanım denenmedi; Raspberry Pi denenmedi |
-
-Apple Silicon'da veya yeni macOS'ta bir sorun görürseniz lütfen issue açın (macOS sürümü, `uname -m` ve `bash --version` çıktısıyla).
 
 ## Gereksinimler
 
@@ -91,10 +82,9 @@ passphrase'i **macOS Keychain**'e kaydeder.
   açılır (arama + açıklama önizleme penceresi). Stil ⚙️ Ayarlar'dan (`UI`: `auto` · `fzf` · `arrows` · `numbers`) ya da `SSHPOCKET_UI=numbers ./start.sh` ile değişir;
   bir terminalde sorun çıkarırsa `numbers` yapın.
 - **`./start.sh --doctor`:** ön koşul denetimi (ssh araçları, Python aralığı, venv, disk, ağ); yalnızca okur, hiçbir şey kurmaz.
-- **Paketler (altyapı):** imzalı, kilitli (`components.lock`) paketlerin güvenli kurulumu: `./start.sh --components list|sync|check-new|prune`; kurulu paketin eylemi: `./start.sh --components run <paket> <eylem> <sunucu>` (sunucuya bağlanır; önizleme/onay kapıları vardır); eski sürüm klasörlerini temizleme: `./start.sh --components prune [--dry-run] [--yes]` (etkin, bir önceki ve kilitteki sürüm kalır); güncellemeden sonra otomatik sorulur ve **Ayarlar › Eski paket sürümlerini temizle** menüsünden de yapılır; paket yazarları için sözleşme uyum denetimi: `./start.sh --components validate <paket|dizin|arşiv> [--strict]` (statik).
-  Kilitte `linux-hardening 0.12.1` ve `utility 0.1.0` (saat dilimi, locale `LANG`, NTP/chrony; Ubuntu 26.04 ve Debian 13; yalnız paket sahibinin gerçek VM turunda doğrudan playbook ile denendi, sshpocket menüsüyle gerçek VM turu henüz yapılmadı) vardır. sshpocket 3.6.20 ile gerçek VM'lerde (Ubuntu 26.04.1 ve tek düğümlü Proxmox VE 9) denendi: sunucu türü ve izinli ağ sorusu (sunucu eklerken ve ilk açılışta), boş `hardening_ssh_allow_from` iken ⛔, `apply` ve ikinci `preview` (`changed=0`), Proxmox'ta `hardening_pve_apply`'ın yalnızca o koşuya özel verilmesi (Ubuntu'da verilmemesi), `pve_firewall_*` ve fail2ban ayarları (`ignoreip` boş + yazdıklarınız, `bantime` 10 dk; **etkin ban denenmedi**). (0.9.0'ın alan anahtarları (`hardening_<alan>_enabled`) ve kalıcı kaldırma eylemleri (`kaldir_onizle`, `kaldir`, `kaldir_geri_yukle`) önceki turlarda Ubuntu 26.04 ve Proxmox VE 9 gerçek VM'lerinde denendi; aşağıdaki ayrıntılı sonuçlar 0.8.4 üzerindedir; sshpocket üzerinden Docker LAB'da tüm eylemler denendi; gerçek VM'lerde, Ubuntu 26.04 ve tek düğümlü Proxmox VE 9'da, `audit` → `preview` → `apply` → ikinci `preview` (`changed=0`) döngüsü denendi, Lynis Ubuntu yaklaşık 61→83, Proxmox 84. 0.8.4'te ayrıca doğrulandı: platforma göre menü süzmesi (Ubuntu'da `pve_firewall_*` ve Proxmox değişkenleri gizli), altı sunucu başına anahtar (`false` yazmaz ve önceden yazılanı silmez), Proxmox'ta yeniden başlatma sonrası yasal uyarı bandının korunması, `hardening_pve_web_exclusive` (listede olmayan aynı alt ağ istemcisinde 8006 ve 3128 kapanır), ek güvenlik duvarı portu. **Bilinen sınırlar:** `kernel_modules_disabled` Proxmox'ta bilerek reddedilir; `false` yapmak daha önce uygulanmış değişikliği geri almaz; **etkin fail2ban banı, yetkisiz ağdan güvenlik duvarı reddi, misafir VM/CT'li Proxmox, Docker'lı VM, Raspberry Pi, HA kümesi ve bazı Ubuntu seçenekleri (`apt_upgrade`, gerçek `gcc` ile `restrict_compilers`, `auditd_immutable`, `aide_audit_tools`) denenmedi**). Kullanım ve **erişim ağı tuzağı**: [docs/hardening-kullanim.md](docs/hardening-kullanim.md); standart: [docs/package-standard.md](docs/package-standard.md).
-- **Sunucu türü ve izinli ağ:** paket platform listesi bildiriyorsa (linux-hardening 0.12.0: Ubuntu/Debian, Proxmox VE, Raspberry Pi), sunucu eklerken ve eski sunucularda paket menüsü ilk açılırken sunucu türü sorulur ("Şimdi değil" hiçbir şey yazmaz). **`hardening_ssh_allow_from` zorunludur:** boşken `preview`, `apply`, `pve_firewall_*` ssh'a gitmeden ⛔ ile durur (`audit` ve `rollback_*` etkilenmez); öneri sunucunun sizi gördüğü adres ve ağdan gelir, sessizce yazılmaz. Proxmox'ta `apply`, seçili platformun `hardening_pve_apply=true` değerini yalnızca o koşuya özel verir (uyarı sunucu adı onayından önce gösterilir, `.vars` dosyanıza yazılmaz). Ayrıntı: [docs/sunucu-ekleme-platform-secimi.md](docs/sunucu-ekleme-platform-secimi.md), [docs/hardening-kullanim.md](docs/hardening-kullanim.md).
-- Otomatik testler (Bats, bash 5 ve macOS bash 3.2) + ShellCheck her PR'da CI'da çalışır.
+- **Paketler ve güncelleme:** imzalı, kilitli (`components.lock`) paketler (şimdilik `linux-hardening` ve `utility`) ana menüde **📦 Paketler ve güncelleme** altında; her eylem önizleme ve onay kapılarından geçer, sudo parolası Ansible'ın kendi isteminden alınır. Komutlar, platform seçimi ve `hardening_ssh_allow_from` zorunluluğu: [docs/paketler.md](docs/paketler.md) · hardening kullanımı ve **erişim ağı tuzağı**: [docs/hardening-kullanim.md](docs/hardening-kullanim.md).
+- **Test edilenler:** macOS (Intel ve Apple Silicon) elle denendi; CI'da macOS (bash 3.2) ve Ubuntu 26.04. Neyin denenip **neyin denenmediği**: [docs/test-edilen-ortamlar.md](docs/test-edilen-ortamlar.md).
+- Otomatik testler (Bats, Linux'ta bash 5.3 ve macOS bash 3.2) + ShellCheck her PR'da CI'da çalışır.
 
 ## Key'i sunucuya gönderme
 
@@ -108,38 +98,14 @@ Modül menüsünden **2) Public key'i sunucuya gönder** seçeneği (veya genera
 - Sunucuda `PasswordAuthentication no` yapmak **bilerek otomatik değildir.** Key ile girişin
   çalıştığını gördükten sonra elle yapın, yoksa kendinizi dışarıda bırakabilirsiniz.
 
-## Eski düzenden taşıma (v3 öncesi → `servers/`)
+## Eski sürümden geliyorsanız
 
-Eski `sistem/Modules/<ad>/` sunucularınız **otomatik** taşınır; dışa/içe aktarma gerekmez.
-
-```bash
-./start.sh --migrate --dry-run   # önce ne olacağını gör (hiçbir şey değişmez)
-./start.sh --migrate             # onay isteyip taşır
-```
-
-Key'ler kopyalanıp doğrulanır, eski klasörler **silinmez** (`servers/.migrated-<tarih>/`). Keychain'deki passphrase'ler aynen geçerlidir.
-Doğruladıktan sonra o klasörü (key kopyaları içerir) kendiniz silin.
+v3 öncesi `sistem/Modules/<ad>/` sunucuları **otomatik** taşınır (`./start.sh --migrate --dry-run`, sonra `./start.sh --migrate`); eski klasörler silinmez. Ayrıntı: [docs/eski-duzenden-tasima.md](docs/eski-duzenden-tasima.md).
 
 ## Güncelleme
 
-Otomatik değildir; siz başlatırsınız:
-
-```bash
-./start.sh --check-update   # yalnızca bakar (yeni sürüm varsa çıkış kodu 10)
-./start.sh --update         # indir → imzayı doğrula → notları göster → onaylarsanız kur
-```
-
-ya da ana menüden **⬆️ Güncellemeleri kontrol et / güncelle** (fzf düzeninde **📦 Paketler ve güncelleme**'nin altındaki sshpocket satırı).
-
-- Terminalde (en az 24 satır × 60 sütun) güncelleme paneli açılır: imza ve arşiv denetiminden sonra üstte sürüm, imza durumu, paket (`components.lock`) farkları ve CHANGELOG'daki **Dikkat** notları; altta sürüm notları, onay ve kurulum. Paket sürümü değişince kurulum sonunda "ne değişti, hangi sunucum etkileniyor" raporu yazılır (`./start.sh --components report [paket [eski-sürüm]]` ile elle de alınır; yalnızca okur).
-- Paket yalnızca bu reponun GitHub Release'lerinden, HTTPS ile inen ve **bakımcının imza anahtarıyla imzalı** olan
-  dosyadır (`ssh-keygen -Y verify`). Doğrulanamazsa hiçbir şey açılmaz/kurulmaz. İmza anahtarı tanımlı değilse
-  güncelleme **kapalıdır**.
-- Sunucularınız (`servers/`), ayarlarınız (`sshpocket.conf`) ve key'leriniz korunur. Kurmadan önce kodun yedeği (`.update-backup/`, gizli dosya
-  içermez) alınır; hata olursa geri yüklenir.
-- Geri sürüme düşmez; `..`, mutlak yol veya symlink içeren paketleri reddeder.
-- USB yazma korumalıysa güncelleme yapılamaz (bilerek).
-- Not: güncelleyici `v2.2.0` ile gelir; daha eski kopyalar bir kez elle güncellenmelidir.
+Otomatik değildir; siz başlatırsınız: `./start.sh --check-update` (yalnızca bakar) ve `./start.sh --update` (indir → imzayı doğrula → notları göster → onaylarsanız kur) ya da ana menüden **⬆️ Güncellemeleri kontrol et / güncelle**.
+Paket yalnızca bu reponun GitHub Release'lerinden HTTPS ile inen ve **bakımcının imza anahtarıyla imzalı** dosyadır (`ssh-keygen -Y verify`); doğrulanamazsa hiçbir şey kurulmaz, imza anahtarı tanımlı değilse güncelleme **kapalıdır**. Sunucularınız, ayarlarınız ve key'leriniz korunur; hata olursa kodun yedeği geri yüklenir. Ayrıntı: [docs/guncelleme.md](docs/guncelleme.md).
 
 ### İlk indirmeyi doğrulama
 `--update` imzayı kendisi doğrular, ama **ilk kopyayı** (Release sayfasından indirdiğiniz arşivi) doğrulayamaz: ona güveniniz GitHub'a ve HTTPS'e dayanır.
@@ -182,6 +148,8 @@ components.lock            paket kilit dosyası (imzalı sürümle gelir); kurul
 servers/<ad>/              her sunucu için: server.env, id_ed25519_<ad>   (eski: sistem/Modules/<ad>/ → ./start.sh --migrate)
 sistem/templates/          server.env.example şablonu
 test/                      Bats testleri (bats test)
+docs/                      ayrıntılı belgeler (paketler, güncelleme, test edilen ortamlar, standart)
+img/                       README görselleri (release arşivine girmez)
 ```
 
 ## Geliştirme
