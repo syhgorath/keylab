@@ -10,15 +10,16 @@
 
 🇹🇷 Türkçe · 🇬🇧 [English](README.en.md)
 
-macOS için, USB bellekten (veya herhangi bir klasörden) çalışan, modüler bir SSH bağlantı menüsü.
-Her sunucu bir *modüldür*; modül klasörünü eklediğinizde menüde kendiliğinden görünür.
+macOS için, USB bellekten (veya herhangi bir klasörden) çalışan bir SSH bağlantı menüsü.
+Her sunucu `servers/<ad>/` altında bir klasördür: menüden ekleyin ya da `~/.ssh/config`'ten içe aktarın; passphrase macOS Keychain'de durur.
+İsterseniz imzalı **paketlerle** (şimdilik sunucu sertleştirme ve saat/locale ayarı) sunucuyu yönetebilirsiniz.
 
 > **Durum: ham / erken aşama.** 🛠️
 > Bu, kişisel bir HomeLab aracından çıkan bir proje. [Claude](https://claude.com/claude-code) ile
 > elden geçirildi ve ilk hâline göre epey toparlandı, ama hâlâ geliştirilecek çok yeri var:
 > pürüzler, eksik testler ve yazılmamış özellikler olabilir. Sorunlar projenin hamlığından
 > kaynaklanır; bunun için kimseye kızmayın 😄 — issue ve PR'larla yardım etmeniz çok makbule geçer.
-> Yalnızca macOS'ta denendi. Kendi sunucularınızda kullanmadan önce kodu okuyun;
+> İstemci olarak yalnızca macOS'ta denendi (sunucu tarafında neyin denendiği: [docs/test-edilen-ortamlar.md](docs/test-edilen-ortamlar.md)). Kendi sunucularınızda kullanmadan önce kodu okuyun;
 > kullanım sorumluluğu size aittir (bkz. [LICENSE](LICENSE)).
 
 > **Otomatik başlamaz.** macOS, Linux ve modern Windows USB takılınca script çalıştırmaz (güvenlik gereği).
@@ -53,31 +54,31 @@ Ana menüden her şey yapılır: sunucuya bağlanma, **➕ Yeni sunucu ekle**,
 Aynı işler komut satırından da çalışır:
 
 ```bash
-bash sistem/ModuleGenerator.sh      # yeni sunucu modülü oluştur
+bash sistem/ModuleGenerator.sh      # yeni sunucu ekle
 bash sistem/ImportSSHConfig.sh      # ~/.ssh/config'teki sunucuları içe aktar
-bash sistem/ModuleManager.sh list   # modülleri listele (remove / rename de var)
+bash sistem/ModuleManager.sh list   # sunucuları listele (remove / rename de var)
 ```
 
-Generator size IP/kullanıcı/port sorar, isterseniz ed25519 anahtar üretir ve
+Sunucu ekleme (generator) size IP/kullanıcı/port sorar, isterseniz ed25519 anahtar üretir ve
 passphrase'i **macOS Keychain**'e kaydeder.
 
 ## Özellikler
 
-- **Modüler:** her sunucu bir klasör; menü kendiliğinden oluşur.
+- **Sunucu başına klasör:** her sunucu `servers/<ad>/` altındadır; menü kendiliğinden oluşur.
 - **Keychain:** passphrase diske yazılmaz.
 - **Key'i sunucuya gönderme:** menüden veya generator'dan `ssh-copy-id` (aşağıya bakın).
-- **`~/.ssh/config` içe aktarma:** mevcut sunucularınızı tek komutla modüle çevirir. Private key'ler
+- **`~/.ssh/config` içe aktarma:** mevcut sunucularınızı tek komutla sunucu kaydına çevirir. Private key'ler
   **kopyalanmaz**; `IdentityFile` yolu sunucunun `server.env` dosyasına `KEY` olarak yazılır.
 - **Mevcut key kullanımı:** `servers/<ad>/server.env` içine `KEY=/yol/key` yazın (örn. `~/.ssh/id_ed25519`).
 - **Durum göstergesi:** menüde 🟢 (port açık) / 🔴 (erişilemiyor) / ⚪ (ayar yok) gösterilir; sunucular paralel kontrol edilir.
   **⚙️ Ayarlar**'dan kapatılabilir/süresi değiştirilebilir (`sshpocket.conf`; ortam değişkeni `SSHPOCKET_STATUS=0|1` önceliklidir).
 - **Port knocking (istemci tarafı):** sunucu menüsünden **Knock ayarları**; dizi (örn. `7000,8000,9000`) Keychain'de durur, bağlanmadan önce otomatik gönderilir,
   durum göstergesinde 🔒. Sunucu tarafı (knockd) kurulumu bu araçta yoktur; sunucuda yöneticinin tanımlamış olması gerekir. Klasik knocking şifreli değildir.
-- **Modül menüsü:** Bağlan · Key'i sunucuya gönder · **Bilgileri güncelle** (IP/kullanıcı/port/key yolu) ·
+- **Sunucu menüsü:** Bağlan · Key'i sunucuya gönder · **Bilgileri güncelle** (IP/kullanıcı/port/key yolu) ·
   **Keychain passphrase'ini güncelle/sil** (kayıttan sonra key'i açarak doğrular). Ayar bozuk veya key eksikken de
   güncelleme seçenekleri kullanılabilir.
-- **Modül yönetimi:** `ModuleManager.sh list | remove <ad> | rename <eski> <yeni>`.
-- **Aynı sunucuya birden çok kullanıcı/key:** her biri ayrı bir modül olur (örn. `web_root`, `web_deploy`).
+- **Sunucu yönetimi:** `ModuleManager.sh list | remove <ad> | rename <eski> <yeni>`.
+- **Aynı sunucuya birden çok kullanıcı/key:** her biri ayrı bir sunucu kaydı olur (örn. `web_root`, `web_deploy`).
 - **Menü:** ↑↓ gez · Enter aç · `←`/`q` geri; numara yazmak da çalışır; her seçeneğin kısa **açıklaması** görünür. **fzf** kuruluysa menüler fzf ile
   açılır (arama + açıklama önizleme penceresi). Stil ⚙️ Ayarlar'dan (`UI`: `auto` · `fzf` · `arrows` · `numbers`) ya da `SSHPOCKET_UI=numbers ./start.sh` ile değişir;
   bir terminalde sorun çıkarırsa `numbers` yapın.
@@ -88,7 +89,7 @@ passphrase'i **macOS Keychain**'e kaydeder.
 
 ## Key'i sunucuya gönderme
 
-Modül menüsünden **2) Public key'i sunucuya gönder** seçeneği (veya generator'ın son adımı)
+Sunucu menüsünden **2) Public key'i sunucuya gönder** seçeneği (veya generator'ın son adımı)
 `ssh-copy-id` çalıştırır:
 
 - Key sunucuda zaten yetkiliyse bunu söyler ve bir şey yapmaz.
@@ -128,7 +129,7 @@ ssh-keygen -Y verify -f /tmp/sshpocket_signers -I sshpocket-release -n sshpocket
 - `server.env` yalnızca IP, kullanıcı, port (ve ops. key yolu, knock ayarı) içerir. Gizli bilgi **içermemelidir**; knock dizisi de Keychain'dedir.
 - TOTP/2FA gizli anahtarlarını bu klasörde **saklamayın**; telefondaki uygulamada tutun.
 - `servers/`, `sshpocket.conf`, `id_ed25519*` ve `usb_logs/` `.gitignore` ile dışarıda tutulur.
-- Güncellemeler imzalıdır ve elle başlatılır (yukarıya bakın).
+- Güncellemeler ve paketler imzalıdır; güncelleme elle başlatılır (yukarıya bakın). Paket eylemleri sunucuya yazmadan önce önizleme ve onay kapılarından geçer.
 - IP/kullanıcı/port değerleri komut çalıştırılmadan önce doğrulanır (kullanıcı `-` ile başlayamaz).
 - Sunucu host key'i ilk bağlantıda size sorulur (otomatik kabul yoktur).
 - Özel anahtarınızı USB'de taşıyorsanız USB'yi (APFS şifreli birim) şifreleyin.
@@ -140,7 +141,7 @@ ssh-keygen -Y verify -f /tmp/sshpocket_signers -I sshpocket-release -n sshpocket
 start.sh / start.command   giriş noktaları
 sistem/Main.sh             menü döngüsü
 sistem/Autoload.sh         eski sistem/Modules/ altını yükler (taşınana kadar)
-sistem/ModuleGenerator.sh  yeni modül (+ key üretimi, Keychain, ssh-copy-id)
+sistem/ModuleGenerator.sh  yeni sunucu (+ key üretimi, Keychain, ssh-copy-id)
 sistem/ImportSSHConfig.sh  ~/.ssh/config içe aktarma
 sistem/ModuleManager.sh    list / remove / rename
 sistem/Helpers/            Log, Menu/UI, kayıt, doğrulama, SSH, Keychain, ayarlar, güncelleme, paket (Components*) yardımcıları
@@ -164,7 +165,7 @@ Katkı için [CONTRIBUTING.md](CONTRIBUTING.md), planlananlar için [ROADMAP.md]
 
 ## Destek
 
-sshpocket ücretsiz ve MIT lisanslı kalacak. Faydalı bulduysan [GitHub Sponsors](https://github.com/sponsors/syhgorath) üzerinden destek olabilirsin; yıldız, hata bildirimi ve katkı da en az onun kadar değerli.
+sshpocket ücretsiz ve MIT lisanslı kalacak. Faydalı bulduysanız [GitHub Sponsors](https://github.com/sponsors/syhgorath) üzerinden destek olabilirsiniz; yıldız, hata bildirimi ve katkı da en az onun kadar değerli.
 
 ## Lisans
 

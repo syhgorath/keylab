@@ -370,7 +370,7 @@ update_install_flow() {
     echo "──── Sürüm notları ────"
     update_release_notes "$tree/CHANGELOG.md" "$latest"
     echo "───────────────────────"
-    update_confirm "Kurulsun mu? (modülleriniz/key'leriniz korunur, yedek alınır)" || { echo "İptal edildi."; return 1; }
+    update_confirm "Kurulsun mu? (sunucularınız/key'leriniz korunur, yedek alınır)" || { echo "İptal edildi."; return 1; }
 
     update_apply "$tree" "$UPDATE_ROOT_DIR" "$cur" || { echo "❌ Güncelleme başarısız."; return 1; }
     echo ""

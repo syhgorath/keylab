@@ -108,7 +108,7 @@ ManageServersAction() {
         0|q|Q) ui_no_pause ;;   # geri: okunacak çıktı yok
         1)
             if declare -F ui_arrows_enabled >/dev/null && ui_arrows_enabled && name=$(_manage_pick_server); then :
-            else read -r -p "Silinecek modül adı: " name; fi
+            else read -r -p "Silinecek sunucu adı: " name; fi
             if [ -n "$name" ]; then bash "$SISTEM_PATH/ModuleManager.sh" remove "$name"; fi
             ;;
         2)

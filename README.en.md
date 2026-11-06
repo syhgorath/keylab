@@ -11,14 +11,15 @@
 🇹🇷 [Türkçe](README.md) · 🇬🇧 English
 
 A modular SSH launcher menu for macOS that you can carry on a USB drive (or run from any folder).
-Every server is a *module*: drop a module folder in and it shows up in the menu automatically.
+Every server is a folder under `servers/<name>/`: add it from the menu or import it from `~/.ssh/config`; the passphrase stays in the macOS Keychain.
+Optionally, signed **packages** (currently server hardening and time zone/locale setup) can manage the server.
 
 > **Status: raw / early stage.** 🛠️
 > This grew out of a personal HomeLab tool. It was reworked together with
 > [Claude](https://claude.com/claude-code) and is much better than where it started, but there is
 > still plenty to improve: rough edges, missing tests and unwritten features are expected.
 > Any problems are down to the project being unfinished, so please be kind 😄 — issues and PRs are
-> very welcome. Tested on macOS only. Read the code before using it on your own servers;
+> very welcome. Tested as a client on macOS only (what was tried on the server side: [docs/en/tested-environments.md](docs/en/tested-environments.md)). Read the code before using it on your own servers;
 > you use it at your own risk (see [LICENSE](LICENSE)).
 
 > **It does not auto-start.** macOS, Linux and modern Windows do not run scripts when a USB drive
@@ -53,33 +54,33 @@ Everything is available from the main menu: connect to a server, **➕ Add a new
 The same tools work from the command line:
 
 ```bash
-bash sistem/ModuleGenerator.sh      # create a new server module
+bash sistem/ModuleGenerator.sh      # add a new server
 bash sistem/ImportSSHConfig.sh      # import hosts from ~/.ssh/config
-bash sistem/ModuleManager.sh list   # list modules (also: remove / rename)
+bash sistem/ModuleManager.sh list   # list servers (also: remove / rename)
 ```
 
-The generator asks for IP/user/port, can create an ed25519 key and stores the passphrase in the
+The add-server generator asks for IP/user/port, can create an ed25519 key and stores the passphrase in the
 **macOS Keychain**.
 
 > Note: the interface text and code comments are currently in Turkish; translations are welcome.
 
 ## Features
 
-- **Modular:** one folder per server; the menu builds itself.
+- **One folder per server:** each server lives under `servers/<name>/`; the menu builds itself.
 - **Keychain:** passphrases are never written to disk.
 - **Send your key to the server:** `ssh-copy-id` from the menu or the generator.
-- **`~/.ssh/config` import:** turns existing hosts into modules. Private keys are **not copied**;
+- **`~/.ssh/config` import:** turns existing hosts into server entries. Private keys are **not copied**;
   the `IdentityFile` path is stored as `KEY` in the server's `server.env`.
 - **Use an existing key:** set `KEY=/path/to/key` in `servers/<name>/server.env`.
 - **Status marks:** the menu shows 🟢 (port open) / 🔴 (unreachable) / ⚪ (not configured), checked in parallel.
   Turn off or tune it under **⚙️ Settings** (`sshpocket.conf`; the env var `SSHPOCKET_STATUS=0|1` takes precedence).
 - **Port knocking (client side):** **Knock settings** in the server menu; the sequence (e.g. `7000,8000,9000`) lives in Keychain and is sent automatically
   before connecting; the status mark shows 🔒. The server side (knockd) is not part of this tool; the server admin must set it up. Classic knocking is not encrypted.
-- **Module menu:** Connect · Send key to server · **Update details** (IP/user/port/key path) ·
+- **Server menu:** Connect · Send key to server · **Update details** (IP/user/port/key path) ·
   **Update/delete the Keychain passphrase** (verifies it by unlocking the key after saving). The update options
   stay available even when the settings are broken or the key is missing.
-- **Module management:** `ModuleManager.sh list | remove <name> | rename <old> <new>`.
-- **Several users/keys for one server:** make one module per identity (e.g. `web_root`, `web_deploy`).
+- **Server management:** `ModuleManager.sh list | remove <name> | rename <old> <new>`.
+- **Several users/keys for one server:** make one server entry per identity (e.g. `web_root`, `web_deploy`).
 - **Menu:** ↑↓ move · Enter open · `←`/`q` back; typing a number works too; each option shows a short **description**. With **fzf** installed menus open in fzf
   (search + description preview pane). The style is set under ⚙️ Settings (`UI`: `auto` · `fzf` · `arrows` · `numbers`) or with `SSHPOCKET_UI=numbers ./start.sh`;
   use `numbers` if a terminal misbehaves.
@@ -90,7 +91,7 @@ The generator asks for IP/user/port, can create an ed25519 key and stores the pa
 
 ## Sending the key to the server
 
-**2) Send public key to server** in a module's menu (or the generator's last step) runs `ssh-copy-id`:
+**2) Send public key to server** in a server's menu (or the generator's last step) runs `ssh-copy-id`:
 
 - If the key is already authorized it says so and does nothing.
 - Otherwise `ssh-copy-id` tries your agent/default keys first and falls back to your **password**.
@@ -129,6 +130,7 @@ ssh-keygen -Y verify -f /tmp/sshpocket_signers -I sshpocket-release -n sshpocket
 - `server.env` holds only IP, user, port (and optionally a key path, the knock setting) — **never secrets**; the knock sequence also lives in Keychain.
 - Do **not** keep TOTP/2FA secrets in this folder; keep them in your phone's authenticator.
 - `servers/`, `sshpocket.conf`, `id_ed25519*` and `usb_logs/` are git-ignored.
+- Updates and packages are signed; updating is started by hand (see above). Package actions go through preview and confirmation gates before they write to a server.
 - IP/user/port are validated before any command runs (the user cannot start with `-`).
 - The server's host key is confirmed by you on first connect (no auto-accept).
 - If you carry private keys on a USB drive, encrypt the drive (encrypted APFS volume).
@@ -140,7 +142,7 @@ ssh-keygen -Y verify -f /tmp/sshpocket_signers -I sshpocket-release -n sshpocket
 start.sh / start.command   entry points
 sistem/Main.sh             menu loop
 sistem/Autoload.sh         loads the old sistem/Modules/ (until migrated)
-sistem/ModuleGenerator.sh  new module (+ key generation, Keychain, ssh-copy-id)
+sistem/ModuleGenerator.sh  new server (+ key generation, Keychain, ssh-copy-id)
 sistem/ImportSSHConfig.sh  import from ~/.ssh/config
 sistem/ModuleManager.sh    list / remove / rename
 sistem/Helpers/            logging, menu, registry, validation, SSH, eject helpers

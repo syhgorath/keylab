@@ -27,10 +27,10 @@ SERVERS_DIR="$(servers_dir)"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 
-echo -e "${BLUE}=== Yeni SSH Modülü ===${NC}"
+echo -e "${BLUE}=== Yeni sunucu ===${NC}"
 echo ""
 
-read -r -p "Modül adı (küçük harf/rakam/_, harfle başlar, örn: myserver): " module_name
+read -r -p "Sunucu adı (küçük harf/rakam/_, harfle başlar, örn: myserver): " module_name
 module_name=$(echo "$module_name" | tr '[:upper:]' '[:lower:]' | tr ' ' '_' | tr -cd '[:alnum:]_')
 if ! module_name_valid "$module_name"; then
     echo -e "${RED}❌ Geçersiz ad (harfle başlamalı)${NC}"; exit 1

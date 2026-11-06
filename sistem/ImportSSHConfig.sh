@@ -113,5 +113,5 @@ for i in ${selected[@]+"${selected[@]}"}; do
 done
 
 echo ""
-echo "$imported modül oluşturuldu. Passphrase'i Keychain'e eklemek için (varsa):"
+echo "$imported sunucu eklendi. Passphrase'i Keychain'e eklemek için (varsa):"
 echo "  security add-generic-password -U -a USBMonitor_<ÖNEK>_Passphrase -s USBMonitor -w"

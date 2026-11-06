@@ -137,7 +137,7 @@ ssh_module_edit() {
     user="${user:-$cur_user}"
     read -r -p "Port [${cur_port}]: " port || return 1
     port="${port:-$cur_port}"
-    read -r -p "Key yolu [${cur_key:-modül klasöründeki varsayılan}] (Enter = aynı, - = varsayılana dön): " key || return 1
+    read -r -p "Key yolu [${cur_key:-sunucu klasöründeki varsayılan}] (Enter = aynı, - = varsayılana dön): " key || return 1
     case "$key" in
         '') key="$cur_key" ;;
         -)  key="" ;;
