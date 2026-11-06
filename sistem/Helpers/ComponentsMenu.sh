@@ -810,7 +810,10 @@ comp_menu_vars() {
     while true; do
         all_lines=(); lines=(); var_labels=(); var_descs=(); ctl_kinds=(); ctl_labels=(); ctl_descs=(); nchg=0; glist=""
         while IFS= read -r line; do
-            [ -n "$line" ] && all_lines+=("$line")
+            [ -n "$line" ] || continue
+            # katalog formu (S4): COMP_MENU_VARS_ONLY doluysa yalnız seçili yazılımın params alanları gösterilir
+            if [ -n "${COMP_MENU_VARS_ONLY:-}" ]; then case ",$COMP_MENU_VARS_ONLY," in *",$(_comp_menu_field "$line" 1),"*) ;; *) continue ;; esac; fi
+            all_lines+=("$line")
         done < <(comp_vars_describe "$COMP_MENU_MF" "$COMP_MENU_VARS")
         [ "${#all_lines[@]}" -gt 0 ] || { echo "Pakette değişken yok."; read -r -p "Devam için Enter..." _ || true; return 0; }
         # değişen sayısı ve grup listesi (süzgeçten bağımsız)
@@ -864,12 +867,12 @@ comp_menu_vars() {
         # shellcheck disable=SC2034  # ui_pick_arrows (dinamik kapsam) okur
         local -a UI_PICK_DESCS=(${ctl_descs[@]+"${ctl_descs[@]}"} ${var_descs[@]+"${var_descs[@]}"})
         clear
-        if declare -F ui_screen >/dev/null; then ui_screen "Sunucu › $server › Paketler › $id › Değişkenler"; fi
+        if declare -F ui_screen >/dev/null; then ui_screen "Sunucu › $server › Paketler › $id › ${COMP_MENU_VARS_TITLE:-Değişkenler}"; fi
         local fzf_card=0 hid_note=""
         if declare -F ui_card_on >/dev/null && ui_card_on; then fzf_card=1; fi
         [ "$fzf_card" = 1 ] || echo ""
         total=$(comp_vars_describe "$COMP_MENU_MF" | grep -c .)
-        if [ "$total" -gt "${#all_lines[@]}" ] 2>/dev/null; then
+        if [ -z "${COMP_MENU_VARS_ONLY:-}" ] && [ "$total" -gt "${#all_lines[@]}" ] 2>/dev/null; then
             hid_note="ℹ️  $((total - ${#all_lines[@]})) değişken bu sunucunun platformuna uygun olmadığı için gizlendi (yazılı değerleri yine de çalıştırmaya iletilir)."
             [ "$fzf_card" = 1 ] || echo "$hid_note"   # fzf: aşağıda başlık kutusunda
         fi
@@ -883,7 +886,7 @@ comp_menu_vars() {
         [ -z "$flash" ] || [ "$fzf_card" = 1 ] || echo "$flash"   # fzf: ileti başlık kutusunda
         # fzf geniş düzeni: yol çubuğu kenarlık etiketi, sağda açıklama, üstte konum özeti, Ctrl-O ile grup seçimi
         # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
-        local UI_PICK_WIDE=1 UI_PICK_TITLE="Sunucu › $server › $id › Değişkenler" UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_HEADER=""
+        local UI_PICK_WIDE=1 UI_PICK_TITLE="Sunucu › $server › $id › ${COMP_MENU_VARS_TITLE:-Değişkenler}" UI_PICK_EXPECT="" UI_PICK_EXPECT_HINT="" UI_PICK_HEADER=""
         # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
         UI_PICK_HEADER="${flash:+$flash$'\n'}${hid_note:+$hid_note$'\n'}Grup: $(_comp_menu_group_name "$f_group") · ${#lines[@]}/${#all_lines[@]} değişken · değiştirilen: $nchg${show_ctl:+$([ "${#lines[@]}" -gt 0 ] || echo ' · süzgece uyan değişken yok')}"
         # shellcheck disable=SC2034  # _ui_pick_fzf (dinamik kapsam) okur
@@ -1291,8 +1294,11 @@ comp_menu_items() {
         COMP_CTX_RUNSET="$(comp_info_get "$info" item_var)=$iid"
         [ -z "$mode" ] || COMP_CTX_RUNSET="$COMP_CTX_RUNSET"$'\n'"$(comp_info_get "$info" mode_var)=$mode"
         COMP_MENU_ITEM_ACTIONS="$(comp_info_get "$info" "item.$iid.actions")"
+        # 📝 Değişkenler satırı yalnız bu yazılımın params alanlarını (genel form) gösterir; params yoksa tüm değişkenler
+        COMP_MENU_VARS_ONLY="$(comp_info_get "$info" "item.$iid.params")"
+        COMP_MENU_VARS_TITLE="${labels[$((pick - 1))]} › Ayarlar"
         _comp_menu_actions_panel "$id" "$server"
-        COMP_CTX_RUNSET=""; COMP_MENU_ITEM_ACTIONS=""
+        COMP_CTX_RUNSET=""; COMP_MENU_ITEM_ACTIONS=""; COMP_MENU_VARS_ONLY=""; COMP_MENU_VARS_TITLE=""
     done
 }
 
