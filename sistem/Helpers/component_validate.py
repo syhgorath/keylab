@@ -23,6 +23,8 @@ results = []          # (bölüm, düzey, metin)  düzey: ok | warn | fail
 
 TEXT_EXT = {".yml", ".yaml", ".j2", ".md", ".json", ".txt", ".cfg", ".sh", ".py", ".ini", ".in", ".toml", ""}
 MAX_FILE = 512 * 1024
+# parola ÖZETİ (PBKDF2/crypt çıktısı) değişken olabilir; düz parola/anahtar olamaz (standart §6). Yalnızca adı _hash/_digest/_checksum ile BİTENLER gevşetilir.
+DIGEST_NAME = re.compile(r"_(hash|digest|checksum)$", re.I)
 SECRET_NAME = re.compile(r"(pass(word|wd)?|secret|token|credential|private_?key|api_?key)", re.I)
 SECRET_FILE = re.compile(r"(^|/)(\.env|id_(ed25519|rsa|ecdsa|dsa)[^/]*|[^/]*\.pem|[^/]*\.secrets)$")
 PRIVATE_KEY = re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")
@@ -309,7 +311,8 @@ def check_vars(root, info):
         if typed == "0":
             notes.append("eski biçim (yalnızca ad; tür/varsayılan/açıklama üst verisi yok)")
         # bool/int bir parola taşıyamaz (örn. password_inactive_days = gün sayısı): yalnızca metin alabilen türlerde uyar
-        if SECRET_NAME.search(name) and vtype not in ("bool", "int"):
+        is_digest = bool(SECRET_NAME.search(name) and DIGEST_NAME.search(name))
+        if SECRET_NAME.search(name) and not is_digest and vtype not in ("bool", "int"):
             notes.append("adı parola/anahtar/token izlenimi veriyor: gizli değer değişken OLAMAZ (standart §6)")
         # script runner: değişken betikte SSHPOCKET_VAR_<AD> olarak okunur
         if name not in code and ("SSHPOCKET_VAR_%s" % name.upper()) not in code:
@@ -318,7 +321,7 @@ def check_vars(root, info):
             for n in notes:
                 warn("Değişkenler", "%s: %s" % (name, n))
         else:
-            ok("Değişkenler", "%s (%s%s)" % (name, vtype, ", zorunlu" if req == "yes" else ""))
+            ok("Değişkenler", "%s (%s%s%s)" % (name, vtype, ", zorunlu" if req == "yes" else "", ", parola ÖZETİ: düz parola olamaz" if is_digest and vtype not in ("bool", "int") else ""))
 
 
 def check_security(root):
