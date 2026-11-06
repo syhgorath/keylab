@@ -2,12 +2,12 @@
 # ComponentsCLI.sh - Paketlerin komut satırı/menü yönetimi (Aşama 2.4a)
 #   ./start.sh --components list        kilit ↔ kurulu durumu (ağ yok)
 #   ./start.sh --components sync [--yes] kilitteki sürümü kur/onar (onay ister)
+#   ./start.sh --components update | upgrade [--yes] [paket…]   imzalı indeks: yükseltilebilir listesi / onaylı yükseltme (ComponentsIndex.sh)
 #   ./start.sh --components check-new   kilitten daha yeni yayın var mı? (yalnızca bilgi; ağ)
 #   ./start.sh --components run <paket> <eylem> <sunucu>   kurulu paketin eylemini sunucuda çalıştırır (ComponentsRunCLI.sh)
 #   ./start.sh --components validate <paket-kimliği | dizin | arşiv.tar.gz> [--strict] [--unsigned]   paket SÖZLEŞME uyum denetimi (statik; docs/package-standard.md §12)
 #
-# Sürüm DAİMA kilit dosyasındakidir (imzalı sshpocket sürümüyle gelir). Daha yeni bir yayın bilgilendirir,
-# kurulmaz: yeni sürüm, yeni sshpocket sürümüyle (kilit güncellenince) gelir.
+# `sync` kilit sürümünü kurar (çevrimdışı/ilk kurulum). Kilitten yeni sürüm yalnızca imzalı indeksle (`upgrade`, onaylı) gelir.
 # Gerektirir: Components.sh, ComponentsInstall.sh
 
 # HTTPS başlık isteği; Location değerini yazdırır (testte işlev değiştirilebilir)
@@ -49,7 +49,9 @@ comp_status() {
     cmp=$(comp_version_cmp "$have" "$want")
     case "$cmp" in
         -1) echo outdated; return 0 ;;
-        1)  echo ahead; return 0 ;;
+        1)  # kilitten yeni (indeksle yükseltilmiş): dosyalar yine de kurulumdaki gibi olmalı
+            if comp_verify_installed "$id" "$have" >/dev/null 2>&1; then echo ahead; else echo broken; fi
+            return 0 ;;
     esac
     if comp_verify_installed "$id" "$have" >/dev/null 2>&1; then echo ok; else echo broken; fi
 }
@@ -71,8 +73,18 @@ _comp_quarantine() {
 }
 
 comp_cli_list() {
-    local ids id st want have mark
+    local ids id st want have mark v d idxmsg
     comp_lock_validate || return 1
+    # önbellekteki indeks (ağ yok): yeniden doğrulanır; geçersizse yalnızca nedeni yazılır
+    COMP_INDEX_PARSED=""
+    if declare -F comp_index_load_cached >/dev/null; then
+        idxmsg=$(mktemp "${TMPDIR:-/tmp}/sshpocket-idx.XXXXXX") || idxmsg=/dev/null
+        if ! comp_index_load_cached 2>"$idxmsg"; then
+            COMP_INDEX_PARSED=""
+            [ ! -s "$idxmsg" ] || echo "ℹ️  indeks önbelleği kullanılamıyor: $(head -n 1 "$idxmsg")"
+        fi
+        [ "$idxmsg" = /dev/null ] || rm -f "$idxmsg"
+    fi
     ids=$(comp_ids)
     if [ -z "$ids" ]; then echo "Kilit dosyasında paket yok."; return 0; fi
     echo "Paketler (components.lock)"
@@ -85,10 +97,14 @@ comp_cli_list() {
             ok) mark="✅ kurulu" ;;
             missing) mark="⬇️  kurulmamış" ;;
             outdated) mark="⬆️  güncellenmeli" ;;
-            ahead) mark="⚠️  kilitten yeni (geri alınmaz)" ;;
+            ahead) mark="✅ kilitten yeni (indeksle yükseltilmiş)" ;;
             broken) mark="❌ dosyalar değişmiş (onarım gerekir)" ;;
         esac
         printf '  %-20s kilit %-8s kurulu %-8s %s\n' "$id" "$want" "${have:--}" "$mark"
+        if [ -n "$COMP_INDEX_PARSED" ]; then
+            v=$(comp_index_eval "$id"); d="${v#*|}"; v="${v%%|*}"
+            [ "$v" = "unknown" ] || [ "$v" = "current" ] || printf '  %-20s indeks: %s\n' "" "$(comp_index_verdict_text "$v" "$d")"
+        fi
     done <<< "$ids"
 }
 
@@ -252,11 +268,13 @@ components_cli() {
     case "$sub" in
         list) comp_cli_list ;;
         sync) comp_cli_sync "$@" ;;
+        update) comp_cli_update "$@" ;;
+        upgrade) comp_cli_upgrade "$@" ;;
         check-new) comp_cli_check_new ;;
         run) comp_cli_run "$@" ;;
         validate) comp_cli_validate "$@" ;;
         prune) comp_cli_prune "$@" ;;
         report) if [ $# -gt 0 ]; then comp_report_pkg "$@"; else comp_report_all; fi ;;
-        *) echo "kullanım: --components list | sync [--yes] | check-new | prune [--yes] [--dry-run] | report [paket [eski-sürüm]] | run <paket> <eylem> <sunucu> | validate <paket|dizin|arşiv> [--strict]" >&2; return 2 ;;
+        *) echo "kullanım: --components list | sync [--yes] | update | upgrade [--yes] [paket…] | check-new | prune [--yes] [--dry-run] | report [paket [eski-sürüm]] | run <paket> <eylem> <sunucu> | validate <paket|dizin|arşiv> [--strict]" >&2; return 2 ;;
     esac
 }

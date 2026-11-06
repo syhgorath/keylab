@@ -1190,7 +1190,7 @@ comp_menu_packages() {
                 ok) mark="✅ kurulu" ;;
                 missing) mark="⬇️  kurulmamış"; need=$((need + 1)) ;;
                 outdated) mark="⬆️  güncellenmeli"; need=$((need + 1)) ;;
-                ahead) mark="⚠️  kilitten yeni (geri alınmaz)" ;;
+                ahead) mark="✅ kilitten yeni (indeksle yükseltilmiş)" ;;
                 broken) mark="❌ dosyalar değişmiş"; need=$((need + 1)) ;;
                 *) mark="$st" ;;
             esac
@@ -1199,7 +1199,7 @@ comp_menu_packages() {
             kd="$(comp_dir)/$id"; nold=$(find "$kd" -mindepth 1 -maxdepth 1 -type d ! -name "$want" ! -name '*.bozuk-*' 2>/dev/null | wc -l | tr -d ' ')
             case "$st" in
                 ok) verdict="Enter: kurulumu doğrula (dosya özetleri)." ;;
-                ahead) verdict="Kurulu sürüm kilitten yeni; sshpocket geri almaz." ;;
+                ahead) verdict="Kurulu sürüm kilitten yeni (imzalı indeksle yükseltilmiş); geri alınmaz." ;;
                 broken) verdict="Enter: bozuk kurulum kenara alınır, kilitteki sürüm imzası doğrulanarak yeniden kurulur (onay sorulur)." ;;
                 *) verdict="Enter: kilitteki sürüm indirilir, imzası ve sha256'sı doğrulanarak kurulur (onay sorulur)." ;;
             esac
@@ -1214,6 +1214,8 @@ comp_menu_packages() {
             printf '\nYeni sürüm var mı bakar (ağ); imzalı paketi doğrulayıp onayınızla kurar.\nSunucularınıza ve key'"'"'lerinize dokunmaz.\nSürüm değişirse paketler kilitteki sürüme eşitlenir ve eski sürümler temizlenir.\n')")
         if [ "$need" -gt 0 ]; then labels+=("🔄 Kilitteki sürümleri kur / onar ($need paket)"); acts+=(sync); UI_PICK_DESCS+=("$(ui_card_head '🔄 Eşitle'; printf '\nKurulmamış, eski ya da bozuk %s paketi kilitteki sürüme getirir.\nHer biri için onay sorulur; indirme imza ve sha256 ile doğrulanır.\n' "$need")"); fi
         labels+=("🧹 Eski paket sürümlerini temizle"); acts+=(prune); UI_PICK_DESCS+=("$(ui_card_head '🧹 Temizle'; printf '\nGüncellemelerde yan yana biriken eski sürümleri listeler ve silinmesini sorar\n(etkin + önceki + kilitteki sürüm kalır).\n')")
+        labels+=("🧾 Paket indeksini kontrol et (ağ)"); acts+=(idxupdate); UI_PICK_DESCS+=("$(ui_card_head '🧾 İndeks'; printf '\nİmzalı paket indeksini alır, doğrular ve hangi paketlerin yükseltilebilir olduğunu gösterir.\nHiçbir şey kurmaz.\n')")
+        labels+=("⬆️  Paketleri indeksten yükselt (onaylı)"); acts+=(idxupgrade); UI_PICK_DESCS+=("$(ui_card_head '⬆️  Yükselt'; printf '\nİndeksteki daha yeni paket sürümlerini listeler; her biri için onay sorar.\nİndirme: sha256 (indeks) + imza (kilit imzacısı) ile doğrulanır; geri sürüm yok.\n')")
         labels+=("🔎 Kilitten yeni yayın var mı? (ağ)"); acts+=(newrel); UI_PICK_DESCS+=("$(ui_card_head '🔎 Yeni yayın'; printf '\nGitHub yayınlarına bakar (yalnızca bilgi, ağ gerekir).\nYeni sürüm kurulmaz: yeni sshpocket sürümüyle (kilit güncellenince) gelir.\n')")
         clear
         ui_screen "Ana menü › Paketler ve güncelleme"
@@ -1232,12 +1234,14 @@ comp_menu_packages() {
                 id="${act#pkg:}"; st=$(comp_status "$id")
                 case "$st" in
                     ok) if comp_verify_installed "$id" "$(comp_installed_version "$id")"; then msg="✅ $id doğrulandı: dosyalar kurulumdaki gibi."; else msg="❌ $id doğrulanamadı: dosyalar değişmiş (Enter ile onarın)."; fi ;;
-                    ahead) msg="⚠️  $id: kurulu sürüm kilitten yeni; dokunulmadı." ;;
+                    ahead) msg="✅ $id: kurulu sürüm kilitten yeni (indeksle yükseltilmiş); dokunulmadı." ;;
                     *) COMP_SYNC_ONLY="$id" comp_cli_sync || true; read -r -p "Devam için Enter..." _ || return 0 ;;
                 esac ;;
             update) UpdateAction; read -r -p "Devam için Enter..." _ || return 0 ;;
             sync) comp_cli_sync || true; read -r -p "Devam için Enter..." _ || return 0 ;;
             prune) bash "$SISTEM_PATH/Main.sh" --components prune || true; read -r -p "Devam için Enter..." _ || return 0 ;;
+            idxupdate) comp_cli_update || true; read -r -p "Devam için Enter..." _ || return 0 ;;
+            idxupgrade) comp_cli_upgrade || true; read -r -p "Devam için Enter..." _ || return 0 ;;
             newrel) comp_cli_check_new || true; read -r -p "Devam için Enter..." _ || return 0 ;;
         esac
     done

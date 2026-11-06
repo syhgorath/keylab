@@ -103,16 +103,22 @@ comp_sha256_of() {
     else sha256sum "$1" | cut -d' ' -f1; fi
 }
 
-# comp_verify <id> <arşiv> <imza>
-# Sırayla: kilit geçerli ve paket kilitte → arşiv özeti kilitle aynı → imza (ad alanı sshpocket-component)
+# comp_verify <id> <arşiv> <imza> [beklenen-sha256]
+# Sırayla: kilit geçerli ve paket kilitte → arşiv özeti beklenenle aynı (verilmediyse kilitteki) → imza (ad alanı sshpocket-component)
+# beklenen-sha256: yalnızca DOĞRULANMIŞ indeksten gelir (docs/package-index.md); imzacı yine KİLİTTEN alınır.
 comp_verify() {
     local id="$1" archive="$2" sig="$3" want got signers tmp rc
     comp_id_valid "$id" || { echo "geçersiz paket kimliği" >&2; return 1; }
     comp_lock_validate || return 1
     comp_known "$id" || { echo "paket kilit dosyasında yok: $id" >&2; return 1; }
-    want=$(comp_get "$id" sha256)
+    want="${4:-}"
+    if [ -n "$want" ]; then
+        comp_sha256_valid "$want" || { echo "beklenen özet geçersiz ($id)" >&2; return 1; }
+    else
+        want=$(comp_get "$id" sha256)
+    fi
     got=$(comp_sha256_of "$archive")
-    if [ "$want" != "$got" ]; then echo "özet kilitle uyuşmuyor ($id)" >&2; return 1; fi
+    if [ "$want" != "$got" ]; then echo "özet beklenenle uyuşmuyor ($id)" >&2; return 1; fi
     signers=$(comp_get "$id" signers)
     comp_signers_valid "$signers" || { echo "signers satırı geçersiz ($id)" >&2; return 1; }
     tmp=$(mktemp "${TMPDIR:-/tmp}/sshpocket-signers.XXXXXX") || return 1

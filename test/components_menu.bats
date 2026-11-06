@@ -1068,7 +1068,7 @@ pkgmenu_setup() {
     run comp_menu_packages
     [ "$status" -eq 0 ]
     # 2 paket + sshpocket güncellemesi + eşitle + temizle + yeni yayın (+ Geri)
-    grep -q '^S=Ana menü › Paketler ve güncelleme|H=sshpocket ? · kilit: 2 paket · 1 eksik/eski/bozuk|N=7|D=6' "$T/rec" || { cat "$T/rec"; false; }
+    grep -q '^S=Ana menü › Paketler ve güncelleme|H=sshpocket ? · kilit: 2 paket · 1 eksik/eski/bozuk|N=9|D=8' "$T/rec" || { cat "$T/rec"; false; }
 }
 
 @test "paket listesi (fzf): eksik pakete Enter yalnızca o paketi eşitler; kurulu pakete Enter doğrular" {
