@@ -4,15 +4,25 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [3.7.0] - 2026-11-07
+
+Bu sürüm **imzalı paket indeksini** getirir: paket sürümleri artık sshpocket sürümü ve `components.lock` PR'ı olmadan, onayınızla yükseltilebilir. `components.lock` **taban** olarak kalır. Paket kilitleri değişmedi (utility 0.1.0, kurulum 0.1.0, linux-hardening 0.13.0); indeks `utility 0.1.1`'i "yükseltilebilir" gösterir.
+
 ### Eklendi
 - **İmzalı paket indeksi istemcisi** (`docs/package-index.md`): `./start.sh --components update` (indeksi alır, doğrular, "yükseltilebilir" listesi), `upgrade [--yes] [paket…]` (onaylı yükseltme), `list` önbellekteki indeksi de gösterir. Menüde "Paketler ve güncelleme" altında iki yeni giriş. Doğrulama zinciri: indeks imzası (ad alanı `sshpocket-index`, yeni `sistem/index_signers`) → şema/süre → seri (geri alma/çatallanma reddi) → paket sha256 (indeks) → paket imzası (**kilitteki** imzacı) → geri sürüm yok. İndeks hatasında güncelleme yapılmaz, kurulu paketler çalışır. Sessiz otomatik kurulum yoktur.
+- İndeks adresi `https://raw.githubusercontent.com/syhgorath/sshpocket-index/main/index.json` (+ `.sig`); durum `components/.index/` altında (USB'de `components/` ile taşınır).
 - Testte gerçek ağ yok: `comp_index_download` işlevi, `SSHPOCKET_INDEX_URL`, `SSHPOCKET_INDEX_SIGNERS`, `SSHPOCKET_INDEX_NOW`.
 
 ### Değişti
-- `components.lock` artık **taban**: kurulu sürüm kilit sürümünden **büyük veya eşit** olabilir (çalıştırma kapısı ve `comp_status`); `comp_verify` / `comp_install_archive` doğrulanmış indeksten beklenen sha256 alır. Kilit sürümüne eşit sürümde özet yine kilitteki olmalıdır; paket imzacısı her zaman kilitten gelir. Kilitte olmayan paket indeksten kurulamaz.
+- `components.lock` artık **taban**: kurulu sürüm kilit sürümünden **büyük veya eşit** olabilir (çalıştırma kapısı ve `comp_status`); `comp_verify` / `comp_install_archive` doğrulanmış indeksten beklenen sha256 alır. Kilit sürümüne eşit sürümde özet yine kilitteki olmalıdır; paket imzacısı her zaman kilitten gelir; indeks yeni paket ya da yeni imzacı ekleyemez, kilitte olmayan paket indeksten kurulamaz; indeksin depo adı kilitteki ile aynı olmalıdır.
+- **`upgrade` (adsız) yalnız KURULU paketleri yükseltir** (apt gibi); kurulu olmayan paket `update`/`list`'te "kurulabilir → X" görünür ve yalnız adı verilince kurulur: `upgrade [--yes] <paket>`.
+- `--components sync` değişmedi: kilit sürümünü kurar (çevrimdışı/ilk kurulum yolu).
 
 ### Dikkat
-- **Gerçek GitHub/raw adresinden indeks hiç alınmadı** (`syhgorath/sshpocket-index` deposu ve ilk indeks ayrı oturumda hazırlanıyor); istemci yalnızca sahte indeks/paketle ve bats ile denendi. Menü girişleri fzf'li gerçek terminalde elle denenmedi.
+- **İndeksle yükseltme gerçek bir VM'de menüden denenmedi** (utility 0.1.0 → 0.1.1 indirme, kurulum ve çalıştırma); gerçek raw adresinden indeks alma ve doğrulama izole bir klasörde elle denendi.
+- **fzf'li gerçek terminalde** yeni iki menü girişi elle denenmedi; yalnız birim testleri ve sahte fzf var.
+- Test kapsamı: bats (Linux CI + macOS bash 3.2), shellcheck. Başka ortamda (ör. Debian/Proxmox'ta denetleyici olarak) denenmedi.
+- İndeksin süresi dolarsa (`valid_until`) yalnızca **yükseltme** durur; kurulu paketler çalışır. Yerel saat çok yanlışsa indeks reddedilir (mesaj saati kontrol etmenizi söyler).
 
 ## [3.6.24] - 2026-11-06
 
