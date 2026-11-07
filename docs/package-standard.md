@@ -200,6 +200,9 @@ Bir denetim eylemi (Lynis, OpenSCAP, …) çıktı klasöründe `summary.json` y
 Geriye dönük uyum: `score` yoksa `hardening_index` okunur (linux-hardening). Dosyalar `~/.local/share/sshpocket/<paket>/<sunucu>/` altında aranır (derinlik ≤ 5); sunucudan gelen veriye güvenilmez, bozuk dosyalar sessizce atlanır. Başka bir araç eklemek için sshpocket'te kod değişikliği gerekmez, yalnızca bu biçimde `summary.json` yazmak yeter.
 - Her uygulamanın kaydı (tarih, sunucu, paket+sürüm, sonuç) `servers/<ad>/` altında, **gizli bilgi içermeden** tutulur.
 
+### 8.x Eylem günlükleri (kalıcı)
+Çalışan her eylem (kapılar geçip gerçekten başladıysa) `~/.local/share/sshpocket/<paket>/<sunucu>/logs/<YYYYmmdd-HHMMSS>-<eylem>.log` olarak arşivlenir (dizin 0700, dosya 0600). Başlık: zaman (yerel+UTC), paket/sürüm, eylem, sunucu, komut satırı, süre; sonda çıkış kodu ve `ok`/`fail`. Gövde, parola/token/özel anahtar izleri maskelenerek yazılır (`****`); paket yine de gizli değeri çıktıya yazmamalıdır (maskeleme son savunmadır). `last-run.log` canlı günlük olarak kalır (her eylemde ezilir); `results` satır biçimi değişmedi. Başarısız eylemin günlük yolu `last-fail-log` dosyasında tutulur ve eylem sonunda ekrana yazılır (sonraki başarılı eylem bu işareti siler, günlük silinmez). Sunucu/paket başına son 50 günlük saklanır (`COMP_LOG_KEEP`). Menüde "📜 Geçmiş ve son sonuçlar" günlükleri listeler ve seçileni tam açar (`less`).
+
 ## 9. Güvenlik kapıları (paketten bağımsız, sshpocket zorunlu tutar)
 
 1. Kilit dosyasında olmayan paket **çalıştırılmaz** (üçüncü taraf paket yok).
