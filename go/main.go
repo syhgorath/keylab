@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"sshpocket-go/internal/cli"
 	"sshpocket-go/internal/runner"
 )
 
@@ -621,6 +622,10 @@ func main() {
 		case "terminal":
 			if runtime.GOOS != "darwin" {
 				http.Error(w, "yalnızca macOS", http.StatusNotImplemented)
+				return
+			}
+			if err := cli.SendKnock(r.Context(), app.serversDir, s.Name); err != nil { // knock etkinse önce vuruş gönderilir
+				http.Error(w, err.Error(), http.StatusConflict)
 				return
 			}
 			esc := strings.ReplaceAll(strings.ReplaceAll(s.sshCmd(), `\`, `\\`), `"`, `\"`)

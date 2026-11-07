@@ -80,6 +80,8 @@ func (a *App) createServer(name, host, user, port, osID string) (int, error) {
 //	keygen  → ssh-keygen (var olan anahtarın üzerine YAZMAZ)
 //	keycopy → motorun ssh_copy_key işlevi (parmak izini gösterir, onay ister, ssh-copy-id çalıştırır)
 //	sshadd  → ssh-add (macOS'ta Keychain'e kaydederek)
+//	keychain → `servers keychain` (USBMonitor_<ÖNEK>_Passphrase kaydı: kaydet/güncelle/sil + doğrulama)
+//	knock   → `servers knock` (protokol, bekleme ve diziyi ayarlar; dizi Keychain'de)
 func (a *App) startServerTask(kind, server string) (*Job, int, error) {
 	if !reName.MatchString(server) {
 		return nil, http.StatusBadRequest, fmt.Errorf("geçersiz sunucu adı")
@@ -121,6 +123,10 @@ func (a *App) startServerTask(kind, server string) (*Job, int, error) {
 		} else {
 			argv = []string{"ssh-add", key}
 		}
+	case "keychain":
+		argv = []string{selfExe(), "servers", "-servers", a.serversDir, "keychain", server}
+	case "knock":
+		argv = []string{selfExe(), "servers", "-servers", a.serversDir, "knock", server}
 	default:
 		return nil, http.StatusBadRequest, fmt.Errorf("bilinmeyen adım")
 	}

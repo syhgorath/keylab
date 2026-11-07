@@ -73,10 +73,15 @@ servers/<ad>/      server.env + id_ed25519_<ad>   (kullanıcı verisi, repoya gi
 - **USB çıkarma:** `./sshpocket eject` (USB'deki anahtarları ajandan silip çıkarır).
 - **Test edilenler:** [docs/test-edilen-ortamlar.md](docs/test-edilen-ortamlar.md) — neyin denenip **neyin denenmediği** orada.
 
-### Henüz Go sürümünde olmayanlar (kabuk referansında vardı)
+- **`~/.ssh/config` içe aktarma:** `./sshpocket servers import-ssh-config [dosya]` (private key kopyalanmaz; `IdentityFile` yolu `KEY` olarak yazılır).
+- **Port knocking (istemci):** arayüzdeki sunucu adımlarından ya da `./sshpocket servers knock <ad>`; dizi Keychain'de durur, "Terminal'de aç" bağlanmadan önce otomatik gönderir. Sunucu tarafı (knockd) bu araçta yoktur; klasik knocking şifreli değildir.
+- **Keychain parolası:** `./sshpocket servers keychain <ad>` (kaydet/güncelle/sil, kayıttan sonra anahtarı açarak doğrular).
+- **Ayarlar:** `sshpocket.conf` (`STATUS=on|off`, `STATUS_TIMEOUT=1-5`; ortam değişkeni `SSHPOCKET_STATUS` önceliklidir). `./sshpocket settings` değerleri gösterir, `settings set STATUS_TIMEOUT 3` yazar.
 
-`~/.ssh/config` içe aktarma ve port knocking (istemci) kitaplık olarak taşındı, ama henüz arayüze/komuta **bağlanmadı**;
-terminal menüsü (fzf dâhil) bilerek taşınmadı; sunucu **taşıma** (`--migrate`, eski `sistem/Modules` düzeni) taşınmadı.
+### Go sürümünde olmayanlar (kabuk referansında vardı)
+
+Terminal menüsü (fzf dâhil) **bilerek taşınmadı**; sunucu **taşıma** (`--migrate`, eski `sistem/Modules` düzeni) taşınmadı.
+Henüz yok: durum göstergesinde 🔒 (knock gerekir) işareti ve panodaki "ssh komutunu kopyala"nın knock göndermesi.
 
 ## Güncelleme
 

@@ -20,12 +20,13 @@ Bu çalışma sshpocket'i **kabuktan Go'ya** taşır (taslak; sürüm numarasın
 - GitHub `git archive` arşivlerinin başındaki `pax_global_header` Go'da yanlışlıkla reddediliyordu (Go tarafında düzeltildi).
 
 ### Eklendi
+- `servers import-ssh-config | knock | keychain | list` ve `settings` komutları (kabuk akışlarıyla aynı istem metinleri); arayüzde sunucu adımlarına "Keychain parolası" ve "Port knocking"; "Terminal'de aç" bağlanmadan önce knock gönderir; durum yoklaması `sshpocket.conf` (`STATUS`, `STATUS_TIMEOUT`) ayarlarına uyar.
 - Go yürütücüsü: kapılar (önizleme gereği, önkoşul TTL, host key, ajan), onay akışı, günlük arşivi (`logs/<zaman>-<eylem>.log`, 0600, parola maskeli), sonuç kayıtları; yanlış sudo parolası ve Ctrl-C'de temiz çıkış.
 - Arayüz bulguları artık doğrulamalı okuyucudan gelir (`component_findings.py` ile aynı kurallar; sunucudan gelen veri güvenilmez).
 
 ### Dikkat
 - **Kabuktan Go'ya geçişte bilinçli olarak taşınmayanlar:** terminal menüsü (fzf dâhil), `--migrate` ve eski `sistem/Modules` düzeni.
-- **Kitaplık olarak taşındı ama arayüze/komuta henüz bağlanmadı:** `~/.ssh/config` içe aktarma, istemci tarafı port knocking (gönderim ve ayar), `sshpocket.conf` ayarları.
+- **Henüz yok:** durum göstergesinde 🔒 (knock gerekir) işareti; panodaki "ssh komutunu kopyala" knock göndermez.
 - **Gerçek ortamda denenenler:** `ubuntutest` VM'inde `utility` (`durum`, `preview`, değiştiren `apply`, önizlemesiz `apply` reddi, yanlış sudo parolası, Ctrl-C), macOS Keychain'li parolalı anahtar, anahtarı sunucuya kopyalama, sunucu silme, arayüzden `durum`. **Denenmeyenler:** gerçek bir Release ile `update`, gerçek ağda `components update/upgrade`, Knock gönderimi (Knock'lu sunucu yok), Ctrl-C'nin görevler akarken etkisi, internetten inen ikilide Gatekeeper/notarization (ad-hoc imza yetmeyebilir; ilk açılışta sağ tık > Aç gerekebilir).
 
 ## [3.7.0] - 2026-11-07

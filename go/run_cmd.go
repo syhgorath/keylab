@@ -19,6 +19,7 @@ import (
 	"sshpocket-go/internal/runner"
 	"sshpocket-go/internal/selfupdate"
 	"sshpocket-go/internal/servers"
+	"sshpocket-go/internal/settings"
 )
 
 // `sshpocket-go run [-servers D] [-components D] [-state D] <paket> <eylem> <sunucu>`: kapılar → yürütme → sonuç akışının
@@ -69,6 +70,8 @@ func goRunEnabled() bool {
 //	sshpocket-go keycopy <kullanıcı> <ip> <port> <anahtar>   (ssh_copy_key)
 //	sshpocket-go server-remove <servers-klasörü> <ad>        (ModuleManager.sh remove)
 //	sshpocket-go components [-root D] list|sync|update|upgrade|check-new|prune|validate|report|run …   (--components)
+//	sshpocket-go servers [-servers D] list | import-ssh-config [dosya] | knock <ad> | keychain <ad>
+//	sshpocket-go settings [get <ANAHTAR> | set <ANAHTAR> <değer>]
 //	sshpocket-go doctor | version | update [--check] | eject [USB-yolu]
 //	sshpocket-go report -servers D -components D [<paket> [<eski-sürüm>]]   (comp_report_pkg / comp_report_all)
 func subcommand(args []string) (int, bool) {
@@ -119,6 +122,10 @@ func subcommand(args []string) (int, bool) {
 			return 1, true
 		}
 		return 0, true
+	case "servers":
+		return serversCommand(args[1:]), true
+	case "settings":
+		return settingsCommand(args[1:]), true
 	case "eject":
 		usb := findRoot("")
 		if len(args) > 1 {
@@ -300,4 +307,102 @@ func signersPath(root, name string) string {
 func fileExists(p string) bool {
 	st, err := os.Stat(p)
 	return err == nil && st.Mode().IsRegular()
+}
+
+// serversDir: -servers bayrağı, SSHPOCKET_SERVERS_DIR ya da <kök>/servers.
+func serversDirOf(flagVal, root string) string {
+	if flagVal != "" {
+		return flagVal
+	}
+	if v := os.Getenv("SSHPOCKET_SERVERS_DIR"); v != "" {
+		return v
+	}
+	return filepath.Join(root, "servers")
+}
+
+// serversCommand: sunucu yönetimi (ImportSSHConfig.sh, ModuleManager.sh list, Knock.sh knock_manage, ssh_keychain_manage).
+func serversCommand(args []string) int {
+	fs := flag.NewFlagSet("servers", flag.ContinueOnError)
+	rootF := fs.String("root", "", "kök klasör")
+	srvF := fs.String("servers", "", "sunucular klasörü (varsayılan: <kök>/servers)")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	root := findRoot(*rootF)
+	dir := serversDirOf(*srvF, root)
+	rest := fs.Args()
+	usage := func() int {
+		fmt.Fprintln(os.Stderr, "kullanım: servers [-servers D] list | import-ssh-config [dosya] | knock <ad> | keychain <ad>")
+		return 2
+	}
+	if len(rest) == 0 {
+		return usage()
+	}
+	s := &cli.Servers{Dir: dir, In: bufio.NewReader(os.Stdin), Out: os.Stdout, Err: os.Stderr, ChildIn: os.Stdin, DefaultUser: os.Getenv("USER"), Askpass: selfExe()}
+	switch rest[0] {
+	case "list":
+		names := servers.Names(dir)
+		if len(names) == 0 {
+			fmt.Println("  (sunucu yok)")
+			return 0
+		}
+		for _, n := range names {
+			fmt.Println(servers.ListLine(dir, n))
+		}
+		return 0
+	case "import-ssh-config":
+		cfg := filepath.Join(os.Getenv("HOME"), ".ssh", "config")
+		if len(rest) > 1 {
+			cfg = rest[1]
+		}
+		return s.ImportSSHConfig(cfg)
+	case "knock":
+		if len(rest) != 2 {
+			return usage()
+		}
+		return s.KnockManage(rest[1])
+	case "keychain":
+		if len(rest) != 2 {
+			return usage()
+		}
+		return s.KeychainManage(rest[1])
+	}
+	return usage()
+}
+
+// confFile: sshpocket.conf yolu (SSHPOCKET_CONF ya da <kök>/sshpocket.conf).
+func confFile(root string) string {
+	if v := os.Getenv("SSHPOCKET_CONF"); v != "" {
+		return v
+	}
+	return filepath.Join(root, "sshpocket.conf")
+}
+
+// settingsCommand: sshpocket.conf okuma/yazma (Settings.sh). Argümansız: bilinen ayarların değeri ve kaynağı.
+func settingsCommand(args []string) int {
+	st := settings.Store{File: confFile(findRoot(""))}
+	known := []string{"STATUS", "STATUS_TIMEOUT"}
+	switch {
+	case len(args) == 0:
+		for _, k := range known {
+			v, _ := st.Get(k)
+			fmt.Printf("%-16s %-8s (%s)\n", k, v, st.Source(k))
+		}
+		return 0
+	case args[0] == "get" && len(args) == 2:
+		if v, ok := st.Get(args[1]); ok {
+			fmt.Println(v)
+			return 0
+		}
+		fmt.Fprintf(os.Stderr, "Bilinmeyen ayar: %s\n", args[1])
+		return 1
+	case args[0] == "set" && len(args) == 3:
+		if err := st.Set(args[1], args[2]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		return 0
+	}
+	fmt.Fprintln(os.Stderr, "kullanım: settings [get <ANAHTAR> | set <ANAHTAR> <değer>]   (ANAHTAR: STATUS | STATUS_TIMEOUT)")
+	return 2
 }

@@ -10,11 +10,13 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"sshpocket-go/internal/findings"
+	"sshpocket-go/internal/settings"
 	"sshpocket-go/internal/trust"
 )
 
@@ -238,6 +240,16 @@ func (a *App) servers(probe bool, only ...string) []Server {
 
 // probe: sunuculara eşzamanlı TCP denemesi (en fazla 1,5 sn); sonucu önbelleğe yazar
 func (a *App) probe(list []Server) {
+	st := settings.Store{File: confFile(a.engineRoot())}
+	if v, _ := st.Get("STATUS"); v == "off" { // sshpocket.conf STATUS=off: durum yoklaması kapalı
+		return
+	}
+	secs := 1.0
+	if v, ok := st.Get("STATUS_TIMEOUT"); ok {
+		if n, err := strconv.ParseFloat(v, 64); err == nil && n >= 1 {
+			secs = n
+		}
+	}
 	var wg sync.WaitGroup
 	for i := range list {
 		if !list[i].Valid {
@@ -247,7 +259,7 @@ func (a *App) probe(list []Server) {
 		go func(s Server) {
 			defer wg.Done()
 			up := false
-			if c, err := net.DialTimeout("tcp", net.JoinHostPort(s.Host, s.Port), 1500*time.Millisecond); err == nil {
+			if c, err := net.DialTimeout("tcp", net.JoinHostPort(s.Host, s.Port), time.Duration(secs*float64(time.Second))); err == nil {
 				c.Close()
 				up = true
 			}

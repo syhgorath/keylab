@@ -118,6 +118,9 @@ func (a *AgentAdder) add(prefix, key string) error {
 	return fmt.Errorf("ajana eklenemedi")
 }
 
+// AddOnce, ssh_agent_add: Keychain parolasıyla tek deneme (yeniden sorma yok).
+func (a *AgentAdder) AddOnce(prefix, key string) error { return a.add(prefix, key) }
+
 // AddRetry: ssh_agent_add_retry. Başarısızsa (ajana ulaşılıyorsa) "yanlış olabilir, yeniden kaydedeyim mi" diye sorar; en çok 3 deneme.
 func (a *AgentAdder) AddRetry(prefix, key string) error {
 	if a.add(prefix, key) == nil {

@@ -73,10 +73,15 @@ servers/<name>/    server.env + id_ed25519_<name>   (user data, never committed)
 - **Eject:** `./sshpocket eject` (removes the USB's keys from the agent, then ejects).
 - **Tested:** [docs/en/tested-environments.md](docs/en/tested-environments.md) lists what was tried **and what was not**.
 
-### Not yet in the Go version (the shell reference had them)
+- **Importing from `~/.ssh/config`:** `./sshpocket servers import-ssh-config [file]` (private keys are not copied; the `IdentityFile` path is written as `KEY`).
+- **Port knocking (client side):** from the UI's server steps or `./sshpocket servers knock <name>`; the sequence stays in the Keychain and "Open in Terminal" sends it automatically before connecting. The server side (knockd) is not part of this tool; classic knocking is not encrypted.
+- **Keychain passphrase:** `./sshpocket servers keychain <name>` (save/update/delete, then verifies by unlocking the key).
+- **Settings:** `sshpocket.conf` (`STATUS=on|off`, `STATUS_TIMEOUT=1-5`; the `SSHPOCKET_STATUS` environment variable wins). `./sshpocket settings` shows the values, `settings set STATUS_TIMEOUT 3` writes one.
 
-Importing from `~/.ssh/config` and client-side port knocking were ported as libraries but are **not yet wired** into the UI or a command;
-the terminal menu (including fzf) was deliberately not ported; server **migration** (`--migrate`, the old `sistem/Modules` layout) was not ported.
+### Not in the Go version (the shell reference had them)
+
+The terminal menu (including fzf) was **deliberately not ported**; server **migration** (`--migrate`, the old `sistem/Modules` layout) was not ported.
+Not yet: the 🔒 (knock needed) marker in the status indicator, and the dashboard's "copy ssh command" sending a knock.
 
 ## Updating
 
