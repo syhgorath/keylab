@@ -1286,3 +1286,21 @@ JSON
     run comp_menu_actions demo web1 <<<$'1\n1\n0'
     [ "$(cat "$T/panel")" = "port|Nginx › Ayarlar" ]
 }
+
+@test "günlük gezgini: arşivlenmiş günlükler en yeni üstte listelenir; numara seçilince tam içerik gösterilir; Enter geçer" {
+    local sd="$T/sd"; mkdir -p "$sd/logs"
+    printf '# sonuç: ok\neski içerik\n' > "$sd/logs/20260101-000000-preview.log"
+    printf '# sonuç: fail\nasıl hata satırı\nikinci\n' > "$sd/logs/20260102-000000-apply.log"
+    run _comp_menu_log_browser "$sd" <<< $'1\n'
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"20260102-000000-apply"* ]] || false
+    [[ "$output" == *"❌ 20260102-000000-apply"* ]] || false
+    [[ "$output" == *"✅ 20260101-000000-preview"* ]] || false
+    [[ "$output" == *"asıl hata satırı"* ]] || false
+    [[ "${output%%20260101*}" == *"20260102"* ]] || false          # en yeni önce
+    run _comp_menu_log_browser "$sd" <<< $'9\n\n'
+    [[ "$output" == *"Geçersiz numara"* ]] || false
+    run _comp_menu_log_browser "$T/yok" </dev/null
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}

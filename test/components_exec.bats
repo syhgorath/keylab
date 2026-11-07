@@ -354,3 +354,111 @@ LOG
     comp_exec_parse_result "$INFO" status "$T/log"
     [ "$COMP_EXEC_RESULT" = "armed=yes" ]
 }
+
+# ---- kalıcı eylem günlüğü ----
+@test "günlük: her eylem logs/ altına tarih-saatli, 0600 dosya yazar; başlık ve sonuç satırları var, last-run.log kalır" {
+    FAKE_OUT='merhaba çıktı' run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null
+    [ "$status" -eq 0 ]
+    local d="$T/state/demo/web1/logs" f
+    [ "$(modeof "$d")" = "700" ]
+    f=$(ls "$d"/*-preview.log)
+    [[ "$f" =~ /[0-9]{8}-[0-9]{6}-preview\.log$ ]] || false
+    [ "$(modeof "$f")" = "600" ]
+    grep -q '^# paket: demo 1.0.0$' "$f"
+    grep -q '^# eylem: preview$' "$f"
+    grep -q '^# sunucu: web1$' "$f"
+    grep -q '^# zaman: .* (yerel) / .*Z (UTC)$' "$f"
+    grep -q '^# komut: .*harden.yml' "$f"
+    grep -q '^# süre: [0-9]*s$' "$f"
+    grep -q '^merhaba çıktı$' "$f"
+    grep -q '^# çıkış kodu: 0$' "$f"
+    grep -q '^# sonuç: ok$' "$f"
+    [ -f "$T/state/demo/web1/last-run.log" ]
+    [ ! -e "$T/state/demo/web1/last-fail-log" ]
+    grep -q '|1.0.0|preview|ok$' "$T/state/demo/web1/results"       # results biçimi değişmedi
+}
+
+@test "günlük: başarısızlıkta sonuç fail, çıkış kodu yazılır, last-fail-log yolu gösterir; sonraki başarı onu siler; önceki günlük silinmez" {
+    FAKE_RC=4 FAKE_OUT='asıl hata burada' run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null
+    [ "$status" -eq 4 ]
+    local s="$T/state/demo/web1" f
+    f=$(cat "$s/last-fail-log")
+    [ -f "$f" ]
+    grep -q '^asıl hata burada$' "$f"
+    grep -q '^# çıkış kodu: 4$' "$f"
+    grep -q '^# sonuç: fail$' "$f"
+    sleep 1
+    run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null
+    [ "$status" -eq 0 ]
+    [ ! -e "$s/last-fail-log" ]
+    [ -f "$f" ]                                                     # başarısız günlük ezilmedi
+    [ "$(ls "$s/logs" | wc -l | tr -d ' ')" = "2" ]
+    run grep -q 'asıl hata' "$s/last-run.log"                          # canlı günlük ezilir, arşiv kalır
+    [ "$status" -ne 0 ]
+}
+
+@test "günlük: parola, token ve özel anahtar izleri arşivde maskelenir" {
+    local kt="OPENSSH PRIVATE"            # düz yazılırsa depo-hijyen testi sahte anahtar sanır
+    FAKE_OUT=$'BECOME password: gizli123\nsudo_password=abc999\napi_token: ghp_ABCDEFGH12345678\n-----BEGIN '"$kt"$' KEY-----\nAAAAB3NzaC1\n-----END '"$kt"$' KEY-----\nnormal satır' \
+        run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null
+    [ "$status" -eq 0 ]
+    local f
+    f=$(ls "$T/state/demo/web1/logs"/*-preview.log)
+    run grep -q 'gizli123\|abc999\|ABCDEFGH12345678\|AAAAB3NzaC1\|BEGIN OPENSSH' "$f"
+    [ "$status" -ne 0 ]
+    grep -q 'özel anahtar bloğu gizlendi' "$f"
+    grep -q '^normal satır$' "$f"
+    grep -q '\*\*\*\*' "$f"
+}
+
+@test "günlük: COMP_LOG_KEEP kadar günlük kalır, en eskiler silinir" {
+    local d="$T/state/demo/web1/logs" i
+    mkdir -p "$d"; chmod 700 "$d"
+    for i in 1 2 3 4 5; do : > "$d/2020010$i-000000-preview.log"; done
+    COMP_LOG_KEEP=3 run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null
+    [ "$status" -eq 0 ]
+    [ "$(ls "$d" | wc -l | tr -d ' ')" = "3" ]
+    [ ! -e "$d/20200101-000000-preview.log" ]
+    [ ! -e "$d/20200103-000000-preview.log" ]
+    [ -e "$d/20200105-000000-preview.log" ]
+    ls "$d" | grep -q "^20[2-9][0-9][01][0-9][0-3][0-9]-[0-9]*-preview.log$"
+}
+
+@test "günlük: reddedilen (çalışmayan) eylem günlük bırakmaz" {
+    comp_gate_requires_vars() { return 1; }
+    run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null
+    [ ! -d "$T/state/demo/web1/logs" ]
+}
+
+@test "günlük: Ctrl-C/TERM ile kesilen eylem (alt kabuk 130) 'kesildi (sinyal)' olarak arşivlenir" {
+    FAKE_RC=130 FAKE_OUT='yarım çıktı' run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null
+    [ "$status" -eq 130 ]
+    local f
+    f=$(cat "$T/state/demo/web1/last-fail-log")
+    grep -q '^yarım çıktı$' "$f"
+    grep -q '^# sonuç: fail — kesildi (sinyal 2)$' "$f"
+}
+
+@test "günlük: üst kabuğa HUP gelince (terminal kapandı) günlük arşivlenir, kayıt fail olur" {
+    COMP_EXEC_SIG_CTX="demo|1.0.0|preview|web1|$(date +%s)"
+    mkdir -p "$T/state/demo/web1"; printf 'canlı satır\n' > "$T/state/demo/web1/last-run.log"
+    run _comp_exec_on_signal 129
+    [ "$status" -eq 129 ]
+    local f
+    f=$(ls "$T/state/demo/web1/logs"/*-preview.log)
+    grep -q '^canlı satır$' "$f"
+    grep -q 'kesildi (sinyal 1)' "$f"
+    grep -q '|1.0.0|preview|fail$' "$T/state/demo/web1/results"
+}
+
+@test "günlük: büyük harfli ve Türkçe anahtar adları da maskelenir (MARIADB_ROOT_PASSWORD, API_TOKEN, SECRET_KEY, PAROLA)" {
+    FAKE_OUT=$'MARIADB_ROOT_PASSWORD=abc123\nREDIS_PASSWORD=redis777\nAPI_TOKEN=tok888\nSECRET_KEY=sec999\nPAROLA=par111\nparola: par222\nçalışan değişken=1' \
+        run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null
+    [ "$status" -eq 0 ]
+    local f
+    f=$(ls "$T/state/demo/web1/logs"/*-preview.log)
+    run grep -E 'abc123|redis777|tok888|sec999|par111|par222' "$f"
+    [ "$status" -ne 0 ]
+    grep -q '^MARIADB_ROOT_PASSWORD=\*\*\*\*$' "$f"
+    grep -q '^çalışan değişken=1$' "$f"
+}

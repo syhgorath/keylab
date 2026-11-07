@@ -189,5 +189,9 @@ comp_cli_run() {
         echo "Sonuç:" >&2
         while IFS= read -r ans; do echo "  $ans" >&2; done <<< "$COMP_EXEC_RESULT"
     fi
+    if [ -n "${COMP_EXEC_LOGFILE:-}" ]; then
+        if [ "$rc" -ne 0 ]; then echo "❌ Eylem başarısız. Tam günlük: $COMP_EXEC_LOGFILE" >&2
+        else echo "Günlük: $COMP_EXEC_LOGFILE" >&2; fi
+    fi
     return "$rc"
 }

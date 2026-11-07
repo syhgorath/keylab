@@ -740,8 +740,47 @@ comp_menu_history() {
         IFS= read -r -p "Son 30 satırı gösterilsin mi? [e/H]: " ans || return 1
         case "$ans" in e|E|evet|Evet) echo ""; tail -n 30 "$sdir/last-run.log" | LC_ALL=C tr -d '\000-\010\013-\037\177' ;; esac
     fi
+    _comp_menu_log_browser "$sdir" || return 1
     echo ""
     read -r -p "Devam için Enter..." _ || return 1
+}
+
+# _comp_menu_log_pager <dosya> → günlüğü tamamen gösterir (etkileşimli terminalde less, değilse düz çıktı); denetim karakterleri atılır
+_comp_menu_log_pager() {
+    if [ -t 1 ] && command -v less >/dev/null 2>&1; then
+        LC_ALL=C tr -d '\000-\010\013-\037\177' < "$1" | less -S
+    else
+        LC_ALL=C tr -d '\000-\010\013-\037\177' < "$1"
+    fi
+}
+
+# _comp_menu_log_browser <durum-klasörü> → kalıcı eylem günlüklerini (en yeni üstte) listeler; seçilen tam açılır
+_comp_menu_log_browser() {
+    local sdir="$1" ldir f n i ans res base
+    local -a files
+    ldir="$sdir/logs"
+    [ -d "$ldir" ] || return 0
+    files=()
+    while IFS= read -r f; do files+=("$f"); done < <(find "$ldir" -maxdepth 1 -type f -name '*.log' | sort -r | head -n 15)
+    [ "${#files[@]}" -gt 0 ] || return 0
+    echo ""
+    echo "Eylem günlükleri ($ldir; son ${#files[@]}, en yeni üstte)"
+    i=0
+    for f in "${files[@]}"; do
+        i=$((i + 1)); base="${f##*/}"
+        res=$(sed -n 's/^# sonuç: //p' "$f" | tail -n 1)
+        printf '  %2d) %s %s\n' "$i" "$([ "$res" = ok ] && echo '✅' || echo '❌')" "${base%.log}"
+    done
+    while true; do
+        IFS= read -r -p "Tam açmak için numara (Enter: geç): " ans || return 1
+        [ -n "$ans" ] || return 0
+        if [[ "$ans" =~ ^[0-9]+$ ]] && [ "$ans" -ge 1 ] && [ "$ans" -le "${#files[@]}" ]; then
+            n="${files[$((ans - 1))]}"
+            _comp_menu_log_pager "$n"
+        else
+            echo "Geçersiz numara."
+        fi
+    done
 }
 
 # Büyük paketlerde (çok değişken) değişkenler ekranının başına arama/süzgeç satırları eklenir; küçük paketlerde numaralandırma eskisi gibidir.

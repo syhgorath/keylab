@@ -117,6 +117,7 @@ _comp_exec_script() {
               -o PreferredAuthentications=publickey -o PasswordAuthentication=no -p "$COMP_CTX_PORT" -i "$COMP_CTX_KEY")
     log="$sdir/last-run.log"
     ( umask 077; : > "$log" ) || return "$refused"
+    printf 'komut: ssh -p %s %s@%s bash -s --%s  (betik: %s)\n' "$COMP_CTX_PORT" "$COMP_CTX_USER" "$COMP_CTX_HOST" "$rargs" "${words[0]}" >> "$log"
     # shellcheck disable=SC2064
     trap "rm -r -- $(printf '%q' "$work") 2>/dev/null; _comp_exec_remote_rm" EXIT
 
@@ -255,6 +256,7 @@ _comp_exec_body() {
     # ---- çalıştır (günlük kullanıcı klasöründe, izin 600; kullanıcı terminali çıktıyı olduğu gibi görür) ----
     log="$sdir/last-run.log"
     ( umask 077; : > "$log" ) || return "$refused"
+    printf 'komut: %s\n' "$(printf '%q ' "${COMP_RUN_ARGV[@]}")" >> "$log"
     for kv in ${applied[@]+"${applied[@]}"} ${runsets[@]+"${runsets[@]}"}; do printf 'bu koşuya özel: %s\n' "$kv" >> "$log"; done
     {
         cd "$pkg" && env PYTHONDONTWRITEBYTECODE=1 ANSIBLE_CONFIG="$pkg/ansible.cfg" ANSIBLE_HOST_KEY_CHECKING=True ANSIBLE_TIMEOUT="${ANSIBLE_TIMEOUT:-30}" PATH="$bindir:$PATH" "${COMP_RUN_ARGV[@]}"
@@ -292,15 +294,96 @@ comp_exec_last_result() {
     head -n 40 "$f"
 }
 
+# _comp_exec_mask (BSD sed'de s///I yok: büyük/küçük harf köşeli ayraçla) → stdin'deki günlükten parola/anahtar/token izlerini siler (ansible/ssh çıktısına sızarsa kalıcı günlüğe geçmesin)
+_comp_exec_mask() {
+    LC_ALL=C tr -d '\000' | LC_ALL=C sed -E \
+        -e '/-----BEGIN [A-Z ]*PRIVATE KEY-----/,/-----END [A-Z ]*PRIVATE KEY-----/c\
+[özel anahtar bloğu gizlendi]' \
+        -e 's/(([Bb][Ee][Cc][Oo][Mm][Ee]|[Ss][Uu][Dd][Oo]|[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]|[Pp][Aa][Ss][Ss][Ww][Dd]|[Pp][Aa][Rr][Oo][Ll][Aa]|[Tt][Oo][Kk][Ee][Nn]|[Ss][Ee][Cc][Rr][Ee][Tt]|[Aa][Pp][Ii][_-]?[Kk][Ee][Yy])[A-Za-z_ ]{0,20}[:=][ ]*)[^ ].*/\1****/' \
+        -e 's/(ghp_|github_pat_|glpat-|xox[bp]-)[A-Za-z0-9_-]{8,}/\1****/g'
+}
+
+# _comp_exec_fmt <epoch> <biçim> [-u] → BSD (macOS) ve GNU date ile aynı çıktı
+_comp_exec_fmt() {
+    local u=""; [ "${3:-}" = "-u" ] && u="-u"
+    # shellcheck disable=SC2086
+    date $u -r "$1" "$2" 2>/dev/null || date $u -d "@$1" "$2"
+}
+
+# comp_exec_archive_log <durum-klasörü> <paket> <sürüm> <eylem> <sunucu> <çıkış-kodu> <başlangıç-epoch>
+# last-run.log'u kalıcı arşive kopyalar: <durum>/logs/<YYYYmmdd-HHMMSS>-<eylem>.log (dizin 0700, dosya 0600); başlık + maskelenmiş gövde + sonuç.
+# Yolu COMP_EXEC_LOGFILE'a koyar; başarısızlıkta <durum>/last-fail-log'a yazar (başarıda siler). results biçimi DEĞİŞMEZ.
+# Eski günlükler: sunucu/paket başına son COMP_LOG_KEEP (varsayılan 50) kalır.
+comp_exec_archive_log() {
+    local sdir="$1" id="$2" ver="$3" action="$4" server="$5" rc="$6" t0="$7" ldir name f n t1 keep="${COMP_LOG_KEEP:-50}" res cmdline
+    COMP_EXEC_LOGFILE=""
+    [ -f "$sdir/last-run.log" ] || return 0
+    [[ "$action" =~ ^[a-z][a-z0-9_]{0,63}$ ]] || return 1
+    [[ "$keep" =~ ^[0-9]+$ ]] && [ "$keep" -ge 1 ] || keep=50
+    ldir="$sdir/logs"
+    ( umask 077; mkdir -p "$ldir" ) && chmod 700 "$ldir" || return 1
+    t1=$(date +%s)
+    name="$(_comp_exec_fmt "$t0" +%Y%m%d-%H%M%S)-$action"
+    f="$ldir/$name.log"; n=1
+    while [ -e "$f" ]; do n=$((n + 1)); f="$ldir/$name-$n.log"; done
+    res=$([ "$rc" -eq 0 ] && echo ok || echo fail)
+    # 129/130/143 = HUP/INT/TERM ile kesildi (terminal kapandı, Ctrl-C, kill)
+    case "$rc" in 129|130|143) res="fail — kesildi (sinyal $((rc - 128)))" ;; esac
+    cmdline=$(sed -n 's/^komut: //p' "$sdir/last-run.log" | head -n 1 | _comp_exec_mask)
+    {
+        echo "# sshpocket eylem günlüğü"
+        printf '# zaman: %s (yerel) / %s (UTC)\n' "$(_comp_exec_fmt "$t0" '+%Y-%m-%d %H:%M:%S %z')" "$(_comp_exec_fmt "$t0" '+%Y-%m-%dT%H:%M:%SZ' -u)"
+        printf '# paket: %s %s\n# eylem: %s\n# sunucu: %s\n' "$id" "$ver" "$action" "$server"
+        printf '# komut: %s\n# süre: %ss\n' "${cmdline:-?}" "$((t1 - t0))"
+        echo "# ----"
+        grep -v '^komut: ' "$sdir/last-run.log" | _comp_exec_mask
+        echo "# ----"
+        printf '# çıkış kodu: %s\n# sonuç: %s\n' "$rc" "$res"
+    } > "$f" 2>/dev/null || { rm -f -- "$f"; return 1; }
+    chmod 600 "$f"
+    COMP_EXEC_LOGFILE="$f"
+    if [ "$rc" -ne 0 ]; then ( umask 077; printf '%s\n' "$f" > "$sdir/last-fail-log" ) || true
+    else rm -f -- "$sdir/last-fail-log"; fi
+    # temizlik: ad zaman damgasıyla başladığı için sözlük sırası = zaman sırası
+    n=$(find "$ldir" -maxdepth 1 -type f -name '*.log' | wc -l | tr -d ' ')
+    if [ "$n" -gt "$keep" ]; then
+        find "$ldir" -maxdepth 1 -type f -name '*.log' | sort | head -n "$((n - keep))" | while IFS= read -r f; do rm -f -- "$f"; done
+    fi
+    return 0
+}
+
+# _comp_exec_on_signal <çıkış-kodu> → HUP/TERM'de (alt kabuk zaten sonlandırılmış olabilir) günlüğü arşivleyip çıkar
+_comp_exec_on_signal() {
+    local rc="$1" id ver action server t0 sdir
+    IFS='|' read -r id ver action server t0 <<< "${COMP_EXEC_SIG_CTX:-}"
+    if [ -n "$id" ] && sdir=$(comp_gate_state_ensure "$id" "$server" 2>/dev/null); then
+        comp_exec_archive_log "$sdir" "$id" "$ver" "$action" "$server" "$rc" "$t0" || true
+        comp_gate_record "$id" "$server" "$ver" "$action" fail || true
+    fi
+    exit "$rc"
+}
+
 # comp_exec_action <bilgi> <paket> <sürüm> <eylem> → kapılar, çalıştırma, sonuç ayrıştırma ve kayıt
 comp_exec_action() {
-    local info="$1" id="$2" ver="$3" action="$4" rc sdir
-    COMP_EXEC_RESULT=""
+    local info="$1" id="$2" ver="$3" action="$4" rc sdir t0
+    COMP_EXEC_RESULT=""; COMP_EXEC_LOGFILE=""
+    t0=$(date +%s)
+    # terminal paneli kapanırsa (HUP) ya da kill (TERM) gelirse üst kabuk da düşer: günlük yine arşivlensin
+    local old_hup old_term
+    old_hup=$(trap -p HUP); old_term=$(trap -p TERM)
+    COMP_EXEC_SIG_CTX="$id|$ver|$action|$COMP_CTX_SERVER|$t0"
+    trap '_comp_exec_on_signal 129' HUP
+    trap '_comp_exec_on_signal 143' TERM
     ( _comp_exec_body "$info" "$id" "$ver" "$action" )
     rc=$?
+    trap - HUP TERM
+    [ -z "$old_hup" ] || eval "$old_hup"
+    [ -z "$old_term" ] || eval "$old_term"
+    COMP_EXEC_SIG_CTX=""
     [ "$rc" -eq "$COMP_EXEC_REFUSED" ] && return "$rc"            # hiçbir şey çalışmadı: kayıt yok
     sdir=$(comp_gate_state_ensure "$id" "$COMP_CTX_SERVER") || return "$rc"
     comp_exec_parse_result "$info" "$action" "$sdir/last-run.log" || true
+    comp_exec_archive_log "$sdir" "$id" "$ver" "$action" "$COMP_CTX_SERVER" "$rc" "$t0" || true
     comp_exec_save_result "$sdir" "$action" || true
     if [ "$rc" -eq 0 ]; then comp_gate_record "$id" "$COMP_CTX_SERVER" "$ver" "$action" ok || true
     else comp_gate_record "$id" "$COMP_CTX_SERVER" "$ver" "$action" fail || true; fi
