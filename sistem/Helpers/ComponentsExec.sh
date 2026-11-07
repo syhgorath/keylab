@@ -294,12 +294,12 @@ comp_exec_last_result() {
     head -n 40 "$f"
 }
 
-# _comp_exec_mask → stdin'deki günlükten parola/anahtar/token izlerini siler (ansible/ssh çıktısına sızarsa kalıcı günlüğe geçmesin)
+# _comp_exec_mask (BSD sed'de s///I yok: büyük/küçük harf köşeli ayraçla) → stdin'deki günlükten parola/anahtar/token izlerini siler (ansible/ssh çıktısına sızarsa kalıcı günlüğe geçmesin)
 _comp_exec_mask() {
     LC_ALL=C tr -d '\000' | LC_ALL=C sed -E \
         -e '/-----BEGIN [A-Z ]*PRIVATE KEY-----/,/-----END [A-Z ]*PRIVATE KEY-----/c\
 [özel anahtar bloğu gizlendi]' \
-        -e 's/((BECOME|SUDO|[Pp]assword|[Pp]asswd|[Tt]oken|[Ss]ecret|[Aa]pi[_-]?[Kk]ey)[A-Za-z_ ]{0,20}[:=][ ]*)[^ ].*/\1****/' \
+        -e 's/(([Bb][Ee][Cc][Oo][Mm][Ee]|[Ss][Uu][Dd][Oo]|[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]|[Pp][Aa][Ss][Ss][Ww][Dd]|[Pp][Aa][Rr][Oo][Ll][Aa]|[Tt][Oo][Kk][Ee][Nn]|[Ss][Ee][Cc][Rr][Ee][Tt]|[Aa][Pp][Ii][_-]?[Kk][Ee][Yy])[A-Za-z_ ]{0,20}[:=][ ]*)[^ ].*/\1****/' \
         -e 's/(ghp_|github_pat_|glpat-|xox[bp]-)[A-Za-z0-9_-]{8,}/\1****/g'
 }
 

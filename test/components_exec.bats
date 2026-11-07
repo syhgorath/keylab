@@ -450,3 +450,15 @@ LOG
     grep -q 'kesildi (sinyal 1)' "$f"
     grep -q '|1.0.0|preview|fail$' "$T/state/demo/web1/results"
 }
+
+@test "günlük: büyük harfli ve Türkçe anahtar adları da maskelenir (MARIADB_ROOT_PASSWORD, API_TOKEN, SECRET_KEY, PAROLA)" {
+    FAKE_OUT=$'MARIADB_ROOT_PASSWORD=abc123\nREDIS_PASSWORD=redis777\nAPI_TOKEN=tok888\nSECRET_KEY=sec999\nPAROLA=par111\nparola: par222\nçalışan değişken=1' \
+        run comp_exec_action "$INFO" demo 1.0.0 preview </dev/null
+    [ "$status" -eq 0 ]
+    local f
+    f=$(ls "$T/state/demo/web1/logs"/*-preview.log)
+    run grep -E 'abc123|redis777|tok888|sec999|par111|par222' "$f"
+    [ "$status" -ne 0 ]
+    grep -q '^MARIADB_ROOT_PASSWORD=\*\*\*\*$' "$f"
+    grep -q '^çalışan değişken=1$' "$f"
+}
