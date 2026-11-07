@@ -8,15 +8,42 @@ permissions:
   contents: read
 
 jobs:
+  # Ana ürün: Go. Kabuk motorunun (referans/kabuk) karşılaştırmalı testleri de burada koşar (bash, python3 ve ssh-keygen gerekir).
+  go:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-26.04, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+      - name: vet
+        working-directory: go
+        run: go vet ./...
+      - name: gofmt
+        working-directory: go
+        run: test -z "$(gofmt -l .)"
+      - name: Testler (-short: uzun karşılaştırmalı testler hariç)
+        working-directory: go
+        run: go test ./... -short -count=1
+      - name: Derleme (tek ikili)
+        working-directory: go
+        run: CGO_ENABLED=0 go build -trimpath -o /tmp/sshpocket . && /tmp/sshpocket version
+  # Referans kabuk motoru (dondurulmuş): Go portunun şartnamesi. Değişmemesi beklenir; yine de bozulmasın diye koşar.
   shellcheck:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
       - name: ShellCheck kur (sabit sürüm, sha256 doğrulamalı)
-        run: bash scripts/ci-install-shellcheck.sh
+        run: bash referans/kabuk/scripts/ci-install-shellcheck.sh
       - name: ShellCheck
+        working-directory: referans/kabuk
         run: shellcheck -x -s bash start.sh start.command sistem/*.sh sistem/Helpers/*.sh
       - name: Syntax check (bash -n)
+        working-directory: referans/kabuk
         run: for f in start.sh start.command sistem/*.sh sistem/Helpers/*.sh; do bash -n "$f"; done
   tests:
     runs-on: ubuntu-26.04
@@ -25,9 +52,9 @@ jobs:
       - name: Install bats
         run: sudo apt-get update && sudo apt-get install -y bats
       - name: Run tests
+        working-directory: referans/kabuk
         run: bats test
-  # macOS (Apple Silicon, yeni macOS) + macOS'un kendi bash 3.2'si: kullanıcıların gerçek ortamı.
-  # Not: Gerçek Keychain izin penceresi/Terminal burada sınanmaz (testler sahte `security` kullanır).
+  # macOS (Apple Silicon, yeni macOS) + macOS'un kendi bash 3.2'si: referans motorun gerçek ortamı.
   macos:
     runs-on: macos-latest
     steps:
@@ -41,12 +68,13 @@ jobs:
       - name: Araçları kur
         run: brew install bats-core
       - name: ShellCheck kur (sabit sürüm, sha256 doğrulamalı)
-        run: bash scripts/ci-install-shellcheck.sh
+        run: bash referans/kabuk/scripts/ci-install-shellcheck.sh
       - name: ShellCheck
+        working-directory: referans/kabuk
         run: shellcheck -x -s bash start.sh start.command sistem/*.sh sistem/Helpers/*.sh
       - name: Testler (macOS bash 3.2 ile)
+        working-directory: referans/kabuk
         # LC_ALL=C: macOS bash 3.2 + UTF-8 yerelinde bats, Türkçe karakterli test adlarını yanlış kodlar
-        # ("unknown test name"; 178 testten yalnızca 75'i çalışır). C yerelinde baytlar tutarlı kalır.
         env:
           LC_ALL: C
           LANG: C

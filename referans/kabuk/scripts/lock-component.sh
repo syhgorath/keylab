@@ -39,6 +39,11 @@ comp_id_valid "$id" || die "geçersiz paket kimliği"
 comp_version_valid "$ver" || die "geçersiz sürüm (X.Y.Z)"
 
 lock="$(comp_lock_file)"
+# referans/kabuk/components.lock gerçek kilide sembolik bağdır: yazarken bağı EZMEMEK için hedef yola çözülür
+if [ -L "$lock" ]; then
+    _t="$(readlink "$lock")"
+    case "$_t" in /*) lock="$_t" ;; *) lock="$(cd "$(dirname "$lock")" && cd "$(dirname "$_t")" && pwd -P)/$(basename "$_t")" ;; esac
+fi
 if [ -f "$lock" ]; then comp_lock_validate || die "mevcut components.lock geçersiz"; fi
 if [ -z "$repo" ]; then repo=$(comp_get "$id" repo); fi
 [ -n "$repo" ] || die "depo bilinmiyor: --repo sahip/depo verin"

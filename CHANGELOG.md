@@ -4,6 +4,30 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+Bu çalışma sshpocket'i **kabuktan Go'ya** taşır (taslak; sürüm numarasını, etiketi, imzayı ve Release'i bakımcı belirler). Bu satırlar bir sonraki sürümün notlarına dönüştürülmek üzere yazıldı.
+
+### Değişti
+- **Ana ürün artık Go'dur** (`go/`): tek, imzalı, evrensel (arm64+amd64) macOS ikilisi; yerel web arayüzü içinde gömülüdür. Komutlar: `components list | sync | update | upgrade | check-new | prune | validate | report | run`, `doctor`, `version`, `update [--check]`, `eject`. Arayüzde paket eylemleri varsayılan olarak Go yürütücüsüyle çalışır (`SSHPOCKET_SHELL_RUN=1` kabuğa döndürür).
+- **Kabuk motoru ve Bats testleri `referans/kabuk/` altına taşındı** (dondurulmuş referans). Go portu onunla aynı girdilerle yan yana karşılaştırmalı testlerle doğrulandı (çıkış kodu, çıktı, dosya ağacı; 19.992 bozulmuş bildirim, 32 gerçek imzalı sürüm arşivi, canlı imzalı indeks).
+- `index_signers` ve `release_signers` depo köküne taşındı (`referans/kabuk/sistem/` altında sembolik bağ).
+- CI: Go işi (vet, gofmt, test, derleme; Ubuntu + macOS) eklendi; kabuk/Bats işleri `referans/kabuk` için sürüyor.
+- **Kendini güncelleme** ikili için yeniden tasarlandı: `update` imzalı ikiliyi (`sshpocket-X.Y.Z-darwin-universal` + `.sig`) doğrular, ikilinin bildirdiği sürümü etiketle karşılaştırır, geri sürümü reddeder, atomik yerleştirir ve eskiyi `.update-backup/` altına yedekler. `go/YAYIN.md`, `go/scripts/build-release.sh`.
+
+### Düzeltildi (kabuk referansındaki hatalar Go'da düzeltildi; kabukta düzeltilmedi)
+- `comp_vars_set`: var olan dosyada `awk -v` ters bölüyü yorumlayıp dosyaya fazladan satır sızdırıyordu.
+- `comp_report_pkg`: satır sınırı hiç uygulanmıyor ve değişiklik varken bile "Değişken ve kural farkı yok." yazılıyordu.
+- Taşan port numarası (`ssh_validate_target`) doğrulamayı geçiyordu.
+- GitHub `git archive` arşivlerinin başındaki `pax_global_header` Go'da yanlışlıkla reddediliyordu (Go tarafında düzeltildi).
+
+### Eklendi
+- Go yürütücüsü: kapılar (önizleme gereği, önkoşul TTL, host key, ajan), onay akışı, günlük arşivi (`logs/<zaman>-<eylem>.log`, 0600, parola maskeli), sonuç kayıtları; yanlış sudo parolası ve Ctrl-C'de temiz çıkış.
+- Arayüz bulguları artık doğrulamalı okuyucudan gelir (`component_findings.py` ile aynı kurallar; sunucudan gelen veri güvenilmez).
+
+### Dikkat
+- **Kabuktan Go'ya geçişte bilinçli olarak taşınmayanlar:** terminal menüsü (fzf dâhil), `--migrate` ve eski `sistem/Modules` düzeni.
+- **Kitaplık olarak taşındı ama arayüze/komuta henüz bağlanmadı:** `~/.ssh/config` içe aktarma, istemci tarafı port knocking (gönderim ve ayar), `sshpocket.conf` ayarları.
+- **Gerçek ortamda denenenler:** `ubuntutest` VM'inde `utility` (`durum`, `preview`, değiştiren `apply`, önizlemesiz `apply` reddi, yanlış sudo parolası, Ctrl-C), macOS Keychain'li parolalı anahtar, anahtarı sunucuya kopyalama, sunucu silme, arayüzden `durum`. **Denenmeyenler:** gerçek bir Release ile `update`, gerçek ağda `components update/upgrade`, Knock gönderimi (Knock'lu sunucu yok), Ctrl-C'nin görevler akarken etkisi, internetten inen ikilide Gatekeeper/notarization (ad-hoc imza yetmeyebilir; ilk açılışta sağ tık > Aç gerekebilir).
+
 ## [3.7.0] - 2026-11-07
 
 Bu sürüm **imzalı paket indeksini** getirir: paket sürümleri artık sshpocket sürümü ve `components.lock` PR'ı olmadan, onayınızla yükseltilebilir. `components.lock` **taban** olarak kalır. Paket kilitleri değişmedi (utility 0.1.0, kurulum 0.1.0, linux-hardening 0.13.0); indeks `utility 0.1.1`'i "yükseltilebilir" gösterir.

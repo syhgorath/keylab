@@ -1,0 +1,5 @@
+# yerel çıktılar
+/sshpocket-go
+/sshpocket-go-test
+/dist/
+.DS_Store
