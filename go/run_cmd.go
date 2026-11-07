@@ -332,7 +332,7 @@ func serversCommand(args []string) int {
 	dir := serversDirOf(*srvF, root)
 	rest := fs.Args()
 	usage := func() int {
-		fmt.Fprintln(os.Stderr, "kullanım: servers [-servers D] list | import-ssh-config [dosya] | knock <ad> | keychain <ad>")
+		fmt.Fprintln(os.Stderr, "kullanım: servers [-servers D] list | import-ssh-config [dosya] | knock <ad> | knock-send <ad> | keychain <ad>")
 		return 2
 	}
 	if len(rest) == 0 {
@@ -366,6 +366,17 @@ func serversCommand(args []string) int {
 			return usage()
 		}
 		return s.KeychainManage(rest[1])
+	case "knock-send":
+		// ayarlı knock dizisini şimdi gönderir (bağlanmadan önce otomatik gönderilenin aynısı); etkin değilse bir şey yapmaz
+		if len(rest) != 2 {
+			return usage()
+		}
+		if err := cli.SendKnock(context.Background(), dir, rest[1]); err != nil {
+			fmt.Fprintln(os.Stderr, "⚠️ ", err)
+			return 1
+		}
+		fmt.Println("🚪 Knock gönderildi (ya da bu sunucuda etkin değil)")
+		return 0
 	}
 	return usage()
 }

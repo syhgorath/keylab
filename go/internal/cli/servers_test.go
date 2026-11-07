@@ -15,7 +15,13 @@ import (
 
 const fakeSecurityStdin = `#!/bin/bash
 S="$FAKE_KC"
+[ -n "$FAKE_ARGV_LOG" ] && echo "$*" >> "$FAKE_ARGV_LOG"
 case "$1" in
+  -i)
+    read -r cmdline
+    acct=""; val=""; set -- $cmdline
+    while [ $# -gt 0 ]; do case "$1" in -a) acct="$2" ;; -w) val="$2" ;; esac; shift; done
+    { grep -v "^$acct=" "$S" 2>/dev/null; echo "$acct=$val"; } > "$S.n"; mv "$S.n" "$S"; exit 0 ;;
   find-generic-password)
     grep -q "^$3=" "$S" 2>/dev/null || exit 44
     if [ "$5" = "-w" ] || [ "$6" = "-w" ]; then grep "^$3=" "$S" | tail -1 | cut -d= -f2-; fi; exit 0 ;;
@@ -129,12 +135,7 @@ func TestKnockManageMatchesShell(t *testing.T) {
 	for _, c := range []struct {
 		name, answers, secret, kc, env string
 	}{
-		{"kaydet", "1\n\n\n", "7000,8000,9000\n", "", "IP=1.1.1.1\nUSER=u\n"},
-		{"kaydet udp 500", "1\nUDP\n500\n", "1,2\n", "", "IP=1.1.1.1\n"},
-		{"geçersiz dizi silinir", "1\n\n\n", "99999\n", "", "IP=1.1.1.1\n"},
 		{"3 geçersiz protokol", "1\nx\ny\nz\n", "7000\n", "", "IP=1.1.1.1\n"},
-		{"geçersiz gecikme sonra düzelir", "1\ntcp\n9999\nabc\n250\n", "7000\n", "", "IP=1.1.1.1\n"},
-		{"gecikme 5500 reddedilir", "1\ntcp\n5500\n300\n", "7000\n", "", "IP=1.1.1.1\n"},
 		{"kapat", "2\n", "", "USBMonitor_WEB1_Knock=7000,8000\n", "IP=1.1.1.1\nKNOCK=keychain\nKNOCK_PROTO=tcp\nKNOCK_DELAY_MS=300\n"},
 		{"durum etkin", "0\n", "", "USBMonitor_WEB1_Knock=7000,8000\n", "IP=1.1.1.1\nKNOCK=keychain\nKNOCK_PROTO=udp\nKNOCK_DELAY_MS=100\n"},
 		{"geri q", "q\n", "", "", "IP=1.1.1.1\n"},
@@ -261,5 +262,65 @@ func TestSendKnockUsesKeychainSequence(t *testing.T) {
 	}
 	if err := SendKnock(context.Background(), root, "../x"); err == nil {
 		t.Error("geçersiz ad kabul edildi")
+	}
+}
+
+// Bilinçli fark: dizi artık macOS'un parola isteminde değil, sshpocket'in kendi (gizli) isteminde sorulur ve `security -i` ile
+// stdin'den yazılır. Kabukla karşılaştırılamaz; beklenen davranış doğrudan sınanır.
+func TestKnockManageSetsSequenceWithOwnPrompt(t *testing.T) {
+	mgrEnv(t)
+	for _, c := range []struct {
+		name, answers string
+		wantCode      int
+		wantKC        string
+		wantEnv       []string
+		wantOut       []string
+	}{
+		{"geçerli", "1\n\n\n7001,7002,7003\n", 0, "USBMonitor_WEB1_Knock=7001,7002,7003\n", []string{"KNOCK=keychain", "KNOCK_PROTO=tcp", "KNOCK_DELAY_MS=300"}, []string{"✅ Knock etkin (tcp, 300 ms)", "    Dizi (portlar, örn. 7000,8000,9000): "}},
+		{"udp 500", "1\nUDP\n500\n1,65535\n", 0, "USBMonitor_WEB1_Knock=1,65535\n", []string{"KNOCK_PROTO=udp", "KNOCK_DELAY_MS=500"}, nil},
+		{"boşluklu önce reddedilir, sonra geçerli", "1\n\n\n7001, 7002\n7001,7002\n", 0, "USBMonitor_WEB1_Knock=7001,7002\n", []string{"KNOCK=keychain"}, []string{"Dizi geçerli değil"}},
+		{"parola benzeri değer reddedilir", "1\n\n\nAQ563114xx\n", 1, "", nil, []string{"Dizi geçerli değil", "3 geçersiz deneme"}},
+		{"girdi yok", "1\n\n\n", 1, "", nil, nil},
+	} {
+		root := t.TempDir()
+		mkServer(t, root, "web1", "IP=1.1.1.1\nUSER=u\n", false)
+		kc := filepath.Join(t.TempDir(), "kc")
+		os.WriteFile(kc, nil, 0o600)
+		argv := filepath.Join(t.TempDir(), "argv")
+		t.Setenv("FAKE_KC", kc)
+		t.Setenv("FAKE_ARGV_LOG", argv)
+		answers := c.answers
+		if c.name == "parola benzeri değer reddedilir" {
+			answers = "1\n\n\nAQ563114xx\nAQ563114xx\nAQ563114xx\n"
+		}
+		s, so, se, closeFn := goServers(root, answers, "")
+		code := s.KnockManage("web1")
+		closeFn()
+		got, _ := os.ReadFile(kc)
+		env, _ := os.ReadFile(filepath.Join(root, "web1", "server.env"))
+		all := so.String() + se.String()
+		if code != c.wantCode || string(got) != c.wantKC {
+			t.Errorf("%s: kod=%d (beklenen %d) kc=%q (beklenen %q)\n%s", c.name, code, c.wantCode, got, c.wantKC, all)
+		}
+		for _, w := range c.wantEnv {
+			if !strings.Contains(string(env), w) {
+				t.Errorf("%s: server.env'de %q yok:\n%s", c.name, w, env)
+			}
+		}
+		for _, w := range c.wantOut {
+			if !strings.Contains(all, w) {
+				t.Errorf("%s: çıktıda %q yok:\n%s", c.name, w, all)
+			}
+		}
+		if c.wantKC == "" && strings.Contains(string(env), "KNOCK=keychain") {
+			t.Errorf("%s: başarısızken KNOCK etkinleştirildi", c.name)
+		}
+		// dizi komut satırında (argv) ASLA görünmemeli
+		if b, _ := os.ReadFile(argv); strings.Contains(string(b), "7001") || strings.Contains(string(b), "AQ5631") {
+			t.Errorf("%s: dizi/değer security argümanlarında göründü: %q", c.name, b)
+		}
+		if strings.Contains(all, "AQ563114xx") && c.name != "parola benzeri değer reddedilir" {
+			t.Errorf("%s: değer çıktıya sızdı", c.name)
+		}
 	}
 }

@@ -158,6 +158,44 @@ func (s *Servers) knockAsk(prompt, def string, ok func(string) bool, why string)
 	return "", false
 }
 
+// askSequence: knock dizisini ekranda göstermeden sorar; geçersizse nedenini söyleyip yeniden sorar (en çok 3 deneme).
+// Bilinçli fark: kabuk diziyi macOS'un "password data for new item" istemine yazdırırdı (iki kez, parola sanılıyordu).
+func (s *Servers) askSequence() (string, bool) {
+	if s.ChildIn != nil {
+		off := exec.Command("stty", "-echo")
+		off.Stdin = s.ChildIn
+		if off.Run() == nil {
+			defer func() {
+				on := exec.Command("stty", "echo")
+				on.Stdin = s.ChildIn
+				on.Run()
+				fmt.Fprintln(s.Err)
+			}()
+		}
+	}
+	for tries := 0; tries < 3; tries++ {
+		ans, ok := s.ask("    Dizi (portlar, örn. 7000,8000,9000): ")
+		if !ok {
+			return "", false
+		}
+		ans = strings.TrimSpace(ans)
+		if servers.KnockPortsValid(ans) {
+			return ans, true
+		}
+		fmt.Fprintln(s.Err)
+		s.say("   ⚠️  Dizi geçerli değil: 1-10 port, her biri 1-65535, virgülle ayrılmış, boşluksuz (örnek: 7000,8000,9000)")
+	}
+	s.say("⚠️  3 geçersiz deneme; ayar yapılmadı.")
+	return "", false
+}
+
+// storeSecret: değeri `security -i` ile komut satırında GÖSTERMEDEN (stdin'den) Keychain'e yazar.
+func (s *Servers) storeSecret(account, value string) error {
+	cmd := exec.Command("security", "-i")
+	cmd.Stdin = strings.NewReader("add-generic-password -U -a " + account + " -s " + servers.KeychainService + " -w " + value + "\n")
+	return cmd.Run()
+}
+
 // KnockManage, knock_manage (düz akış): protokol, bekleme ve dizi ayarı; dizi Keychain'de.
 func (s *Servers) KnockManage(name string) int {
 	dir, ok := s.dirOf(name)
@@ -195,16 +233,19 @@ func (s *Servers) KnockManage(name string) int {
 		if !ok {
 			return 1
 		}
-		s.say("3/3 Dizi: sunucu yöneticisinin verdiği port sırası, virgülle ayrılmış (örnek: 7000,8000,9000).")
-		s.say("    Sıradaki istem ekranda görünmez ve macOS aynı değeri İKİ KEZ isteyebilir (ikincisinde aynısını yazın).")
-		if err := s.security("add-generic-password", "-U", "-a", account, "-s", servers.KeychainService, "-w"); err != nil {
+		s.say("3/3 Dizi: sunucu yöneticisinin verdiği PORT SIRASI, virgülle ayrılmış, boşluksuz (örnek: 7000,8000,9000). Adım numarasını değil, portları yazın.")
+		s.say("    Yazarken ekranda görünmez; Keychain'e kaydedilir (macOS ayrıca parola SORMAZ).")
+		seq, ok := s.askSequence()
+		if !ok {
+			return 1
+		}
+		if err := s.storeSecret(account, seq); err != nil {
 			s.say("⚠️  Kaydedilemedi")
 			return 1
 		}
-		seq, _ := s.Keychain.Find(account)
-		if !servers.KnockPortsValid(seq) {
+		if got, _ := s.Keychain.Find(account); got != seq {
 			s.Keychain.Delete(account)
-			s.say("⚠️  Dizi geçersiz ve silindi. Biçim: 1-10 port, her biri 1-65535, virgülle (örnek: 7000,8000,9000)")
+			s.say("⚠️  Kayıt doğrulanamadı ve silindi.")
 			return 1
 		}
 		servers.Set(dir, "KNOCK", "keychain")
