@@ -81,7 +81,7 @@ servers/<name>/    server.env + id_ed25519_<name>   (user data, never committed)
 ### Not in the Go version (the shell reference had them)
 
 The terminal menu (including fzf) was **deliberately not ported**; server **migration** (`--migrate`, the old `sistem/Modules` layout) was not ported.
-Not yet: the 🔒 (knock needed) marker in the status indicator, and the dashboard's "copy ssh command" sending a knock.
+The status indicator shows 🔒 "knock needed" when the port is closed and knocking is enabled; "copy ssh command" gives a single command that sends the knock first when knocking is enabled. Maintainer tool: `./sshpocket components lock <package> <version> [--repo owner/repo] [--write]` (builds the `components.lock` entry after verifying the signature; without `--write` it only shows it).
 
 ## Updating
 

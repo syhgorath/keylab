@@ -81,7 +81,7 @@ servers/<ad>/      server.env + id_ed25519_<ad>   (kullanıcı verisi, repoya gi
 ### Go sürümünde olmayanlar (kabuk referansında vardı)
 
 Terminal menüsü (fzf dâhil) **bilerek taşınmadı**; sunucu **taşıma** (`--migrate`, eski `sistem/Modules` düzeni) taşınmadı.
-Henüz yok: durum göstergesinde 🔒 (knock gerekir) işareti ve panodaki "ssh komutunu kopyala"nın knock göndermesi.
+Durum göstergesi, port kapalı ve knock etkinse 🔒 "knock gerekir" gösterir; panodaki "ssh komutunu kopyala" knock etkinse önce knock'u gönderen tek bir komut verir. Bakımcı aracı: `./sshpocket components lock <paket> <sürüm> [--repo sahip/depo] [--write]` (`components.lock` girdisini imzayı doğrulayarak üretir; `--write` olmadan yalnız gösterir).
 
 ## Güncelleme
 

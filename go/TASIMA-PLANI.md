@@ -6,7 +6,7 @@
 > - Arayüz eylemleri varsayılan olarak Go yürütücüyle çalışır (`SSHPOCKET_SHELL_RUN=1` kabuğa döner).
 > - Kabuk motoru ve Bats testleri `referans/kabuk/` altında dondurulmuştur; Go testleri onu şartname olarak kullanır (bulunamazsa atlar).
 > - Taşınmayanlar (bilinçli): terminal menüsü (fzf dâhil), `--migrate` ve eski `sistem/Modules` düzeni.
-> - Eksikler: durum göstergesinde 🔒 (knock) işareti; panodaki "ssh komutunu kopyala" knock göndermez; `scripts/lock-component.sh`'ın Go karşılığı yok.
+> - Eksikler: yok (2026-11-08 sonrası kapandı: 🔒 işareti, "ssh komutunu kopyala" knock'lu komut, `components lock` = lock-component.sh karşılığı; bkz. aşağıdaki ek).
 > - Denenmedi: arayüzdeki "Keychain parolası" ve "Port knocking" adım düğmeleri; gerçek Release ile `update`; `build-release.sh` imzalama adımı; Gatekeeper/notarization; gerçek ağda `components update/upgrade`; CI'ın yeni düzende ilk koşusu.
 > - Sürüm numarası, etiket, imza ve Release bakımcıdadır.
 
@@ -155,3 +155,10 @@ KALAN eksik: durum göstergesinde 🔒 işareti; panodaki "ssh komutunu kopyala"
 
 ## Knock dizisi girişi (2026-11-07)
 `servers knock <ad>`: dizi artık macOS'un parola isteminde değil, sshpocket'in kendi gizli isteminde sorulur (stty -echo), doğrulanır (1-10 port, 1-65535, boşluksuz) ve `security -i` ile stdin'den Keychain'e yazılır (komut satırında görünmez). Kabuk akışından BİLİNÇLİ fark: kabuk diziyi "password data for new item" isteminde sordurup parola sanılmasına yol açıyordu. `servers knock-send <ad>` ayarlı diziyi şimdi gönderir (bağlanmadan önce otomatik gönderilenin aynısı); 3 yerel dinleyiciyle sıra ve 300 ms aralık ölçüldü.
+
+---
+## 2026-11-08 (devam): son üç eksik kapatıldı
+- 🔒 durum: `Server.Knock` (server.env KNOCK=keychain); port kapalı + knock etkin → arayüzde sarı nokta ve "🔒 kapalı — knock gerekir". Testler: knockui_test.go (bozma testiyle doğrulandı).
+- "ssh komutunu kopyala": knock etkinse `<ikili> servers -servers <klasör> knock-send <ad> && ssh …` verir (yapıştırıldığı an geçerli olur).
+- `components lock <id> <sürüm> [--repo] [--signers] [--write]` (internal/cli/lock.go + trust/lockwrite.go): scripts/lock-component.sh ile YAN YANA test (21 senaryo: çıkış kodu, stdout, HATA satırları, components.lock baytları, sembolik bağ korunumu) + indirme yolu için Go'ya özel test; 12 mutasyonun hepsi yakalandı (ilk koşuda 1 hayatta kalan mutant ve eksik senaryo bulunup düzeltildi). Kasıtlı fark: kullanım iletisinde komut adı. DENENMEDİ: gerçek GitHub Release ile indirme.
+- Ayrıca `sections` alanı doğrulayıcısı (PAKET-BOLUMLERI-TASLAK.md): arayüz kartları için hazırlık; paket repoları henüz kullanmıyor.

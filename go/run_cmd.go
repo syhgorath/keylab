@@ -262,12 +262,18 @@ func componentsCommand(args []string) int {
 		return c.Prune(rest)
 	case "validate":
 		return c.Validate(rest)
+	case "lock": // bakımcı aracı: scripts/lock-component.sh karşılığı
+		rs := os.Getenv("LOCK_RELEASE_SIGNERS")
+		if rs == "" {
+			rs = signersPath(root, "release_signers")
+		}
+		return c.LockCommand(rest, os.Getenv("LOCK_COMPONENT_ARCHIVE"), os.Getenv("LOCK_COMPONENT_SIG"), rs)
 	case "report":
 		return reportCommand(append([]string{"-servers", srv, "-components", comp}, rest...))
 	case "run":
 		return runCommand(append([]string{"-servers", srv, "-components", comp}, rest...))
 	}
-	fmt.Fprintln(os.Stderr, "kullanım: components list | sync [--yes] | update | upgrade [--yes] [paket…] | check-new | prune [--yes] [--dry-run] | report [paket [eski-sürüm]] | run <paket> <eylem> <sunucu> | validate <paket|dizin|arşiv> [--strict]")
+	fmt.Fprintln(os.Stderr, "kullanım: components list | sync [--yes] | update | upgrade [--yes] [paket…] | check-new | prune [--yes] [--dry-run] | report [paket [eski-sürüm]] | run <paket> <eylem> <sunucu> | validate <paket|dizin|arşiv> [--strict] | lock <paket> <sürüm> [--repo sahip/depo] [--signers satır] [--write]")
 	return 2
 }
 

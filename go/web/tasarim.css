@@ -271,6 +271,7 @@ a{color:var(--accent)}
 }
 .status-dot.on{color:var(--ok);background:var(--ok)}
 .status-dot.off{color:var(--danger);background:var(--danger)}
+.status-dot.lock{color:var(--warn);background:var(--warn)}
 .status-dot.unk{color:var(--muted);background:var(--muted)}
 .srv-ident{min-width:0;display:flex;flex-direction:column;gap:1px}
 .srv-name{font-weight:600;display:flex;align-items:center;gap:8px}

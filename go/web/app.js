@@ -98,8 +98,8 @@
       <div class="stile-last ${!s.valid || (s.last && !isOk(s.last.result)) ? "bad" : ""}">${last}</div></li>`;
   }
 
-  const dotState = s => (!s.valid ? "bad" : !s.checked ? "unk" : s.up ? "on" : "off");
-  const stateText = s => (!s.valid ? "yapılandırma geçersiz" : !s.checked ? "denetleniyor" : s.up ? "çevrimiçi" : "bağlantı yok");
+  const dotState = s => (!s.valid ? "bad" : !s.checked ? "unk" : s.up ? "on" : s.knock ? "lock" : "off");
+  const stateText = s => (!s.valid ? "yapılandırma geçersiz" : !s.checked ? "denetleniyor" : s.up ? "çevrimiçi" : s.knock ? "🔒 kapalı — knock gerekir" : "bağlantı yok");
   const emptyServers = '<li class="server" style="cursor:default"><div class="srv-ident"><div class="srv-name">Sunucu bulunamadı</div><div class="srv-addr">USB\'de servers/&lt;ad&gt;/server.env yok ya da arama eşleşmedi</div></div></li>';
 
   function pkgRow(p) {
@@ -1044,7 +1044,7 @@
     const s = srv.server;
     $("#srv-head").innerHTML = `<button class="back" id="srv-back">← Sunucular</button>
       <div class="srv-title">${osIcon(s.os, 36)}<span class="status-dot ${dotState(s)}" aria-label="${stateText(s)}"></span><h1>${esc(s.name)}</h1>
-        ${s.platform ? `<span class="tag">${esc(s.platform)}</span>` : ""}<span class="badge ${!s.valid ? "warn" : !s.checked ? "plain" : s.up ? "ok" : "danger"}">${stateText(s)}</span>
+        ${s.platform ? `<span class="tag">${esc(s.platform)}</span>` : ""}<span class="badge ${!s.valid ? "warn" : !s.checked ? "plain" : s.up ? "ok" : s.knock ? "warn" : "danger"}">${stateText(s)}</span>
         <span class="grow" style="flex:1"></span>
         <button class="btn sm" id="srv-term" ${s.valid ? "" : "disabled"}>Terminal'de bağlan</button>
         <button class="btn sm ghost" id="srv-copy" ${s.valid ? "" : "disabled"}>SSH komutunu kopyala</button>

@@ -98,6 +98,14 @@ func (s Server) sshCmd() string {
 	return fmt.Sprintf("ssh %s-p %s %s@%s", k, s.Port, s.User, s.Host)
 }
 
+// copyCmd: panoya kopyalanan komut. Knock etkinse önce kendi vuruşunu gönderir (zincirleme), böylece yapıştırıldığı anda geçerli olur.
+func (a *App) copyCmd(s Server) string {
+	if !s.Knock {
+		return s.sshCmd()
+	}
+	return fmt.Sprintf("%s servers -servers %s knock-send %s && %s", shQuote(selfExe()), shQuote(a.serversDir), shQuote(s.Name), s.sshCmd())
+}
+
 func defaultStateDir() string {
 	if x := os.Getenv("XDG_DATA_HOME"); x != "" {
 		return filepath.Join(x, "sshpocket")
@@ -618,7 +626,7 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		switch req.Action {
 		case "cmd":
-			_ = json.NewEncoder(w).Encode(map[string]string{"cmd": s.sshCmd()})
+			_ = json.NewEncoder(w).Encode(map[string]string{"cmd": app.copyCmd(s)})
 		case "terminal":
 			if runtime.GOOS != "darwin" {
 				http.Error(w, "yalnızca macOS", http.StatusNotImplemented)

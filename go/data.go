@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"sshpocket-go/internal/findings"
+	"sshpocket-go/internal/servers"
 	"sshpocket-go/internal/settings"
 	"sshpocket-go/internal/trust"
 )
@@ -60,6 +61,7 @@ type Server struct {
 	HasKey   bool     `json:"hasKey"`
 	Up       bool     `json:"up"`
 	Checked  bool     `json:"checked"` // durum en az bir kez ölçüldü mü
+	Knock    bool     `json:"knock"`   // port knocking etkin (kapalı port = knock gerekir, 🔒)
 	Valid    bool     `json:"valid"`
 	Last     *Action  `json:"last"`
 	Recent   []Action `json:"recent"`
@@ -212,6 +214,7 @@ func (a *App) servers(probe bool, only ...string) []Server {
 		}
 		s.Platform = parseEnv(filepath.Join(dir, "linux-hardening.vars"))["hardening_platform"]
 		s.OS = detectOS(env["OS"], e.Name(), s.Platform)
+		s.Knock = servers.KnockEnabled(dir)
 		s.keyPath = filepath.Join(dir, "id_ed25519_"+e.Name())
 		if _, err := os.Stat(s.keyPath); err == nil {
 			s.HasKey = true

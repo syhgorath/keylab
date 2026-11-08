@@ -1170,6 +1170,9 @@ func Validate(raw []byte, wantID, wantVer string) (lines, errs []string, code in
 		}
 	}
 
+	// --- sections (isteğe bağlı, yalnız Go: kabuk/Python şartnamesinde yok; arayüz kartları) ---
+	secLines := validateSections(v, d, actions, varSpecs)
+
 	if len(v.errs) > 0 {
 		return nil, v.errs, 1
 	}
@@ -1180,7 +1183,7 @@ func Validate(raw []byte, wantID, wantVer string) (lines, errs []string, code in
 	if reqPy != "" {
 		out = append(out, "requires.python="+reqPy)
 	}
-	for _, part := range [][]string{profLines, actLines, varLines, platLines, invLines, itemLines, menuLines} {
+	for _, part := range [][]string{profLines, actLines, varLines, platLines, invLines, itemLines, menuLines, secLines} {
 		out = append(out, part...)
 	}
 	return out, nil, 0
