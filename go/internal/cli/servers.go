@@ -3,6 +3,7 @@ package cli
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -258,6 +259,121 @@ func (s *Servers) KnockManage(name string) int {
 		s.say("✅ Knock kapatıldı")
 	}
 	return 0
+}
+
+// Etkileşimsiz knock API'si (arayüz formu): KnockManage'in sorular yerine parametreyle çalışan karşılığı.
+// Dizi yalnızca `security -i` standart girdisiyle yazılır (komut satırında görünmez) ve ASLA geri döndürülmez.
+var (
+	ErrKnockStore  = errors.New("knock dizisi Keychain'e kaydedilemedi")
+	ErrKnockVerify = errors.New("Keychain kaydı doğrulanamadı ve silindi")
+)
+
+// KnockInfo, bir sunucunun knock durumu (dizinin değeri yok).
+type KnockInfo struct {
+	Enabled bool   `json:"enabled"` // server.env KNOCK=keychain
+	HasSeq  bool   `json:"hasSeq"`  // dizi BU bilgisayarın Keychain'inde var mı
+	Proto   string `json:"proto"`
+	Delay   string `json:"delay"`
+	Hint    string `json:"hint,omitempty"` // kayıtlı dizinin maskeli ipucu: her portun yalnızca ilk ve son rakamı ("7••1, 7••2")
+}
+
+// MaskSequence: "7001,7002,12345" → "7••1, 7••2, 1•••5". 3+ haneli portta ilk ve son rakam görünür; 1-2 haneli portun
+// tamamı gizlenir (iki rakamın ikisini de göstermek portu açığa çıkarırdı). Geçersiz dizi için "" döner.
+func MaskSequence(seq string) string {
+	if !servers.KnockPortsValid(seq) {
+		return ""
+	}
+	parts := strings.Split(seq, ",")
+	for i, p := range parts {
+		if len(p) < 3 {
+			parts[i] = strings.Repeat("•", len(p))
+			continue
+		}
+		parts[i] = p[:1] + strings.Repeat("•", len(p)-2) + p[len(p)-1:]
+	}
+	return strings.Join(parts, ", ")
+}
+
+func (s *Servers) serverDir(name string) (string, error) {
+	if !servers.NameValid(name) {
+		return "", errors.New("geçersiz sunucu adı")
+	}
+	dir := filepath.Join(s.Dir, name)
+	if st, err := os.Stat(filepath.Join(dir, "server.env")); err != nil || !st.Mode().IsRegular() {
+		return "", errors.New("sunucu yok")
+	}
+	return dir, nil
+}
+
+// KnockStatus: ayarlar server.env'den, dizinin varlığı Keychain'den. Dizi okunur ama YALNIZCA maskeli ipucu (Hint) döner.
+func (s *Servers) KnockStatus(name string) (KnockInfo, error) {
+	dir, err := s.serverDir(name)
+	if err != nil {
+		return KnockInfo{}, err
+	}
+	p, _ := servers.Get(dir, "KNOCK_PROTO")
+	d, _ := servers.Get(dir, "KNOCK_DELAY_MS")
+	if p == "" {
+		p = "tcp"
+	}
+	if d == "" {
+		d = "300"
+	}
+	seq, has := s.Keychain.Find(servers.KnockAccount(servers.Prefix(name)))
+	info := KnockInfo{Enabled: servers.KnockEnabled(dir), HasSeq: has, Proto: p, Delay: d}
+	if has {
+		info.Hint = MaskSequence(seq)
+	}
+	return info, nil
+}
+
+// KnockSave: doğrular, diziyi Keychain'e yazar, geri okuyup denetler, sonra server.env'i günceller.
+func (s *Servers) KnockSave(name, proto, delay, seq string) error {
+	dir, err := s.serverDir(name)
+	if err != nil {
+		return err
+	}
+	if !protoOK(proto) {
+		return errors.New("protokol tcp veya udp olmalı")
+	}
+	if !delayOK(delay) {
+		return errors.New("bekleme 0-5000 ms arasında bir sayı olmalı")
+	}
+	account := servers.KnockAccount(servers.Prefix(name))
+	if seq == "" { // dizi boş: bu bilgisayarda kayıtlı dizi KORUNUR, yalnızca protokol ve bekleme güncellenir
+		if !s.Keychain.Has(account) {
+			return errors.New("dizi gerekli: bu bilgisayarın Keychain'inde kayıtlı dizi yok")
+		}
+		servers.Set(dir, "KNOCK", "keychain")
+		servers.Set(dir, "KNOCK_PROTO", proto)
+		servers.Set(dir, "KNOCK_DELAY_MS", delay)
+		return nil
+	}
+	if !servers.KnockPortsValid(seq) {
+		return errors.New("dizi virgülle ayrılmış 1-10 port olmalı (her biri 1-65535, boşluksuz)")
+	}
+	if err := s.storeSecret(account, seq); err != nil {
+		return ErrKnockStore
+	}
+	if got, _ := s.Keychain.Find(account); got != seq {
+		s.Keychain.Delete(account)
+		return ErrKnockVerify
+	}
+	servers.Set(dir, "KNOCK", "keychain")
+	servers.Set(dir, "KNOCK_PROTO", proto)
+	servers.Set(dir, "KNOCK_DELAY_MS", delay)
+	return nil
+}
+
+// KnockDisable: Keychain kaydını siler ve knock'u kapatır.
+func (s *Servers) KnockDisable(name string) error {
+	dir, err := s.serverDir(name)
+	if err != nil {
+		return err
+	}
+	s.Keychain.Delete(servers.KnockAccount(servers.Prefix(name)))
+	servers.Set(dir, "KNOCK", "")
+	return nil
 }
 
 // KeychainManage, ssh_keychain_manage (düz akış): passphrase Keychain kaydını kaydet/güncelle/sil; kayıttan sonra anahtarı açarak doğrular.

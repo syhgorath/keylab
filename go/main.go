@@ -190,7 +190,8 @@ func main() {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"server": s, "packages": app.packageInfos(s)})
+		ki, _ := (&cli.Servers{Dir: app.serversDir}).KnockStatus(name) // dizinin değeri yok; yalnızca "bu Mac'te kayıtlı mı"
+		_ = json.NewEncoder(w).Encode(map[string]any{"server": s, "packages": app.packageInfos(s), "knock": ki, "prep": app.prepState(s)})
 	}))
 	mux.HandleFunc("/api/lynis", app.guard(func(w http.ResponseWriter, r *http.Request) {
 		name := r.URL.Query().Get("server")
@@ -632,21 +633,25 @@ func main() {
 				http.Error(w, "yalnızca macOS", http.StatusNotImplemented)
 				return
 			}
-			if err := cli.SendKnock(r.Context(), app.serversDir, s.Name); err != nil { // knock etkinse önce vuruş gönderilir
-				http.Error(w, err.Error(), http.StatusConflict)
+			// knock etkin ama dizi bu bilgisayarda yoksa Terminal'i hiç açma: nedeni arayüzde göster
+			if ki, _ := (&cli.Servers{Dir: app.serversDir}).KnockStatus(s.Name); ki.Enabled && !ki.HasSeq {
+				http.Error(w, "Knock açık ama dizi bu bilgisayarın Keychain'inde yok; Özet → Port knocking'den girin", http.StatusConflict)
 				return
 			}
-			esc := strings.ReplaceAll(strings.ReplaceAll(s.sshCmd(), `\`, `\\`), `"`, `\"`)
+			// Terminal'e knock'lı komut verilir (knock-send && ssh): "🚪 Knock gönderildi" Terminal'de de görünür
+			esc := strings.ReplaceAll(strings.ReplaceAll(app.copyCmd(s), `\`, `\\`), `"`, `\"`)
 			script := `tell application "Terminal" to activate` + "\n" + `tell application "Terminal" to do script "` + esc + `"`
 			if err := exec.Command("osascript", "-e", script).Run(); err != nil {
 				http.Error(w, "açılamadı", http.StatusInternalServerError)
 				return
 			}
-			_ = json.NewEncoder(w).Encode(map[string]string{"ok": "açıldı"})
+			_ = json.NewEncoder(w).Encode(map[string]any{"ok": "açıldı", "knock": s.Knock})
 		default:
 			http.Error(w, "bilinmeyen eylem", http.StatusBadRequest)
 		}
 	}))
+	mux.HandleFunc("/api/knock", app.guard(app.knockHandler))
+	mux.HandleFunc("/api/server-edit", app.guard(app.serverEditHandler))
 	url := fmt.Sprintf("http://%s/?t=%s", app.host, app.token)
 	fmt.Println("sshpocket (Go deneme):", url)
 	fmt.Println("sunucular:", sd, "| components:", cd, "| durum:", st, "| durdurmak için Ctrl-C")
