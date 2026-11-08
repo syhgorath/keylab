@@ -41,7 +41,7 @@
   function showView(name) {
     view = name;
     $$(".view").forEach(v => (v.hidden = v.id !== "view-" + name));
-    const navName = name === "server" ? "servers" : name;
+    const navName = name === "server" || name === "add" ? "servers" : name;
     $$(".nav-item[data-nav]").forEach(b => b.setAttribute("aria-current", b.dataset.nav === navName ? "page" : "false"));
     if (name !== "server" && location.hash) history.replaceState(null, "", location.pathname);
     $(".aside").style.display = name === "dash" ? "" : "none";
@@ -219,12 +219,12 @@
 
   /* ---------------- Değişken düzenleme ---------------- */
   const varsm = $("#varsmodal");
-  let vData = [], vSrv = "", vPkg = "", vQ = "", vOnlySet = false;
+  let vData = [], vSrv = "", vPkg = "", vQ = "", vOnlySet = false, vGroup = "";
 
-  async function openVars(server, pkg) {
-    vSrv = server; vPkg = pkg; vQ = ""; vOnlySet = false;
+  async function openVars(server, pkg, group) {
+    vSrv = server; vPkg = pkg; vQ = ""; vOnlySet = false; vGroup = group || ""; // group: yalnız bu gruptaki değişkenler (uygulama kartı)
     $("#vars-q").value = ""; $("#vars-set").checked = false;
-    $("#vars-title").textContent = "Değişkenler · " + (TAB_LABEL[pkg] || pkg);
+    $("#vars-title").textContent = "Değişkenler · " + (TAB_LABEL[pkg] || pkg) + (vGroup ? " · " + vGroup : "");
     $("#vars-sub").textContent = `Sunucu: ${server} · servers/${server}/${pkg}.vars`;
     $("#vars-list").innerHTML = '<div class="small muted">yükleniyor…</div>';
     varsm.classList.add("open");
@@ -246,9 +246,9 @@
   }
 
   function paintVars() {
-    const q = vQ.toLowerCase();
-    const list = vData.filter(v => (!vOnlySet || v.set) && (!q || `${v.name} ${v.description} ${v.group}`.toLowerCase().includes(q)));
-    $("#vars-count").textContent = `${list.length} / ${vData.length}`;
+    const q = vQ.toLowerCase(), scope = vData.filter(v => !vGroup || v.group === vGroup);
+    const list = scope.filter(v => (!vOnlySet || v.set) && (!q || `${v.name} ${v.description} ${v.group}`.toLowerCase().includes(q)));
+    $("#vars-count").textContent = `${list.length} / ${scope.length}`;
     const groups = {};
     list.forEach(v => (groups[v.group || "Diğer"] = groups[v.group || "Diğer"] || []).push(v));
     const row = v => `<div class="vrow" data-n="${esc(v.name)}">
@@ -275,7 +275,7 @@
       return { ok: r.ok, status: r.status, body: await r.json().catch(() => ({})) };
     };
     const done = async text => {
-      toast(text);
+      toast(text); kuvSrv = ""; // Kurulum kartlarındaki değerler yeniden okunsun
       try { srv = await json("/api/server?name=" + encodeURIComponent(vSrv)); if (view === "server") renderServer(); } catch (e) { /* bir sonraki turda */ }
       const top = $("#vars-list").parentElement.scrollTop; await loadVars(); $("#vars-list").parentElement.scrollTop = top;
     };
@@ -551,7 +551,7 @@
     $("#run-close").hidden = false; $("#run-close").textContent = "Kapat";
     // kartları yenile (sonuç dosyaları motor tarafından yazıldı)
     if (runMode === "upgrade") { if (view === "packages") { await loadPackages(); checkUpdatesUI(); } load(); return; }
-    if (runMode === "task") { if (ok) addDone.add(runSrv + ":" + runAct); await load(); renderAddSteps(); return; }
+    if (runMode === "task") { if (ok) addDone.add(runSrv + ":" + runAct); await load(); renderAddSteps(); if (view === "server" && srvName) { try { srv = await json("/api/server?name=" + encodeURIComponent(srvName)); renderServer(); } catch (e) { /* sonraki otomatik yenileme alır */ } } return; }
     if (runMode === "remove") {
       if (ok && delPurge) { try { await json("/api/server-purge", { name: delName }); } catch (e) { toast("Günlükler silinemedi: " + e.message); } }
       await load(); if (ok) { srvName = ""; srv = null; showView("servers"); toast(`${delName} silindi`); }
@@ -596,9 +596,10 @@
   /* ---------------- Sunucu yeniden adlandırma ve silme ---------------- */
   const dlg = $("#dlg");
   let dlgOk = null, delName = "", delPurge = false;
-  function openDlg({ title, sub, body, ok, okClass, onOk }) {
+  function openDlg({ title, sub, body, ok, okClass, onOk, wide, noOk }) {
     $("#dlg-title").textContent = title; $("#dlg-sub").textContent = sub || ""; $("#dlg-body").innerHTML = body; $("#dlg-err").textContent = "";
     const b = $("#dlg-ok"); b.textContent = ok; b.className = "btn " + (okClass || "primary"); b.disabled = false; dlgOk = onOk;
+    b.hidden = !!noOk; $("#dlg-cancel").textContent = noOk ? "Kapat" : "Vazgeç"; { const m = $(".modal", dlg); m.style.width = wide ? "min(860px,94vw)" : "min(580px,94vw)"; m.style.maxWidth = wide ? "860px" : ""; }
     dlg.classList.add("open");
   }
   const closeDlg = () => dlg.classList.remove("open");
@@ -673,7 +674,7 @@
     runMode = "task";
     const [, title, text] = TASKS[task];
     $("#run-title").innerHTML = `${esc(title)} <span class=\"draft-tag\" style=\"background:var(--warn-weak);color:var(--warn);border-color:var(--warn-border)\">${esc(server)}</span>`;
-    $("#run-sub").textContent = "Yeni sunucu kurulumu";
+    $("#run-sub").textContent = "Bağlantı hazırlığı";
     $("#run-confirm-text").innerHTML = text;
     $("#run-confirm-note").textContent = "Motorun soruları çıktıda belirir: Evet/Hayır düğmeleriyle ya da kutuya yazarak yanıtlayın. Parolalar sistem parola penceresine yazılır.";
     $("#run-go").textContent = "Başlat";
@@ -758,55 +759,161 @@
     let d;
     try { d = await json("/api/packages"); }
     catch (e) { $("#pkg-page").innerHTML = `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div>Yüklenemedi: ${esc(e.message)}</div></div>`; return; }
-    pkgRepo = Object.fromEntries((d.packages || []).map(p => [p.id, p.repo]));
+    pkgRepo = Object.fromEntries((d.packages || []).map(p => [p.id, p.repo])); pkgInfo = Object.fromEntries((d.packages || []).map(p => [p.id, p]));
     const cmp = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const p = x[i] || 0, q = y[i] || 0; if (p !== q) return p < q ? -1 : 1; } return 0; };
     d.packages = d.packages || []; d.servers = d.servers || [];
     if (!d.packages.length) { $("#pkg-page").innerHTML = '<div class="card"><div class="card-body"><div class="empty-state"><h3>Paket bulunamadı</h3><p>USB\'de <span class="mono">components/&lt;paket&gt;/current</span> yok. Paketler menüden ya da <span class="mono">sshpocket</span> ile yüklenir.</p></div></div></div>'; return; }
     const order = ["linux-hardening", "utility", "kurulum"];
     d.packages.sort((a, b) => (order.indexOf(a.id) + 1 || 99) - (order.indexOf(b.id) + 1 || 99));
-    $("#pkg-page").innerHTML = `<div id="upd-card"></div><div class="notice" style="margin-bottom:16px"><span class="ico" aria-hidden="true">ℹ</span><div>Aşağıda USB\'deki sürümler, kilit tabanı ve her sunucuda <b>son kullanılan</b> sürüm görünür. "Kurulu" bilgisi bu değil: paketin o sunucuda en son çalıştırıldığı sürümdür (paketler sunucuya kurulmaz, kontrolcüden çalıştırılır). Yeni sürümler yukarıdaki <b>Güncellemeler</b> kartından denetlenir.</div></div>` +
-      d.packages.filter(p => !query || `${p.id} ${p.name}`.toLowerCase().includes(query)).map(p => {
+    $("#pkg-page").innerHTML = `<div id="upd-card"></div><div class="notice" style="margin-bottom:16px"><span class="ico" aria-hidden="true">ℹ</span><div>Bir pakete tıklayın: sürümler, kilit tabanı ve sunuculardaki son kullanım açılır. "Kullanıldı", paketin o sunucuda en son çalıştırıldığı anlamına gelir; paketler sunucuya kurulmaz, kontrolcüden çalıştırılır.</div></div>` +
+      `<div class="card pk-list">` + (d.packages.filter(p => !query || `${p.id} ${p.name} ${p.repo || ""}`.toLowerCase().includes(query)).map(p => {
+        const sm = pkgSummary(p, d.servers, cmp);
         const floorBad = p.floor && cmp(p.current, p.floor) < 0;
-        const rows = d.servers.map(s => {
-          const u = p.uses.find(x => x.server === s.name);
-          let ver = '<span class="muted">kullanılmadı</span>', note = "";
-          if (u) {
-            const c = cmp(u.version, p.current);
-            ver = `<span class="vchip">${esc(u.version)}</span> ` + (c === 0 ? '<span class="badge ok">USB ile aynı</span>' : c < 0 ? '<span class="badge warn">USB\'de daha yeni var</span>' : '<span class="badge info">USB\'den yeni</span>');
-            note = `${u.result === "ok" ? '<span class="res ok">✔</span>' : '<span class="res fail">✖</span>'} ${esc(u.action)} · <span class="muted" title="${esc(localTime(u.time))}">${esc(ago(u.time))} önce</span>`;
-          }
-          return `<div class="urow"><div class="who">${osIcon(s.os, 26)}${esc(s.name)}</div><div>${u ? `<span class="mono small">${esc(u.version)}</span>` : "—"}</div><div>${ver}</div><div class="small">${note}</div></div>`;
-        }).join("");
-        return `<div class="card"><div class="card-head"><h2>${esc(p.name || p.id)}</h2><span class="hint">${esc(p.id)}${p.repo ? " · " + esc(p.repo) : ""}</span></div>
-          <div class="card-body"><p class="small muted" style="margin:0 0 12px">${esc(p.description)}</p>
-            <div class="row-flex" style="margin-bottom:6px"><span class="small muted">USB'de bulunan sürümler:</span><span class="vchips">${p.versions.map(v => `<span class="vchip${v === p.current ? " cur" : ""}" ${v === p.current ? 'title="USB\'de kullanılan (current)"' : ""}>${esc(v)}</span>`).join("")}</span></div>
-            <div class="row-flex"><span class="small muted">Kilit tabanı:</span>${p.floor ? `<span class="vchip">${esc(p.floor)}</span>` : '<span class="muted small">kilitte yok</span>'}
-              ${floorBad ? '<span class="badge danger">USB sürümü kilit tabanının altında</span>' : p.floor ? '<span class="small muted">(bu sürümün altı çalıştırılmaz)</span>' : ""}</div></div>
-          <div class="card-body tight"><div class="urow head"><div>Sunucu</div><div>Son sürüm</div><div>Durum</div><div>Son eylem</div></div>${rows || '<div class="urow"><div class="muted">Sunucu yok</div></div>'}</div></div>`;
-      }).join("") || '<div class="small muted">Paket bulunamadı.</div>';
+        return `<button class="pk-li" data-pk="${esc(p.id)}" aria-label="${esc(p.name || p.id)} ayrıntıları">
+          <span class="pk-li-ico" aria-hidden="true">${esc((p.name || p.id).charAt(0).toUpperCase())}</span>
+          <span class="pk-li-main"><span class="pk-li-name">${esc(p.name || p.id)}</span><span class="pk-li-sub mono">${esc(p.id)}${p.repo ? " · " + esc(p.repo) : ""}</span></span>
+          <span class="pk-li-ver"><span class="vchip cur" title="USB'de kullanılan (current)">${esc(p.current)}</span><span class="small muted">taban ${p.floor ? esc(p.floor) : "—"}</span></span>
+          <span class="pk-li-use small">${sm.used ? `${sm.used} sunucuda kullanıldı` : '<span class="muted">hiçbir sunucuda kullanılmadı</span>'}</span>
+          <span class="pk-li-badges">${floorBad ? '<span class="badge danger">kilit tabanının altında</span>' : ""}${sm.stale ? `<span class="badge warn">${sm.stale} sunucuda eski sürüm</span>` : ""}<span data-upd="${esc(p.id)}"></span></span>
+          <span class="pk-li-go" aria-hidden="true">›</span></button>`;
+      }).join("") || '<div class="card-body small muted">Paket bulunamadı.</div>') + "</div>";
+    $$("#pkg-page [data-pk]").forEach(b => b.addEventListener("click", () => openPkgDetail(d.packages.find(p => p.id === b.dataset.pk), d.servers, cmp)));
     renderUpdates();
   }
 
+  /* paket → sunucu özeti (liste satırı ve ayrıntı penceresi aynı sayıları kullanır) */
+  function pkgSummary(p, servers, cmp) {
+    let used = 0, stale = 0;
+    servers.forEach(s => { const u = (p.uses || []).find(x => x.server === s.name); if (u) { used++; if (cmp(u.version, p.current) < 0) stale++; } });
+    return { used, stale, none: servers.length - used };
+  }
+
+  /* paket ayrıntı penceresi: sürümler, kilit, sunucularda son kullanım (çok sunucuda süzülebilir) */
+  function openPkgDetail(p, servers, cmp) {
+    if (!p) return;
+    const sm = pkgSummary(p, servers, cmp), many = servers.length > 8;
+    const floorBad = p.floor && cmp(p.current, p.floor) < 0;
+    const box = (l, v) => `<div class="spec-box"><span class="spec-label">${l}</span><div class="spec-value">${v}</div></div>`;
+    const rowsHtml = (onlyStale, showNone, q) => {
+      const rs = servers.filter(s => !q || s.name.toLowerCase().includes(q)).map(s => {
+        const u = (p.uses || []).find(x => x.server === s.name);
+        if (!u && !showNone) return "";
+        const c = u ? cmp(u.version, p.current) : 0;
+        if (onlyStale && !(u && c < 0)) return "";
+        const ver = !u ? '<span class="muted">kullanılmadı</span>' : c === 0 ? '<span class="badge ok">USB ile aynı</span>' : c < 0 ? '<span class="badge warn">USB\'de daha yeni var</span>' : '<span class="badge info">USB\'den yeni</span>';
+        const note = u ? `${u.result === "ok" ? '<span class="res ok">✔</span>' : '<span class="res fail">✖</span>'} ${esc(u.action)} · <span class="muted" title="${esc(localTime(u.time))}">${esc(ago(u.time))} önce</span>` : "";
+        return `<div class="urow"><div class="who">${osIcon(s.os, 26)}${esc(s.name)}</div><div>${u ? `<span class="mono small">${esc(u.version)}</span>` : "—"}</div><div>${ver}</div><div class="small">${note}</div></div>`;
+      }).join("");
+      return rs || '<div class="urow"><div class="muted small">Gösterilecek sunucu yok.</div></div>';
+    };
+    openDlg({
+      title: p.name || p.id, sub: `${p.id}${p.repo ? " · " + p.repo : ""}`, wide: true, noOk: true,
+      body: `<p class="small" style="margin:0;color:var(--text-2)">${esc(p.description || "")}</p>
+        <div class="spec-grid">
+          ${box("USB sürüm havuzu", (p.versions || []).map(v => `<span class="vchip${v === p.current ? " cur" : ""}">${esc(v)}</span>`).join("") || "—")}
+          ${box("Kilit tabanı", `${p.floor ? `<span class="vchip">${esc(p.floor)}</span>` : '<span class="muted small">kilitte yok</span>'}${floorBad ? '<span class="badge danger">USB sürümü tabanın altında</span>' : p.floor ? '<span class="small muted" style="font-weight:400">bu sürümün altı çalıştırılmaz</span>' : ""}`)}
+          ${box("Sunucularda", `${sm.used} kullandı${sm.stale ? ` · <span style="color:var(--warn)">${sm.stale} eski</span>` : ""}${sm.none ? ` · <span class="muted" style="font-weight:400">${sm.none} kullanmadı</span>` : ""}`)}
+        </div>
+        <div class="pk-fleet-head"><b>Sunucularda son kullanım</b><span class="small muted">paket sunucuya kurulmaz; bu, en son çalıştırıldığı sürümdür</span></div>
+        ${many || sm.stale ? `<div class="row-flex" style="gap:12px;flex-wrap:wrap">
+          ${many ? '<input id="pd-q" type="search" placeholder="sunucu ara…" aria-label="Sunucu ara" style="max-width:220px">' : ""}
+          <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="pd-stale"${many && sm.stale ? " checked" : ""}> yalnız eski sürümlüler</label>
+          ${sm.none ? `<label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="pd-none"${many ? "" : " checked"}> kullanılmayanları da göster (${sm.none})</label>` : ""}</div>` : ""}
+        <div class="pk-fleet"><div class="urow head"><div>Sunucu</div><div>Son sürüm</div><div>Durum</div><div>Son eylem</div></div><div id="pd-rows"></div></div>`,
+      ok: "",
+    });
+    const paint = () => {
+      const q = ($("#pd-q")?.value || "").trim().toLowerCase();
+      $("#pd-rows").innerHTML = rowsHtml($("#pd-stale")?.checked || false, $("#pd-none") ? $("#pd-none").checked : !many, q);
+    };
+    ["#pd-q", "#pd-stale", "#pd-none"].forEach(id => $(id)?.addEventListener(id === "#pd-q" ? "input" : "change", paint));
+    paint();
+  }
+
   /* imzalı paket indeksi: motorun `--components update` raporu (ağdan alınır, imzası motor tarafından doğrulanır) */
-  let updRep = null, updAt = 0, updBusy = false, updErr = "", pkgRepo = {};
+  let updRep = null, updAt = 0, updBusy = false, updErr = "", pkgRepo = {}, pkgInfo = {}, discQ = "", discF = "all";
   const VERDICT = { upgrade: ["warn", "⬆ yükseltilebilir"], install: ["info", "📥 kurulabilir"], current: ["ok", "✔ güncel"], yanked: ["danger", "🚫 önerilmiyor (yanked)"], "needs-sshpocket": ["warn", "⏸ sshpocket güncellemesi gerekli"], "other-repo": ["danger", "başka depo gösteriyor"], "below-floor": ["danger", "kilit tabanının altında"], conflict: ["danger", "çelişki"], unknown: ["plain", "bilinmiyor"] };
+  /* Sayfada tek satırlık özet; ayrıntı ve eylemler modalda */
+  const updUp = () => updRep && updRep.ok ? updRep.rows.filter(r => r.verdict === "upgrade" || r.verdict === "install").length : 0;
+  const isUpdDlg = () => dlg.classList.contains("open") && $("#dlg-title").textContent === "Güncellemeler";
   function renderUpdates() {
     const el = $("#upd-card"); if (!el) return;
-    let body;
-    if (updBusy) body = '<div class="card-body small muted"><span class="spinner" aria-hidden="true"></span> İmzalı indeks alınıyor ve doğrulanıyor…</div>';
-    else if (updErr) body = `<div class="card-body"><div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div>${esc(updErr)}</div></div></div>`;
-    else if (!updRep) body = '<div class="card-body small muted">İndeks henüz denetlenmedi. <b>Güncellemeleri denetle</b> imzalı indeksi ağdan alır, imzasını ve geçerlilik süresini doğrular; hiçbir şey kurmaz.</div>';
-    else if (!updRep.ok) body = `<div class="card-body"><div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div><b>İndeks doğrulanamadı</b> (güvenli kapanma): yükseltme yapılmaz.</div></div><details style="margin-top:10px"><summary class="small muted" style="cursor:pointer">motor çıktısı</summary><pre class="mono small" style="white-space:pre-wrap">${esc(updRep.raw)}</pre></details></div>`;
-    else {
-      const up = updRep.rows.filter(r => r.verdict === "upgrade" || r.verdict === "install").length;
-      body = `<div class="card-body small muted" style="padding-bottom:0">İndeks seri <span class="mono">${esc(updRep.serial)}</span> · geçerlilik <span class="mono">${esc(updRep.valid)}</span> · imza ve süre motor tarafından doğrulandı · ${up ? `<b style="color:var(--warn)">${up} güncelleme var</b>` : "hepsi güncel"}${updAt ? ` · denetim ${new Date(updAt).toLocaleTimeString("tr-TR")}` : ""}</div>
-        <div class="card-body tight">${updRep.rows.map(r => { const [c, t] = VERDICT[r.verdict] || VERDICT.unknown; return `<div class="pkg-row"><div><div class="pkg-name">${esc(r.id)}</div><div class="pkg-meta"><span class="ver">${esc(r.installed === "-" ? "kurulu değil" : r.installed)}</span>${r.version ? `<span class="ver arrow">${esc(r.version)}</span>` : ""}<span class="badge ${c}">${t}</span></div></div>
-          <div class="pkg-actions">${r.verdict === "upgrade" || r.verdict === "install" ? `<button class="btn sm primary" data-upg="${esc(r.id)}" data-from="${esc(r.installed)}" data-to="${esc(r.version)}">${r.verdict === "install" ? "Kur" : "Yükselt"}…</button>` : ""}</div></div>`; }).join("")}</div>
-        <details class="card-body small" style="border-top:1px solid var(--border)"><summary class="muted" style="cursor:pointer">motorun ham raporu</summary><pre class="mono small" style="white-space:pre-wrap;margin:8px 0 0">${esc(updRep.raw)}</pre></details>`;
-    }
-    el.innerHTML = `<div class="card"><div class="card-head"><h2>Güncellemeler</h2><span class="hint">imzalı indeks · syhgorath/sshpocket-index</span><span style="flex:1"></span><button class="btn sm primary" id="upd-check"${updBusy ? " disabled" : ""}>Güncellemeleri denetle</button></div>${body}</div>`;
-    $("#upd-check").addEventListener("click", checkUpdatesUI);
-    $$("#upd-card [data-upg]").forEach(b => b.addEventListener("click", () => openUpgrade(b.dataset.upg, b.dataset.from, b.dataset.to)));
+    let st;
+    if (updBusy) st = '<span class="spinner" aria-hidden="true"></span> İmzalı indeks alınıyor ve doğrulanıyor…';
+    else if (updErr) st = '<span style="color:var(--danger)">✕ denetlenemedi</span>';
+    else if (!updRep) st = '<span class="muted">henüz denetlenmedi · hiçbir şey kurmaz</span>';
+    else if (!updRep.ok) st = '<span style="color:var(--danger)">✕ indeks doğrulanamadı (güvenli kapanma)</span>';
+    else st = updUp() ? `<b style="color:var(--warn)">⬆ ${updUp()} güncelleme var</b>` : '<span style="color:var(--ok)">✔ hepsi güncel</span>';
+    el.innerHTML = `<div class="card"><div class="card-head"><h2>Güncellemeler</h2><span class="hint">imzalı indeks · syhgorath/sshpocket-index</span><span style="flex:1"></span><span class="small">${st}</span><button class="btn sm" id="disc-open">Paketleri keşfet</button><button class="btn sm primary" id="upd-check"${updBusy ? " disabled" : ""}>${updRep || updErr ? "Ayrıntı" : "Güncellemeleri denetle"}</button></div></div>`;
+    $("#upd-check").addEventListener("click", openUpdates);
+    $("#disc-open").addEventListener("click", openDiscover);
+    $$("#pkg-page [data-upd]").forEach(sp => { const r = updRep && updRep.ok ? updRep.rows.find(x => x.id === sp.dataset.upd) : null; sp.innerHTML = r && (r.verdict === "upgrade" || r.verdict === "install") ? `<span class="badge info">⬆ ${esc(r.version)} çıktı</span>` : ""; });
+    if (isUpdDlg()) paintUpdDlg(); else if (isDiscDlg()) paintDisc();
+  }
+  function updBodyHtml() {
+    const head = `<div class="row-flex" style="gap:10px;flex-wrap:wrap"><span class="small muted">Motorun <span class="mono">--components update</span> raporu: imza ve süre doğrulanır, hiçbir şey kurulmaz.</span><span style="flex:1"></span><button class="btn sm" id="upd-recheck"${updBusy ? " disabled" : ""}>Yeniden denetle</button></div>`;
+    if (updBusy) return head + '<div class="small muted"><span class="spinner" aria-hidden="true"></span> İmzalı indeks alınıyor ve doğrulanıyor…</div>';
+    if (updErr) return head + `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div>${esc(updErr)}</div></div>`;
+    if (!updRep) return head;
+    if (!updRep.ok) return head + `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div><b>İndeks doğrulanamadı</b> (güvenli kapanma): yükseltme yapılmaz.</div></div><details><summary class="small muted" style="cursor:pointer">motor çıktısı</summary><pre class="mono small" style="white-space:pre-wrap">${esc(updRep.raw)}</pre></details>`;
+    const rows = updRep.rows.map(r => { const [c, t] = VERDICT[r.verdict] || VERDICT.unknown; return `<div class="pkg-row"><div><div class="pkg-name">${esc(r.id)}</div><div class="pkg-meta"><span class="ver">${esc(r.installed === "-" ? "kurulu değil" : r.installed)}</span>${r.version ? `<span class="ver arrow">${esc(r.version)}</span>` : ""}<span class="badge ${c}">${t}</span></div></div>
+      <div class="pkg-actions">${r.verdict === "upgrade" || r.verdict === "install" ? `<button class="btn sm primary" data-upg="${esc(r.id)}" data-from="${esc(r.installed)}" data-to="${esc(r.version)}">${r.verdict === "install" ? "Kur" : "Yükselt"}…</button>` : ""}</div></div>`; }).join("");
+    return head + `<div class="small muted">İndeks seri <span class="mono">${esc(updRep.serial)}</span> · geçerlilik <span class="mono">${esc(updRep.valid)}</span> · ${updUp() ? `<b style="color:var(--warn)">${updUp()} güncelleme var</b>` : "hepsi güncel"}${updAt ? ` · denetim ${new Date(updAt).toLocaleTimeString("tr-TR")}` : ""}</div>
+      <div>${rows}</div><details><summary class="small muted" style="cursor:pointer">motorun ham raporu</summary><pre class="mono small" style="white-space:pre-wrap;margin:8px 0 0">${esc(updRep.raw)}</pre></details>`;
+  }
+  function paintUpdDlg() {
+    $("#dlg-body").innerHTML = updBodyHtml();
+    $("#upd-recheck")?.addEventListener("click", checkUpdatesUI);
+    $$("#dlg-body [data-upg]").forEach(b => b.addEventListener("click", () => { const { upg, from, to } = b.dataset; closeDlg(); openUpgrade(upg, from, to); }));
+  }
+  function openUpdates() {
+    openDlg({ title: "Güncellemeler", sub: "imzalı indeks · syhgorath/sshpocket-index", body: "", wide: true, noOk: true, ok: "" });
+    paintUpdDlg();
+    if (!updRep && !updErr && !updBusy) checkUpdatesUI();
+  }
+
+  /* Paketleri keşfet: imzalı indeksteki paketler (apt deposu gibi göz atma); kurma/yükseltme mevcut onay akışından geçer */
+  const isDiscDlg = () => dlg.classList.contains("open") && $("#dlg-title").textContent === "Paketleri keşfet";
+  const DISC_F = [["all", "Tümü"], ["installed", "USB'de var"], ["install", "Kurulabilir"], ["upgrade", "Güncellenebilir"]];
+  function discRows() {
+    if (!updRep || !updRep.ok) return [];
+    return updRep.rows.filter(r => {
+      const have = r.installed !== "-";
+      if (discF === "installed" && !have) return false;
+      if (discF === "install" && r.verdict !== "install") return false;
+      if (discF === "upgrade" && r.verdict !== "upgrade") return false;
+      const inf = pkgInfo[r.id] || {};
+      return !discQ || `${r.id} ${inf.name || ""} ${inf.description || ""}`.toLowerCase().includes(discQ);
+    });
+  }
+  function paintDiscList() {
+    const rs = discRows();
+    $("#disc-list").innerHTML = rs.map(r => {
+      const inf = pkgInfo[r.id] || {}, [c, t] = VERDICT[r.verdict] || VERDICT.unknown, have = r.installed !== "-";
+      const act = r.verdict === "upgrade" || r.verdict === "install";
+      return `<div class="disc-row"><span class="pk-li-ico" aria-hidden="true">${esc((inf.name || r.id).charAt(0).toUpperCase())}</span>
+        <div class="disc-main"><div class="pkg-name">${esc(inf.name || r.id)}${inf.name && inf.name !== r.id ? ` <span class="small muted mono">${esc(r.id)}</span>` : ""}</div>
+          <div class="small muted">${inf.description ? esc(inf.description) : have ? "" : "Açıklama, paket USB'ye indirildikten sonra görünür."}</div>
+          <div class="pkg-meta"><span class="ver">${have ? esc(r.installed) : "kurulu değil"}</span>${r.version ? `<span class="ver arrow">${esc(r.version)}</span>` : ""}<span class="badge ${c}">${t}</span></div></div>
+        ${act ? `<button class="btn sm primary" data-dget="${esc(r.id)}" data-from="${esc(r.installed)}" data-to="${esc(r.version)}">${r.verdict === "install" ? "Kur" : "Yükselt"}…</button>` : ""}</div>`;
+    }).join("") || '<div class="small muted" style="padding:12px 0">Bu süzgeçle eşleşen paket yok.</div>';
+    $$("#disc-list [data-dget]").forEach(b => b.addEventListener("click", () => { const { dget, from, to } = b.dataset; closeDlg(); openUpgrade(dget, from, to); }));
+  }
+  function paintDisc() {
+    if (updBusy) { $("#dlg-body").innerHTML = '<div class="small muted"><span class="spinner" aria-hidden="true"></span> İmzalı indeks alınıyor ve doğrulanıyor…</div>'; return; }
+    if (updErr || !updRep || !updRep.ok) { $("#dlg-body").innerHTML = `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div>${updErr ? esc(updErr) : "İndeks doğrulanamadı (güvenli kapanma): paket listesi gösterilmez."}</div></div><div><button class="btn sm" id="disc-retry">Yeniden dene</button></div>`; $("#disc-retry").addEventListener("click", checkUpdatesUI); return; }
+    const cnt = k => updRep.rows.filter(r => k === "all" || (k === "installed" ? r.installed !== "-" : r.verdict === k)).length;
+    $("#dlg-body").innerHTML = `<div class="row-flex" style="gap:10px;flex-wrap:wrap"><input id="disc-q" type="search" placeholder="paket ara…" aria-label="Paket ara" value="${esc(discQ)}" style="max-width:240px"><div class="seg" role="tablist" aria-label="Süzgeç">${DISC_F.map(([k, l]) => `<button class="btn sm${discF === k ? " primary" : ""}" data-df="${k}">${l} (${cnt(k)})</button>`).join("")}</div></div>
+      <div class="small muted">Kaynak: imzalı indeks (seri <span class="mono">${esc(updRep.serial)}</span>). Kur ve Yükselt, imza ve özet doğrulamasıyla USB'ye yazar; sunucuya dokunmaz.</div>
+      <div id="disc-list"></div>`;
+    $("#disc-q").addEventListener("input", e => { discQ = e.target.value.trim().toLowerCase(); paintDiscList(); });
+    $$("#dlg-body [data-df]").forEach(b => b.addEventListener("click", () => { discF = b.dataset.df; paintDisc(); }));
+    paintDiscList();
+  }
+  function openDiscover() {
+    openDlg({ title: "Paketleri keşfet", sub: "imzalı indeks · syhgorath/sshpocket-index", body: "", wide: true, noOk: true, ok: "" });
+    paintDisc();
+    if (!updRep && !updErr && !updBusy) checkUpdatesUI();
   }
   async function checkUpdatesUI() {
     if (updBusy) return;
@@ -832,7 +939,7 @@
   }
 
   /* ---------------- Lynis sayfası ---------------- */
-  let lynSel = "", lynData = null, lynKind = "all", lynQ = "";
+  let lynSel = "", lynData = null, lynKind = "all", lynQ = "", lynPre = ""; // lynPre: sayfa açılırken seçilecek tür süzgeci
 
   function chart(l) {
     const h = l.history || [], d = l.dates || [], W = Math.max(300, Math.min(1000, (($(".main") || {}).clientWidth || 700) - 70)), H = 190, L = 30, R = 10, T = 10, B = 22;
@@ -893,7 +1000,7 @@
     $("#lynis-pick").innerHTML = home.servers.map(s => `<button class="pickbtn" role="tab" aria-selected="${s.name === lynSel}" data-n="${esc(s.name)}">${osIcon(s.os, 26)}<span>${esc(s.name)}${s.lynis ? ` <b>${s.lynis.score}</b>` : ' <span class="muted">ölçüm yok</span>'}</span></button>`).join("");
     $$("#lynis-pick .pickbtn").forEach(b => b.addEventListener("click", () => loadLynis(b.dataset.n)));
     if (!lynSel) { $("#lynis-detail").innerHTML = ""; return; }
-    lynKind = "all"; lynQ = "";
+    lynKind = lynPre || "all"; lynPre = ""; lynQ = "";
     try { lynData = await json("/api/lynis?server=" + encodeURIComponent(lynSel)); }
     catch (e) { $("#lynis-detail").innerHTML = `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div>Yüklenemedi: ${esc(e.message)}</div></div>`; return; }
     paintLynis();
@@ -1016,7 +1123,8 @@
     const w = a.warnings || [];
     const warn = w.length ? `<ul>${w.slice(0, 2).map(x => `<li>${esc(x)}</li>`).join("")}</ul>` +
       (w.length > 2 ? `<details style="margin-top:4px"><summary class="small muted" style="cursor:pointer">${w.length - 2} uyarı daha</summary><ul>${w.slice(2).map(x => `<li>${esc(x)}</li>`).join("")}</ul></details>` : "") : "";
-    return `<div class="act"><div class="act-head"><span class="act-name">${esc(a.id)}</span>${effectBadges(a)}${stale}</div>
+    const cat = actCat(a);
+    return `<div class="act r-${cat}" data-cat="${cat}"><div class="act-head"><span class="act-name">${esc(a.id)}</span>${effectBadges(a)}${stale}</div>
       ${warn}${keys ? `<div class="chips">${keys}</div>` : ""}
       <div class="act-foot"><span>${last}</span>${req.length ? `<span>· önkoşul: ${req.join(", ")}</span>` : ""}<span class="grow"></span>
         ${a.runnable ? `<button class="btn sm primary" data-run="${esc(pkg.id)}|${esc(a.id)}">Çalıştır</button>` : a.write ? (a.destructive ? `<button class="btn sm dangerbtn" data-write="${esc(pkg.id)}|${esc(a.id)}" title="YIKICI: geri alınamayabilir; plan, snapshot, ad yazma ve ek onaydan geçer">Yıkıcı eylem…</button>` : `<button class="btn sm warnbtn" data-write="${esc(pkg.id)}|${esc(a.id)}" title="Gerçek sunucuya yazar; plan, snapshot ve onay adımlarından geçer">Onayla ve çalıştır…</button>`) : a.terminal ? `<button class="btn sm" data-term="${esc(pkg.id)}|${esc(a.id)}" title="Sudo parolası gerekir; Terminal'de girersiniz">Terminal'de çalıştır</button>` : `<span class="small muted" style="max-width:300px;text-align:right">${esc(a.reason || "")}</span>`}</div></div>`;
@@ -1039,50 +1147,354 @@
       <div class="card-body small muted" style="border-top:1px solid var(--border)">Eylemler bu değişkenlerle çalışır. Tüm değişkenleri görmek ve değiştirmek için <b>Düzenle…</b>.</div></div>`;
   }
 
+  /* ---------------- Sunucu özeti ---------------- */
+  const COPY_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>';
+  const GAUGE_PATH = "M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831";
+  const gauge = score => { const v = Math.max(0, Math.min(100, score)), c = v >= 80 ? "ok" : v >= 60 ? "warn" : "danger"; return `<div class="gauge ${c}"><svg viewBox="0 0 36 36" aria-hidden="true"><path class="g-bg" stroke-width="3" fill="none" d="${GAUGE_PATH}"/><path class="g-fg" stroke-dasharray="${v}, 100" stroke-width="3.2" stroke-linecap="round" fill="none" d="${GAUGE_PATH}"/></svg><div class="g-num"><b>${v}</b><span>/100</span></div></div>`; };
+
+  // Bağlantı hazırlığı satırı: st = ok | warn | todo | idle (ok dışında adım numarası görünür)
+  const prepRow = (n, st, title, badge, desc, btn) => `<div class="prep-row"><div class="prep-dot ${st}" aria-hidden="true">${st === "ok" ? "✓" : st === "warn" ? "!" : n}</div><div class="prep-txt"><div class="prep-title">${title}${badge ? ` <span class="prep-badge ${st}">${badge}</span>` : ""}</div><div class="small muted">${desc}</div></div>${btn || ""}</div>`;
+
+  function renderOzet(s, pk) {
+    const k = (srv && srv.knock) || {}, pr = (srv && srv.prep) || {};
+    const knockOn = !!k.enabled;
+    // adım durumları (yalnızca bu bilgisayarda bilinenler; "sunucuya gönderildi mi" bağlanmadan bilinemez)
+    const steps = [
+      ["keygen", s.hasKey ? "ok" : "todo"],
+      ["sshadd", !s.hasKey ? "idle" : pr.agent ? "ok" : "todo"],
+      ["keychain", !s.hasKey ? "idle" : pr.passphrase ? "ok" : "todo"],
+      ...(knockOn ? [["knock", k.hasSeq ? "ok" : "warn"]] : []),
+    ];
+    const done = steps.filter(x => x[1] === "ok").length;
+    const btn = (task, label) => `<button class="btn sm" data-task="${task}" ${s.valid ? "" : "disabled"}>${label}</button>`;
+    const prep = [
+      prepRow(1, s.hasKey ? "ok" : "todo", "SSH anahtarı", s.hasKey ? "var" : "", s.hasKey ? "Anahtar bu sunucunun klasöründe mevcut." : "Yeni bir ed25519 anahtarı üretir (var olan anahtarın üzerine yazılmaz).", s.hasKey ? "" : btn("keygen", "Anahtar üret")),
+      prepRow(2, "idle", "Anahtarı sunucuya gönder", "", 'Genel anahtarı sunucudaki <span class="mono">authorized_keys</span> dosyasına ekler (ssh-copy-id). Sunucuda olup olmadığı bağlanmadan bilinemez.', s.hasKey ? btn("keycopy", "Gönder…") : ""),
+      prepRow(3, steps[1][1], "ssh-agent'a ekle", pr.agent ? "ajanda" : "", "Eylemlerin parola sormadan bağlanması için anahtarı ajana yükler (macOS Keychain).", s.hasKey ? btn("sshadd", pr.agent ? "Yeniden ekle…" : "Ekle…") : ""),
+      prepRow(4, steps[2][1], "Keychain parolası", pr.passphrase ? "bu Mac'te kayıtlı" : "", "Anahtarın passphrase'ini Keychain'e kaydeder, günceller ya da siler (parolasız anahtarda gerekmez).", s.hasKey ? btn("keychain", "Ayarla…") : ""),
+      prepRow(5, knockOn ? (k.hasSeq ? "ok" : "warn") : "idle", "Port knocking", knockOn ? (k.hasSeq ? esc(k.hint || "dizi kayıtlı") : "bu Mac'te dizi yok") : "", knockOn ? (k.hasSeq ? `Açık · ${esc(k.proto)}, ${esc(k.delay)} ms. Bağlanmadan önce otomatik gönderilir.` : "Knock açık ama dizi bu bilgisayarın Keychain'inde yok; yeniden girin.") : "Sunucu SSH portunu knock dizisiyle açıyorsa (isteğe bağlı).", btn("knock", knockOn ? "Değiştir…" : "Ayarla…")),
+    ].join("");
+    const test = pk.some(p => p.id === "utility") ? `<div class="prep-test"><div class="prep-dot test" aria-hidden="true">⚡</div><div class="prep-txt"><div class="prep-title">Bağlantıyı dene</div><div class="small muted">Salt okunur <span class="mono">utility durum</span> çalıştırır: ssh bağlantısı, platform ve saat denetlenir.</div></div><button class="btn primary" data-test ${s.valid && s.hasKey ? "" : "disabled"}>Dene ve doğrula</button></div>` : "";
+
+    const tcp = !s.valid ? ["warn", "yapılandırma geçersiz"] : !s.checked ? ["plain", "denetleniyor"] : s.up ? ["ok", "TCP erişilebilir"] : s.knock ? ["warn", "🔒 kapalı · knock gerekir"] : ["danger", "erişilemiyor"];
+    const kvr = (a, b) => `<div class="kv"><span class="muted">${a}</span><span>${b}</span></div>`;
+    const l = s.lynis;
+    const pkgRows = pk.map(p => `<div class="mini-row"><div class="mini-txt"><div class="mini-title" title="${esc(p.name || p.id)}">${esc(p.name || p.id)}</div><div class="small muted mono">v${esc(p.version)}</div></div><button class="btn sm" data-goto="${esc(p.id)}">Aç</button></div>`).join("") || '<div class="small muted">Bu sunucu için paket yok.</div>';
+    const rec = (s.recent || []).slice(0, 4).map(a => `<div class="feed-row ${isOk(a.result) ? "ok" : "fail"}"><div class="feed-top small muted"><span class="mono">${esc(a.package)} ${esc(a.version)}</span><span title="${esc(localTime(a.time))}">${esc(ago(a.time))} önce</span></div><div class="feed-msg">${isOk(a.result) ? "✓" : "✖"} ${esc(a.action)}</div></div>`).join("") || '<div class="small muted">Henüz işlem yok.</div>';
+
+    $("#srv-body").innerHTML = `<div class="ozet4">
+      <div class="card oz-card"><div class="oz-top"><span class="oz-title">Durum &amp; ağ</span><span class="badge ${tcp[0]}">${tcp[1]}</span></div>
+        <div class="oz-body">${kvr("Sistem", esc((OS_LABEL[s.os] || "Linux") + (s.platform ? " · " + s.platform : "")))}${kvr("SSH anahtarı", s.hasKey ? '<span class="badge ok">var</span>' : '<span class="badge warn">yok</span>')}${kvr("Port knocking", !k.enabled ? '<span class="muted">kapalı</span>' : k.hasSeq ? `açık · ${esc(k.proto)}` : '<span style="color:var(--warn)">açık · dizi yok</span>')}</div>
+        <div class="oz-foot">Durum TCP bağlantı denemesiyle ölçülür; sunucuya giriş yapılmaz.</div></div>
+      <div class="card oz-card"><div class="oz-top"><span class="oz-title">Sertleştirme</span><span class="oz-tag">Lynis</span></div>
+        <div class="oz-body">${l ? `<div class="gauge-row">${gauge(l.score)}<div class="gauge-info"><div class="small muted">100 üzerinden</div><div class="gauge-badges"><span class="badge ${l.warnings ? "warn" : "ok"}">${l.warnings} uyarı</span><span class="badge info">${l.suggestions} öneri</span></div></div></div>` : '<div class="small muted">Bu sunucu için ölçüm yok. linux-hardening <span class="mono">audit</span> eylemi çalıştırılınca skor burada görünür.</div>'}</div>
+        <div class="oz-foot oz-foot-row"><span>${l ? "Ölçüm: " + esc((l.date || "").slice(0, 10)) + (auditStale(s) ? ' <span class="stale-flag" title="Son ölçümden sonra sertleştirme uygulandı; yeniden denetleyin">⚠ güncel değil</span>' : "") : ""}</span>${l ? '<button class="link" data-go-lynis>Raporu gör →</button>' : '<button class="link" data-goto="linux-hardening">Hardening →</button>'}</div></div>
+      <div class="card oz-card"><div class="oz-top"><span class="oz-title">Paketler</span><span class="oz-tag">bu USB'de</span></div><div class="oz-body">${pkgRows}</div></div>
+      <div class="card oz-card"><div class="oz-top"><span class="oz-title">Son işlemler</span></div><div class="oz-body">${rec}</div>
+        <div class="oz-foot oz-foot-row"><span></span><button class="link" data-go-logs>Bu sunucunun günlükleri →</button></div></div>
+    </div>
+    <div class="card prep-card"><div class="prep-head"><div><h2>Bağlantı hazırlığı</h2><div class="small muted">Her adım isteğe bağlıdır ve yeniden yapılabilir.</div></div><span class="prep-count" title="Anahtar, ajan, Keychain parolası${knockOn ? " ve knock" : ""} sayılır; ssh-copy-id sayılmaz">${done}/${steps.length} adım hazır</span></div>
+      <div class="prep-list">${prep}${test}</div></div>`;
+
+    $$("#srv-body [data-goto]").forEach(b => b.addEventListener("click", () => { srvTab = b.dataset.goto; history.replaceState(null, "", `#s=${encodeURIComponent(srvName)}&p=${encodeURIComponent(srvTab)}`); renderServer(); }));
+    $("#srv-body [data-go-logs]")?.addEventListener("click", () => goLogs(srvName));
+    $("#srv-body [data-go-lynis]")?.addEventListener("click", () => goLynis(srvName, s.lynis && s.lynis.warnings > 0 ? "uyari" : "all"));
+    $$("#srv-body [data-task]").forEach(b => b.addEventListener("click", () => (b.dataset.task === "knock" ? openKnock(srvName) : openTask(srvName, b.dataset.task))));
+    $("#srv-body [data-test]")?.addEventListener("click", () => openRun(srvName, "utility", "durum"));
+  }
+
+  /* ---------------- Süzgeçli geçişler ve bağlantı bilgisi ---------------- */
+  // Günlükler sayfasını yalnızca bu sunucunun günlükleri süzülmüş olarak aç.
+  function goLogs(server) { logSrv = server; logPkg = ""; logKind = "all"; logQ = ""; showView("logs"); }
+  // Lynis sayfasını bu sunucu seçili ve (verilmişse) bulgu türü süzülmüş olarak aç.
+  function goLynis(server, kind) { lynSel = server; lynPre = kind || ""; showView("lynis"); }
+
+  async function openEditAddr(name) {
+    let cur;
+    try { cur = (await json("/api/server?name=" + encodeURIComponent(name))).server; }
+    catch (e) { toast("Okunamadı: " + e.message); return; }
+    openDlg({
+      title: "Bağlantı bilgilerini düzenle", sub: name,
+      body: `<p class="small muted" style="margin:0 0 12px">Adres, kullanıcı ya da port değişince SSH anahtarı, Keychain parolası ve knock ayarları <b>aynen kalır</b> (sunucu adına bağlıdır). Adres değiştiyse sunucunun parmak izi ilk bağlantıda yeniden sorulabilir.</p>
+        <div class="field"><label for="ea-host">Adres (IP ya da sunucu adı)</label><input id="ea-host" autocomplete="off" spellcheck="false" autocapitalize="off" value="${esc(cur.host || "")}"></div>
+        <div class="row-flex" style="gap:12px;align-items:flex-start;flex-wrap:wrap">
+          <div class="field" style="flex:1;min-width:160px"><label for="ea-user">Kullanıcı</label><input id="ea-user" autocomplete="off" spellcheck="false" autocapitalize="off" value="${esc(cur.user || "")}"></div>
+          <div class="field"><label for="ea-port">Port</label><input id="ea-port" type="number" min="1" max="65535" inputmode="numeric" style="width:110px" value="${esc(cur.port || "22")}"></div></div>`,
+      ok: "Kaydet",
+      onOk: async () => {
+        const host = $("#ea-host").value.trim(), user = $("#ea-user").value.trim(), port = $("#ea-port").value.trim() || "22";
+        if (host === (cur.host || "") && user === (cur.user || "") && port === (cur.port || "22")) { $("#dlg-err").textContent = "Değişiklik yok."; return; }
+        $("#dlg-ok").disabled = true;
+        try { await json("/api/server-edit", { name, host, user, port }); }
+        catch (e) { $("#dlg-ok").disabled = false; $("#dlg-err").textContent = "✖ " + e.message; return; }
+        closeDlg(); toast("Bağlantı bilgileri güncellendi"); await load(); await reloadServer();
+      },
+    });
+    ["#ea-host", "#ea-user", "#ea-port"].forEach(id => $(id).addEventListener("keydown", e => { if (e.key === "Enter") $("#dlg-ok").click(); }));
+    setTimeout(() => { const i = $("#ea-host"); i.focus(); i.select(); }, 50);
+  }
+
+  /* ---------------- Port knocking formu ---------------- */
+  // Dizi Keychain'dedir (bu bilgisayara özgü; USB başka bir Mac'e takılırsa orada yeniden girilmelidir). Arayüz diziyi ASLA geri okumaz.
+  function knockText(k) {
+    if (!k || !k.enabled) return '<span class="muted">kapalı</span>';
+    if (!k.hasSeq) return '<span style="color:var(--warn)">açık, ama dizi bu Mac\'te kayıtlı değil</span>';
+    return `açık · ${esc(k.proto)}, ${esc(k.delay)} ms · dizi bu Mac'te kayıtlı`;
+  }
+  const knockSeqOK = v => /^[0-9]+(,[0-9]+){0,9}$/.test(v) && v.split(",").every(p => +p >= 1 && +p <= 65535);
+  async function reloadServer() {
+    if (!srvName) return;
+    try { srv = await json("/api/server?name=" + encodeURIComponent(srvName)); if (view === "server") renderServer(); } catch (e) { /* sonraki otomatik yenileme alır */ }
+  }
+  async function openKnock(name) {
+    let k;
+    try { k = await json("/api/knock?name=" + encodeURIComponent(name)); }
+    catch (e) { toast("Okunamadı: " + e.message); return; }
+    const state = !k.enabled ? "" : k.hasSeq
+      ? `<div class="notice ok" style="margin-bottom:12px"><span class="ico" aria-hidden="true">✔</span><div>Knock <b>açık</b>: ${esc(k.proto)}, ${esc(k.delay)} ms. Dizi bu bilgisayarın Keychain'inde kayıtlı; güvenlik için tamamı gösterilmez${k.hint ? `, yalnızca her portun ilk ve son rakamı: <span class="mono" style="font-weight:600">${esc(k.hint)}</span>` : ""}. Yeni bir dizi girerseniz eskisinin yerine geçer.</div></div>`
+      : `<div class="notice warn" style="margin-bottom:12px"><span class="ico" aria-hidden="true">⚠</span><div>Bu sunucuda knock <b>açık</b> görünüyor ama dizi <b>bu bilgisayarın</b> Keychain'inde yok. Dizi USB'ye değil, yazıldığı Mac'e kaydedilir; USB'yi başka bir Mac'e taktıysanız diziyi burada yeniden girin.</div></div>`;
+    openDlg({
+      title: "Port knocking", sub: name,
+      body: `${state}<p class="small muted" style="margin:0 0 12px">SSH portu kapalıyken, sunucu yöneticisinin belirlediği port sırasına "vurarak" açtırma yöntemi. Sunucuda knock kurulumu yönetici tarafından yapılmış olmalıdır.</p>
+        <div class="field"><label for="kn-seq">Dizi (port sırası)</label><input id="kn-seq" type="password" autocomplete="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="${k.hasSeq ? "•••••• kayıtlı dizi korunur" : "ör. 7000,8000,9000"}" inputmode="numeric"><div class="hint" id="kn-hint">${k.hasSeq ? "Değiştirmek için yeni diziyi tam olarak yazın. Boş bırakırsanız kayıtlı dizi korunur ve yalnızca protokol ile bekleme güncellenir." : "Sunucu yöneticisinin verdiği PORT SIRASI: virgülle, boşluksuz, en çok 10 port. Adım numarasını değil, portları yazın."}</div>
+</div>
+        <div class="small" style="margin-top:6px"><label style="display:inline-flex;gap:8px;align-items:center;cursor:pointer"><input type="checkbox" id="kn-show"> Yazdıklarımı göster</label></div>
+        <div class="row-flex" style="gap:12px;align-items:flex-end;flex-wrap:wrap;margin-top:12px">
+          <div class="field" style="margin:0"><label for="kn-proto">Protokol</label><select id="kn-proto" style="min-width:96px;height:36px"><option value="tcp">tcp</option><option value="udp">udp</option></select></div>
+          <div class="field" style="margin:0"><label for="kn-delay">Vuruşlar arası bekleme (ms)</label><input id="kn-delay" type="number" min="0" max="5000" step="50" style="width:110px"></div></div>
+        ${k.enabled ? `<div class="row-flex" style="gap:8px;margin-top:16px;flex-wrap:wrap">${k.hasSeq ? '<button class="btn sm" id="kn-send" type="button">Knock\'u şimdi gönder</button>' : ""}<button class="btn sm dangerbtn" id="kn-off" type="button">Knock\'u kapat ve kaydı sil</button></div>` : ""}`,
+      ok: "Kaydet",
+      onOk: async () => {
+        const seq = $("#kn-seq").value.trim(), delay = $("#kn-delay").value.trim();
+        if (seq ? !knockSeqOK(seq) : !k.hasSeq) { $("#dlg-err").textContent = seq ? "Dizi 1-10 port olmalı: virgülle ayrılmış, her biri 1-65535, boşluksuz (örnek: 7000,8000,9000)." : "Dizi gerekli: bu bilgisayarda kayıtlı dizi yok (örnek: 7000,8000,9000)."; return; }
+        if (!/^[0-9]+$/.test(delay) || +delay > 5000) { $("#dlg-err").textContent = "Bekleme 0 ile 5000 arasında bir sayı olmalı."; return; }
+        $("#dlg-ok").disabled = true;
+        try { await json("/api/knock", { name, action: "save", proto: $("#kn-proto").value, delay, seq }); }
+        catch (e) { $("#dlg-ok").disabled = false; $("#dlg-err").textContent = "✖ " + e.message; return; }
+        $("#kn-seq").value = "";
+        closeDlg(); toast("Knock kaydedildi"); await reloadServer();
+      },
+    });
+    $("#kn-proto").value = k.proto || "tcp"; $("#kn-delay").value = k.delay || "300";
+    const seq = $("#kn-seq"), hint = $("#kn-hint");
+    seq.addEventListener("input", () => { const v = seq.value.trim(); hint.classList.toggle("err", !!v && !knockSeqOK(v)); $("#dlg-err").textContent = ""; });
+    seq.addEventListener("keydown", e => { if (e.key === "Enter") $("#dlg-ok").click(); });
+    $("#kn-show").addEventListener("change", e => { seq.type = e.target.checked ? "text" : "password"; });
+    $("#kn-send")?.addEventListener("click", async () => {
+      try { await json("/api/knock", { name, action: "send" }); toast("Knock gönderildi"); } catch (e) { $("#dlg-err").textContent = "✖ " + e.message; }
+    });
+    let sure = false;
+    $("#kn-off")?.addEventListener("click", async e => {
+      if (!sure) { sure = true; e.target.textContent = "Emin misiniz? Tekrar tıklayın"; return; }
+      try { await json("/api/knock", { name, action: "disable" }); } catch (er) { $("#dlg-err").textContent = "✖ " + er.message; return; }
+      closeDlg(); toast("Knock kapatıldı"); await reloadServer();
+    });
+    setTimeout(() => seq.focus(), 50);
+  }
+
+  /* ---------------- Paket sayfası (Hardening / Utility / Kurulum) ---------------- */
+  let actFilter = "all";
+  // eylem kategorisi manifestteki etkilerden türetilir: yıkıcı > değiştirir > salt okunur
+  const actCat = a => ((a.effects || []).includes("destructive") || a.destructive ? "danger" : (a.effects || []).length > 0 ? "change" : "read");
+  const ACT_CATS = [["all", "Tümü"], ["read", "Salt okunur"], ["change", "Değiştirir"], ["danger", "Yıkıcı"]];
+  // "Yeniden denetle" gibi kısayol düğmeleri, eylem kartındaki düğmeyle aynı işleyiciyi kullanır
+  function actBtnAttr(a, pkg) { const id = `${esc(pkg.id)}|${esc(a.id)}`; return a.runnable ? `data-run="${id}"` : a.write ? `data-write="${id}"` : a.terminal ? `data-term="${id}"` : ""; }
+
+  // Son başarılı `apply`, son Lynis ölçümünden SONRA ise ölçüm eskidir (skor/bulgular yeni durumu yansıtmaz).
+  // Yalnız son 8 işlem bilinir (components.log); daha eski bir apply ancak sonraki bir audit ile birlikte düşer.
+  function auditStale(s) {
+    const l = s.lynis; if (!l || !l.date) return null;
+    const t0 = Date.parse(l.date); if (isNaN(t0)) return null;
+    return (s.recent || []).find(a => a.package === "linux-hardening" && a.action === "apply" && isOk(a.result) && Date.parse(a.time) > t0 + 60000) || null;
+  }
+  function lynisHero(s, p) {
+    const l = s.lynis, au = p.actions.find(a => a.id === "audit"), attr = au ? actBtnAttr(au, p) : "";
+    const btn = attr ? `<button class="btn" ${attr}>${l ? "Yeniden denetle" : "Denetim çalıştır"}</button>` : "";
+    if (!l) return `<div class="card hero-card"><div class="hero-top"><div><div class="hero-kicker">Lynis skoru — ${esc(s.name)}</div><div class="small muted" style="margin-top:6px">Bu sunucu için ölçüm yok. Denetim çalıştırılınca skor ve geçmiş burada görünür.</div></div>${btn}</div></div>`;
+    const st = auditStale(s);
+    const h = l.history || [], prev = h.length > 1 ? h[h.length - 2] : null, d = prev === null ? 0 : l.score - prev;
+    const prevTxt = prev === null ? "henüz yok" : `${prev}${d === 0 ? " (değişmedi)" : ` (${d > 0 ? "▲ +" : "▼ "}${d})`}`;
+    return `<div class="card hero-card"><div class="hero-top">
+        <div><div class="hero-kicker">Lynis skoru — ${esc(s.name)} <span class="hero-sep" aria-hidden="true"></span> <span class="muted">Son denetim: ${esc((l.date || "").slice(0, 10))}</span>${st ? ' <span class="stale-flag">⚠ güncel değil</span>' : ""}</div>
+          <div class="hero-score"><b>${l.score}</b><span class="hero-of">/ 100</span><span class="badge ${l.warnings ? "warn" : "ok"}">${l.warnings} uyarı</span><span class="badge info">${l.suggestions} öneri</span></div></div>
+        <div class="hero-side"><div class="hero-meta"><b>Toplam ${h.length} ölçüm</b><span class="muted">Önceki: ${prevTxt}</span></div>${btn}</div></div>
+      ${st ? `<div class="notice" style="margin:12px 0 0"><span class="ico" aria-hidden="true">⚠</span><div>Son denetimden sonra sertleştirme uygulandı (<span title="${esc(localTime(st.time))}">${esc(ago(st.time))} önce</span>). Skor ve bulgular eski olabilir; <b>Yeniden denetle</b> ile güncelleyin.</div></div>` : ""}
+      <div class="chartbox hero-chart">${chart(l)}</div>
+      <div class="oz-foot oz-foot-row"><span>Geçmiş, bu kontrolcüde kayıtlı tüm ölçümleri içerir.</span><button class="link" data-go-lynis-p>Bulguları gör →</button></div></div>`;
+  }
+
+  // "Son durum" kartı: paketin salt okunur `durum` eyleminin SON çalıştırma çıktısı (a.keys) kutulara dökülür.
+  // Canlı bağlantı yoktur; veri son çalıştırmadan gelir, yaşı ve "güncel olmayabilir" uyarısı gösterilir.
+  const ST_LABEL = { locale: "Sistem dili (LANG)", timezone: "Saat dilimi", ntp_senkron: "NTP senkron", ntp_servis: "NTP servisi", kaynak_sayisi: "NTP kaynağı", offset_ms: "Zaman ofseti", sapma_ms: "Sapma", secili_kaynak: "Seçili kaynak", saat_sapma_kontrolcuye_gore_sn: "Kontrol makinesine göre sapma" };
+  const ST_MAIN = ["locale", "timezone", "ntp_senkron", "kaynak_sayisi", "offset_ms"];
+  function statusCard(p) {
+    const a = p.actions.find(x => x.id === "durum");
+    if (!a) return "";
+    const attr = actBtnAttr(a, p), k = a.keys || {}, has = Object.keys(k).length > 0;
+    const stale = a.lastTime && p.actions.some(x => (x.effects || []).length > 0 && x.lastTime && Date.parse(x.lastTime) > Date.parse(a.lastTime));
+    const btn = attr ? `<button class="link" ${attr}>${has ? "Şimdi yenile" : "Durumu oku"}</button>` : "";
+    const head = `<div class="oz-top"><span class="oz-title">Son durum</span><span class="st-meta">${a.lastTime ? `Son kontrol: ${esc(ago(a.lastTime))} önce` : "henüz okunmadı"}${a.lastResult === "fail" ? ' <span class="badge danger">son çalıştırma başarısız</span>' : ""}${stale ? ' <span class="badge warn" title="Bu okumadan sonra bu sunucuda değişiklik yapan bir eylem çalıştı.">güncel olmayabilir</span>' : ""}${btn ? " · " + btn : ""}</span></div>`;
+    if (!has) return `<div class="card st-card">${head}<div class="small muted">Bu sunucuda <span class="mono">durum</span> eylemi henüz çalıştırılmadı; sonucu burada kutular olarak görünür.</div></div>`;
+    const unk = v => v === undefined || v === "" || v === "unknown";
+    const val = (key, fallback = "—") => (unk(k[key]) ? `<span class="muted">${fallback}</span>` : esc(k[key]));
+    const tiles = {
+      locale: ["Sistem dili (LANG)", val("locale"), "", ""],
+      timezone: ["Saat dilimi", val("timezone"), "", ""],
+      ntp_senkron: ["NTP senkron", k.ntp_senkron === "yes" ? "Senkronize" : k.ntp_senkron === "no" ? "Senkron değil" : val("ntp_senkron"), `Servis: ${unk(k.ntp_servis) ? "bilinmiyor" : esc(k.ntp_servis)}`, k.ntp_senkron === "yes" ? "ok" : k.ntp_senkron === "no" ? "warn" : ""],
+      kaynak_sayisi: ["NTP kaynağı", unk(k.kaynak_sayisi) ? val("kaynak_sayisi") : `${esc(k.kaynak_sayisi)} kaynak`, k.secili_kaynak === "yes" ? "✓ seçili kaynak var" : k.secili_kaynak === "no" ? "seçili kaynak yok" : "", ""],
+      offset_ms: ["Zaman ofseti", unk(k.offset_ms) ? val("offset_ms") : `${esc(k.offset_ms)} ms`, unk(k.sapma_ms) ? "" : `Sapma: ${esc(k.sapma_ms)} ms`, unk(k.sapma_ms) || isNaN(+k.sapma_ms) ? "" : Math.abs(+k.sapma_ms) <= 1000 ? "ok" : "warn"],
+    };
+    const shown = ST_MAIN.filter(m => m in k);
+    const rest = Object.entries(k).filter(([n]) => !shown.includes(n));
+    const tile = key => { const [label, v, sub, st] = tiles[key]; return `<div class="st-tile"><div class="st-label">${label}</div><div class="st-val ${st}">${v}</div>${sub ? `<div class="st-sub">${sub}</div>` : ""}</div>`; };
+    return `<div class="card st-card">${head}
+      ${shown.length ? `<div class="st-grid">${shown.map(tile).join("")}</div>` : ""}
+      ${rest.length ? `<details class="st-more"><summary class="small muted">${shown.length ? "Diğer değerler" : "Değerler"} (${rest.length})</summary><div class="chips">${rest.map(([n, v]) => `<span class="chip" title="${esc(n)}">${esc(ST_LABEL[n] || n)}: ${esc(v)}</span>`).join("")}</div></details>` : ""}</div>`;
+  }
+
+  function pkgInfoCard(p, ok) {
+    const n = c => ok.filter(a => actCat(a) === c).length;
+    return `<div class="card pk-info"><div class="oz-top"><span class="oz-title">${esc(p.name || p.id)}</span><span class="oz-tag">${esc(p.id)} ${esc(p.version)} · USB</span></div>
+      <p class="small" style="margin:0 0 12px;color:var(--text-2);line-height:1.55">${esc(p.description)}</p>
+      <div class="pk-counts"><span class="badge plain">${ok.length} eylem</span>${n("read") ? `<span class="badge ok">${n("read")} salt okunur</span>` : ""}${n("change") ? `<span class="badge warn">${n("change")} değiştirir</span>` : ""}${n("danger") ? `<span class="badge danger">${n("danger")} yıkıcı</span>` : ""}</div></div>`;
+  }
+
+  function actionsSection(ok, na, p) {
+    const chips = ACT_CATS.map(([k, label]) => { const n = k === "all" ? ok.length : ok.filter(a => actCat(a) === k).length; return k === "all" || n ? `<button class="fchip" data-actcat="${k}" aria-pressed="${actFilter === k}">${label} <span class="muted">${n}</span></button>` : ""; }).join("");
+    return `<div class="act-section"><div class="act-bar"><h2>Eylemler <span class="hint">${ok.length} tanımlı</span></h2><div class="fchips2">${chips}</div></div>
+      <div class="card"><div class="card-body tight" id="act-list">${ok.map(a => actionCard(a, p)).join("") || '<div class="act small muted">Eylem yok.</div>'}
+        ${na.length ? `<details class="na"><summary>Bu sunucuya uygulanmaz (${na.length}): ${na.map(a => esc(a.id)).join(", ")}</summary>${na.map(a => actionCard(a, p)).join("")}</details>` : ""}</div></div></div>`;
+  }
+
+  function applyActFilter() {
+    // seçili süzgeç yeniden çizimlerde (10 sn'lik tazeleme) korunur
+    if (!$$("#srv-body [data-actcat]").some(b => b.dataset.actcat === actFilter)) actFilter = "all";
+    $$("#act-list > .act[data-cat]").forEach(el => { el.hidden = actFilter !== "all" && el.dataset.cat !== actFilter; });
+    $$("#srv-body [data-actcat]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.actcat === actFilter)));
+  }
+
+  /* ---------------- Kurulum: uygulama kataloğu ---------------- */
+  // Görsel kabuk: kartlar, kurulu/kurulmadı (son `durum` çıktısından) ve uygulamaya özel değişkenler.
+  // Kur/Yükselt/Kaldır düğmeleri KAPALI: eylemler paket düzeyindedir ve önizleme önkoşulu uygulamaya özel tutulmaz;
+  // uygulamaya özel çalıştırma (paketin `items` bildirimi + koşuya özel seçim) gelene dek yalnız "Genel eylemler" çalışır.
+  let storeFilter = "all", kuvData = [], kuvSrv = "";
+  const APPS = [
+    ["docker", "🐳", "Docker Engine", "Konteyner çalışma ortamı ve Docker Compose eklentisi. Konteyner modundaki uygulamalar için gereklidir.", "Docker"],
+    ["nginx", "🌐", "Nginx", "HTTP ters proxy ve statik dosya sunucusu.", "nginx"],
+    ["mariadb", "🗄️", "MariaDB", "MySQL uyumlu ilişkisel SQL veritabanı sunucusu.", "mariadb"],
+    ["redis", "⚡", "Redis", "Anahtar-değer veri önbelleği ve mesaj kuyruğu.", "redis"],
+  ];
+  const splitPlus = v => (!v || v === "yok" ? [] : v.split("+").map(x => x.split(":")));
+  const kuv = n => { const v = kuvData.find(x => x.name === n); return v ? varCur(v) : ""; };
+
+  async function loadKuv() {
+    kuvSrv = srvName; // başarısız olsa da yeniden denemeyi bir sonraki tazelemeye bırak (döngü olmasın)
+    try { kuvData = (await json(`/api/vars?server=${encodeURIComponent(srvName)}&package=kurulum`)).vars || []; } catch (e) { return; }
+    if (view === "server" && srvTab === "kurulum" && srv) renderServer();
+  }
+
+  function kurulumStore(s, p, ok, na) {
+    const d = p.actions.find(a => a.id === "durum"), k = (d && d.keys) || {}, known = Object.keys(k).length > 0;
+    const inst = Object.fromEntries(splitPlus(k.kurulu)), ports = Object.fromEntries(splitPlus(k.portlar));
+    const dattr = d ? actBtnAttr(d, p) : "";
+    const onN = APPS.filter(a => a[0] in inst).length;
+    const cards = APPS.map(([id, ico, title, desc, group]) => {
+      const on = id in inst, mode = inst[id];
+      const badge = !known ? '<span class="badge plain">durum okunmadı</span>' : on ? `<span class="badge ok">✔ Kurulu${mode ? " (" + esc(mode) + ")" : ""}</span>` : '<span class="badge plain">Kurulmadı</span>';
+      const meta = [];
+      if (on && ports[id]) meta.push(`Port: <strong>${esc(ports[id])}</strong>`);
+      const vars = kuvData.filter(v => v.group === group);
+      const rows = vars.map(v => `<div class="av-row"><span class="mono av-name" title="${esc(v.name)}">${esc(v.name.replace(/^kurulum_(docker_|nginx_|mariadb_|redis_)?/, ""))}</span><span class="chip">${esc(varCur(v)) || "(boş)"}</span>${v.set ? '<span class="badge ok">ayarlı</span>' : ""}</div>`).join("") || `<div class="small muted">${kuvSrv === srvName ? "Değişken bulunamadı." : "Değişkenler yükleniyor…"}</div>`;
+      const off = (label, tip) => `<button class="btn sm" disabled title="${tip}">${label}</button>`;
+      const tip = "Uygulamaya özel çalıştırma yakında: önizleme önkoşulu her uygulama için ayrı tutulacak. Şimdilik aşağıdaki Genel eylemler kullanılır.";
+      return `<div class="card app-card" data-app="${id}" data-st="${!known ? "?" : on ? "on" : "off"}">
+        <div class="app-top"><div class="app-ico" aria-hidden="true">${ico}</div><div class="app-titles"><div class="app-title"><span>${title}</span>${badge}</div><p class="app-desc">${desc}</p></div></div>
+        ${meta.length ? `<div class="app-meta">${meta.map(m => `<span class="meta-chip">${m}</span>`).join("")}</div>` : ""}
+        <div class="app-vars"><div class="av-head"><span class="oz-title">Değişkenler</span><button class="link" data-kvars="${esc(group)}">Düzenle…</button></div>${rows}</div>
+        <div class="app-foot"><span class="small muted">Eylemler yakında</span><div class="app-btns">${off("Önizle", tip)}${on ? off("Yükselt", tip) + off("Kaldır", tip) : off("Kur", tip)}</div></div></div>`;
+    }).join("");
+    const chip = (key, label, n) => `<button class="fchip" data-sf="${key}" aria-pressed="${storeFilter === key}">${label}${n === undefined ? "" : ` <span class="muted">${n}</span>`}</button>`;
+    const gen = [["Kurulum modu", "kurulum_mod"], ["Ana klasör", "kurulum_ana_klasor"], ["Dışarıya açık", "kurulum_dis_erisim"], ["Eylem hedefi", "kurulum_yazilim"]]
+      .map(([l, n]) => `<div class="kv"><span class="muted">${l}</span><span class="chip" title="${n}">${esc(kuv(n)) || "—"}</span></div>`).join("");
+    return `<div class="store-head"><div><h2>Uygulama kataloğu</h2><div class="small muted">Kurulum motoru <span class="mono">v${esc(p.version)}</span> · bu USB'de. Docker ya da yerel paket (native) olarak kurulur.</div></div>
+        <div class="fchips2">${chip("all", "Tümü", APPS.length)}${known ? chip("on", "Kurulu", onN) + chip("off", "Kurulabilir", APPS.length - onN) : ""}</div></div>
+      ${known ? "" : `<div class="notice" style="margin-bottom:14px"><span class="ico" aria-hidden="true">ℹ</span><div>Hangi uygulamaların kurulu olduğu henüz okunmadı. ${dattr ? `<button class="link" ${dattr}>Durumu oku</button> (salt okunur).` : ""}</div></div>`}
+      <div class="store-grid" id="store-grid">${cards}</div>
+      <div class="card gen-card"><div class="oz-top"><span class="oz-title">Genel ayarlar</span><span class="oz-tag">tüm uygulamalar</span></div>
+        <div class="gen-grid">${gen}</div>
+        <div class="oz-foot oz-foot-row"><span>${known && dattr ? `<button class="link" ${dattr}>Durumu yenile</button> · ` : ""}Son durum: ${d && d.lastTime ? esc(ago(d.lastTime)) + " önce" : "okunmadı"}</span><button class="link" data-kvars-all>Tüm değişkenler…</button></div></div>
+      <details class="card store-actions"><summary><b>Genel eylemler</b> <span class="small muted">durum, preview, kur, yukselt, kaldir · <span class="mono">kurulum_yazilim</span> seçimine göre çalışır</span></summary>${actionsSection(ok, na, p)}</details>`;
+  }
+
+  function applyStoreFilter() {
+    $$("#store-grid .app-card").forEach(el => { el.hidden = storeFilter !== "all" && el.dataset.st !== storeFilter; });
+    $$("#srv-body [data-sf]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.sf === storeFilter)));
+  }
+
+  function bindKurulum() {
+    $$("#srv-body [data-sf]").forEach(b => b.addEventListener("click", () => { storeFilter = b.dataset.sf; applyStoreFilter(); }));
+    $$("#srv-body [data-kvars]").forEach(b => b.addEventListener("click", () => openVars(srvName, "kurulum", b.dataset.kvars)));
+    $("#srv-body [data-kvars-all]")?.addEventListener("click", () => openVars(srvName, "kurulum"));
+    $$("#srv-body [data-actcat]").forEach(b => b.addEventListener("click", () => { actFilter = b.dataset.actcat; applyActFilter(); }));
+    if (!$$("#srv-body [data-sf]").some(b => b.dataset.sf === storeFilter)) storeFilter = "all";
+    applyStoreFilter(); applyActFilter();
+    if (kuvSrv !== srvName) loadKuv();
+  }
+
   function renderServer() {
     if (!srv) return;
     const s = srv.server;
-    $("#srv-head").innerHTML = `<button class="back" id="srv-back">← Sunucular</button>
-      <div class="srv-title">${osIcon(s.os, 36)}<span class="status-dot ${dotState(s)}" aria-label="${stateText(s)}"></span><h1>${esc(s.name)}</h1>
-        ${s.platform ? `<span class="tag">${esc(s.platform)}</span>` : ""}<span class="badge ${!s.valid ? "warn" : !s.checked ? "plain" : s.up ? "ok" : s.knock ? "warn" : "danger"}">${stateText(s)}</span>
-        <span class="grow" style="flex:1"></span>
-        <button class="btn sm" id="srv-term" ${s.valid ? "" : "disabled"}>Terminal'de bağlan</button>
-        <button class="btn sm ghost" id="srv-copy" ${s.valid ? "" : "disabled"}>SSH komutunu kopyala</button>
-        <button class="btn sm" id="srv-rename">Yeniden adlandır</button><button class="btn sm dangerbtn" id="srv-del">Sil…</button></div>
-      <div class="srv-addr mono small muted" style="margin-bottom:14px">${esc(s.valid ? `${s.user}@${s.host}:${s.port}` : "server.env geçersiz")} · ${s.hasKey ? "anahtar var" : "anahtar yok"}</div>`;
-    $("#srv-back").addEventListener("click", () => showView("servers"));
-    $("#srv-rename").addEventListener("click", () => openRename(s.name));
-    $("#srv-del").addEventListener("click", () => openDelete(s.name));
+    const stCls = !s.valid ? "warn" : !s.checked ? "plain" : s.up ? "ok" : s.knock ? "warn" : "danger";
+    const addr = s.valid ? `${s.user}@${s.host}:${s.port}` : "";
+    $("#srv-head").innerHTML = `<nav class="sv-crumb" aria-label="Konum"><a href="#" id="srv-back">Sunucular</a><span aria-hidden="true">/</span><span>${esc(s.name)}</span></nav>
+      <div class="sv-bar">
+        <div class="sv-id">${osIcon(s.os, 34)}<h1>${esc(s.name)}</h1>
+          ${s.platform ? `<span class="tag">${esc(s.platform)}</span>` : ""}
+          <span class="sv-state ${stCls}"><span class="sv-dot" aria-hidden="true"></span>${esc(stateText(s))}</span>
+          ${s.valid ? `<button class="sv-chip" id="srv-addr" type="button" title="Adresi kopyala"><span class="mono">${esc(addr)}</span>${COPY_ICON}</button>` : '<span class="small muted">server.env geçersiz</span>'}
+          <button class="sv-edit" id="srv-edit" type="button" title="IP, kullanıcı ve portu düzenle" aria-label="Bağlantı bilgilerini düzenle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></div>
+        <div class="sv-actions">
+          <button class="btn primary" id="srv-term" ${s.valid ? "" : "disabled"}>Terminal'de bağlan</button>
+          <button class="btn" id="srv-copy" ${s.valid ? "" : "disabled"} title="knock etkinse önce knock gönderir">SSH komutu</button>
+          <button class="btn icon-only" id="srv-more" type="button" aria-haspopup="menu" aria-label="Daha fazla işlem" title="Yeniden adlandır, sil, günlükler…"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+        </div>
+      </div>`;
+    $("#srv-back").addEventListener("click", e => { e.preventDefault(); showView("servers"); });
     $("#srv-term").addEventListener("click", () => act(s.name, "terminal", "Terminal'de açıldı"));
     $("#srv-copy").addEventListener("click", async () => { const r = await json("/api/action", { name: s.name, action: "cmd" }); try { await navigator.clipboard.writeText(r.cmd); toast("Komut kopyalandı"); } catch { prompt("Kopyalayın:", r.cmd); } });
+    $("#srv-addr")?.addEventListener("click", async () => { try { await navigator.clipboard.writeText(addr); toast("Adres kopyalandı"); } catch { prompt("Kopyalayın:", addr); } });
+    $("#srv-edit").addEventListener("click", () => openEditAddr(s.name));
+    $("#srv-more").addEventListener("click", e => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); openCtx(r.right - 230, r.bottom + 6, s.name); });
 
     const ti = id => { const i = TAB_ORDER.indexOf(id); return i < 0 ? 99 : i; };
     const pk = [...srv.packages].sort((a, b) => ti(a.id) - ti(b.id));
-    if (!pk.some(p => p.id === srvTab)) srvTab = (pk[0] || {}).id || "";
-    $("#srv-tabs").innerHTML = pk.map(p => `<button role="tab" id="tab-${esc(p.id)}" aria-selected="${p.id === srvTab}" data-p="${esc(p.id)}">${esc(TAB_LABEL[p.id] || p.id)}</button>`).join("");
+    const tabs = [{ id: "ozet" }, ...pk];
+    if (!tabs.some(p => p.id === srvTab)) srvTab = "ozet";
+    $("#srv-tabs").innerHTML = tabs.map(p => `<button role="tab" id="tab-${esc(p.id)}" aria-selected="${p.id === srvTab}" data-p="${esc(p.id)}">${esc(p.id === "ozet" ? "Özet" : TAB_LABEL[p.id] || p.id)}</button>`).join("");
     $$("#srv-tabs button").forEach(b => b.addEventListener("click", () => { srvTab = b.dataset.p; history.replaceState(null, "", `#s=${encodeURIComponent(srvName)}&p=${encodeURIComponent(srvTab)}`); renderServer(); }));
 
     const p = pk.find(x => x.id === srvTab);
+    if (srvTab === "ozet") { renderOzet(s, pk); return; }
     setTimeout(() => $$("#srv-body [data-vars]").forEach(b => b.addEventListener("click", () => openVars(srvName, b.dataset.vars))), 0);
     setTimeout(() => $$("#srv-body [data-write]").forEach(b => b.addEventListener("click", () => { const [pid, aid] = b.dataset.write.split("|"); openWrite(srvName, pid, aid); })), 0);
     setTimeout(() => $$("#srv-body [data-term]").forEach(b => b.addEventListener("click", () => { const [pid, aid] = b.dataset.term.split("|"); openTerm(srvName, pid, aid); })), 0);
     setTimeout(() => $$("#srv-body [data-run]").forEach(b => b.addEventListener("click", () => { const [pid, aid] = b.dataset.run.split("|"); openRun(srvName, pid, aid); })), 0);
     if (!p) { $("#srv-body").innerHTML = '<div class="card"><div class="card-body small muted">Bu sunucu için paket bulunamadı.</div></div>'; return; }
     const ok = p.actions.filter(a => a.applicable), na = p.actions.filter(a => !a.applicable);
-    const lyn = p.id === "linux-hardening" ? `<div class="aside-card" style="margin:0 0 16px">${lynisCard(s, true)}</div>` : "";
-    $("#srv-body").innerHTML = `${lyn}
-      <div class="card"><div class="card-head"><h2>${esc(p.name || p.id)}</h2><span class="hint">${esc(p.id)} ${esc(p.version)} · USB</span></div>
-        <div class="card-body"><p class="small muted" style="margin:0">${esc(p.description)}</p></div></div>
-      ${varsCard(p)}
-      <div class="card"><div class="card-head"><h2>Eylemler</h2><span class="hint">${ok.length} eylem · yalnızca salt okunur olanlar çalıştırılabilir</span></div>
-        <div class="card-body tight">${ok.map(a => actionCard(a, p)).join("") || '<div class="act small muted">Eylem yok.</div>'}
-        ${na.length ? `<details class="na"><summary>Bu sunucuya uygulanmaz (${na.length}): ${na.map(a => esc(a.id)).join(", ")}</summary>${na.map(a => actionCard(a, p)).join("")}</details>` : ""}</div></div>`;
+    if (p.id === "kurulum") { $("#srv-body").innerHTML = kurulumStore(s, p, ok, na); bindKurulum(); return; }
+    $("#srv-body").innerHTML = `${p.id === "linux-hardening" ? lynisHero(s, p) : ""}<div class="pk-top">${pkgInfoCard(p, ok)}${varsCard(p)}</div>${statusCard(p)}${actionsSection(ok, na, p)}`;
+    $$("#srv-body [data-actcat]").forEach(b => b.addEventListener("click", () => { actFilter = b.dataset.actcat; applyActFilter(); }));
+    $("#srv-body [data-go-lynis-p]")?.addEventListener("click", () => goLynis(srvName, s.lynis && s.lynis.warnings > 0 ? "uyari" : "all"));
+    applyActFilter();
   }
 
-  async function act(name, action, msg) { try { await json("/api/action", { name, action }); toast(msg); } catch (e) { toast("Hata: " + e.message); } }
+  async function act(name, action, msg) {
+    try { const r = await json("/api/action", { name, action }); toast(r && r.knock ? "Terminal açıldı · 🚪 knock Terminal'de gönderiliyor" : msg); }
+    catch (e) { toast("Hata: " + e.message); }
+  }
 
   async function openServer(name, tab) {
-    srvName = name; if (tab) srvTab = tab;
+    srvName = name; srvTab = tab || "ozet";
     srv = null;
     showView("server");
     history.replaceState(null, "", `#s=${encodeURIComponent(name)}&p=${encodeURIComponent(srvTab || "")}`);
@@ -1145,11 +1557,12 @@
     const a = b.dataset.ctx, name = ctxName; closeCtx();
     try {
       if (a === "copy") { const r = await json("/api/action", { name, action: "cmd" }); try { await navigator.clipboard.writeText(r.cmd); toast("Komut kopyalandı"); } catch { prompt("Kopyalayın:", r.cmd); } }
-      else if (a === "term") { await json("/api/action", { name, action: "terminal" }); toast("Terminal'de açıldı"); }
+      else if (a === "term") await act(name, "terminal", "Terminal'de açıldı");
       else if (a === "refresh") { await load(); toast("Yenilendi"); }
-      else if (a === "logs") showView("logs");
-      else if (a === "lynis") { lynSel = name; showView("lynis"); }
+      else if (a === "logs") goLogs(name);
+      else if (a === "lynis") goLynis(name, "");
       else if (a === "draft") openWizard(name);
+      else if (a === "edit") openEditAddr(name);
       else if (a === "rename") openRename(name);
       else if (a === "delete") openDelete(name);
     } catch (err) { toast("Hata: " + err.message); }
