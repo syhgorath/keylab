@@ -1,5 +1,15 @@
 # sshpocket kabuk → Go taşıma planı (2026-11-07)
 
+> **GÜNCEL DURUM (2026-11-08)** — aşağıdaki kronolojik kayıt bu özetin ayrıntısıdır.
+> - Dilimler 0–6 bitti (manifest, trust, runner, servers, cli, report, findings, selfupdate, eject, doctor, settings); `main.go` temalara bölündü.
+> - Yayın biçimi: imzalı tek ikili (macOS universal). Bkz. `YAYIN.md`, `scripts/build-release.sh`.
+> - Arayüz eylemleri varsayılan olarak Go yürütücüyle çalışır (`SSHPOCKET_SHELL_RUN=1` kabuğa döner).
+> - Kabuk motoru ve Bats testleri `referans/kabuk/` altında dondurulmuştur; Go testleri onu şartname olarak kullanır (bulunamazsa atlar).
+> - Taşınmayanlar (bilinçli): terminal menüsü (fzf dâhil), `--migrate` ve eski `sistem/Modules` düzeni.
+> - Eksikler: durum göstergesinde 🔒 (knock) işareti; panodaki "ssh komutunu kopyala" knock göndermez; `scripts/lock-component.sh`'ın Go karşılığı yok.
+> - Denenmedi: arayüzdeki "Keychain parolası" ve "Port knocking" adım düğmeleri; gerçek Release ile `update`; `build-release.sh` imzalama adımı; Gatekeeper/notarization; gerçek ağda `components update/upgrade`; CI'ın yeni düzende ilk koşusu.
+> - Sürüm numarası, etiket, imza ve Release bakımcıdadır.
+
 Karar (kullanıcı): kabuk geliştirmesi durdu; sshpocket tam Go olacak, sonra GitHub'daki sshpocket komple yenilenir, sonra diğer repolar.
 Kabuk motoru, taşıma bitene dek **referans davranış**tır (silinmez). Paketler (`component.json` + Ansible) DEĞİŞMEZ; sözleşme (`docs/package-standard.md`, `package-index.md`) korunur.
 
