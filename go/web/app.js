@@ -1189,10 +1189,10 @@
 
   /* ---------------- Başlangıç ---------------- */
   json("/api/about").then(a => { askAvail = !!a.askpass; paintAsk(); }).catch(() => {});
+  const startHash = new URLSearchParams(location.hash.slice(1)); // showView adres çubuğundaki #s=… kısmını siler: ÖNCE oku
   showView("dash");
   load().then(() => {
-    const h = new URLSearchParams(location.hash.slice(1));
-    if (h.get("s")) openServer(h.get("s"), h.get("p") || "");
+    if (startHash.get("s")) openServer(startHash.get("s"), startHash.get("p") || "");
   });
   setInterval(() => {
     if (document.hidden || wiz.classList.contains("open")) return;
