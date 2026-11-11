@@ -75,9 +75,9 @@ Kilit, bir sürümü **engelli** işaretleyebilir: `[linux-hardening]` altında 
 
 ## 8. Komutlar ve menü
 ```
-./start.sh --components channel status     # etkin kilit, kaynağı (gömülü/kanal), serial, bitiş, iptaller
-./start.sh --components channel update     # §5.5; farkı gösterir, onay ister
-./start.sh --components check-new          # (bugünkü) bilgi; kanal varsa kanaldan okur
+./sshpocket components channel status     # etkin kilit, kaynağı (gömülü/kanal), serial, bitiş, iptaller
+./sshpocket components channel update     # §5.5; farkı gösterir, onay ister
+./sshpocket components check-new          # (bugünkü) bilgi; kanal varsa kanaldan okur
 ```
 Menü: 📦 Paketler ekranında "Güncelleme var" rozeti; seçilince fark ve onay.
 

@@ -239,7 +239,9 @@ PY
 # ---------- uçtan uca (CLI, sahte curl) ----------
 make_cli_sandbox() {
     SB="$T/sb"; mkdir -p "$SB"
-    cp -R "$ROOT/sistem" "$SB/"; cp "$ROOT/start.sh" "$SB/"
+    # -L: imza dosyaları (release_signers/index_signers) depo kökünü gösteren göreli sembolik bağdır; sandbox'ta kopuk kalırlar ve
+    # GNU cp kopuk bağın üstüne yazmaz ("not writing through dangling symlink"). Gerçek dosya olarak kopyala.
+    cp -RL "$ROOT/sistem" "$SB/"; cp "$ROOT/start.sh" "$SB/"
     printf '2.1.0\n' > "$SB/VERSION"
     printf '# yorum\n# [yorum-paket]\n\n[linux-hardening]\nrepo = a/b\nversion = 0.11.0\n\n[eski-paket]\nversion = 2.0.0\n' > "$SB/components.lock"
     printf 'EjectUSB(){ :; }\n' > "$SB/sistem/Helpers/Eject.sh"

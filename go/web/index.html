@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sshpocket</title>
+<link rel="icon" href="logo.jpg" type="image/jpeg">
+<link rel="stylesheet" href="tasarim.css">
+</head>
+<body>
+<div class="app">
+
+  <div class="brandbar">
+    <div class="logo" aria-hidden="true"><img src="logo.jpg" alt="" width="36" height="36"></div>
+    <div class="brand-text">sshpocket<small id="brand-sub">yerel · taslak</small></div>
+  </div>
+
+  <header class="topbar">
+    <div class="search" role="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="search-input" type="search" placeholder="Sunucu, paket ara…" aria-label="Ara">
+      <kbd>/</kbd>
+    </div>
+    <div class="spacer" style="flex:1"></div>
+    <span id="pills" class="row-flex"></span>
+    <button class="icon-btn" id="theme-btn" aria-label="Tema: otomatik" title="Tema: otomatik (tıklayınca değişir)"><span id="theme-ico" aria-hidden="true">◐</span></button>
+  </header>
+
+  <nav class="sidebar" aria-label="Ana gezinme">
+    <div class="nav-group">
+      <div class="nav-title">Genel</div>
+      <button class="nav-item" aria-current="page" data-nav="dash">
+        <span class="ico" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg></span>
+        Pano
+      </button>
+      <button class="nav-item" data-nav="servers">
+        <span class="ico" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/></svg></span>
+        Sunucular <span class="count" id="n-servers">0</span>
+      </button>
+      <button class="nav-item" data-nav="packages">
+        <span class="ico" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v8a2 2 0 0 1-1 1.7l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.7l7-4a2 2 0 0 1 2 0l7 4A2 2 0 0 1 21 8Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></span>
+        Paketler <span class="count" id="n-packages">0</span>
+      </button>
+    </div>
+    <div class="nav-group">
+      <div class="nav-title">Güvenlik</div>
+      <button class="nav-item" data-nav="lynis">
+        <span class="ico" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+        Lynis denetimi
+      </button>
+      <button class="nav-item" data-nav="logs">
+        <span class="ico" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16M4 12h16M4 19h10"/></svg></span>
+        Günlükler
+      </button>
+    </div>
+    <div class="nav-group">
+      <div class="nav-title">Sistem</div>
+      <button class="nav-item" data-nav="settings">
+        <span class="ico" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></span>
+        Ayarlar
+      </button>
+    </div>
+    <div class="nav-group" style="margin-top:auto">
+      <div class="aside-card" style="margin:0;background:var(--surface-2);border-color:var(--border)">
+        <h3>İndeks</h3>
+        <div class="small mono" style="color:var(--text-2)" id="idx-serial">seri: —</div>
+        <div class="small muted" style="margin-top:6px">imza doğrulaması bu taslakta yok</div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main">
+    <section class="view" id="view-dash">
+      <div class="kpis" id="kpis"></div>
+      <div class="card">
+        <div class="card-head">
+          <h2>Sunucular</h2>
+          <span class="hint">sağ tık ya da F10: bağlam menüsü</span>
+          <div class="spacer"></div>
+          <button class="btn sm" data-nav-target="add">+ Sunucu ekle</button>
+          <div class="mode-toggle" role="group" aria-label="Görünüm"><button data-mode="tiles" aria-pressed="true">Simgeler</button><button data-mode="list" aria-pressed="false">Liste</button></div>
+          <button class="btn sm ghost" id="refresh-all" title="Tümünü yenile">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+            Yenile
+          </button>
+        </div>
+        <div class="card-body tight"><ul class="server-list" id="servers"></ul></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>Paketler</h2>
+          <span class="hint">USB'deki kurulu sürümler</span>
+          <div class="spacer"></div>
+          <button class="btn sm ghost" data-nav-target="packages">Tümünü gör</button>
+        </div>
+        <div class="card-body tight" id="pkgs-dash"></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-server" hidden>
+      <div id="srv-head"></div>
+      <div class="tabs" role="tablist" id="srv-tabs" aria-label="Paketler"></div>
+      <div id="srv-body" role="tabpanel"></div>
+    </section>
+
+    <section class="view" id="view-servers" hidden>
+      <div class="card">
+        <div class="card-head"><h2>Tüm sunucular</h2><div class="spacer"></div><button class="btn sm" data-nav-target="add">+ Sunucu ekle</button><div class="mode-toggle" role="group" aria-label="Görünüm"><button data-mode="tiles" aria-pressed="true">Simgeler</button><button data-mode="list" aria-pressed="false">Liste</button></div><span class="hint" id="servers-count"></span></div>
+        <div class="card-body tight"><ul class="server-list" id="servers-all"></ul></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-add" hidden>
+      <div class="card">
+        <div class="card-head"><h2>Sunucu ekle</h2></div>
+        <div class="card-body">
+          <div id="add-steps" hidden></div>
+          <div id="add-form-wrap">
+          <div class="notice" style="margin-bottom:16px"><span class="ico" aria-hidden="true">ℹ</span><div>Alanlar sshpocket'in kurallarıyla doğrulanır; <b>Sunucuyu oluştur</b> <span class="mono">servers/&lt;ad&gt;/server.env</span> dosyasını sshpocket'in kendi işleviyle yazar (var olanın üzerine yazılmaz). Ardından anahtar adımları sizi adım adım yönlendirir. Sunucuya bu aşamada <b>bağlanılmaz</b>.</div></div>
+          <div class="addgrid">
+            <form id="add-form" novalidate autocomplete="off">
+              <div class="field"><label for="add-name">Sunucu adı</label><input id="add-name" autocapitalize="off" spellcheck="false" placeholder="ornek_sunucu" maxlength="40"><div class="hint" id="e-name">Küçük harf, rakam ve _ ; harfle başlar.</div></div>
+              <div class="field"><label for="add-host">IP ya da ana makine adı</label><input id="add-host" spellcheck="false" placeholder="192.0.2.10" maxlength="253"><div class="hint" id="e-host"></div></div>
+              <div class="row-flex" style="align-items:flex-start;gap:12px">
+                <div class="field" style="flex:1"><label for="add-user">Kullanıcı</label><input id="add-user" spellcheck="false" placeholder="admin" maxlength="32"><div class="hint" id="e-user"></div></div>
+                <div class="field" style="width:110px"><label for="add-port">Port</label><input id="add-port" inputmode="numeric" placeholder="22" maxlength="5"><div class="hint" id="e-port"></div></div>
+              </div>
+              <div class="field"><label for="add-os">İşletim sistemi profili <span class="muted">(isteğe bağlı)</span></label><select id="add-os"><option value="">(belirtme)</option></select><div class="hint" id="e-os">Paketlerin desteklediği profiller listelenir.</div></div>
+            </form>
+            <div id="add-preview" aria-live="polite"></div>
+          </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-settings" hidden>
+      <div class="card">
+        <div class="card-head"><h2>Görünüm</h2></div>
+        <div class="card-body">
+          <div class="frow2"><span class="flabel" style="width:110px">Tema</span><div class="segmented" role="group" aria-label="Tema" id="set-theme"><button data-v="auto">Otomatik</button><button data-v="light">Açık</button><button data-v="dark">Koyu</button></div></div>
+          <div class="frow2"><span class="flabel" style="width:110px">Sunucular</span><div class="segmented" role="group" aria-label="Sunucu görünümü" id="set-mode"><button data-v="tiles">Simgeler</button><button data-v="list">Liste</button></div></div>
+          <div class="frow2"><span class="flabel" style="width:110px">Parola girişi</span><div class="segmented" role="group" aria-label="Parola girişi" id="set-ask"><button data-v="system">Sistem penceresi (önerilen)</button><button data-v="inline">Sayfa içi kutu</button></div></div>
+          <div class="hint small muted">Sistem penceresi: sudo parolası macOS'un kendi gizli girdi penceresine yazılır; tarayıcıya, eklentilere ve parola yöneticisine hiç uğramaz. Sayfa içi kutu yedek yoldur. Tercihler yalnızca bu tarayıcıda saklanır.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Kaynaklar</h2><span class="hint">salt okunur</span></div>
+        <div class="card-body tight" id="set-paths"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>sshpocket ayarları</h2><span class="hint"><span class="mono">sshpocket.conf</span> · salt okunur</span></div>
+        <div class="card-body tight" id="set-conf"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Güvenlik</h2></div>
+        <div class="card-body"><ul class="small" style="margin:0;padding-left:18px;color:var(--text-2);line-height:1.8">
+          <li>Arayüz yalnızca <span class="mono">127.0.0.1</span>'de dinler; her çalıştırmada yeni oturum anahtarı üretilir.</li>
+          <li><b>Sudo parolası</b> yalnızca motor sorduğunda çıkan kutuya yazılır; doğrudan Ansible'ın terminaline (pty) iletilir, saklanmaz, günlüğe yazılmaz, sayfada gösterilmez. İstemezseniz eylem penceresindeki <b>macOS Terminal'de aç</b> yolunu kullanın. SSH anahtar parolaları ve gizli anahtarlar arayüzde girilmez (ssh-agent).</li><li>Sayfa <span class="mono">Content-Security-Policy</span> ile yalnızca kendi betiğini çalıştırır ve dışarıya bağlanamaz.</li>
+          <li>Arayüzden yalnızca <b>salt okunur, sudo istemeyen, onay gerektirmeyen, önkoşulsuz</b> eylemler çalıştırılır; sunucu tarafında yeniden denetlenir. Çalıştırma sshpocket'in kendi motoruyla yapılır (kapılar, günlük, sonuç kaydı aynı). Eylemler arayüzdeki terminalde çalışır; sudo parolası istenince kutu açılır. Değişiklik yapan (yıkıcı olmayan) eylemler önce plan, snapshot ve ad/e-h onayından geçer; motor onayları yeniden sorabilir. Yıkıcı eylemler (kaldir, yukselt, sunucu silme) ek onay ister: sunucu adı birebir, snapshot ve "geri alınamayabilir" onayı.</li>
+        </ul></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Klavye kısayolları</h2></div>
+        <div class="card-body"><div class="small" style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;color:var(--text-2)">
+          <kbd class="mono">/</kbd><span>Aramaya odaklan</span><kbd class="mono">F10</kbd><span>Seçili sunucuda bağlam menüsü</span><kbd class="mono">Enter</kbd><span>Sunucuyu aç</span><kbd class="mono">Esc</kbd><span>Menü ve pencereyi kapat</span>
+        </div></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-packages" hidden>
+      <div id="pkg-page"></div>
+    </section>
+
+    <section class="view" id="view-lynis" hidden>
+      <div class="card">
+        <div class="card-head"><h2>Lynis denetimi</h2><div class="spacer"></div><span class="hint">sunucu seçin</span></div>
+        <div class="card-body"><div id="lynis-pick" class="row-flex" role="tablist" aria-label="Sunucu"></div></div>
+      </div>
+      <div id="lynis-detail"></div>
+    </section>
+
+    <section class="view" id="view-logs" hidden>
+      <div class="card">
+        <div class="card-head"><h2>Günlükler</h2><div class="spacer"></div><span class="hint" id="logs-count"></span></div>
+        <div class="card-body" id="logfilters" style="border-bottom:1px solid var(--border)"></div>
+        <div class="card-body tight loglist" id="loglist"></div>
+      </div>
+      <div class="card" id="logcard" hidden>
+        <div class="card-head">
+          <h2 id="logtitle" style="font-family:var(--mono);font-size:14px"></h2>
+          <div class="spacer"></div>
+          <input id="logfind" type="search" placeholder="günlükte ara…" aria-label="Günlükte ara" style="max-width:200px">
+          <button class="btn sm" id="logerr">Hatalara git</button>
+        </div>
+        <div class="card-body"><div class="log-view" id="logview" tabindex="0" role="region" aria-label="Günlük içeriği"></div></div>
+      </div>
+    </section>
+  </main>
+
+  <aside class="aside" aria-label="Bağlam paneli">
+    <div class="aside-card" id="a-lynis"></div>
+    <div class="aside-card"><h3>Son eylemler</h3><ul class="tl" id="a-tl"></ul></div>
+    <div class="aside-card">
+      <h3>Dikkat</h3>
+      <div class="notice" style="margin:0 0 8px"><span class="ico" aria-hidden="true">⚠</span><div><b>Snapshot hatırlatması:</b> yazma eylemlerinden önce VM snapshot'ı alın.</div></div>
+      <div class="notice" style="margin:0"><span class="ico" aria-hidden="true">ℹ</span><div>Arayüzden yalnızca <b>salt okunur</b>, sudo istemeyen eylemler çalışır (utility <span class="mono">durum</span>); sudo isteyenler parola kutusuyla, yazanlar onay akışıyla. Yıkıcı eylemler ek onaydan geçer.</div></div>
+    </div>
+    <div class="aside-card">
+      <h3>Kısayollar</h3>
+      <div class="small" style="display:flex;flex-direction:column;gap:6px;color:var(--text-2)">
+        <div style="display:flex;justify-content:space-between"><span>Ara</span><kbd class="mono">/</kbd></div>
+        <div style="display:flex;justify-content:space-between"><span>Bağlam menüsü</span><kbd class="mono">F10</kbd></div>
+        <div style="display:flex;justify-content:space-between"><span>Kapat</span><kbd class="mono">Esc</kbd></div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div class="ctx" id="ctx" role="menu" aria-label="Sunucu bağlam menüsü">
+  <div class="ctx-head" id="ctx-head">sunucu</div>
+  <button role="menuitem" data-ctx="term">Terminal'de bağlan</button>
+  <button role="menuitem" data-ctx="copy">SSH komutunu kopyala</button>
+  <hr>
+  <button role="menuitem" data-ctx="refresh">Durumu yenile</button>
+  <button role="menuitem" data-ctx="logs">Günlükleri aç</button>
+  <button role="menuitem" data-ctx="lynis">Lynis skorunu göster</button>
+  <hr>
+  <button role="menuitem" data-ctx="edit">Bağlantı bilgilerini düzenle…</button>
+  <button role="menuitem" data-ctx="rename">Yeniden adlandır…</button>
+  <button role="menuitem" data-ctx="delete" style="color:var(--danger)">Sil…</button>
+  <hr>
+  <button role="menuitem" data-ctx="draft">Paket eylemi (taslak)…</button>
+</div>
+
+<div class="modal-back" id="wizard" role="dialog" aria-modal="true" aria-labelledby="wiz-title">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h3 id="wiz-title">Paket eylemi <span class="draft-tag">taslak</span></h3>
+        <div class="sub" id="wiz-desc"></div>
+      </div>
+      <div class="spacer"></div>
+      <button class="icon-btn" data-close aria-label="Kapat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="steps" id="wiz-steps">
+        <div class="step active" data-step="1">1 · Önizleme</div>
+        <div class="step" data-step="2">2 · Onay</div>
+        <div class="step" data-step="3">3 · Uygula</div>
+      </div>
+      <div id="step-1">
+        <div class="notice"><span class="ico" aria-hidden="true">ℹ</span><div><b>Önizleme henüz bağlı değil.</b> Gerçek sürümde burada, sunucuya hiçbir şey yazmadan, değişecek öğelerin sayısı ve farkı görünür.</div></div>
+        <div class="diff" style="margin-top:12px"><div><div class="lbl">paket</div><pre id="w-pkg"></pre></div><div><div class="lbl">sunucu</div><pre id="w-srv"></pre></div></div>
+        <p style="margin:12px 0 0" class="row-flex"><span class="badge plain">snapshot hatırlatması</span></p>
+      </div>
+      <div id="step-2" hidden>
+        <div class="notice"><span class="ico" aria-hidden="true">⚠</span><div>Gerçek sürümde bu eylem <b>gerçek bir sunucuya yazar</b>. Onaylamak için sunucu adını yazın: <span class="mono" id="wiz-confirm-name"></span></div></div>
+        <div class="field" style="margin-top:12px">
+          <label for="confirm-input">Sunucu adı</label>
+          <input id="confirm-input" type="text" autocomplete="off" spellcheck="false">
+          <div class="hint">Eşleşme büyük/küçük harf duyarlıdır.</div>
+        </div>
+      </div>
+      <div id="step-3" hidden>
+        <div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div><b>Hiçbir komut çalıştırılmadı.</b> Bu bir arayüz taslağıdır: eylem çalıştırma bağlandığında bu adımda alan alan ilerleme, geri alma sayacı ve canlı günlük görünecek.</div></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" data-close>Vazgeç</button>
+      <button class="btn primary" id="next-btn">Devam · onay</button>
+      <button class="btn primary" id="apply-btn" hidden disabled>Onayla (taslak)</button>
+      <button class="btn primary" id="finish-btn" hidden data-close>Kapat</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-back" id="runmodal" role="dialog" aria-modal="true" aria-labelledby="run-title">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h3 id="run-title">Eylem</h3><div class="sub" id="run-sub"></div></div>
+      <div class="spacer"></div>
+    </div>
+    <div class="modal-body">
+      <div id="run-confirm">
+        <div class="notice"><span class="ico" aria-hidden="true">ℹ</span><div id="run-confirm-text"></div></div>
+        <div id="run-confirm-extra" hidden></div>
+        <div class="small muted" id="run-confirm-note" style="margin-top:10px">Çalıştırma sshpocket'in kendi motoruyla yapılır; kapılar, günlük ve sonuç kaydı menüdekiyle aynıdır. Parola sorulmaz: ssh anahtarınız ssh-agent'ta yüklü olmalı.</div>
+      </div>
+      <div id="run-live" hidden>
+        <div class="run-meta"><span id="run-state" role="status"></span><span style="flex:1"></span><button class="btn sm ghost" id="run-cancel">İptal</button></div>
+        <div id="run-progress" style="margin-bottom:10px"></div>
+        <div class="log" id="run-log" role="log" aria-live="polite" aria-label="Canlı çıktı"></div>
+        <div id="run-input" class="row-flex" hidden style="margin-top:10px;flex-wrap:nowrap" role="group" aria-label="Motor girdi bekliyor">
+          <span id="run-prompt" class="mono small" style="max-width:48%;word-break:break-word"></span>
+          <input id="run-in" style="flex:1" autocomplete="off" spellcheck="false" aria-label="Yanıt">
+          <button class="btn sm" id="run-yes" hidden title="e gönderir">Evet (e)</button><button class="btn sm" id="run-no" hidden title="H gönderir">Hayır (H)</button>
+          <button class="btn sm primary" id="run-send">Gönder</button>
+        </div>
+        <div id="run-result" style="margin-top:12px"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="run-ext" hidden title="Parolayı bu sayfaya yazmak istemezseniz">macOS Terminal'de aç</button>
+      <button class="btn ghost" id="run-close">Vazgeç</button>
+      <button class="btn primary" id="run-go">Çalıştır</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-back" id="varsmodal" role="dialog" aria-modal="true" aria-labelledby="vars-title">
+  <div class="modal" style="width:min(900px,94vw);max-width:900px">
+    <div class="modal-head">
+      <div><h3 id="vars-title">Değişkenler</h3><div class="sub" id="vars-sub"></div></div>
+      <div class="spacer"></div>
+      <button class="icon-btn" id="vars-x" aria-label="Kapat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body" style="max-height:68vh;overflow:auto">
+      <div class="row-flex" style="margin-bottom:12px"><input id="vars-q" type="search" placeholder="değişken ya da açıklama ara…" aria-label="Değişken ara" style="flex:1"><label class="small row-flex" style="gap:6px"><input type="checkbox" id="vars-set"> yalnızca ayarlı</label><span class="small muted" id="vars-count"></span></div>
+      <div id="vars-list"></div>
+    </div>
+    <div class="modal-foot"><span class="small muted" style="margin-right:auto">Doğrulama sshpocket'in kendi doğrulayıcısıyla yapılır (menüdekiyle aynı). Değişiklik <span class="mono">servers/&lt;ad&gt;/&lt;paket&gt;.vars</span> dosyasına yazılır.</span><button class="btn" id="vars-close">Kapat</button></div>
+  </div>
+</div>
+
+<div class="modal-back" id="dlg" role="dialog" aria-modal="true" aria-labelledby="dlg-title">
+  <div class="modal" style="width:min(580px,94vw)">
+    <div class="modal-head">
+      <div><h3 id="dlg-title"></h3><div class="sub" id="dlg-sub"></div></div>
+      <div class="spacer"></div>
+      <button class="icon-btn" id="dlg-x" aria-label="Kapat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body" id="dlg-body" style="max-height:62vh;overflow:auto"></div>
+    <div class="modal-foot"><span id="dlg-err" class="small" style="color:var(--danger);margin-right:auto" role="alert"></span><button class="btn ghost" id="dlg-cancel">Vazgeç</button><button class="btn primary" id="dlg-ok">Tamam</button></div>
+  </div>
+</div>
+
+<div id="toast" role="status" style="position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--text,#222);color:var(--surface,#fff);padding:8px 14px;border-radius:8px;display:none;font-size:13px;z-index:50"></div>
+<script src="app.js"></script>
+</body>
+</html>

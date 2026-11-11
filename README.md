@@ -10,9 +10,12 @@
 
 🇹🇷 Türkçe · 🇬🇧 [English](README.en.md)
 
-macOS için, USB bellekten (veya herhangi bir klasörden) çalışan bir SSH bağlantı menüsü.
-Her sunucu `servers/<ad>/` altında bir klasördür: menüden ekleyin ya da `~/.ssh/config`'ten içe aktarın; passphrase macOS Keychain'de durur.
-İsterseniz imzalı **paketlerle** (şimdilik sunucu sertleştirme ve saat/locale ayarı) sunucuyu yönetebilirsiniz.
+macOS için, USB bellekten (veya herhangi bir klasörden) çalışan **tek dosyalık** bir SSH sunucu yöneticisi: yerel web arayüzü + komut satırı.
+Her sunucu `servers/<ad>/` altında bir klasördür; passphrase macOS Keychain'de durur.
+İmzalı **paketlerle** (şimdilik sunucu sertleştirme, saat/locale ayarı ve kurulum) sunucuyu yönetebilirsiniz.
+
+> **Sürüm 4 ile sshpocket Go'da yeniden yazıldı.** Kabuk (bash) motoru [`referans/kabuk/`](referans/kabuk) altında dondurulmuş **referans** olarak duruyor;
+> Go sürümü onunla yan yana karşılaştırmalı testlerle doğrulandı.
 
 > **Durum: ham / erken aşama.** 🛠️
 > Bu, kişisel bir HomeLab aracından çıkan bir proje. [Claude](https://claude.com/claude-code) ile
@@ -23,103 +26,81 @@ Her sunucu `servers/<ad>/` altında bir klasördür: menüden ekleyin ya da `~/.
 > kullanım sorumluluğu size aittir (bkz. [LICENSE](LICENSE)).
 
 > **Otomatik başlamaz.** macOS, Linux ve modern Windows USB takılınca script çalıştırmaz (güvenlik gereği).
-> Elle başlatın: `./start.sh` ya da Finder'da `start.command` dosyasına çift tıklayın.
+> Elle başlatın: Finder'da `start.command` dosyasına çift tıklayın ya da `./sshpocket`.
 
 ## Gereksinimler
 
-Standart bir macOS'ta **ek bir şey kurmanız gerekmez**; araç yalnızca sistemle gelen komutları kullanır:
-
 | Ne | Not |
 |---|---|
-| macOS 10.15 (Catalina) veya yenisi | İmzalı güncelleme `ssh-keygen -Y verify` ister (OpenSSH ≥ 8.0) |
-| `bash` 3.2 (`/bin/bash`), `ssh`, `ssh-keygen`, `ssh-add`, `ssh-copy-id`, `security`, `osascript`, `diskutil`, `curl`, `tar`, `shasum`, `nc` | Hepsi macOS ile gelir; `./start.sh --doctor` eksik olanı söyler (hiçbir şey kurmaz) |
+| macOS (Apple Silicon veya Intel) | Tek ikili hem arm64 hem amd64 içerir |
+| `ssh`, `ssh-keygen`, `ssh-add`, `ssh-copy-id`, `security`, `osascript`, `diskutil` | Hepsi macOS ile gelir; `./sshpocket doctor` eksik olanı söyler (hiçbir şey kurmaz) |
+| **Python ≥ 3.12** | Yalnızca **paketler** (Ansible) için; `brew install python@3.13`. sshpocket gerekli sanal ortamı kendisi kurar |
 
-İsteğe bağlı:
-
-| Ne | Ne işe yarar | Kurulum |
-|---|---|---|
-| **fzf** | Menülerde arama ve açıklama önizleme penceresi. Yoksa yerleşik ok tuşlu menü kullanılır. (0.74.5 ile denendi) | `brew install fzf` |
-| **Python ≥ 3.12** | Yalnızca **paketler** (örn. linux-hardening) için; günlük kullanımda gerekmez. macOS'un sistem Python'u (3.9) yetmez | `brew install python@3.13` |
-
-`fzf` Homebrew'da `/opt/homebrew/bin` ya da `/usr/local/bin` altındaysa Finder'dan (`start.command`) açıldığında da bulunur.
+İmza doğrulama, indirme, arşiv ve port yoklaması ikilinin içindedir; `curl`, `tar`, `shasum`, `nc` ve `bash` gerekmez.
 
 ## Hızlı başlangıç
 
 ```bash
-./start.sh                          # menüyü başlat
+./sshpocket                         # yerel web arayüzünü başlatır (127.0.0.1, jetonlu adres)
+./sshpocket doctor                  # ön koşul denetimi (yalnızca okur)
+./sshpocket components list         # paketler: kilit ↔ kurulu durumu
+./sshpocket components run utility durum ubuntutest   # bir paket eylemini komut satırından çalıştır
+./sshpocket version
 ```
 
-Ana menüden her şey yapılır: sunucuya bağlanma, **➕ Yeni sunucu ekle**,
-**📥 ~/.ssh/config'ten içe aktar** ve **🛠️ Sunucuları yönet** (listele/sil/yeniden adlandır).
-Aynı işler komut satırından da çalışır:
+Arayüzde sunucu ekleme (ad, adres, kullanıcı, port), anahtar adımları (üretme, sunucuya gönderme, ajana ekleme),
+yeniden adlandırma, silme, değişken düzenleme ve paket eylemleri (önizleme → onay → uygulama) vardır.
+Arayüz yalnızca `127.0.0.1`'e bağlanır; oturum çerezi ister.
 
-```bash
-bash sistem/ModuleGenerator.sh      # yeni sunucu ekle
-bash sistem/ImportSSHConfig.sh      # ~/.ssh/config'teki sunucuları içe aktar
-bash sistem/ModuleManager.sh list   # sunucuları listele (remove / rename de var)
+## Düzen (USB / klasör)
+
 ```
-
-Sunucu ekleme (generator) size IP/kullanıcı/port sorar, isterseniz ed25519 anahtar üretir ve
-passphrase'i **macOS Keychain**'e kaydeder.
+sshpocket          ikili (Release'ten indirilen universal dosya bu adla)
+start.command      çift tıkla başlatıcı
+release_signers    güncelleme güven noktası (imzacı public key)
+index_signers      paket indeksi güven noktası
+components.lock    paket kilidi;  components/ kurulu paketler
+servers/<ad>/      server.env + id_ed25519_<ad>   (kullanıcı verisi, repoya girmez)
+```
 
 ## Özellikler
 
-- **Sunucu başına klasör:** her sunucu `servers/<ad>/` altındadır; menü kendiliğinden oluşur.
-- **Keychain:** passphrase diske yazılmaz.
-- **Key'i sunucuya gönderme:** menüden veya generator'dan `ssh-copy-id` (aşağıya bakın).
-- **`~/.ssh/config` içe aktarma:** mevcut sunucularınızı tek komutla sunucu kaydına çevirir. Private key'ler
-  **kopyalanmaz**; `IdentityFile` yolu sunucunun `server.env` dosyasına `KEY` olarak yazılır.
-- **Mevcut key kullanımı:** `servers/<ad>/server.env` içine `KEY=/yol/key` yazın (örn. `~/.ssh/id_ed25519`).
-- **Durum göstergesi:** menüde 🟢 (port açık) / 🔴 (erişilemiyor) / ⚪ (ayar yok) gösterilir; sunucular paralel kontrol edilir.
-  **⚙️ Ayarlar**'dan kapatılabilir/süresi değiştirilebilir (`sshpocket.conf`; ortam değişkeni `SSHPOCKET_STATUS=0|1` önceliklidir).
-- **Port knocking (istemci tarafı):** sunucu menüsünden **Knock ayarları**; dizi (örn. `7000,8000,9000`) Keychain'de durur, bağlanmadan önce otomatik gönderilir,
-  durum göstergesinde 🔒. Sunucu tarafı (knockd) kurulumu bu araçta yoktur; sunucuda yöneticinin tanımlamış olması gerekir. Klasik knocking şifreli değildir.
-- **Sunucu menüsü:** Bağlan · Key'i sunucuya gönder · **Bilgileri güncelle** (IP/kullanıcı/port/key yolu) ·
-  **Keychain passphrase'ini güncelle/sil** (kayıttan sonra key'i açarak doğrular). Ayar bozuk veya key eksikken de
-  güncelleme seçenekleri kullanılabilir.
-- **Sunucu yönetimi:** `ModuleManager.sh list | remove <ad> | rename <eski> <yeni>`.
-- **Aynı sunucuya birden çok kullanıcı/key:** her biri ayrı bir sunucu kaydı olur (örn. `web_root`, `web_deploy`).
-- **Menü:** ↑↓ gez · Enter aç · `←`/`q` geri; numara yazmak da çalışır; her seçeneğin kısa **açıklaması** görünür. **fzf** kuruluysa menüler fzf ile
-  açılır (arama + açıklama önizleme penceresi). Stil ⚙️ Ayarlar'dan (`UI`: `auto` · `fzf` · `arrows` · `numbers`) ya da `SSHPOCKET_UI=numbers ./start.sh` ile değişir;
-  bir terminalde sorun çıkarırsa `numbers` yapın.
-- **`./start.sh --doctor`:** ön koşul denetimi (ssh araçları, Python aralığı, venv, disk, ağ); yalnızca okur, hiçbir şey kurmaz.
-- **Paketler ve güncelleme:** imzalı, kilitli (`components.lock`) paketler (şimdilik `linux-hardening` ve `utility`) ana menüde **📦 Paketler ve güncelleme** altında; her eylem önizleme ve onay kapılarından geçer, sudo parolası Ansible'ın kendi isteminden alınır. Komutlar, platform seçimi ve `hardening_ssh_allow_from` zorunluluğu: [docs/paketler.md](docs/paketler.md) · hardening kullanımı ve **erişim ağı tuzağı**: [docs/hardening-kullanim.md](docs/hardening-kullanim.md).
-- **Test edilenler:** macOS (Intel ve Apple Silicon) elle denendi; CI'da macOS (bash 3.2) ve Ubuntu 26.04. Neyin denenip **neyin denenmediği**: [docs/test-edilen-ortamlar.md](docs/test-edilen-ortamlar.md).
-- Otomatik testler (Bats, Linux'ta bash 5.3 ve macOS bash 3.2) + ShellCheck her PR'da CI'da çalışır.
+- **Sunucu başına klasör**, Keychain'de passphrase (diske yazılmaz), `ssh-add` ile ajana ekleme (Keychain parolasıyla; yanlışsa yeniden kaydetme sorusu).
+- **Anahtarı sunucuya gönderme** (`ssh-copy-id`): anahtar zaten yetkiliyse bir şey yapmaz; parola yalnızca ssh'ın kendi isteminde girilir; `PasswordAuthentication no` bilerek otomatik değildir.
+- **Paketler:** imzalı, kilitli (`components.lock`). Her eylem önizleme, önkoşul ve onay kapılarından geçer; sudo parolası Ansible'ın kendi isteminden alınır; günlükler `0600` ve parola maskelenerek arşivlenir. Ayrıntı: [docs/paketler.md](docs/paketler.md) · hardening: [docs/hardening-kullanim.md](docs/hardening-kullanim.md).
+- **Güncelleme:** `./sshpocket update` (aşağıya bakın) ve paketler için `components update | upgrade`.
+- **Rapor:** `components report` paket sürümü değişince "ne değişti, hangi sunucum etkileniyor" gösterir.
+- **USB çıkarma:** `./sshpocket eject` (USB'deki anahtarları ajandan silip çıkarır).
+- **Test edilenler:** [docs/test-edilen-ortamlar.md](docs/test-edilen-ortamlar.md) — neyin denenip **neyin denenmediği** orada.
 
-## Key'i sunucuya gönderme
+- **`~/.ssh/config` içe aktarma:** `./sshpocket servers import-ssh-config [dosya]` (private key kopyalanmaz; `IdentityFile` yolu `KEY` olarak yazılır).
+- **Port knocking (istemci):** arayüzdeki sunucu adımlarından ya da `./sshpocket servers knock <ad>`; dizi Keychain'de durur, "Terminal'de aç" bağlanmadan önce otomatik gönderir. Sunucu tarafı (knockd) bu araçta yoktur; klasik knocking şifreli değildir.
+- **Keychain parolası:** `./sshpocket servers keychain <ad>` (kaydet/güncelle/sil, kayıttan sonra anahtarı açarak doğrular).
+- **Ayarlar:** `sshpocket.conf` (`STATUS=on|off`, `STATUS_TIMEOUT=1-5`; ortam değişkeni `SSHPOCKET_STATUS` önceliklidir). `./sshpocket settings` değerleri gösterir, `settings set STATUS_TIMEOUT 3` yazar.
 
-Sunucu menüsünden **2) Public key'i sunucuya gönder** seçeneği (veya generator'ın son adımı)
-`ssh-copy-id` çalıştırır:
+### Go sürümünde olmayanlar (kabuk referansında vardı)
 
-- Key sunucuda zaten yetkiliyse bunu söyler ve bir şey yapmaz.
-- Değilse `ssh-copy-id` önce agent'taki/varsayılan key'leri, olmazsa **parolayı** dener.
-  İsterseniz giriş için başka bir key dosyası yolu da verebilirsiniz.
-- Parola yalnızca `ssh`'ın kendi isteminde girilir; script'e hiç uğramaz.
-- Sunucuda `PasswordAuthentication no` yapmak **bilerek otomatik değildir.** Key ile girişin
-  çalıştığını gördükten sonra elle yapın, yoksa kendinizi dışarıda bırakabilirsiniz.
-
-## Eski sürümden geliyorsanız
-
-v3 öncesi `sistem/Modules/<ad>/` sunucuları **otomatik** taşınır (`./start.sh --migrate --dry-run`, sonra `./start.sh --migrate`); eski klasörler silinmez. Ayrıntı: [docs/eski-duzenden-tasima.md](docs/eski-duzenden-tasima.md).
+Terminal menüsü (fzf dâhil) **bilerek taşınmadı**; sunucu **taşıma** (`--migrate`, eski `sistem/Modules` düzeni) taşınmadı.
+Durum göstergesi, port kapalı ve knock etkinse 🔒 "knock gerekir" gösterir; panodaki "ssh komutunu kopyala" knock etkinse önce knock'u gönderen tek bir komut verir. Bakımcı aracı: `./sshpocket components lock <paket> <sürüm> [--repo sahip/depo] [--write]` (`components.lock` girdisini imzayı doğrulayarak üretir; `--write` olmadan yalnız gösterir).
 
 ## Güncelleme
 
-Otomatik değildir; siz başlatırsınız: `./start.sh --check-update` (yalnızca bakar) ve `./start.sh --update` (indir → imzayı doğrula → notları göster → onaylarsanız kur) ya da ana menüden **⬆️ Güncellemeleri kontrol et / güncelle**.
-Paket yalnızca bu reponun GitHub Release'lerinden HTTPS ile inen ve **bakımcının imza anahtarıyla imzalı** dosyadır (`ssh-keygen -Y verify`); doğrulanamazsa hiçbir şey kurulmaz, imza anahtarı tanımlı değilse güncelleme **kapalıdır**. Sunucularınız, ayarlarınız ve key'leriniz korunur; hata olursa kodun yedeği geri yüklenir. Ayrıntı: [docs/guncelleme.md](docs/guncelleme.md).
+Otomatik değildir; siz başlatırsınız: `./sshpocket update --check` (yalnızca bakar) ve `./sshpocket update` (indir → **imzayı doğrula** → sürümü teyit et → onaylarsanız kur).
+Güncelleme yalnızca bu reponun GitHub Release'lerinden HTTPS ile inen ve **bakımcının imza anahtarıyla imzalı** ikiliyi kurar; imza doğrulanamazsa, ikilinin bildirdiği sürüm etiketle uyuşmazsa ya da geri sürüme düşülecekse hiçbir şey kurulmaz; imza anahtarı tanımlı değilse güncelleme **kapalıdır**.
+Yerleştirme atomiktir, eski ikili `.update-backup/` altına yedeklenir; `servers/`, `components/` ve anahtarlarınıza dokunulmaz. Ayrıntı: [go/YAYIN.md](go/YAYIN.md).
 
 ### İlk indirmeyi doğrulama
-`--update` imzayı kendisi doğrular, ama **ilk kopyayı** (Release sayfasından indirdiğiniz arşivi) doğrulayamaz: ona güveniniz GitHub'a ve HTTPS'e dayanır.
-İsterseniz arşivi açmadan önce kendiniz doğrulayın (OpenSSH ≥ 8.0, macOS'ta hazır). Anahtarın parmak izi `SHA256:0gjAyj8b7VlmtHIFbwmgAmKjK06sw/a5wdEoE8UECwU`;
+`update` imzayı kendisi doğrular, ama **ilk kopyayı** (Release sayfasından indirdiğiniz dosyayı) doğrulayamaz: ona güveniniz GitHub'a ve HTTPS'e dayanır.
+İsterseniz çalıştırmadan önce kendiniz doğrulayın (OpenSSH ≥ 8.0, macOS'ta hazır). Anahtarın parmak izi `SHA256:0gjAyj8b7VlmtHIFbwmgAmKjK06sw/a5wdEoE8UECwU`;
 bunu bakımcıdan **başka bir yoldan** da teyit etmeniz, depodaki dosyaya körü körüne güvenmekten iyidir.
 
 ```bash
-# Release'ten sshpocket-X.Y.Z.tar.gz ve sshpocket-X.Y.Z.tar.gz.sig dosyalarını indirdikten sonra:
+# Release'ten sshpocket-X.Y.Z-darwin-universal ve .sig dosyalarını indirdikten sonra:
 cat > /tmp/sshpocket_signers <<'EOF'
 sshpocket-release namespaces="sshpocket-release" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKVJS3mGlCaOT/l8XfR0TxuKxqLUs6PpVDa9TYqm0fLn
 EOF
 ssh-keygen -Y verify -f /tmp/sshpocket_signers -I sshpocket-release -n sshpocket-release \
-  -s sshpocket-X.Y.Z.tar.gz.sig < sshpocket-X.Y.Z.tar.gz        # "Good ... signature" yazmalı
+  -s sshpocket-X.Y.Z-darwin-universal.sig < sshpocket-X.Y.Z-darwin-universal      # "Good ... signature" yazmalı
 ```
 
 ## Güvenlik modeli
@@ -128,8 +109,8 @@ ssh-keygen -Y verify -f /tmp/sshpocket_signers -I sshpocket-release -n sshpocket
   `ssh-add`'e `SSH_ASKPASS` ile doğrudan aktarılır.
 - `server.env` yalnızca IP, kullanıcı, port (ve ops. key yolu, knock ayarı) içerir. Gizli bilgi **içermemelidir**; knock dizisi de Keychain'dedir.
 - TOTP/2FA gizli anahtarlarını bu klasörde **saklamayın**; telefondaki uygulamada tutun.
-- `servers/`, `sshpocket.conf`, `id_ed25519*` ve `usb_logs/` `.gitignore` ile dışarıda tutulur.
-- Güncellemeler ve paketler imzalıdır; güncelleme elle başlatılır (yukarıya bakın). Paket eylemleri sunucuya yazmadan önce önizleme ve onay kapılarından geçer.
+- `servers/`, `id_ed25519*` ve günlükler `.gitignore` ile dışarıda tutulur.
+- Güncellemeler ve paketler imzalıdır; güncelleme elle başlatılır (yukarıya bakın). Kendini güncelleyen ikili de aynı imza anahtarına bağlıdır. Paket eylemleri sunucuya yazmadan önce önizleme ve onay kapılarından geçer.
 - IP/kullanıcı/port değerleri komut çalıştırılmadan önce doğrulanır (kullanıcı `-` ile başlayamaz).
 - Sunucu host key'i ilk bağlantıda size sorulur (otomatik kabul yoktur).
 - Özel anahtarınızı USB'de taşıyorsanız USB'yi (APFS şifreli birim) şifreleyin.
@@ -138,28 +119,26 @@ ssh-keygen -Y verify -f /tmp/sshpocket_signers -I sshpocket-release -n sshpocket
 ## Yapı
 
 ```
-start.sh / start.command   giriş noktaları
-sistem/Main.sh             menü döngüsü
-sistem/Autoload.sh         eski sistem/Modules/ altını yükler (taşınana kadar)
-sistem/ModuleGenerator.sh  yeni sunucu (+ key üretimi, Keychain, ssh-copy-id)
-sistem/ImportSSHConfig.sh  ~/.ssh/config içe aktarma
-sistem/ModuleManager.sh    list / remove / rename
-sistem/Helpers/            Log, Menu/UI, kayıt, doğrulama, SSH, Keychain, ayarlar, güncelleme, paket (Components*) yardımcıları
-components.lock            paket kilit dosyası (imzalı sürümle gelir); kurulu paketler: components/
-servers/<ad>/              her sunucu için: server.env, id_ed25519_<ad>   (eski: sistem/Modules/<ad>/ → ./start.sh --migrate)
-sistem/templates/          server.env.example şablonu
-test/                      Bats testleri (bats test)
-docs/                      ayrıntılı belgeler (paketler, güncelleme, test edilen ortamlar, standart)
-img/                       README görselleri (release arşivine girmez)
+go/                          Go kaynağı (ana ürün): main + internal/{manifest,trust,runner,servers,cli,report,findings,selfupdate,eject,doctor,settings}
+go/web/                      gömülü web arayüzü
+go/YAYIN.md                  yayın biçimi ve sürüm çıkarma adımları
+go/scripts/build-release.sh  universal ikiliyi derler ve İMZALAR (bakımcı aracı)
+referans/kabuk/              dondurulmuş bash motoru + Bats testleri: Go portunun çalışan şartnamesi
+components.lock              paket kilit dosyası;  components/ kurulu paketler (repoya girmez)
+servers/<ad>/                server.env, id_ed25519_<ad>   (kullanıcı verisi)
+docs/                        ayrıntılı belgeler (paketler, güncelleme, test edilen ortamlar, standart)
 ```
 
 ## Geliştirme
 
 ```bash
-brew install shellcheck bats-core
-shellcheck -x -s bash start.sh start.command sistem/*.sh sistem/Helpers/*.sh
-bats test
+cd go
+go vet ./... && go test ./... -short       # uzun karşılaştırmalı testler için -short'u kaldırın
+go build -o sshpocket-go .
 ```
+
+Karşılaştırmalı testler `referans/kabuk/` içindeki kabuk/Python motorunu aynı girdilerle çalıştırıp çıkış kodu, çıktı ve dosya ağacını Go ile karşılaştırır;
+kabuk bulunamazsa kendini atlar. Kabuk motorunun kendi testleri: `cd referans/kabuk && bats test`.
 
 Katkı için [CONTRIBUTING.md](CONTRIBUTING.md), planlananlar için [ROADMAP.md](ROADMAP.md).
 

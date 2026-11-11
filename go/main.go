@@ -1,0 +1,665 @@
+// sshpocket Go denemesi: ana sayfa (pano, sunucular, paketler, Lynis, günlükler) yerel web arayüzü olarak.
+// Yalnızca 127.0.0.1'e bağlanır, oturum çerezi ister. Salt okunur: sunucuda komut ÇALIŞTIRMAZ
+// (tek istisna: kullanıcı isterse macOS Terminal'de ssh penceresi açar). Gizli değer okumaz/göstermez.
+package main
+
+import (
+	"crypto/rand"
+	"crypto/subtle"
+	"embed"
+	"encoding/hex"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"io"
+	"io/fs"
+	"net"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"time"
+
+	"sshpocket-go/internal/cli"
+	"sshpocket-go/internal/runner"
+)
+
+//go:embed web
+var webFS embed.FS
+
+func (a *App) guard(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// DNS rebinding koruması: Host başlığı bizim adresimiz olmalı
+		if r.Host != a.host {
+			http.Error(w, "yasak", http.StatusForbidden)
+			return
+		}
+		c, err := r.Cookie(cookieName)
+		if err != nil || subtle.ConstantTimeCompare([]byte(c.Value), []byte(a.token)) != 1 {
+			http.Error(w, "yetkisiz", http.StatusUnauthorized)
+			return
+		}
+		// durum değiştiren istekler: özel başlık + aynı kaynak (SameSite=Strict çerezle birlikte CSRF savunması)
+		if r.Method == http.MethodPost {
+			if r.Header.Get("X-Requested-With") != "sshpocket" {
+				http.Error(w, "yasak", http.StatusForbidden)
+				return
+			}
+			if o := r.Header.Get("Origin"); o != "" && o != "http://"+a.host {
+				http.Error(w, "yasak", http.StatusForbidden)
+				return
+			}
+		}
+		next(w, r)
+	}
+}
+
+// root: başlatma adresindeki ?t=<jeton> geçerliyse oturum çerezi verir ve adresi temizler; yenilemede çerez devam eder.
+func (a *App) root(static http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Host != a.host {
+			http.Error(w, "yasak", http.StatusForbidden)
+			return
+		}
+		if t := r.URL.Query().Get("t"); t != "" {
+			if subtle.ConstantTimeCompare([]byte(t), []byte(a.token)) == 1 {
+				http.SetCookie(w, &http.Cookie{Name: cookieName, Value: a.token, Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode})
+			}
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		// parola kutusu bu sayfada çıkabildiği için: yalnızca kendi kaynağımızdan betik, dışarıya bağlantı yok, çerçeveye gömülemez
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		static.ServeHTTP(w, r)
+	})
+}
+
+func (a *App) findServer(name string) (Server, bool) {
+	for _, s := range a.servers(true, name) {
+		if s.Name == name {
+			return s, true
+		}
+	}
+	return Server{}, false
+}
+
+func shQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'" }
+
+func (s Server) sshCmd() string {
+	k := ""
+	if s.HasKey {
+		k = "-i " + shQuote(s.keyPath) + " "
+	}
+	return fmt.Sprintf("ssh %s-p %s %s@%s", k, s.Port, s.User, s.Host)
+}
+
+// copyCmd: panoya kopyalanan komut. Knock etkinse önce kendi vuruşunu gönderir (zincirleme), böylece yapıştırıldığı anda geçerli olur.
+func (a *App) copyCmd(s Server) string {
+	if !s.Knock {
+		return s.sshCmd()
+	}
+	return fmt.Sprintf("%s servers -servers %s knock-send %s && %s", shQuote(selfExe()), shQuote(a.serversDir), shQuote(s.Name), s.sshCmd())
+}
+
+func defaultStateDir() string {
+	if x := os.Getenv("XDG_DATA_HOME"); x != "" {
+		return filepath.Join(x, "sshpocket")
+	}
+	h, _ := os.UserHomeDir()
+	return filepath.Join(h, ".local", "share", "sshpocket")
+}
+
+func main() {
+	// ssh-add bizi SSH_ASKPASS olarak çağırdıysa: Keychain parolasını yaz ve çık (bkz. runner.AskpassMain)
+	if handled, code := runner.AskpassMain(os.Stdout); handled {
+		os.Exit(code)
+	}
+	if code, ok := subcommand(os.Args[1:]); ok {
+		os.Exit(code)
+	}
+	servers := flag.String("servers", "", "sunucular klasörü (varsayılan: $SSHPOCKET_SERVERS, /Volumes/test/servers, ../servers)")
+	comps := flag.String("components", "", "components klasörü (varsayılan: sunucular klasörünün yanında)")
+	state := flag.String("state", "", "durum/günlük klasörü (varsayılan: ~/.local/share/sshpocket)")
+	noOpen := flag.Bool("no-open", false, "tarayıcıyı açma")
+	flag.Parse()
+	sd := *servers
+	if sd == "" {
+		for _, c := range []string{os.Getenv("SSHPOCKET_SERVERS"), "/Volumes/test/servers", "../servers"} {
+			if c == "" {
+				continue
+			}
+			if st, err := os.Stat(c); err == nil && st.IsDir() {
+				sd = c
+				break
+			}
+		}
+	}
+	if sd == "" {
+		fmt.Fprintln(os.Stderr, "sunucular klasörü bulunamadı (-servers verin)")
+		os.Exit(1)
+	}
+	cd := *comps
+	if cd == "" {
+		cd = filepath.Join(filepath.Dir(filepath.Clean(sd)), "components")
+	}
+	st := *state
+	if st == "" {
+		st = defaultStateDir()
+	}
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	tb := make([]byte, 24)
+	_, _ = rand.Read(tb)
+	app := &App{serversDir: sd, compDir: cd, stateDir: st, token: hex.EncodeToString(tb), host: ln.Addr().String(), up: map[string]bool{}, jobs: map[string]*Job{}}
+
+	sub, _ := fs.Sub(webFS, "web")
+	mux := http.NewServeMux()
+	mux.Handle("/", app.root(http.FileServer(http.FS(sub))))
+	mux.HandleFunc("/api/home", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		pk, serial := app.packages()
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"servers": app.servers(false), "packages": pk, "indexSerial": serial})
+	}))
+	mux.HandleFunc("/api/status", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		res := map[string]bool{}
+		for _, sv := range app.servers(true) {
+			if sv.Checked {
+				res[sv.Name] = sv.Up
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(res)
+	}))
+	mux.HandleFunc("/api/server", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		name := r.URL.Query().Get("name")
+		if !reName.MatchString(name) {
+			http.Error(w, "geçersiz", http.StatusBadRequest)
+			return
+		}
+		s, ok := app.findServer(name)
+		if !ok {
+			http.Error(w, "sunucu yok", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		ki, _ := (&cli.Servers{Dir: app.serversDir}).KnockStatus(name) // dizinin değeri yok; yalnızca "bu Mac'te kayıtlı mı"
+		_ = json.NewEncoder(w).Encode(map[string]any{"server": s, "packages": app.packageInfos(s), "knock": ki, "prep": app.prepState(s)})
+	}))
+	mux.HandleFunc("/api/lynis", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		name := r.URL.Query().Get("server")
+		if !reName.MatchString(name) {
+			http.Error(w, "geçersiz", http.StatusBadRequest)
+			return
+		}
+		report, list := app.findings(name)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"server": name, "report": report, "lynis": app.lynis(name), "findings": list})
+	}))
+	mux.HandleFunc("/api/packages", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"packages": app.packageOverview(), "servers": app.servers(false)})
+	}))
+	mux.HandleFunc("/api/run", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodPost {
+			var req struct {
+				Server, Package, Action, Confirm string
+				Snapshot                         bool
+				AckDestructive                   bool
+			}
+			if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req) != nil ||
+				!reName.MatchString(req.Server) || !reName.MatchString(req.Package) || !reAction.MatchString(req.Action) {
+				http.Error(w, "geçersiz istek", http.StatusBadRequest)
+				return
+			}
+			j, code, err := app.startJob(req.Server, req.Package, req.Action, req.Snapshot, req.Confirm, req.AckDestructive)
+			if err != nil {
+				http.Error(w, err.Error(), code)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": j.ID})
+			return
+		}
+		id := r.URL.Query().Get("id")
+		from := 0
+		fmt.Sscanf(r.URL.Query().Get("from"), "%d", &from)
+		app.jmu.Lock()
+		defer app.jmu.Unlock()
+		j, ok := app.jobs[id]
+		if !ok {
+			http.Error(w, "iş yok", http.StatusNotFound)
+			return
+		}
+		if from < 0 || from > len(j.buf) {
+			from = len(j.buf)
+		}
+		chunk := j.buf[from:]
+		n := len(chunk)
+		if !j.Done {
+			n = validUTF8Prefix(chunk)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": j.ID, "server": j.Server, "package": j.Package, "action": j.Action, "started": j.Started,
+			"text": maskLine2(string(chunk[:n])), "next": from + n, "done": j.Done, "exit": j.Exit})
+	}))
+	// iş bir istem bekliyorsa (parola, e/h, ad onayı) kullanıcının yazdığı satırı pty'ye gönderir. İçerik ASLA günlüğe yazılmaz.
+	// iş parola bekliyorsa: sistem penceresinden alınan parola pty'ye yazılır ve bellekte sıfırlanır. Sayfa parolayı HİÇ görmez.
+	mux.HandleFunc("/api/server-files", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		files, state, err := app.serverFiles(r.URL.Query().Get("name"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"files": files, "state": state})
+	}))
+	mux.HandleFunc("/api/server-rename", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct{ Old, New string }
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&req) != nil {
+			http.Error(w, "geçersiz istek", http.StatusBadRequest)
+			return
+		}
+		if code, err := app.renameServer(strings.TrimSpace(req.Old), strings.TrimSpace(req.New)); err != nil {
+			http.Error(w, err.Error(), code)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	mux.HandleFunc("/api/server-remove", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			Name, Confirm string
+			Ack           bool
+		}
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&req) != nil {
+			http.Error(w, "geçersiz istek", http.StatusBadRequest)
+			return
+		}
+		j, code, err := app.removeServer(req.Name, req.Confirm, req.Ack)
+		if err != nil {
+			http.Error(w, err.Error(), code)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": j.ID})
+	}))
+	mux.HandleFunc("/api/server-purge", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct{ Name string }
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 512)).Decode(&req) != nil {
+			http.Error(w, "geçersiz istek", http.StatusBadRequest)
+			return
+		}
+		if code, err := app.purgeServerState(req.Name); err != nil {
+			http.Error(w, err.Error(), code)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	mux.HandleFunc("/api/server-create", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct{ Name, Host, User, Port, OS string }
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req) != nil {
+			http.Error(w, "geçersiz istek", http.StatusBadRequest)
+			return
+		}
+		if code, err := app.createServer(strings.TrimSpace(req.Name), strings.TrimSpace(req.Host), strings.TrimSpace(req.User), strings.TrimSpace(req.Port), strings.TrimSpace(req.OS)); err != nil {
+			http.Error(w, err.Error(), code)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	mux.HandleFunc("/api/server-task", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct{ Server, Task string }
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&req) != nil {
+			http.Error(w, "geçersiz istek", http.StatusBadRequest)
+			return
+		}
+		j, code, err := app.startServerTask(req.Task, req.Server)
+		if err != nil {
+			http.Error(w, err.Error(), code)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": j.ID})
+	}))
+	mux.HandleFunc("/api/updates", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		rep, err := app.checkUpdates()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(rep)
+	}))
+	mux.HandleFunc("/api/upgrade", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			Package, Version string
+			Ack              bool
+		}
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&req) != nil || !req.Ack {
+			http.Error(w, "onay gerekli", http.StatusBadRequest)
+			return
+		}
+		j, code, err := app.startUpgrade(req.Package, req.Version)
+		if err != nil {
+			http.Error(w, err.Error(), code)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": j.ID})
+	}))
+	mux.HandleFunc("/api/vars", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodPost {
+			var req struct {
+				Server, Package, Name, Value, Action string
+				Ack                                  bool
+			}
+			if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req) != nil ||
+				!reName.MatchString(req.Server) || !reName.MatchString(req.Package) || (req.Action != "set" && req.Action != "unset") {
+				http.Error(w, "geçersiz istek", http.StatusBadRequest)
+				return
+			}
+			warn, code, err := app.saveVar(req.Server, req.Package, req.Name, req.Value, req.Action, req.Ack)
+			if err != nil {
+				w.WriteHeader(code)
+				_ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error(), "needAck": warn != "" && !req.Ack})
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "warn": warn != ""})
+			return
+		}
+		server, pkg := r.URL.Query().Get("server"), r.URL.Query().Get("package")
+		if !reName.MatchString(server) || !reName.MatchString(pkg) {
+			http.Error(w, "geçersiz", http.StatusBadRequest)
+			return
+		}
+		list, err := app.varSchemas(server, pkg)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return
+		}
+		if list == nil {
+			list = []VarSchema{}
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"server": server, "package": pkg, "vars": list})
+	}))
+	mux.HandleFunc("/api/run/askpass", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct{ ID, Prompt string }
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 2048)).Decode(&req) != nil {
+			http.Error(w, "geçersiz", http.StatusBadRequest)
+			return
+		}
+		if !askpassAvailable() {
+			http.Error(w, "sistem parola penceresi bu platformda yok", http.StatusNotImplemented)
+			return
+		}
+		app.jmu.Lock()
+		j, ok := app.jobs[req.ID]
+		var in io.WriteCloser
+		if ok && !j.Done {
+			in = j.stdin
+		}
+		app.jmu.Unlock()
+		if in == nil {
+			http.Error(w, "çalışan iş yok", http.StatusNotFound)
+			return
+		}
+		pw, err := askPassNative(req.Prompt)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return
+		}
+		_, werr := in.Write(append(pw, '\n'))
+		for i := range pw { // bellekte sıfırla
+			pw[i] = 0
+		}
+		if werr != nil {
+			http.Error(w, "gönderilemedi", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	mux.HandleFunc("/api/run/input", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct{ ID, Text string }
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&req) != nil || len(req.Text) > 256 || strings.ContainsAny(req.Text, "\r\n\x00") {
+			http.Error(w, "geçersiz", http.StatusBadRequest)
+			return
+		}
+		app.jmu.Lock()
+		j, ok := app.jobs[req.ID]
+		var in io.WriteCloser
+		if ok && !j.Done {
+			in = j.stdin
+		}
+		app.jmu.Unlock()
+		if in == nil {
+			http.Error(w, "çalışan iş yok", http.StatusNotFound)
+			return
+		}
+		if _, err := in.Write([]byte(req.Text + "\n")); err != nil {
+			http.Error(w, "gönderilemedi", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	mux.HandleFunc("/api/run-terminal", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			Server, Package, Action, Confirm string
+			Snapshot                         bool
+			AckDestructive                   bool
+		}
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req) != nil ||
+			!reName.MatchString(req.Server) || !reName.MatchString(req.Package) || !reAction.MatchString(req.Action) {
+			http.Error(w, "geçersiz istek", http.StatusBadRequest)
+			return
+		}
+		if _, code, err := app.authorizeRun(req.Server, req.Package, req.Action, req.Snapshot, req.Confirm, req.AckDestructive); err != nil {
+			http.Error(w, err.Error(), code)
+			return
+		}
+		if runtime.GOOS != "darwin" {
+			http.Error(w, "yalnızca macOS", http.StatusNotImplemented)
+			return
+		}
+		root := filepath.Dir(filepath.Clean(app.compDir))
+		cmdline := terminalCommand(selfExe(), root, req.Package, req.Action, req.Server)
+		script := "tell application \"Terminal\" to activate\ntell application \"Terminal\" to do script " + appleScriptQuote(cmdline)
+		if err := exec.Command("osascript", "-e", script).Run(); err != nil {
+			http.Error(w, "Terminal açılamadı", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	mux.HandleFunc("/api/run/cancel", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct{ ID string }
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&req) != nil {
+			http.Error(w, "geçersiz", http.StatusBadRequest)
+			return
+		}
+		app.jmu.Lock()
+		j, ok := app.jobs[req.ID]
+		app.jmu.Unlock()
+		if !ok || j.Done {
+			http.Error(w, "çalışan iş yok", http.StatusNotFound)
+			return
+		}
+		if j.Action == "upgrade" {
+			http.Error(w, "paket kurulumu atomiktir; iptal edilemez", http.StatusConflict)
+			return
+		}
+		j.cancel()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	mux.HandleFunc("/api/about", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		root := filepath.Dir(filepath.Clean(app.compDir))
+		ver := ""
+		if b, err := os.ReadFile(filepath.Join(root, "VERSION")); err == nil && len(b) < 32 {
+			ver = strings.TrimSpace(string(b))
+		}
+		conf := map[string]string{}
+		for k, v := range parseEnv(filepath.Join(root, "sshpocket.conf")) {
+			if len(k) <= 40 && len(v) <= 80 {
+				conf[k] = v
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"version": ver, "root": root, "serversDir": app.serversDir, "componentsDir": app.compDir, "stateDir": app.stateDir,
+			"conf": conf, "platform": runtime.GOOS + "/" + runtime.GOARCH, "go": runtime.Version(), "askpass": askpassAvailable()})
+	}))
+	mux.HandleFunc("/api/profiles", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(app.profiles())
+	}))
+	mux.HandleFunc("/api/server-draft", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct{ Name, Host, User, Port, OS string }
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req) != nil {
+			http.Error(w, "geçersiz", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(app.draft(strings.TrimSpace(req.Name), strings.TrimSpace(req.Host), strings.TrimSpace(req.User), strings.TrimSpace(req.Port), strings.TrimSpace(req.OS)))
+	}))
+	mux.HandleFunc("/api/logs", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(app.logs())
+	}))
+	mux.HandleFunc("/api/log", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		pkg, srv, file := q.Get("package"), q.Get("server"), q.Get("file")
+		if !reName.MatchString(pkg) || !reName.MatchString(srv) || !reFile.MatchString(file) {
+			http.Error(w, "geçersiz", http.StatusBadRequest)
+			return
+		}
+		p := filepath.Join(app.stateDir, pkg, srv, filepath.FromSlash(file))
+		info, err := os.Lstat(p)
+		if err != nil || !info.Mode().IsRegular() {
+			http.Error(w, "yok", http.StatusNotFound)
+			return
+		}
+		f, err := os.Open(p)
+		if err != nil {
+			http.Error(w, "açılamadı", http.StatusInternalServerError)
+			return
+		}
+		defer f.Close()
+		buf := make([]byte, maxLogBytes)
+		n, _ := f.Read(buf)
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Log-Mtime", info.ModTime().UTC().Format(time.RFC3339Nano))
+		_, _ = w.Write(buf[:n])
+		if info.Size() > int64(n) {
+			_, _ = w.Write([]byte("\n… (kısaltıldı: ilk 1 MB gösteriliyor)\n"))
+		}
+	}))
+	mux.HandleFunc("/api/action", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "POST", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct{ Name, Action string }
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req) != nil {
+			http.Error(w, "geçersiz", http.StatusBadRequest)
+			return
+		}
+		s, ok := app.findServer(req.Name)
+		if !ok || !s.Valid {
+			http.Error(w, "sunucu yok", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		switch req.Action {
+		case "cmd":
+			_ = json.NewEncoder(w).Encode(map[string]string{"cmd": app.copyCmd(s)})
+		case "terminal":
+			if runtime.GOOS != "darwin" {
+				http.Error(w, "yalnızca macOS", http.StatusNotImplemented)
+				return
+			}
+			// knock etkin ama dizi bu bilgisayarda yoksa Terminal'i hiç açma: nedeni arayüzde göster
+			if ki, _ := (&cli.Servers{Dir: app.serversDir}).KnockStatus(s.Name); ki.Enabled && !ki.HasSeq {
+				http.Error(w, "Knock açık ama dizi bu bilgisayarın Keychain'inde yok; Özet → Port knocking'den girin", http.StatusConflict)
+				return
+			}
+			// Terminal'e knock'lı komut verilir (knock-send && ssh): "🚪 Knock gönderildi" Terminal'de de görünür
+			esc := strings.ReplaceAll(strings.ReplaceAll(app.copyCmd(s), `\`, `\\`), `"`, `\"`)
+			script := `tell application "Terminal" to activate` + "\n" + `tell application "Terminal" to do script "` + esc + `"`
+			if err := exec.Command("osascript", "-e", script).Run(); err != nil {
+				http.Error(w, "açılamadı", http.StatusInternalServerError)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"ok": "açıldı", "knock": s.Knock})
+		default:
+			http.Error(w, "bilinmeyen eylem", http.StatusBadRequest)
+		}
+	}))
+	mux.HandleFunc("/api/knock", app.guard(app.knockHandler))
+	mux.HandleFunc("/api/server-edit", app.guard(app.serverEditHandler))
+	url := fmt.Sprintf("http://%s/?t=%s", app.host, app.token)
+	fmt.Println("sshpocket (Go deneme):", url)
+	fmt.Println("sunucular:", sd, "| components:", cd, "| durum:", st, "| durdurmak için Ctrl-C")
+	if !*noOpen && runtime.GOOS == "darwin" {
+		_ = exec.Command("open", url).Start()
+	}
+	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	if err := srv.Serve(ln); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+}

@@ -64,7 +64,7 @@ Betik sırayla: `main` dalında, çalışma alanı temiz, `HEAD == origin/main`,
    `git archive` ile paketi üretir, imzalar ve **yayından önce kendisi doğrular**.
 5. GitHub'da `vX.Y.Z` Release'ini açın ve `dist/sshpocket-X.Y.Z.tar.gz` ile `dist/sshpocket-X.Y.Z.tar.gz.sig`
    dosyalarını **Assets**'e yükleyin. Dosya adları tam olarak bu biçimde olmalı.
-6. Kendiniz deneyin: eski sürümlü bir kopyada `./start.sh --update`.
+6. Kendiniz deneyin: eski sürümlü bir kopyada `./sshpocket update`.
 
 ## Neden "kaynak arşivi" değil de kendi paketimiz?
 GitHub'ın otomatik "Source code" arşivleri imzalı değildir ve içerikleri (sıkıştırma ayrıntıları) sabit

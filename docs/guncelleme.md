@@ -5,13 +5,13 @@ Ana sayfa: [README](../README.md). İlk indirmeyi doğrulama adımları README'd
 Otomatik değildir; siz başlatırsınız:
 
 ```bash
-./start.sh --check-update   # yalnızca bakar (yeni sürüm varsa çıkış kodu 10)
-./start.sh --update         # indir → imzayı doğrula → notları göster → onaylarsanız kur
+./sshpocket update --check   # yalnızca bakar (yeni sürüm varsa çıkış kodu 10)
+./sshpocket update         # indir → imzayı doğrula → notları göster → onaylarsanız kur
 ```
 
 ya da ana menüden **⬆️ Güncellemeleri kontrol et / güncelle** (fzf düzeninde **📦 Paketler ve güncelleme**'nin altındaki sshpocket satırı).
 
-- Terminalde (en az 24 satır × 60 sütun) güncelleme paneli açılır: imza ve arşiv denetiminden sonra üstte sürüm, imza durumu, paket (`components.lock`) farkları ve CHANGELOG'daki **Dikkat** notları; altta sürüm notları, onay ve kurulum. Paket sürümü değişince kurulum sonunda "ne değişti, hangi sunucum etkileniyor" raporu yazılır (`./start.sh --components report [paket [eski-sürüm]]` ile elle de alınır; yalnızca okur).
+- Terminalde (en az 24 satır × 60 sütun) güncelleme paneli açılır: imza ve arşiv denetiminden sonra üstte sürüm, imza durumu, paket (`components.lock`) farkları ve CHANGELOG'daki **Dikkat** notları; altta sürüm notları, onay ve kurulum. Paket sürümü değişince kurulum sonunda "ne değişti, hangi sunucum etkileniyor" raporu yazılır (`./sshpocket components report [paket [eski-sürüm]]` ile elle de alınır; yalnızca okur).
 - Paket yalnızca bu reponun GitHub Release'lerinden, HTTPS ile inen ve **bakımcının imza anahtarıyla imzalı** olan
   dosyadır (`ssh-keygen -Y verify`). Doğrulanamazsa hiçbir şey açılmaz/kurulmaz. İmza anahtarı tanımlı değilse
   güncelleme **kapalıdır**.

@@ -247,7 +247,7 @@ Geriye dönük uyum: `score` yoksa `hardening_index` okunur (linux-hardening). D
 - [ ] Salt okunur olmayan eylemin geri alma/kurtarma yolu belgelenmiş (kapsamı dürüstçe yazılı)
 - [ ] sshpocket reposuna **tek satır** (kilit dosyası) ekleyen PR açıldı; başka kod değişikliği gerekmedi
 
-**Otomatik denetim:** bu listenin mekanik kısmını `./start.sh --components validate <kurulu-paket | dizin | <id>-<sürüm>.tar.gz> [--strict]` denetler
+**Otomatik denetim:** bu listenin mekanik kısmını `./sshpocket components validate <kurulu-paket | dizin | <id>-<sürüm>.tar.gz> [--strict]` denetler
 (statik: ansible/ssh/ağ çalıştırmaz, paketten hiçbir şey çalıştırmaz; arşiv yalnızca güvenliyse açılır). Çıktı `--doctor` gibi ✅ / ⚠️ / ❌; ❌ varsa çıkış kodu 1,
 `--strict` ile uyarılar da hata sayılır; `--unsigned` imzalamadan önceki denetimde `.sig` uyarısını atlar. Paket reposunun CI'ı için `sistem/Helpers/component_validate.py` ve `component_manifest.py` kopyalanıp
 `python3 -I component_validate.py <dizin>` çalıştırılabilir.

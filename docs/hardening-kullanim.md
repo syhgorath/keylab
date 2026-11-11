@@ -9,13 +9,13 @@
 
 | Adım | Komut (ya da menü: sunucu › 🛡️ Paketler) | Sunucuyu değiştirir mi? |
 |---|---|---|
-| Durum | `./start.sh --components run linux-hardening rollback_status <sunucu>` | Hayır |
+| Durum | `./sshpocket components run linux-hardening rollback_status <sunucu>` | Hayır |
 | Önizleme | `... run linux-hardening preview <sunucu>` | Hayır (`--check`); ufw ve servis durumunu göstermez |
 | Uygulama | `... run linux-hardening apply <sunucu>` | **Evet** (SSH, ufw, paketler...); önce taze bir `preview` ve sunucu adını yazma onayı gerekir |
 
 - `BECOME password:` sunucudaki **sudo parolasıdır**; sudo parola istemiyorsa (NOPASSWD) Enter'a basın.
 - `preview` kaydı **30 dakika** geçerlidir; `apply` aynı sunucu ve sürüm için yalnızca bu süre içinde açılır.
-- USB dışından denerken: `SSHPOCKET_SERVERS_DIR=/Volumes/<usb>/servers ./start.sh --components run ...`.
+- USB dışından denerken: `SSHPOCKET_SERVERS_DIR=/Volumes/<usb>/servers ./sshpocket components run ...`.
 
 ## ⚠️ Erişim ağı tuzağı (`hardening_ssh_allow_from`)
 
@@ -126,13 +126,13 @@ Ubuntu 26.04'ün varsayılan `sudo`'su `sudo-rs`'tir ve Ansible'ın parolalı `b
 Sertleştirme sonrası `passwd` kuralları sıkılaşır (`minlen 14`, `minclass 3`, `dictcheck`, `maxrepeat 3`): parola ≥14 karakter, dört sınıftan (küçük/büyük/rakam/sembol) en az üçü, sözlük kelimesi içermemeli.
 
 ## Sudo parola istemi bekleme süresi
-`--components run`, Ansible'ın bağlantı/`become` bekleme süresini **30 sn** yapar (`ANSIBLE_TIMEOUT`; Ansible varsayılanı 10 sn, hata mesajında "12s" görünür). Gerçek bir Proxmox VM'inde zaman zaman "Timeout (12s) waiting for privilege escalation prompt" görüldü (nedeni bilinmiyor, VM anlık takılması olabilir; 30 sn ile yapılan 0.8.4 turlarında bir kez bile görülmedi); daha uzun bekleme koşuyu yarıda kesmez. Kendi değerinizi `ANSIBLE_TIMEOUT=60 ./start.sh …` ile verebilirsiniz.
+`--components run`, Ansible'ın bağlantı/`become` bekleme süresini **30 sn** yapar (`ANSIBLE_TIMEOUT`; Ansible varsayılanı 10 sn, hata mesajında "12s" görünür). Gerçek bir Proxmox VM'inde zaman zaman "Timeout (12s) waiting for privilege escalation prompt" görüldü (nedeni bilinmiyor, VM anlık takılması olabilir; 30 sn ile yapılan 0.8.4 turlarında bir kez bile görülmedi); daha uzun bekleme koşuyu yarıda kesmez. Kendi değerinizi `ANSIBLE_TIMEOUT=60 ./sshpocket components run …` ile verebilirsiniz.
 
 ## Sunucu türü ve zorunlu izinli ağ (0.12.0 / sshpocket 3.6.20)
 - **Sorulan şeyler:** sunucu türü (`hardening_platform`) ve izinli ağlar (`hardening_ssh_allow_from`). Sorular sunucu eklerken (anahtar adımından sonra) ve `servers/<ad>/linux-hardening.vars` dosyasında platform satırı yoksa paket menüsü ilk açılırken çıkar. Hiçbir değer sessizce yazılmaz; öneriler (sunucunun sizi gördüğü adres `/32`, bu bilgisayarın ağı `/24` uyarılı) "doğru mu?" diye sunulur.
 - **`hardening_ssh_allow_from` zorunludur:** boşken `preview`, `apply`, `pve_firewall_preview` ve `pve_firewall_apply` ssh'a gitmeden **⛔ "değeri boş değişken"** ile durur; `audit`, `rollback_*` ve `kaldir*` etkilenmez. Menüde bu eylemlerin yanında ⛔ görünür. "Şimdi değil" derseniz değer yazılmaz ve eylemler her seferinde ⛔ kalır; `📝 Değişkenler`'den ya da `.vars` dosyasından girin.
 - **Proxmox'ta `hardening_pve_apply`:** `.vars` dosyanıza yazmanız gerekmez. Platform `proxmox-host` seçiliyse `apply` ve `pve_firewall_apply` bu değişkeni **yalnızca o koşuya özel** `true` verir: önce riskli değer sorusu (`e`), sonra "Seçili platform için bu koşuya özel değişken verilecek (değerler dosyanıza YAZILMAZ)" bildirimi ve uyarılar, en sonda sunucu adı onayı. Dosyada kendi yazdığınız değer (`false` dahil) ezilmez; `audit`, `preview`, `rollback_*` ve Ubuntu/`generic` sunucularda hiç verilmez. Günlüğe `bu koşuya özel: hardening_pve_apply=true` yazılır.
-- **Güncellemeden sonra:** paket sürümü değişince (`--update` ya da Paketler eşitlemesi) sonda "ne değişti, hangi sunucum etkileniyor" raporu yazılır; elle: `./start.sh --components report linux-hardening`. Örnek: yeni zorunlu `allow_from` kuralı, değişen varsayılanlar (örn. `hardening_fail2ban_bantime` `1h` → `10m`), hangi sunucuda ⛔ göreceğiniz.
+- **Güncellemeden sonra:** paket sürümü değişince (`--update` ya da Paketler eşitlemesi) sonda "ne değişti, hangi sunucum etkileniyor" raporu yazılır; elle: `./sshpocket components report linux-hardening`. Örnek: yeni zorunlu `allow_from` kuralı, değişen varsayılanlar (örn. `hardening_fail2ban_bantime` `1h` → `10m`), hangi sunucuda ⛔ göreceğiniz.
 - **fail2ban (0.11.0'dan beri):** `127.0.0.1/8 ::1` her zaman muaf; `hardening_fail2ban_ignoreip` boş başlar ve yazdıklarınızı ekler. Kontrol makinesinin ya da `allow_from`'un adresi otomatik muaf **değildir**: bağlı adres muaf değilse art arda 5 hatalı denemede `bantime` (10 dk) kadar banlanabilirsiniz. Gerçek VM'de ayarlar doğrulandı; **etkin ban denenmedi**.
 - **Gerçek VM doğrulaması (sshpocket 3.6.20):** Ubuntu 26.04.1 ve tek düğümlü Proxmox VE 9'da bu akış uçtan uca denendi (sorular, ⛔, `apply`, ikinci `preview` `changed=0`, `pve_firewall_apply` ve geri alma güvenlik ağı). Denenmedi: etkin ban, yetkisiz ağdan güvenlik duvarı reddi, küme/misafirli Proxmox, Raspberry Pi.
 
