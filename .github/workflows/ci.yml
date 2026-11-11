@@ -74,13 +74,17 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Install bats
-        # Runner ağı (apt DNS) ara sıra çözümlenemiyor: 4 denemeye kadar tekrarlanır.
+        # apt bu runner'da *.ubuntu.com adreslerini çözemiyor (4 deneme de başarısız oldu); bats GitHub'dan, sabit commit ile kurulur.
+        # v1.13.0 = 3bca150ec86275d6d9d5a4fd7d48ab8b6c6f3d87 (apt'in verdiği sürümle aynı).
+        env:
+          BATS_COMMIT: 3bca150ec86275d6d9d5a4fd7d48ab8b6c6f3d87
         run: |
-          for i in 1 2 3 4; do
-            sudo apt-get update && sudo apt-get install -y bats && exit 0
-            echo "apt denemesi $i başarısız; 20 sn sonra tekrar"; sleep 20
-          done
-          exit 1
+          git clone --quiet https://github.com/bats-core/bats-core.git /tmp/bats-core
+          cd /tmp/bats-core
+          git checkout --quiet "$BATS_COMMIT"
+          test "$(git rev-parse HEAD)" = "$BATS_COMMIT"
+          sudo ./install.sh /usr/local
+          bats --version
       - name: Run tests
         working-directory: referans/kabuk
         run: bats test
