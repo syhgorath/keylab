@@ -74,7 +74,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Install bats
-        run: sudo apt-get update && sudo apt-get install -y bats
+        # Runner ağı (apt DNS) ara sıra çözümlenemiyor: 4 denemeye kadar tekrarlanır.
+        run: |
+          for i in 1 2 3 4; do
+            sudo apt-get update && sudo apt-get install -y bats && exit 0
+            echo "apt denemesi $i başarısız; 20 sn sonra tekrar"; sleep 20
+          done
+          exit 1
       - name: Run tests
         working-directory: referans/kabuk
         run: bats test
