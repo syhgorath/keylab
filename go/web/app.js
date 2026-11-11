@@ -1,6 +1,7 @@
 (function () {
   "use strict";
   const $ = (s, r = document) => r.querySelector(s);
+  const t = (k, d) => (window.KeyLabI18n ? window.KeyLabI18n.t(k, d) : d);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -181,12 +182,15 @@
   function renderSrvTree() {
     const el = $("#srvtree-list"); if (!el) return;
     const sv = home.servers.filter(s => !treeQ || `${s.name} ${s.host || ""}`.toLowerCase().includes(treeQ));
-    $("#srvtree-title").textContent = `Sunucular (${home.servers.length})`;
-    el.innerHTML = sv.map(s => `<li><button class="tree-item${s.name === srvName ? " on" : ""}" data-tsrv="${esc(s.name)}" aria-current="${s.name === srvName ? "page" : "false"}"><span class="status-dot ${dotState(s)}" aria-label="durum: ${stateText(s)}"></span><span class="tree-txt"><span class="tree-name">${esc(s.name)}</span><span class="tree-addr mono">${esc(s.host || "")}</span></span></button></li>`).join("") || '<li class="small muted" style="padding:8px 10px">Eşleşen sunucu yok.</li>';
+    $("#srvtree-title").textContent = `${t("tree_title", "Sunucular")} (${home.servers.length})`;
+    el.innerHTML = sv.map(s => `<li><button class="tree-item${s.name === srvName ? " on" : ""}" data-tsrv="${esc(s.name)}" aria-current="${s.name === srvName ? "page" : "false"}"><span class="status-dot ${dotState(s)}" aria-label="durum: ${stateText(s)}"></span><span class="tree-txt"><span class="tree-name">${esc(s.name)}</span><span class="tree-addr mono">${esc(s.host || "")}</span></span></button></li>`).join("") || '<li class="small muted" style="padding:8px 10px">${t("tree_none", "Eşleşen sunucu yok.")}</li>';
   }
   $("#srvtree-list").addEventListener("click", e => { const b = e.target.closest("[data-tsrv]"); if (b && b.dataset.tsrv !== srvName) openServer(b.dataset.tsrv, srvTab); });
   $("#srvtree-q").addEventListener("input", e => { treeQ = e.target.value.trim().toLowerCase(); renderSrvTree(); });
   $("#srvtree-add").addEventListener("click", () => showView("add"));
+  /* Dil: düğme TR/EN arasında geçer; dinamik çizimler yeniden yapılır */
+  $("#lang-btn").addEventListener("click", () => { const L = window.KeyLabI18n; L.setLang(L.getLang() === "tr" ? "en" : "tr"); });
+  window.addEventListener("keylab:langchange", () => { render(); renderSrvTree(); if (view === "server" && srv) renderServer(); });
 
   function render() {
     renderSrvTree();
