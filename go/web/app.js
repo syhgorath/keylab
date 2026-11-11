@@ -46,7 +46,9 @@
     if (name !== "server" && location.hash) history.replaceState(null, "", location.pathname);
     $(".aside").style.display = name === "dash" ? "" : "none";
     const app = $(".app");
-    app.style.gridTemplateAreas = name === "dash" ? "" : innerWidth > 1080 ? '"brand topbar topbar" "nav main main"' : innerWidth > 760 ? '"brand topbar" "nav main"' : "";
+    app.classList.toggle("v-wide", name !== "dash");
+    app.classList.toggle("v-server", name === "server");
+    $("#srvtree").hidden = name !== "server";
     if (name === "logs") loadLogs();
     if (name === "lynis") loadLynis();
     if (name === "packages") loadPackages();
@@ -174,7 +176,20 @@
       <div class="tl-text"><b>${esc(a.server)}</b> · ${esc(a.package)} ${esc(a.version)} · ${esc(a.action)} · <span style="color:var(--${isOk(a.result) ? "ok" : "danger"})">${isOk(a.result) ? "başarılı" : "başarısız"}</span></div></li>`).join("");
   }
 
+  /* Sunucu sayfasının ortadaki sunucu listesi (Proxmox tarzı kaynak ağacı) */
+  let treeQ = "";
+  function renderSrvTree() {
+    const el = $("#srvtree-list"); if (!el) return;
+    const sv = home.servers.filter(s => !treeQ || `${s.name} ${s.host || ""}`.toLowerCase().includes(treeQ));
+    $("#srvtree-title").textContent = `Sunucular (${home.servers.length})`;
+    el.innerHTML = sv.map(s => `<li><button class="tree-item${s.name === srvName ? " on" : ""}" data-tsrv="${esc(s.name)}" aria-current="${s.name === srvName ? "page" : "false"}"><span class="status-dot ${dotState(s)}" aria-label="durum: ${stateText(s)}"></span><span class="tree-txt"><span class="tree-name">${esc(s.name)}</span><span class="tree-addr mono">${esc(s.host || "")}</span></span></button></li>`).join("") || '<li class="small muted" style="padding:8px 10px">Eşleşen sunucu yok.</li>';
+  }
+  $("#srvtree-list").addEventListener("click", e => { const b = e.target.closest("[data-tsrv]"); if (b && b.dataset.tsrv !== srvName) openServer(b.dataset.tsrv, srvTab); });
+  $("#srvtree-q").addEventListener("input", e => { treeQ = e.target.value.trim().toLowerCase(); renderSrvTree(); });
+  $("#srvtree-add").addEventListener("click", () => showView("add"));
+
   function render() {
+    renderSrvTree();
     const sv = home.servers.filter(s => matches(s.name, s.platform, s.last && s.last.package));
     const pk = home.packages.filter(p => matches(p.id));
     const addTile = '<li class="stile add" tabindex="0" data-add="1" aria-label="Sunucu ekle"><div class="plus" aria-hidden="true">+</div><div>Sunucu ekle</div></li>';
@@ -1496,13 +1511,17 @@
   async function openServer(name, tab) {
     srvName = name; srvTab = tab || "ozet";
     srv = null;
-    showView("server");
+    showView("server"); renderSrvTree();
     history.replaceState(null, "", `#s=${encodeURIComponent(name)}&p=${encodeURIComponent(srvTab || "")}`);
     $("#srv-head").innerHTML = `<button class="back" id="srv-back">← Sunucular</button><div class="srv-title"><h1>${esc(name)}</h1></div>`;
     $("#srv-back").addEventListener("click", () => showView("servers"));
     $("#srv-tabs").innerHTML = ""; $("#srv-body").innerHTML = '<div class="small muted">yükleniyor…</div>';
-    try { srv = await json("/api/server?name=" + encodeURIComponent(name)); }
-    catch (e) { $("#srv-body").innerHTML = `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div>Sunucu açılamadı: ${esc(e.message)}</div></div>`; return; }
+    // Yanıt gelene kadar kullanıcı başka sunucuya/sayfaya geçmiş olabilir: eski yanıt yenisini ezmesin.
+    let data;
+    try { data = await json("/api/server?name=" + encodeURIComponent(name)); }
+    catch (e) { if (srvName === name && view === "server") $("#srv-body").innerHTML = `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div>Sunucu açılamadı: ${esc(e.message)}</div></div>`; return; }
+    if (srvName !== name || view !== "server") return;
+    srv = data;
     renderServer();
   }
 

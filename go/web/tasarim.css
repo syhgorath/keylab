@@ -1,84 +1,194 @@
-:root{
-  /* Karışım paleti: C sıcaklığı + A nötrlüğü + B mono vurgu */
-  --bg:#f3f5fb;
-  --surface:#ffffff;
-  --surface-2:#eef1f9;
-  --surface-3:#e4e8f4;
-  --border:#dce1ef;
-  --border-strong:#c2cadf;
-  --text:#15182b;
-  --text-2:#3e4563;
-  --muted:#5f6786;
-  --accent:#5a43c4;
-  --accent-weak:#ece9fc;
-  --accent-ink:#3b2a99;
-  --ok:#0f7a4d; --ok-weak:#e1f5ea; --ok-border:#b6e3cc;
-  --warn:#9a5b00; --warn-weak:#fbeed6; --warn-border:#eccf9e;
-  --danger:#a82820; --danger-weak:#fbe4e2; --danger-border:#efb7b3;
-  --info:#07708a; --info-weak:#dff4f9;
-  /* marka: logodaki camgöbeği ve mor */
-  --brand-cyan:#32dcf5; --brand-violet:#5a43c4; --brand-deep:#2f1a78;
-  --primary:#5a43c4; --primary-2:#3f5fd0;
-  --radius:14px; --radius-md:10px; --radius-sm:6px; --radius-pill:999px;
-  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px;
-  --font:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
-  --shadow-1:0 1px 2px rgba(25,25,70,.06),0 1px 3px rgba(25,25,70,.05);
-  --shadow-2:0 4px 14px rgba(25,25,70,.11),0 2px 4px rgba(25,25,70,.05);
-  --shadow-3:0 18px 44px rgba(25,25,70,.18);
-  --focus:0 0 0 3px rgba(90,67,196,.40);
-  --log-bg:#0d0f1f; --log-text:#e6e9f7; --log-ok:#7ee2a8; --log-err:#ff9d97; --log-muted:#8a92b4;
+:root {
+  /* Vercel / Tailscale / macOS Yerel Estetiği — Açık Tema */
+  --bg: #f5f6f9;
+  --bg-subtle: #eceff4;
+  --surface: #ffffff;
+  --surface-2: #f8f9fc;
+  --surface-3: #eef1f6;
+  --surface-glass: rgba(255, 255, 255, 0.84);
+
+  --border: #e2e6ef;
+  --border-strong: #c8d0e0;
+  --border-subtle: rgba(15, 23, 42, 0.06);
+
+  --text: #0f172a;
+  --text-2: #334155;
+  --muted: #64748b;
+
+  --heading: #0f172a;
+  --heading-accent: #4f46e5;
+  --icon-color: #475569;
+  --icon-primary: #4f46e5;
+  --icon-accent: #4f46e5;
+  --icon-subtle: #94a3b8;
+
+  --accent: #4f46e5;
+  --accent-weak: #eef2ff;
+  --accent-ink: #3730a3;
+  --primary: #4f46e5;
+  --primary-2: #4338ca;
+  --brand-cyan: #06b6d4;
+  --brand-violet: #4f46e5;
+  --brand-deep: #1e1b4b;
+
+  --ok: #059669;
+  --ok-weak: #ecfdf5;
+  --ok-border: #a7f3d0;
+
+  --warn: #b45309;
+  --warn-weak: #fffbeb;
+  --warn-border: #fde68a;
+
+  --danger: #dc2626;
+  --danger-weak: #fef2f2;
+  --danger-border: #fecaca;
+
+  --info: #0284c7;
+  --info-weak: #f0f9ff;
+
+  --radius: 14px;
+  --radius-md: 9px;
+  --radius-sm: 6px;
+  --radius-pill: 999px;
+
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 1px rgba(15, 23, 42, 0.02);
+  --shadow-2: 0 10px 26px -6px rgba(15, 23, 42, 0.09), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+  --shadow-3: 0 24px 48px -12px rgba(15, 23, 42, 0.18), 0 4px 12px -2px rgba(15, 23, 42, 0.08);
+  --inset-top: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  --focus: 0 0 0 3px rgba(79, 70, 229, 0.28);
+
+  --log-bg: #0b0e14;
+  --log-text: #e2e8f0;
+  --log-ok: #34d399;
+  --log-err: #f87171;
+  --log-muted: #94a3b8;
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    color-scheme:dark;
-    --bg:#0a0c18;
-    --surface:#11142a;
-    --surface-2:#181b36;
-    --surface-3:#1f2344;
-    --border:#262b50;
-    --border-strong:#383e70;
-    --text:#edf0fb;
-    --text-2:#c4cae6;
-    --muted:#97a0c9;
-    --accent:#8f7dff;
-    --accent-weak:#241e57;
-    --accent-ink:#c1b6ff;
-    --ok:#5ee0a0; --ok-weak:#122e21; --ok-border:#1f5a3d;
-    --warn:#f5b64a; --warn-weak:#2f2411; --warn-border:#5c481f;
-    --danger:#ff8a82; --danger-weak:#341411; --danger-border:#6b2d28;
-    --info:#4fd8f0; --info-weak:#0f2c38;
-    --shadow-1:0 1px 2px rgba(0,0,0,.3);
-    --shadow-2:0 6px 18px rgba(0,0,0,.45);
-    --shadow-3:0 22px 50px rgba(0,0,0,.6);
-    --focus:0 0 0 3px rgba(50,220,245,.45);
-    --log-bg:#070913; --log-text:#e6e9f7;
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #090b10;
+    --bg-subtle: #0d1017;
+    --surface: #11141d;
+    --surface-2: #161a25;
+    --surface-3: #1d2230;
+    --surface-glass: rgba(17, 20, 29, 0.80);
+
+    --border: #212636;
+    --border-strong: #32394f;
+    --border-subtle: rgba(255, 255, 255, 0.05);
+
+    --text: #f1f5f9;
+    --text-2: #cbd5e1;
+    --muted: #8492a6;
+
+    --heading: #ffffff;
+    --heading-accent: #a5b4fc;
+    --icon-color: #cbd5e1;
+    --icon-primary: #a5b4fc;
+    --icon-accent: #818cf8;
+    --icon-subtle: #64748b;
+
+    --accent: #6366f1;
+    --accent-weak: rgba(99, 102, 241, 0.16);
+    --accent-ink: #a5b4fc;
+    --primary: #6366f1;
+    --primary-2: #4f46e5;
+    --brand-cyan: #22d3ee;
+
+    --ok: #34d399;
+    --ok-weak: rgba(16, 185, 129, 0.13);
+    --ok-border: rgba(52, 211, 153, 0.28);
+
+    --warn: #fbbf24;
+    --warn-weak: rgba(245, 158, 11, 0.13);
+    --warn-border: rgba(251, 191, 36, 0.28);
+
+    --danger: #f87171;
+    --danger-weak: rgba(239, 68, 68, 0.14);
+    --danger-border: rgba(248, 113, 113, 0.3);
+
+    --info: #38bdf8;
+    --info-weak: rgba(56, 189, 248, 0.14);
+
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-2: 0 12px 28px -6px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.3);
+    --shadow-3: 0 24px 56px -8px rgba(0, 0, 0, 0.72);
+    --inset-top: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --focus: 0 0 0 3px rgba(99, 102, 241, 0.38);
+
+    --log-bg: #07090e;
+    --log-text: #e2e8f0;
   }
 }
-:root[data-theme="dark"]{
-  color-scheme:dark;
-    --bg:#0a0c18;
-    --surface:#11142a;
-    --surface-2:#181b36;
-    --surface-3:#1f2344;
-    --border:#262b50;
-    --border-strong:#383e70;
-    --text:#edf0fb;
-    --text-2:#c4cae6;
-    --muted:#97a0c9;
-    --accent:#8f7dff;
-    --accent-weak:#241e57;
-    --accent-ink:#c1b6ff;
-    --ok:#5ee0a0; --ok-weak:#122e21; --ok-border:#1f5a3d;
-    --warn:#f5b64a; --warn-weak:#2f2411; --warn-border:#5c481f;
-    --danger:#ff8a82; --danger-weak:#341411; --danger-border:#6b2d28;
-    --info:#4fd8f0; --info-weak:#0f2c38;
-    --shadow-1:0 1px 2px rgba(0,0,0,.3);
-    --shadow-2:0 6px 18px rgba(0,0,0,.45);
-    --shadow-3:0 22px 50px rgba(0,0,0,.6);
-    --focus:0 0 0 3px rgba(50,220,245,.45);
-    --log-bg:#070913; --log-text:#e6e9f7;
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #090b10;
+  --bg-subtle: #0d1017;
+  --surface: #11141d;
+  --surface-2: #161a25;
+  --surface-3: #1d2230;
+  --surface-glass: rgba(17, 20, 29, 0.80);
+
+  --border: #212636;
+  --border-strong: #32394f;
+  --border-subtle: rgba(255, 255, 255, 0.05);
+
+  --text: #f1f5f9;
+  --text-2: #cbd5e1;
+  --muted: #8492a6;
+
+  --heading: #ffffff;
+  --heading-accent: #a5b4fc;
+  --icon-color: #cbd5e1;
+  --icon-primary: #a5b4fc;
+  --icon-accent: #818cf8;
+  --icon-subtle: #64748b;
+
+  --accent: #6366f1;
+  --accent-weak: rgba(99, 102, 241, 0.16);
+  --accent-ink: #a5b4fc;
+  --primary: #6366f1;
+  --primary-2: #4f46e5;
+  --brand-cyan: #22d3ee;
+
+  --ok: #34d399;
+  --ok-weak: rgba(16, 185, 129, 0.13);
+  --ok-border: rgba(52, 211, 153, 0.28);
+
+  --warn: #fbbf24;
+  --warn-weak: rgba(245, 158, 11, 0.13);
+  --warn-border: rgba(251, 191, 36, 0.28);
+
+  --danger: #f87171;
+  --danger-weak: rgba(239, 68, 68, 0.14);
+  --danger-border: rgba(248, 113, 113, 0.3);
+
+  --info: #38bdf8;
+  --info-weak: rgba(56, 189, 248, 0.14);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-2: 0 12px 28px -6px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-3: 0 24px 56px -8px rgba(0, 0, 0, 0.72);
+  --inset-top: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --focus: 0 0 0 3px rgba(99, 102, 241, 0.38);
+
+  --log-bg: #07090e;
+  --log-text: #e2e8f0;
 }
+/* KeyLab görünümü: pocketui jetonları (açık/koyu) */
 :root[data-theme="light"]{color-scheme:light}
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -880,3 +990,47 @@ svg.spark{width:100%;height:64px;display:block;overflow:visible}
 .act-foot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--text-2)}
 .act-foot .grow{flex:1}
 details.na summary{cursor:pointer;color:var(--muted);padding:10px 16px;font-size:13px}
+
+/* ---------- KeyLab düzeni: ana menü + sunucu listesi + içerik ---------- */
+.app.v-wide{grid-template-areas:"brand topbar topbar" "nav main main"}
+.app.v-server{grid-template-columns:220px 252px minmax(0,1fr);grid-template-areas:"brand topbar topbar" "nav tree main"}
+.srvtree{grid-area:tree;background:var(--surface);border-right:1px solid var(--border);min-width:0}
+.tree-in{position:sticky;top:0;max-height:100vh;display:flex;flex-direction:column}
+.srvtree[hidden]{display:none}
+.tree-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:16px 14px 8px}
+.tree-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.tree-add{font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:var(--radius-pill);background:var(--accent-weak);color:var(--accent-ink);border:1px solid transparent}
+.tree-add:hover{border-color:var(--accent)}
+.tree-search{padding:0 12px 10px}
+.tree-search input{width:100%}
+.tree-list{list-style:none;margin:0;padding:0 8px 12px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:2px}
+.tree-item{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border-radius:var(--radius-md);text-align:left;position:relative}
+.tree-item:hover{background:var(--surface-2)}
+.tree-item.on{background:var(--accent-weak)}
+.tree-item.on::before{content:"";position:absolute;left:-8px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+.tree-txt{display:flex;flex-direction:column;min-width:0}
+.tree-name{font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-item.on .tree-name{color:var(--accent-ink)}
+.tree-addr{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:1080px){
+  .app.v-wide{grid-template-areas:"brand topbar" "nav main"}
+  .app.v-server{grid-template-columns:200px minmax(0,1fr);grid-template-areas:"brand topbar" "nav tree" "nav main";grid-template-rows:auto auto 1fr}
+  .srvtree{overflow-x:auto;border-right:0;border-bottom:1px solid var(--border);padding:6px 10px}
+  .tree-in{position:static;max-height:none;flex-direction:row;align-items:center;gap:8px}
+  .tree-head,.tree-search{display:none}
+  .tree-list{flex-direction:row;padding:0;overflow:visible;flex:none;gap:6px}
+  .tree-item{width:auto;white-space:nowrap}
+  .tree-item.on::before{display:none}
+}
+@media (max-width:760px){
+  .app.v-wide,.app.v-server{display:block}
+}
+
+/* KeyLab: sunucu menüsü (sekmeler) ve ağaç araması pocketui görünümünde */
+.tree-search input{width:100%;padding:7px 12px;font-size:12.5px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-pill);color:var(--text)}
+.tree-search input:focus{outline:none;border-color:var(--accent);box-shadow:var(--focus)}
+#srv-tabs{position:sticky;top:0;z-index:20;margin:0 calc(var(--sp-5) * -1) 4px;padding:6px var(--sp-5) 0;background:color-mix(in oklab,var(--bg) 82%,transparent);backdrop-filter:blur(12px) saturate(140%);-webkit-backdrop-filter:blur(12px) saturate(140%);border-bottom:1px solid var(--border)}
+#srv-tabs button{padding:9px 16px;font-size:13px;color:var(--muted)}
+#srv-tabs button:hover{color:var(--text)}
+#srv-tabs button[aria-selected="true"]{background:color-mix(in oklab,var(--accent-weak) 55%,transparent)}
+@media (max-width:760px){#srv-tabs{margin-inline:calc(var(--sp-4) * -1);padding-inline:var(--sp-4)}}
