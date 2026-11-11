@@ -15,7 +15,6 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
-	"syscall"
 	"time"
 	"unicode/utf8"
 )
@@ -225,7 +224,7 @@ func (a *App) spawn(job *Job, dir string, argv []string) error {
 	cmd := exec.CommandContext(ctx, pa[0], pa[1:]...)
 	cmd.Dir = dir
 	cmd.Env = append(append(os.Environ(), "TERM=dumb", "ANSIBLE_NOCOLOR=1", "NO_COLOR=1"), job.env...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	setJobSysProcAttr(cmd)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		cancel()
@@ -240,7 +239,7 @@ func (a *App) spawn(job *Job, dir string, argv []string) error {
 	// iptal: önce Ctrl-C (pty satır disiplini SIGINT'e çevirir), kısa süre sonra süreç grubuna SIGTERM
 	cmd.Cancel = func() error {
 		_, _ = stdin.Write([]byte{0x03})
-		go func(pid int) { time.Sleep(1500 * time.Millisecond); _ = syscall.Kill(-pid, syscall.SIGTERM) }(cmd.Process.Pid)
+		go func() { time.Sleep(1500 * time.Millisecond); killJobGroup(cmd) }()
 		return nil
 	}
 	cmd.WaitDelay = 5 * time.Second

@@ -15,7 +15,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 	"time"
 
 	"sshpocket-go/internal/runner"
@@ -44,13 +43,13 @@ func freeKB(dir string) (int64, bool) {
 		if st, err := os.Stat(dir); err == nil && st.IsDir() {
 			break
 		}
-		dir = filepath.Dir(dir)
+		parent := filepath.Dir(dir)
+		if parent == dir { // kök (Windows'ta "C:\\" gibi): sonsuz döngü olmasın
+			break
+		}
+		dir = parent
 	}
-	var s syscall.Statfs_t
-	if syscall.Statfs(dir, &s) != nil {
-		return 0, false
-	}
-	return int64(s.Bavail) * int64(s.Bsize) / 1024, true
+	return statfsFreeKB(dir)
 }
 
 // Run, doctor_run.

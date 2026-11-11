@@ -15,7 +15,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -302,7 +301,7 @@ func installLock(base string, tries int) (release func(), err error) {
 		}
 		b, _ := os.ReadFile(filepath.Join(lock, "pid"))
 		other = strings.TrimSpace(string(b))
-		if pid, perr := strconv.Atoi(other); perr == nil && pid > 0 && syscall.Kill(pid, 0) != nil {
+		if pid, perr := strconv.Atoi(other); perr == nil && pid > 0 && isProcessDead(pid) {
 			os.RemoveAll(lock) // sahibi ölmüş (yarım kalmış kurulum)
 			continue
 		}

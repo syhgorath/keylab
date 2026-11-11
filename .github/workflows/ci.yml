@@ -20,6 +20,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go/go.mod
+          cache: false # bağımlılık yok (go.sum yok): önbellek anlamsız, uyarı veriyordu
       - name: vet
         working-directory: go
         run: go vet ./...
@@ -36,6 +37,25 @@ jobs:
       - name: Derleme (tek ikili)
         working-directory: go
         run: CGO_ENABLED=0 go build -trimpath -o /tmp/sshpocket . && /tmp/sshpocket version
+  # Çok platformlu derleme denetimi: yalnız derlenir. Çalışma zamanı (Keychain, terminal, ssh-agent) şimdilik macOS'a özgüdür.
+  cross:
+    runs-on: ubuntu-26.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [linux/amd64, linux/arm64, windows/amd64, darwin/amd64]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go/go.mod
+          cache: false
+      - name: "Derleme (${{ matrix.target }})"
+        working-directory: go
+        env:
+          CGO_ENABLED: "0"
+          MATRIX_TARGET: ${{ matrix.target }}
+        run: GOOS="${MATRIX_TARGET%/*}" GOARCH="${MATRIX_TARGET#*/}" go build -trimpath ./...
   # Referans kabuk motoru (dondurulmuş): Go portunun şartnamesi. Değişmemesi beklenir; yine de bozulmasın diye koşar.
   shellcheck:
     runs-on: ubuntu-26.04
