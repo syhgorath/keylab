@@ -148,6 +148,10 @@ func TestValidatePackageMutations(t *testing.T) {
 		{"component.json surum", edit("component.json", `"version": "`, `"version": "7.`)},
 	}
 	for _, src := range []string{"components/utility/0.1.0", "components/kurulum/0.1.0", "components/linux-hardening/0.13.0", "components/linux-hardening/0.3.0"} {
+		if _, err := os.Stat(filepath.Join(root, src)); err != nil {
+			t.Logf("atlandı (paket yok; components/ eşitlenmemiş): %s", src)
+			continue
+		}
 		for _, m := range muts {
 			t.Run(src+"/"+m.name, func(t *testing.T) {
 				d := filepath.Join(t.TempDir(), "pkg")
@@ -196,6 +200,10 @@ func TestValidatePackageArchives(t *testing.T) {
 	root := repoRoot(t)
 	// gerçek paket → <id>-<sürüm>.tar.gz
 	for _, src := range []string{"components/utility/0.1.0", "components/kurulum/0.1.0"} {
+		if _, err := os.Stat(filepath.Join(root, src)); err != nil {
+			t.Logf("atlandı (paket yok; components/ eşitlenmemiş): %s", src)
+			continue
+		}
 		parts := strings.Split(src, "/")
 		id, ver := parts[1], parts[2]
 		tmp := t.TempDir()

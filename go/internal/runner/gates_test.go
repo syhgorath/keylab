@@ -50,6 +50,9 @@ func runShell(t *testing.T, root string, env []string, stdin, prelude, fn string
 }
 
 func infoOf(t *testing.T, p string) []string {
+	if _, err := os.Stat(p); err != nil {
+		t.Skipf("gerçek paket yok (components/ eşitlenmemiş; bu test USB paketleriyle yerelde koşar): %s", p)
+	}
 	lines, errs, code := manifest.ValidateFile(p, "", "")
 	if code != 0 {
 		t.Fatalf("%s: %v", p, errs)

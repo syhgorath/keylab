@@ -26,8 +26,12 @@ jobs:
       - name: gofmt
         working-directory: go
         run: test -z "$(gofmt -l .)"
+      # Gerçek paket (components/) gerektiren karşılaştırmalı testler CI'da atlanır: components/ repoya girmez, tarihsel sürümler yalnız USB'de.
+      # macOS'un bash 3.2'si UTF-8 yerelinde Türkçe karakterleri farklı sayar; kabukla parite C yerelinde tutar (eski kabuk CI'ındaki LC_ALL=C ile aynı neden).
       - name: "Testler (-short: uzun karşılaştırmalı testler hariç)"
         working-directory: go
+        env:
+          LC_ALL: ${{ matrix.os == 'macos-latest' && 'C' || 'C.UTF-8' }}
         run: go test ./... -short -count=1
       - name: Derleme (tek ikili)
         working-directory: go

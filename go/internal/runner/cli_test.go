@@ -113,6 +113,9 @@ type cliCase struct {
 
 func TestCLIRunMatchesShell(t *testing.T) {
 	root := repoRoot(t)
+	if _, err := os.Stat(filepath.Join(root, "components/utility/0.1.0/component.json")); err != nil {
+		t.Skip("gerçek paket yok (components/ eşitlenmemiş; bu test USB paketleriyle yerelde koşar)")
+	}
 	e := setupCLI(t)
 	defEnv := "IP=10.0.0.5\nUSER=deploy\nPORT=22\nKEY=\n"
 	okOut := "SSHPOCKET_PROGRESS alan=base sira=1/1 durum=bitti degisen=2\nSSHPOCKET_RESULT utility.durum timezone=UTC locale=en_US ntp_servis=yes ntp_senkron=yes offset_ms=3 kaynak_sayisi=2"
