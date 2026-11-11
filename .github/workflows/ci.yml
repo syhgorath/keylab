@@ -26,7 +26,7 @@ jobs:
       - name: gofmt
         working-directory: go
         run: test -z "$(gofmt -l .)"
-      - name: Testler (-short: uzun karşılaştırmalı testler hariç)
+      - name: "Testler (-short: uzun karşılaştırmalı testler hariç)"
         working-directory: go
         run: go test ./... -short -count=1
       - name: Derleme (tek ikili)
