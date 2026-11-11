@@ -32,7 +32,7 @@ jobs:
       - name: "Testler (-short: uzun karşılaştırmalı testler hariç)"
         working-directory: go
         env:
-          LC_ALL: ${{ matrix.os == 'macos-latest' && 'C' || 'C.UTF-8' }}
+          LC_ALL: ${{ matrix.os == 'macos-latest' && 'C' || '' }} # Linux: runner varsayılanı (ayar yok); yalnız macOS'ta C
         run: go test ./... -short -count=1
       - name: Derleme (tek ikili)
         working-directory: go
