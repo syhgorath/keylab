@@ -55,6 +55,8 @@
     if (name === "packages") loadPackages();
     if (name === "add") initAdd();
     if (name === "settings") loadSettings();
+    if (name === "compare") window.KeyLabCompare.load(false);
+    if (name === "reports") window.KeyLabReports.load();
   }
   $$(".nav-item[data-nav]").forEach(b => b.addEventListener("click", () => showView(b.dataset.nav)));
   $$("[data-nav-target]").forEach(b => b.addEventListener("click", () => showView(b.dataset.navTarget)));
@@ -217,6 +219,7 @@
     $("#a-tl").innerHTML = timeline();
     bindServers();
     $("#brand-sub").textContent = "yerel · taslak";
+    if (view === "compare") window.KeyLabCompare.load(false); // durum noktaları ve yeni sunucular
   }
 
   async function load() {
@@ -296,6 +299,7 @@
     };
     const done = async text => {
       toast(text); catSrv = ""; // katalog kartlarındaki değerler yeniden okunsun
+      window.KeyLabCompare.invalidate(); if (view === "compare") window.KeyLabCompare.load(false);
       try { srv = await json("/api/server?name=" + encodeURIComponent(vSrv)); if (view === "server") renderServer(); } catch (e) { /* bir sonraki turda */ }
       const top = $("#vars-list").parentElement.scrollTop; await loadVars(); $("#vars-list").parentElement.scrollTop = top;
     };
@@ -1658,6 +1662,18 @@
   ["#imp-x", "#imp-cancel"].forEach(id => $(id).addEventListener("click", impClose));
   impModal.addEventListener("click", e => { if (e.target === impModal) impClose(); });
   document.addEventListener("keydown", e => { if (e.key === "Escape") impClose(); });
+
+  /* ---------------- Sunucu karşılaştırma (js/compare.js) ---------------- */
+  window.KeyLabCompare.init({
+    getHome: () => home, json, toast, ago, osIcon, dotState, stateText,
+    tabLabel: id => TAB_LABEL[id] || (home.packages.find(p => p.id === id) || {}).name || id,
+    openServer, openVars, goLynis,
+  });
+
+  window.KeyLabReports.init({
+    getHome: () => home, json, toast, stateText,
+    tabLabel: id => TAB_LABEL[id] || (home.packages.find(p => p.id === id) || {}).name || id,
+  });
 
   /* ---------------- Klavye kısayolları penceresi ---------------- */
   const scModal = $("#shortcuts-modal"); let scFrom = null;

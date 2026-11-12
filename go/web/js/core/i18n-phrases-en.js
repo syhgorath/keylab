@@ -3,6 +3,16 @@
    (değişken/eylem adları, dosya yolları) ve kullanıcı verisi çevrilmez. Eksik ifade Türkçe kalır; tabloya eklenerek genişletilir. */
 window.KeyLabPhrasesEN = {
   exact: {
+    "Rapor yapılandırıcı": "Report builder", "Rapor şablonu": "Report template", "Filo güvenlik ve envanter özeti": "Fleet security and inventory summary",
+    "Sunucu güvenlik denetimi": "Server security audit", "Lynis bulguları kataloğu": "Lynis findings catalog", "Yapılandırma ve drift (fark) raporu": "Configuration and drift report",
+    "Hedef sunucu": "Target server", "Dahil edilecek bölümler": "Sections to include", "Sistem ve ağ": "System and network", "Paket eylemleri": "Package actions",
+    "Lynis skorları": "Lynis scores", "Bulgular ve uyarılar": "Findings and warnings", "Değişken farkları (drift şablonu)": "Variable differences (drift template)",
+    "Yazdır / PDF olarak kaydet": "Print / save as PDF", "📋 Kopyala": "📋 Copy", "Rapor önizleme": "Report preview", "Önizleme biçimi": "Preview format", "Görsel": "Visual",
+    "Sunucu karşılaştırma": "Server comparison", "⚡ Yalnızca fark": "⚡ Differences only",
+    "Yalnızca sunucular arasında farklı olan satırları göster": "Show only rows that differ between servers",
+    "Sistem ve ağ": "System and network", "Matriste ara…": "Search the matrix…", "Matriste ara": "Search the matrix",
+    "Dışa aktar ▾": "Export ▾", "📋 Markdown kopyala": "📋 Copy Markdown", "💾 CSV indir": "💾 Download CSV", "💾 JSON indir": "💾 Download JSON",
+    "Yenile": "Refresh", "Kapsam": "Scope", "Değişkenler": "Variables",
     "~/.ssh/config'ten içe aktar…": "Import from ~/.ssh/config…", "ssh config'ten içe aktar": "Import from ssh config",
     "~/.ssh/config dosyasındaki Host kayıtları. Private key kopyalanmaz; yalnızca yolu kaydedilir.": "Host entries from ~/.ssh/config. Private keys are not copied; only the path is stored.",
     "İçe aktar": "Import", "Taranıyor…": "Scanning…", "Ekli": "Added", "seçili": "selected", "Hata:": "Error:",

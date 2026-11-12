@@ -44,6 +44,14 @@
         <span class="ico" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v8a2 2 0 0 1-1 1.7l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.7l7-4a2 2 0 0 1 2 0l7 4A2 2 0 0 1 21 8Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></span>
         <span data-i18n="nav_packages">Paketler</span> <span class="count" id="n-packages">0</span>
       </button>
+      <button class="nav-item" data-nav="compare">
+        <span class="ico" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3M12 2v20"/></svg></span>
+        <span data-i18n="nav_compare">Karşılaştır</span>
+      </button>
+      <button class="nav-item" data-nav="reports">
+        <span class="ico" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg></span>
+        <span data-i18n="nav_reports">Raporlar</span>
+      </button>
     </div>
     <div class="nav-group">
       <div class="nav-title" data-i18n="nav_security">Güvenlik</div>
@@ -118,6 +126,92 @@
       <div class="card">
         <div class="card-head"><h2>Tüm sunucular</h2><div class="spacer"></div><button class="btn sm" data-nav-target="add">+ Sunucu ekle</button><div class="mode-toggle" role="group" aria-label="Görünüm"><button data-mode="tiles" aria-pressed="true">Simgeler</button><button data-mode="list" aria-pressed="false">Liste</button></div><span class="hint" id="servers-count"></span></div>
         <div class="card-body tight"><ul class="server-list" id="servers-all"></ul></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-compare" hidden>
+      <div class="card">
+        <div class="card-head">
+          <h2>Sunucu karşılaştırma</h2>
+          <span class="hint" id="compare-summary"></span>
+          <div class="spacer" style="flex:1"></div>
+          <div class="compare-controls">
+            <label class="toggle-switch" title="Yalnızca sunucular arasında farklı olan satırları göster">
+              <input type="checkbox" id="compare-drift-only">
+              <span class="toggle-slider"></span>
+              <span class="toggle-label">⚡ Yalnızca fark</span>
+            </label>
+            <div class="segmented" role="group" aria-label="Kapsam" id="compare-cat-group">
+              <button type="button" data-cat="all" aria-pressed="true">Tümü</button>
+              <button type="button" data-cat="sys" aria-pressed="false">Sistem ve ağ</button>
+              <button type="button" data-cat="pkg" aria-pressed="false">Paketler</button>
+              <button type="button" data-cat="lynis" aria-pressed="false">Lynis</button>
+              <button type="button" data-cat="vars" aria-pressed="false">Değişkenler</button>
+            </div>
+            <input type="search" id="compare-search" placeholder="Matriste ara…" aria-label="Matriste ara" style="max-width:180px">
+            <div class="dropdown-wrap" style="position:relative;display:inline-block">
+              <button class="btn sm" id="compare-export-btn" type="button" aria-haspopup="true">Dışa aktar ▾</button>
+              <div class="dropdown-menu" id="compare-export-menu" hidden>
+                <button type="button" class="drop-item" id="compare-copy-md">📋 Markdown kopyala</button>
+                <button type="button" class="drop-item" id="compare-down-csv">💾 CSV indir</button>
+                <button type="button" class="drop-item" id="compare-down-json">💾 JSON indir</button>
+              </div>
+            </div>
+            <button class="btn sm" id="compare-refresh-btn" type="button">Yenile</button>
+          </div>
+        </div>
+        <div class="card-body tight" id="compare-table-wrap">
+          <div id="compare-matrix-view"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-reports" hidden>
+      <div class="reports-layout">
+        <div class="card reports-sidebar">
+          <div class="card-head"><h2>Rapor yapılandırıcı</h2></div>
+          <div class="card-body">
+            <div class="field"><label for="rep-template">Rapor şablonu</label>
+              <select id="rep-template">
+                <option value="fleet-sec">Filo güvenlik ve envanter özeti</option>
+                <option value="srv-audit">Sunucu güvenlik denetimi</option>
+                <option value="lynis-catalog">Lynis bulguları kataloğu</option>
+                <option value="drift-report">Yapılandırma ve drift (fark) raporu</option>
+              </select></div>
+            <div class="field"><label for="rep-server">Hedef sunucu</label><select id="rep-server"></select></div>
+            <div class="field"><label>Dahil edilecek bölümler</label>
+              <div class="rep-checkbox-group">
+                <label><input type="checkbox" id="rep-inc-sys" checked> <span>Sistem ve ağ</span></label>
+                <label><input type="checkbox" id="rep-inc-pkgs" checked> <span>Paket eylemleri</span></label>
+                <label><input type="checkbox" id="rep-inc-lynis" checked> <span>Lynis skorları</span></label>
+                <label><input type="checkbox" id="rep-inc-findings" checked> <span>Bulgular ve uyarılar</span></label>
+                <label><input type="checkbox" id="rep-inc-vars" checked> <span>Değişken farkları (drift şablonu)</span></label>
+              </div></div>
+            <div class="rep-actions">
+              <button class="btn primary sm" id="rep-print-btn" type="button" style="width:100%">Yazdır / PDF olarak kaydet</button>
+              <div class="row-flex" style="gap:8px;margin-top:10px">
+                <button class="btn sm" id="rep-copy-md" type="button" style="flex:1">📋 Kopyala</button>
+                <button class="btn sm" id="rep-down-md" type="button" style="flex:1">📥 .md</button>
+                <button class="btn sm" id="rep-down-json" type="button" style="flex:1">📥 .json</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card reports-preview-card">
+          <div class="card-head" id="rep-preview-head">
+            <h2 id="rep-preview-title">Rapor önizleme</h2>
+            <div class="spacer" style="flex:1"></div>
+            <div class="segmented" role="group" aria-label="Önizleme biçimi" id="rep-format-toggle">
+              <button type="button" data-fmt="html" aria-pressed="true">Görsel</button>
+              <button type="button" data-fmt="md" aria-pressed="false">Markdown</button>
+              <button type="button" data-fmt="json" aria-pressed="false">JSON</button>
+            </div>
+          </div>
+          <div class="card-body" id="rep-preview-body">
+            <div id="rep-render-html" class="report-document"></div>
+            <pre id="rep-render-raw" class="report-raw mono small" hidden></pre>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -400,6 +494,8 @@
 <script src="vendor/xterm/xterm.js"></script>
 <script src="vendor/xterm/addon-fit.js"></script>
 <script src="js/terminal.js"></script>
+<script src="js/compare.js"></script>
+<script src="js/reports.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
