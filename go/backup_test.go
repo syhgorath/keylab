@@ -117,7 +117,6 @@ func TestBackupImportRejectsDangerousInput(t *testing.T) {
 		{Name: "kotu3", Host: "192.0.2.3", User: "x", Port: "99999"},
 		{Name: "tmp1", Host: "192.0.2.4", User: "x", Port: "22", Vars: map[string]map[string]string{
 			"demo":      {"demo_secim": "z", "yok_degisken": "1", "demo_mod": "docker"},
-			"../kacis":  {"x": "1"},
 			"olmayanpk": {"y": "1"},
 		}},
 	}}
@@ -198,4 +197,41 @@ func mustJSON(t *testing.T, v any) string {
 		t.Fatal(err)
 	}
 	return string(b)
+}
+
+// Yol kaçışı: yedekteki paket/değişken anahtarları dosya yoluna akar; geçersizse HİÇBİR dosya işleminden önce reddedilmeli.
+func TestBackupImportRejectsTraversalInPackageAndVarNames(t *testing.T) {
+	a := backupApp(t)
+	// sunucu dizininin DIŞINDA, "../secret" paket anahtarıyla okunabilecek bir .vars dosyası
+	outside := filepath.Join(a.serversDir, "secret.vars")
+	if err := os.WriteFile(outside, []byte("demo_secim=zzz\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cases := map[string]map[string]map[string]string{
+		"paket ../secret":     {"../secret": {"demo_secim": "a"}},
+		"paket mutlak yol":    {"/etc/passwd": {"demo_secim": "a"}},
+		"paket nokta":         {"..": {"demo_secim": "a"}},
+		"paket boş":           {"": {"demo_secim": "a"}},
+		"değişken yol":        {"demo": {"../x": "a"}},
+		"değişken büyük harf": {"demo": {"DEMO_SECIM": "a"}},
+	}
+	for name, vars := range cases {
+		f := backupFile{Format: backupFormat, Version: 1, Servers: []backupServer{{Name: "vm1", Host: "192.0.2.50", User: "deploy", Port: "22", Vars: vars}}}
+		for _, apply := range []bool{false, true} {
+			rows, err := a.backupImport(f, apply, []string{"vm1"})
+			if err != nil || len(rows) != 1 || rows[0].Action != "invalid" || rows[0].Status != "error" {
+				t.Errorf("%s (apply=%v) reddedilmeliydi: %+v %v", name, apply, rows, err)
+			}
+		}
+	}
+	// reddedilen yedek hiçbir şeyi değiştirmemeli (adres aynı kaldı)
+	if b, _ := os.ReadFile(filepath.Join(a.serversDir, "vm1", "server.env")); !strings.Contains(string(b), "IP=127.0.0.1") {
+		t.Errorf("reddedilen yedek sunucuyu değiştirmemeli:\n%s", b)
+	}
+	// geçerli adlar hâlâ çalışır
+	f := backupFile{Format: backupFormat, Version: 1, Servers: []backupServer{{Name: "vm1", Host: "127.0.0.1", User: "deploy", Port: "1", Vars: map[string]map[string]string{"demo": {"demo_mod": "docker"}}}}}
+	rows, _ := a.backupImport(f, false, nil)
+	if len(rows) != 1 || rows[0].Action != "update" {
+		t.Errorf("geçerli yedek önizlemesi bozuldu: %+v", rows)
+	}
 }
