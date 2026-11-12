@@ -162,7 +162,7 @@ func (a *App) findAction(server, pkg, action string) (*ActionInfo, error) {
 // findActionItem: item doluysa eylem o katalog öğesi için aranır: öğe paketin `items` listesinde olmalı ve (liste doluysa) eylem öğenin
 // `actions` listesinde olmalıdır; önkoşul/son sonuç durumu O ÖĞENİN kapsamında hesaplanır. Dönen ikinci değer paketin `item_var` adıdır.
 func (a *App) findActionItem(server, pkg, action, item string) (*ActionInfo, string, error) {
-	s, ok := a.findServer(server)
+	s, ok := a.findServerQuiet(server)
 	if !ok || !s.Valid {
 		return nil, "", fmt.Errorf("sunucu yok ya da yapılandırması geçersiz")
 	}
@@ -315,8 +315,16 @@ func (a *App) spawn(job *Job, dir string, argv []string) error {
 
 // newJob: tek seferde yalnızca bir iş çalışır; işi kaydeder
 func (a *App) newJob(server, pkg, action string) (*Job, error) {
+	return a.newJobX(false, server, pkg, action)
+}
+
+// newJobX: batch=true yalnız toplu işlem yürütücüsünden çağrılır; toplu iş sürerken diğer tüm başlatıcılar reddedilir.
+func (a *App) newJobX(batch bool, server, pkg, action string) (*Job, error) {
 	a.jmu.Lock()
 	defer a.jmu.Unlock()
+	if !batch && a.batchActive() {
+		return nil, fmt.Errorf("toplu işlem çalışıyor; bitmesini bekleyin ya da iptal edin")
+	}
 	if a.running != nil && !a.running.Done {
 		return nil, fmt.Errorf("başka bir eylem çalışıyor")
 	}
@@ -336,6 +344,9 @@ func (a *App) newJob(server, pkg, action string) (*Job, error) {
 	return job, nil
 }
 
+// jobArgv: testte sahte komutla değiştirilir (üretimde runArgv).
+var jobArgv = runArgv
+
 // runArgv: `keylab run` komut satırı. Öğe seçimi koşuya özel `-set <item_var>=<öğe>` ile verilir (değer dosyasına yazılmaz; motor
 // kapsamı ve kapıları aynı seçimle yeniden hesaplar).
 func runArgv(exe, servers, comps, state, pkg, action, server, itemVar, item string) []string {
@@ -348,6 +359,10 @@ func runArgv(exe, servers, comps, state, pkg, action, server, itemVar, item stri
 
 // startJob: eylemi pty altında Go yürütücüsüyle (`keylab run`) çalıştırır. Kapılar, günlük ve sonuç kaydı yürütücünün işidir.
 func (a *App) startJob(server, pkg, action, item string, snapshot bool, confirm string, ackDestructive bool) (*Job, int, error) {
+	return a.startJobX(false, server, pkg, action, item, snapshot, confirm, ackDestructive)
+}
+
+func (a *App) startJobX(batch bool, server, pkg, action, item string, snapshot bool, confirm string, ackDestructive bool) (*Job, int, error) {
 	_, itemVar, code, err0 := a.authorizeRunItem(server, pkg, action, item, snapshot, confirm, ackDestructive)
 	if err0 != nil {
 		return nil, code, err0
@@ -357,8 +372,8 @@ func (a *App) startJob(server, pkg, action, item string, snapshot bool, confirm 
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("sshpocket ikilisinin yolu bulunamadı: %w", err)
 	}
-	argv := runArgv(exe, a.serversDir, a.compDir, a.stateDir, pkg, action, server, itemVar, item)
-	job, err := a.newJob(server, pkg, action)
+	argv := jobArgv(exe, a.serversDir, a.compDir, a.stateDir, pkg, action, server, itemVar, item)
+	job, err := a.newJobX(batch, server, pkg, action)
 	if err != nil {
 		return nil, http.StatusConflict, err
 	}

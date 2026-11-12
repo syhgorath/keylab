@@ -126,7 +126,7 @@
 
     <section class="view" id="view-servers" hidden>
       <div class="card">
-        <div class="card-head"><h2>Tüm sunucular</h2><div class="spacer"></div><button class="btn sm" data-nav-target="add">+ Sunucu ekle</button><div class="mode-toggle" role="group" aria-label="Görünüm"><button data-mode="tiles" aria-pressed="true">Simgeler</button><button data-mode="list" aria-pressed="false">Liste</button></div><span class="hint" id="servers-count"></span></div>
+        <div class="card-head"><h2>Tüm sunucular</h2><div class="spacer"></div><button class="btn sm" data-nav-target="add">+ Sunucu ekle</button><button class="btn sm" id="batch-open" title="Listedeki sunucularda aynı salt okunur eylemi sırayla çalıştır">Toplu işlem…</button><div class="mode-toggle" role="group" aria-label="Görünüm"><button data-mode="tiles" aria-pressed="true">Simgeler</button><button data-mode="list" aria-pressed="false">Liste</button></div><span class="hint" id="servers-count"></span></div>
         <div class="card-body tight"><div class="fchips2 fleet-filter" role="group" aria-label="Sunucu süzgeci"></div><ul class="server-list" id="servers-all"></ul></div>
       </div>
     </section>
@@ -487,6 +487,18 @@
   </div>
 </div>
 
+<div class="modal-back" id="batch-modal" role="dialog" aria-modal="true" aria-labelledby="batch-title">
+  <div class="modal sx-48a649">
+    <div class="modal-head">
+      <div><h3 id="batch-title">Toplu işlem</h3><div class="sub" id="batch-sub"></div></div>
+      <div class="spacer"></div>
+      <button class="icon-btn" id="batch-x" aria-label="Kapat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body sx-a5d903" id="batch-body" aria-live="polite"></div>
+    <div class="modal-foot"><span id="batch-status" class="small muted sx-471df9" role="status"></span><button class="btn ghost" id="batch-close">Vazgeç</button><button class="btn dangerbtn" id="batch-cancel" hidden>İptal et</button><button class="btn primary" id="batch-go" disabled>Çalıştır</button></div>
+  </div>
+</div>
+
 <div class="modal-back palette-back" id="palette" role="dialog" aria-modal="true" aria-label="Komut paleti">
   <div class="palette-card">
     <input id="palette-in" class="palette-in" role="combobox" aria-expanded="false" aria-controls="palette-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" placeholder="Sayfa, sunucu ya da komut ara…" aria-label="Komut paleti">
@@ -544,6 +556,7 @@
 <script src="js/palette.js"></script>
 <script src="js/modal-trap.js"></script>
 <script src="js/backup.js"></script>
+<script src="js/batch.js"></script>
 <script src="js/accent.js"></script>
 <script src="app.js"></script>
 </body>

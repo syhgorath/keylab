@@ -1330,4 +1330,8 @@ td.diff-val{box-shadow:inset 3px 0 0 var(--warn)}
 .sj-342cb5{padding:24px !important;text-align:center !important}
 .sj-fdf33f{margin-bottom:8px !important}
 .fleet-filter{padding:8px 12px 4px}
+.batch-opt{display:flex;gap:8px;align-items:center;margin:8px 0}
+.batch-tools{margin:12px 0 6px}
+.batch-item .imp-row[data-job]{cursor:pointer}
+.batch-out{margin:4px 0 6px;padding:8px 10px;max-height:200px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.45 var(--mono);background:var(--surface-2);border:1px solid var(--border);border-radius:8px}
 [hidden]{display:none !important} /* sj-sonu: !important yardımcı sınıfların display bildirimi hidden özniteliğini ezmesin; DOSYANIN SONUNDA kalmalı */
