@@ -259,6 +259,17 @@
         </div>
       </div>
       <div class="card">
+        <div class="card-head"><h2>Envanter yedeği</h2><span class="hint">sunucu adresleri + değişkenler</span></div>
+        <div class="card-body">
+          <div class="frow2"><span class="flabel" style="width:110px">Dışa aktar</span><button class="btn sm" id="bk-export" type="button">Yedeği indir (.json)</button></div>
+          <div class="hint small muted">Yedek sır içermez: private key, knock dizisi ve adında parola/token/secret geçen değişkenler dışarıda kalır. Yine de sunucu adreslerini içerir; dosyayı güvenli saklayın.</div>
+          <div class="frow2" style="margin-top:14px"><span class="flabel" style="width:110px">İçe aktar</span><input type="file" id="bk-file" accept=".json,application/json" aria-label="Yedek dosyası"></div>
+          <div class="hint small muted">Önce önizleme gösterilir, hiçbir şey yazılmaz. Mevcut sunucular varsayılan olarak seçili gelmez; seçerseniz adresleri ve değişkenleri yedektekiyle değişir. Anahtarlar ve knock ayarları korunur.</div>
+          <div id="bk-result" aria-live="polite" style="margin-top:12px"></div>
+          <div class="row-flex" style="margin-top:10px;gap:12px;align-items:center"><button class="btn primary sm" id="bk-apply" type="button" hidden>Seçilenleri uygula</button><span id="bk-status" class="small muted" role="status"></span></div>
+        </div>
+      </div>
+      <div class="card">
         <div class="card-head"><h2>Kaynaklar</h2><span class="hint">salt okunur</span></div>
         <div class="card-body tight" id="set-paths"></div>
       </div>
@@ -517,6 +528,7 @@
 <script src="js/compare.js"></script>
 <script src="js/reports.js"></script>
 <script src="js/privacy.js"></script>
+<script src="js/backup.js"></script>
 <script src="js/accent.js"></script>
 <script src="app.js"></script>
 </body>

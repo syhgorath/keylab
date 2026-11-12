@@ -3,6 +3,11 @@
    (değişken/eylem adları, dosya yolları) ve kullanıcı verisi çevrilmez. Eksik ifade Türkçe kalır; tabloya eklenerek genişletilir. */
 window.KeyLabPhrasesEN = {
   exact: {
+    "Envanter yedeği": "Inventory backup", "sunucu adresleri + değişkenler": "server addresses + variables", "Dışa aktar": "Export", "İçe aktar": "Import",
+    "Yedeği indir (.json)": "Download backup (.json)", "Yedek dosyası": "Backup file", "Seçilenleri uygula": "Apply selected",
+    "Yedek sır içermez: private key, knock dizisi ve adında parola/token/secret geçen değişkenler dışarıda kalır. Yine de sunucu adreslerini içerir; dosyayı güvenli saklayın.": "The backup contains no secrets: private keys, the knock sequence and variables with password/token/secret in their name are left out. It does contain server addresses, so keep the file safe.",
+    "Önce önizleme gösterilir, hiçbir şey yazılmaz. Mevcut sunucular varsayılan olarak seçili gelmez; seçerseniz adresleri ve değişkenleri yedektekiyle değişir. Anahtarlar ve knock ayarları korunur.": "A preview is shown first and nothing is written. Existing servers are not selected by default; if you select them their address and variables change to the backup's values. Keys and knock settings are kept.",
+    "geçersiz kayıt atlandı": "invalid entry(ies) skipped", "Yeni": "New", "Üzerine yazar": "Overwrites", "Aynı": "Same", "Geçersiz": "Invalid",
     "Vurgu rengi": "Accent color", "İndigo": "Indigo", "Mavi": "Blue", "Turkuaz": "Teal", "Zümrüt": "Emerald", "Kehribar": "Amber", "Gül": "Rose", "Mor": "Violet", "Grafit": "Graphite",
     "Ekranı gizle (L)": "Hide screen (L)", "Ekranı gizle (gizlilik kilidi)": "Hide the screen (privacy lock)", "Gizlilik kilidi": "Privacy lock", "parola yok": "no password",
     "Boşta kilidi": "Idle lock", "Boşta kalma süresi": "Idle time", "Kapalı": "Off", "5 dk": "5 min", "10 dk": "10 min", "30 dk": "30 min", "Şimdi gizle": "Hide now",
