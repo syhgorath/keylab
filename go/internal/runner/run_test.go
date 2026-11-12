@@ -195,7 +195,7 @@ func runScenario(t *testing.T, root string, w *world, sc scenario) (sh, gv runOu
 				"COMP_CTX_PORT=22", "COMP_CTX_KEY=" + w.key, "COMP_CTX_PREFIX=SRV", "COMP_CTX_PROFILE=" + sc.profile, "COMP_CTX_VALUES=" + valArg,
 				"COMP_CTX_BECOME_EXE=" + sc.becomeExe, "COMP_CTX_RUNSET=" + sc.runset, "COMP_REQUIRES_TTL=1800",
 			}
-			o := runShell(t, root, env, sc.stdin, "", "comp_exec_action", strings.Join(info, "\n"), id, ver, sc.action)
+			o := runShellLive(t, root, env, sc.stdin, "", "comp_exec_action", strings.Join(info, "\n"), id, ver, sc.action)
 			sh = runOut{o.code, normOut(o.stdout, state), normOut(o.stderr, state), stateTree(state)}
 		} else {
 			var so, se bytes.Buffer

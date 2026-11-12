@@ -11,7 +11,7 @@ import (
 )
 
 func TestProgressParseMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	logs := map[string]string{
 		"yok":                     "",
 		"ilerleme yok":            "ansible çıktısı\nTASK [x]\n",
@@ -37,7 +37,8 @@ func TestProgressParseMatchesShell(t *testing.T) {
 		"büyük sıra":              "SSHPOCKET_PROGRESS alan=a sira=10/12 durum=bitti degisen=0 uyari=3 kesin=no\n",
 	}
 	dir := t.TempDir()
-	for name, content := range logs {
+	for _, p := range ordered(logs) {
+		name, content := p.K, p.V
 		f := filepath.Join(dir, "log")
 		os.WriteFile(f, []byte(content), 0o600)
 		sh := runShell(t, root, nil, "", "", "comp_progress_parse", f)
@@ -119,7 +120,7 @@ found:
 	for name, content := range logs {
 		f := filepath.Join(dir, "log")
 		os.WriteFile(f, []byte(content), 0o600)
-		sh := runShell(t, root, nil, "", `thr() { comp_exec_parse_result "$@"; local rc=$?; printf '%s' "$COMP_EXEC_RESULT"; return $rc; }`, "thr", strings.Join(info, "\n"), act, f)
+		sh := runShellLive(t, root, nil, "", `thr() { comp_exec_parse_result "$@"; local rc=$?; printf '%s' "$COMP_EXEC_RESULT"; return $rc; }`, "thr", strings.Join(info, "\n"), act, f)
 		got, err := ParseResult(info, act, f)
 		if (sh.code == 0) != (err == nil) {
 			t.Errorf("[%s] başarı kabuk=%d (%q) go=%v", name, sh.code, sh.stderr, err)
@@ -154,7 +155,7 @@ func TestSaveLastResultMatchShell(t *testing.T) {
 		act string
 		res []string
 	}{{"preview", []string{"a=1", "b=2"}}, {"apply", nil}, {"BAD", []string{"a=1"}}, {"x_y", []string{"k=v"}}} {
-		sh := runShell(t, root, []string{"RES=" + strings.Join(c.res, "\n")}, "", `ths() { COMP_EXEC_RESULT="$RES"; comp_exec_save_result "$@"; }`, "ths", shDir, c.act)
+		sh := runShellLive(t, root, []string{"RES=" + strings.Join(c.res, "\n")}, "", `ths() { COMP_EXEC_RESULT="$RES"; comp_exec_save_result "$@"; }`, "ths", shDir, c.act)
 		err := SaveResult(goDir, c.act, c.res, time.Now().Unix())
 		if (sh.code == 0) != (err == nil) {
 			t.Errorf("%v: kabuk=%d go=%v", c, sh.code, err)
@@ -184,7 +185,7 @@ func TestSaveLastResultMatchShell(t *testing.T) {
 	}
 	os.WriteFile(filepath.Join(state, "pkg", "srv", "result.apply"), []byte("123\n"+strings.Join(big, "\n")+"\n"), 0o600)
 	for _, c := range [][3]string{{"pkg", "srv", "apply"}, {"pkg", "srv", "yok"}, {"PKG", "srv", "apply"}, {"pkg", "-x", "apply"}, {"pkg", "srv", "A"}} {
-		sh := runShell(t, root, []string{"SSHPOCKET_STATE_DIR=" + state}, "", "", "comp_exec_last_result", c[0], c[1], c[2])
+		sh := runShellLive(t, root, []string{"SSHPOCKET_STATE_DIR=" + state}, "", "", "comp_exec_last_result", c[0], c[1], c[2])
 		got, ok := LastResult(state, c[0], c[1], c[2])
 		if (sh.code == 0) != ok || (ok && !reflect.DeepEqual(splitNL(sh.stdout), got)) {
 			t.Errorf("%v: kabuk=%d %d satır, go=%v %d satır", c, sh.code, len(splitNL(sh.stdout)), ok, len(got))
@@ -193,7 +194,7 @@ func TestSaveLastResultMatchShell(t *testing.T) {
 }
 
 func TestMaskMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	cases := map[string]string{
 		"düz":                   "TASK [x]\nok: [h]\n",
 		"become parola":         "BECOME password: hunter2\n",
@@ -224,7 +225,8 @@ func TestMaskMatchesShell(t *testing.T) {
 		"tek boş satır":         "\n",
 		"boş satırlar":          "a\n\nb\n",
 	}
-	for name, in := range cases {
+	for _, p := range ordered(cases) {
+		name, in := p.K, p.V
 		sh := runShell(t, root, nil, in, "", "_comp_exec_mask")
 		got := Mask(in)
 		if sh.stdout != got {
@@ -256,7 +258,7 @@ func TestArchiveLogMatchesShell(t *testing.T) {
 		for _, d := range []string{shS, goS} {
 			os.WriteFile(filepath.Join(d, "last-run.log"), []byte(c.last), 0o600)
 		}
-		sh := runShell(t, root, []string{fmt.Sprintf("COMP_LOG_KEEP=%d", c.keep)}, "", `tha() { comp_exec_archive_log "$@"; echo "$COMP_EXEC_LOGFILE"; }`, "tha", shS, "abc", "1.2.3", "apply", "srv", fmt.Sprint(c.rc), fmt.Sprint(t0))
+		sh := runShellLive(t, root, []string{fmt.Sprintf("COMP_LOG_KEEP=%d", c.keep)}, "", `tha() { comp_exec_archive_log "$@"; echo "$COMP_EXEC_LOGFILE"; }`, "tha", shS, "abc", "1.2.3", "apply", "srv", fmt.Sprint(c.rc), fmt.Sprint(t0))
 		p, err := ArchiveLog(goS, "abc", "1.2.3", "apply", "srv", c.rc, t0, time.Now().Unix(), c.keep)
 		if (sh.code == 0) != (err == nil) {
 			t.Errorf("[%s] başarı kabuk=%d go=%v", c.name, sh.code, err)
@@ -297,7 +299,7 @@ func TestArchiveLogMatchesShell(t *testing.T) {
 		os.WriteFile(filepath.Join(d, "last-run.log"), []byte("x\n"), 0o600)
 	}
 	for i := 0; i < 5; i++ {
-		runShell(t, root, []string{"COMP_LOG_KEEP=3"}, "", "", "comp_exec_archive_log", shS, "abc", "1.2.3", "apply", "srv", "0", fmt.Sprint(t0))
+		runShellLive(t, root, []string{"COMP_LOG_KEEP=3"}, "", "", "comp_exec_archive_log", shS, "abc", "1.2.3", "apply", "srv", "0", fmt.Sprint(t0))
 		if _, err := ArchiveLog(goS, "abc", "1.2.3", "apply", "srv", 0, t0, time.Now().Unix(), 3); err != nil {
 			t.Fatal(err)
 		}
