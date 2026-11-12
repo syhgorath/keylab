@@ -228,6 +228,10 @@ func safeExtract(archive, dest string) error {
 	}
 	for _, e := range ents {
 		target := filepath.Join(dest, filepath.FromSlash(e.h.Name))
+		// birinci geçişteki ad denetimine ek savunma: hedef dest'in ALTINDA kalmalı (zip-slip)
+		if !strings.HasPrefix(target, filepath.Clean(dest)+string(os.PathSeparator)) {
+			return fmt.Errorf("güvensiz yol: %s", e.h.Name)
+		}
 		switch e.h.Typeflag {
 		case tar.TypeDir:
 			if err := os.MkdirAll(target, 0o755); err != nil {
