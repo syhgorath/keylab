@@ -3,6 +3,8 @@
    (değişken/eylem adları, dosya yolları) ve kullanıcı verisi çevrilmez. Eksik ifade Türkçe kalır; tabloya eklenerek genişletilir. */
 window.KeyLabPhrasesEN = {
   exact: {
+    "Komut paleti": "Command palette", "Sayfa, sunucu ya da komut ara…": "Search pages, servers or commands…", "Sonuçlar": "Results",
+    "↑↓ gezin · Enter seç · Esc kapat": "↑↓ navigate · Enter select · Esc close", "Komut paleti: sayfa, sunucu, komut ara": "Command palette: search pages, servers, commands",
     "Çalışan işi aç": "Open the running job", "Arka plana al": "Run in background",
     "İş çalışmaya devam eder; üst çubuktaki iş düğmesinden geri açabilirsiniz": "The job keeps running; reopen it from the job button in the top bar",
     "Pencereyi küçült (oturum açık kalır)": "Minimize window (session stays open)", "Terminal oturumları": "Terminal sessions", "Açık terminal oturumları": "Open terminal sessions",
