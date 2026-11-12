@@ -9,6 +9,7 @@ package doctor
 import (
 	"fmt"
 	"io"
+	"keylab/internal/envx"
 	"net/http"
 	"os"
 	"os/exec"
@@ -57,7 +58,7 @@ func Run(w io.Writer, o Options) int {
 	if o.PythonRange == "" {
 		o.PythonRange = ">=3.12"
 	}
-	if os.Getenv("SSHPOCKET_DOCTOR_OFFLINE") == "1" {
+	if envx.Get("DOCTOR_OFFLINE") == "1" {
 		o.Offline = true
 	}
 	s := &state{w: w}

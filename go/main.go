@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"keylab/internal/envx"
 	"net"
 	"net/http"
 	"os"
@@ -107,11 +108,18 @@ func (a *App) copyCmd(s Server) string {
 }
 
 func defaultStateDir() string {
-	if x := os.Getenv("XDG_DATA_HOME"); x != "" {
-		return filepath.Join(x, "sshpocket")
+	if d := envx.Get("STATE_DIR"); d != "" {
+		return d
 	}
-	h, _ := os.UserHomeDir()
-	return filepath.Join(h, ".local", "share", "sshpocket")
+	base := ""
+	if x := os.Getenv("XDG_DATA_HOME"); x != "" {
+		base = x
+	} else {
+		h, _ := os.UserHomeDir()
+		base = filepath.Join(h, ".local", "share")
+	}
+	// yeni ad keylab; eski sshpocket klasörü varsa (ve yenisi yoksa) veri taşınmadan onda devam edilir
+	return envx.PickDir(filepath.Join(base, "keylab"), filepath.Join(base, "sshpocket"))
 }
 
 func main() {
@@ -122,14 +130,14 @@ func main() {
 	if code, ok := subcommand(os.Args[1:]); ok {
 		os.Exit(code)
 	}
-	servers := flag.String("servers", "", "sunucular klasörü (varsayılan: $SSHPOCKET_SERVERS, /Volumes/test/servers, ../servers)")
+	servers := flag.String("servers", "", "sunucular klasörü (varsayılan: $KEYLAB_SERVERS, /Volumes/test/servers, ../servers)")
 	comps := flag.String("components", "", "components klasörü (varsayılan: sunucular klasörünün yanında)")
-	state := flag.String("state", "", "durum/günlük klasörü (varsayılan: ~/.local/share/sshpocket)")
+	state := flag.String("state", "", "durum/günlük klasörü (varsayılan: ~/.local/share/keylab; eski sshpocket klasörü varsa o)")
 	noOpen := flag.Bool("no-open", false, "tarayıcıyı açma")
 	flag.Parse()
 	sd := *servers
 	if sd == "" {
-		for _, c := range []string{os.Getenv("SSHPOCKET_SERVERS"), "/Volumes/test/servers", "../servers"} {
+		for _, c := range []string{envx.Get("SERVERS"), "/Volumes/test/servers", "../servers"} {
 			if c == "" {
 				continue
 			}
