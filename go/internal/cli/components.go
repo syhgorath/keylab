@@ -459,10 +459,10 @@ func (c *Components) Update() int {
 	c.out("Paket indeksi (seri %d, geçerlilik: %s)\n", idx.Serial, idx.ValidUntil)
 	up, inst := c.indexReport(cl, idx, lock)
 	if len(up) > 0 {
-		c.out("\nKurulu paketleri yükseltmek için: ./start.sh --components upgrade\n")
+		c.out("\nKurulu paketleri yükseltmek için: keylab components upgrade\n")
 	}
 	if len(inst) > 0 {
-		c.out("\nKurulu olmayan paketi kurmak için adını verin: ./start.sh --components upgrade <paket>\n")
+		c.out("\nKurulu olmayan paketi kurmak için adını verin: keylab components upgrade <paket>\n")
 	}
 	return 0
 }
@@ -587,7 +587,7 @@ func (c *Components) Upgrade(args []string) int {
 // Validate, comp_cli_validate: statik paket denetimi.
 func (c *Components) Validate(args []string) int {
 	if len(args) == 0 || strings.HasPrefix(args[0], "--") {
-		c.err("kullanım: ./start.sh --components validate <kurulu-paket-kimliği | dizin | arşiv.tar.gz> [--strict]\n")
+		c.err("kullanım: keylab components validate <kurulu-paket-kimliği | dizin | arşiv.tar.gz> [--strict]\n")
 		return 2
 	}
 	target, rest := args[0], args[1:]

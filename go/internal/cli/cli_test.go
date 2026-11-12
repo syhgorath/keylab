@@ -270,6 +270,7 @@ func (w *world) treeLive(t *testing.T) string {
 }
 
 func (w *world) norm(s string) string {
+	s = strings.ReplaceAll(s, "./start.sh --components", "keylab components") // kasıtlı fark: komut adı (kabukta start.sh)
 	s = strings.ReplaceAll(s, w.root, "<W>")
 	if r, err := filepath.Abs("../../.."); err == nil {
 		s = strings.ReplaceAll(s, r, "<R>") // depo kökü (kişisel yol altın dosyaya girmesin)

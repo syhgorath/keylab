@@ -180,14 +180,14 @@ components:
   Önce USB wheelhouse'u (`--no-index --find-links`), yoksa internet; inen paketler isteğe bağlı wheelhouse'a kopyalanır.
 - `requirements.txt` hash'lidir (`pip-compile --generate-hashes`, Python 3.14 ile derlenmiş; platform tekerlekleri dahil): `--require-hashes` ile kurulur.
 
-### 6.3b Ön koşul denetimi: `./start.sh --doctor`
+### 6.3b Ön koşul denetimi: `keylab doctor`
 `ssh`/`ssh-keygen`/`ssh-copy-id`, uygun Python (sürüm aralığı), `venv`+`ensurepip`, disk alanı, internet; ✅/❌ ve düzeltme önerisiyle.
 Hardening/Araçlar ilk açıldığında otomatik çalışır. **Politika:** eksik olanı söyler ve **onay ister**; Homebrew varsa
 `brew install python@3.x` önerir/çalıştırır; **Homebrew'u kendisi kurmaz, `sudo` kullanmaz, sisteme global `pip` yapmaz.**
 Command Line Tools gerekiyorsa yönlendirir (grafik arayüzlüdür).
 
 ### 6.4 Güncelleme akışı
-`./start.sh --update`:
+`keylab update`:
 1. Çekirdek (bugünkü imzalı akış) + gerekirse geçiş.
 2. Yeni `components.lock` okunur; kurulu sürüm kilitle eşleşmiyorsa bileşen imzalı paketten kurulur.
 3. İsteğe bağlı **bilgilendirme:** bileşen reposunda kilitten **daha yeni imzalı** bir sürüm varsa "0.2.0 var, değişiklikler
