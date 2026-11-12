@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"keylab/internal/envx"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -35,7 +36,7 @@ func runCapture(name string, args []string, stdin io.Reader) (stdout, stderr []b
 // SSHPOCKET_KNOWN_HOSTS ya da ~/.ssh/known_hosts.
 func KnownHost(host, port, knownHosts string) error {
 	if knownHosts == "" {
-		knownHosts = os.Getenv("SSHPOCKET_KNOWN_HOSTS")
+		knownHosts = envx.Get("KNOWN_HOSTS")
 	}
 	if knownHosts == "" {
 		knownHosts = filepath.Join(os.Getenv("HOME"), ".ssh", "known_hosts")

@@ -5,6 +5,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"keylab/internal/envx"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -176,7 +177,7 @@ func findRoot(flagRoot string) string {
 	if flagRoot != "" {
 		return flagRoot
 	}
-	if r := os.Getenv("SSHPOCKET_ROOT"); r != "" {
+	if r := envx.Get("ROOT"); r != "" {
 		return r
 	}
 	exe := filepath.Dir(selfExe())
@@ -218,24 +219,24 @@ func componentsCommand(args []string) int {
 	root := findRoot(*rootF)
 	srv, comp := *srvF, *compF
 	if srv == "" {
-		srv = os.Getenv("SSHPOCKET_SERVERS_DIR")
+		srv = envx.Get("SERVERS_DIR")
 	}
 	if srv == "" {
 		srv = filepath.Join(root, "servers")
 	}
 	if comp == "" {
-		comp = os.Getenv("SSHPOCKET_COMPONENTS_DIR")
+		comp = envx.Get("COMPONENTS_DIR")
 	}
 	if comp == "" {
 		comp = filepath.Join(root, "components")
 	}
-	signers := os.Getenv("SSHPOCKET_INDEX_SIGNERS")
+	signers := envx.Get("INDEX_SIGNERS")
 	if signers == "" {
 		signers = signersPath(root, "index_signers")
 	}
 	c := &cli.Components{
 		Dir: comp, LockPath: filepath.Join(filepath.Dir(filepath.Clean(comp)), "components.lock"), ServersDir: srv, SignersFile: signers,
-		IndexBase: os.Getenv("SSHPOCKET_INDEX_URL"), SSHPocketVer: versionOf(root), In: os.Stdin, Out: os.Stdout, Err: os.Stderr,
+		IndexBase: envx.Get("INDEX_URL"), SSHPocketVer: versionOf(root), In: os.Stdin, Out: os.Stdout, Err: os.Stderr,
 	}
 	sub, rest := "list", fs.Args()
 	if len(rest) > 0 {
@@ -314,7 +315,7 @@ func serversDirOf(flagVal, root string) string {
 	if flagVal != "" {
 		return flagVal
 	}
-	if v := os.Getenv("SSHPOCKET_SERVERS_DIR"); v != "" {
+	if v := envx.Get("SERVERS_DIR"); v != "" {
 		return v
 	}
 	return filepath.Join(root, "servers")
@@ -383,7 +384,7 @@ func serversCommand(args []string) int {
 
 // confFile: sshpocket.conf yolu (SSHPOCKET_CONF ya da <kök>/sshpocket.conf).
 func confFile(root string) string {
-	if v := os.Getenv("SSHPOCKET_CONF"); v != "" {
+	if v := envx.Get("CONF"); v != "" {
 		return v
 	}
 	return filepath.Join(root, "sshpocket.conf")

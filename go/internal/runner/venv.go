@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"keylab/internal/envx"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,10 +23,11 @@ const defaultPyCandidates = "python3.14 python3.13 python3.12 python3.11 python3
 
 // CacheDir: önbellek kökü.
 func CacheDir() string {
-	if d := os.Getenv("SSHPOCKET_CACHE_DIR"); d != "" {
+	if d := envx.Get("CACHE_DIR"); d != "" {
 		return d
 	}
-	return filepath.Join(os.Getenv("HOME"), ".cache", "sshpocket")
+	c := filepath.Join(os.Getenv("HOME"), ".cache")
+	return envx.PickDir(filepath.Join(c, "keylab"), filepath.Join(c, "sshpocket"))
 }
 
 func mm(v string) (major, minor int) {
@@ -89,7 +91,7 @@ func PythonVersion(interp string) string {
 
 // PythonCandidates: aday yorumlayıcı adları (SSHPOCKET_PYTHON_CANDIDATES ile değiştirilebilir).
 func PythonCandidates() []string {
-	s := os.Getenv("SSHPOCKET_PYTHON_CANDIDATES")
+	s := envx.Get("PYTHON_CANDIDATES")
 	if s == "" {
 		s = defaultPyCandidates
 	}
@@ -99,7 +101,7 @@ func PythonCandidates() []string {
 // PythonIsStub: macOS'ta /usr/bin/python3, Command Line Tools kurulu DEĞİLSE "geliştirici araçlarını kurun" penceresini
 // açan bir saplamadır; çalıştırmak o pencereyi tetikler, bu yüzden atlanır.
 func PythonIsStub(path string) bool {
-	stub := os.Getenv("SSHPOCKET_PY_STUB_PATH")
+	stub := envx.Get("PY_STUB_PATH")
 	if stub == "" {
 		stub = "/usr/bin/python3"
 	}
@@ -232,7 +234,7 @@ func pipInstall(vpy, req, wheelhouse string) bool {
 			}
 		}
 	}
-	if os.Getenv("SSHPOCKET_OFFLINE") == "1" {
+	if envx.Get("OFFLINE") == "1" {
 		return false
 	}
 	return exec.Command(vpy, base...).Run() == nil
