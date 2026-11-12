@@ -192,7 +192,13 @@ func (a *App) backupImport(f backupFile, apply bool, pick []string) ([]backupRow
 			osID = ""
 			row.Notes = append(row.Notes, "işletim sistemi profili tanınmadı; boş bırakılacak")
 		}
-		dir := filepath.Join(a.serversDir, s.Name)
+		dir := a.serverPath(s.Name)
+		if dir == "" { // ad doğrulaması zaten geçti; yapısal kapı da bir kaçış görürse reddet
+			row.Action, row.Status = "invalid", "error"
+			row.Notes = append(row.Notes, "geçersiz sunucu adı")
+			rows = append(rows, row)
+			continue
+		}
 		exists := false
 		if _, err := os.Lstat(dir); err == nil {
 			exists = true

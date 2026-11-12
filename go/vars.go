@@ -117,7 +117,12 @@ func readVarsFile(path string) map[string]string {
 }
 
 func (a *App) varsFile(server, pkg string) string {
-	return filepath.Join(a.serversDir, server, pkg+".vars")
+	// <servers>/<sunucu>/<paket>.vars: yol HEM serversDir'in HEM o sunucunun klasörünün içinde kalmalı; kaçış "" döner (kullananlar boş yolu hata sayar)
+	sdir := a.serverPath(server)
+	if sdir == "" {
+		return ""
+	}
+	return pathWithin(sdir, pkg+".vars")
 }
 
 // varSchemas: sunucunun platformuna uygun değişkenler ve sunucudaki güncel değerleri
@@ -162,7 +167,11 @@ func (a *App) saveVar(server, pkg, name, value, action string, ack bool) (warn s
 	if !reVarName.MatchString(name) || len(value) > 1000 || strings.ContainsAny(value, "\n\r\t\x00") {
 		return "", http.StatusBadRequest, fmt.Errorf("geçersiz ad ya da değer")
 	}
-	if st, e := os.Stat(filepath.Join(a.serversDir, server)); e != nil || !st.IsDir() {
+	sdir := a.serverPath(server)
+	if sdir == "" {
+		return "", http.StatusBadRequest, fmt.Errorf("geçersiz sunucu adı")
+	}
+	if st, e := os.Stat(sdir); e != nil || !st.IsDir() {
 		return "", http.StatusNotFound, fmt.Errorf("sunucu yok")
 	}
 	schemas, e := a.varSchemas(server, pkg)
