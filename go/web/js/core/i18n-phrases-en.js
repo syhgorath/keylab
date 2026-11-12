@@ -62,6 +62,9 @@ window.KeyLabPhrasesEN = {
     "Paketlerin desteklediği profiller listelenir.": "Profiles supported by the packages are listed.",
     "paket sunucuya kurulmaz; bu, en son çalıştırıldığı sürümdür": "the package is not installed on the server; this is the version it last ran with",
     "bu sürümün altı çalıştırılmaz": "versions below this are not run",
+    "Gömülü terminal": "Embedded terminal",
+    "Tarayıcıda gömülü terminal (ssh -tt)": "Embedded terminal in the browser (ssh -tt)",
+    "Oturumu kapat": "End session",
     /* --- pencereler, knock formu, onay adımları, ipuçları (2. dilim) --- */
     "KeyLab ayarları": "KeyLab settings", "KeyLab sürümü": "KeyLab version", "Protokol": "Protocol",
     "Kaydet": "Save", "Yeni ad": "New name", "Yeniden adlandır": "Rename", "Sunucuyu yeniden adlandır": "Rename server",

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>KeyLab</title>
 <link rel="icon" href="logo.jpg" type="image/jpeg">
+<link rel="stylesheet" href="vendor/xterm/xterm.css">
 <link rel="stylesheet" href="tasarim.css">
 </head>
 <body>
@@ -344,9 +345,25 @@
   </div>
 </div>
 
+<div class="modal-back" id="termmodal" role="dialog" aria-modal="true" aria-labelledby="term-title">
+  <div class="modal term-modal">
+    <div class="modal-head">
+      <div><h3 id="term-title" class="mono">&gt;_ SSH</h3><div class="sub" data-i18n="term_sub">Gömülü terminal: kayıtlı sunucuya ssh ile bağlanır. Parola ve passphrase burada, terminalde sorulur.</div></div>
+      <div class="spacer"></div>
+      <button class="icon-btn" data-term-close aria-label="Oturumu kapat" title="Oturumu kapat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div id="term-note" class="notice danger" role="alert" hidden></div>
+    <div class="term-host" id="term-host"></div>
+    <div class="modal-foot"><span class="small muted" data-i18n="term_foot">Kapatınca oturum sonlanır. Terminal açma/kapama durum klasöründe terminal-audit.log dosyasına yazılır.</span><div class="spacer"></div><button class="btn" data-term-close data-i18n="term_end">Oturumu kapat</button></div>
+  </div>
+</div>
+
 <div id="toast" role="status" style="position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--text,#222);color:var(--surface,#fff);padding:8px 14px;border-radius:8px;display:none;font-size:13px;z-index:50"></div>
 <script src="js/core/i18n-phrases-en.js"></script>
 <script src="js/core/i18n.js"></script>
+<script src="vendor/xterm/xterm.js"></script>
+<script src="vendor/xterm/addon-fit.js"></script>
+<script src="js/terminal.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -19,6 +19,10 @@
       lang_title: "Dil / Language",
       st_invalid: "yapılandırma geçersiz", st_checking: "denetleniyor", st_up: "çevrimiçi", st_knock: "🔒 kapalı — knock gerekir",
       st_closed: "port kapalı (makine yanıt veriyor)", st_down: "bağlantı yok",
+      term_sub: "Gömülü terminal: kayıtlı sunucuya ssh ile bağlanır. Parola ve passphrase burada, terminalde sorulur.",
+      term_foot: "Kapatınca oturum sonlanır. Terminal açma/kapama durum klasöründe terminal-audit.log dosyasına yazılır.",
+      term_end: "Oturumu kapat", term_exited: "oturum bitti", term_lib_missing: "xterm.js yüklenemedi.",
+      term_input_fail: "Girdi iletilemedi: oturum kapanmış olabilir.", term_conn_lost: "Akış koptu; oturum kapanmış olabilir.",
     },
     en: {
       nav_general: "General", nav_security: "Security", nav_system: "System",
@@ -29,6 +33,10 @@
       lang_title: "Dil / Language",
       st_invalid: "invalid configuration", st_checking: "checking", st_up: "online", st_knock: "🔒 closed — knock required",
       st_closed: "port closed (host is responding)", st_down: "no connection",
+      term_sub: "Embedded terminal: connects to the registered server over ssh. Passwords and passphrases are asked here, in the terminal.",
+      term_foot: "Closing ends the session. Opening/closing a terminal is logged to terminal-audit.log in the state folder.",
+      term_end: "End session", term_exited: "session ended", term_lib_missing: "xterm.js could not be loaded.",
+      term_input_fail: "Input could not be sent: the session may have closed.", term_conn_lost: "Stream lost; the session may have closed.",
     },
   };
 
