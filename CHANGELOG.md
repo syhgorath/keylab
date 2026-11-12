@@ -19,6 +19,11 @@ Bu çalışma sshpocket'i **kabuktan Go'ya** taşır (taslak; sürüm numarasın
 - **Kabuk referansı depodan kaldırıldı** (`referans/kabuk/`, 125 dosya): karşılaştırmalı testler artık kabuğun kaydedilmiş çıktılarını (`testdata/*.json` altın dosyaları, `internal/shellgold`) oynatır; CI ~2 dk. Eski motor `kabuk-referansi` etiketinde ve git geçmişinde durur.
 - **Kendini güncelleme** ikili için yeniden tasarlandı: `update` imzalı ikiliyi (`sshpocket-X.Y.Z-darwin-universal` + `.sig`) doğrular, ikilinin bildirdiği sürümü etiketle karşılaştırır, geri sürümü reddeder, atomik yerleştirir ve eskiyi `.update-backup/` altına yedekler. `go/YAYIN.md`, `go/scripts/build-release.sh`.
 
+### Güvenlik
+- **Yol kaçışı kapatıldı:** sunucu/paket adı doğrulaması (`reName`) `.` ve `..` kabul ediyordu; `/api/vars` isteğinde sunucu adı `..` iken sunucu klasörünün DIŞINA `<paket>.vars` dosyası yazılabiliyordu (oturum çerezi + CSRF başlığı gerektiren yerel bir yüzey). Adlar artık harf/rakam/`_` ile başlar (nokta, gizli ad ve baştaki `-` yok) ve dosya işleminden önce ikinci bir yapısal kapıdan (`pathWithin`: mutlak yol + kök içinde kalma) geçer. Envanter yedeği içe aktarma da paket ve değişken adlarını hiçbir dosya işleminden önce doğrular.
+- **CSP sıkılaştırıldı:** `style-src-attr 'none'`; arayüzde satır içi `style="…"` öznitelikleri kalmadı (sınıflara taşındı), bir Go testi bunu kaynakta denetler. `style-src 'unsafe-inline'` yalnızca gömülü terminalin xterm.js'i çalışma anında `<style>` elemanı eklediği için kalır.
+- Yerel çalışma yüzeyleri: gizlilik kilidi (parola kilidi DEĞİL, yalnız ekran perdesi), sır içermeyen envanter yedeği (önizlemeli, seçmeli içe aktarma; ham `server.env` yazılmaz).
+
 ### Düzeltildi (kabuk referansındaki hatalar Go'da düzeltildi; kabukta düzeltilmedi)
 - `comp_vars_set`: var olan dosyada `awk -v` ters bölüyü yorumlayıp dosyaya fazladan satır sızdırıyordu.
 - `comp_report_pkg`: satır sınırı hiç uygulanmıyor ve değişiklik varken bile "Değişken ve kural farkı yok." yazılıyordu.
