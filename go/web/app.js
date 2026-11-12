@@ -295,7 +295,7 @@
       return { ok: r.ok, status: r.status, body: await r.json().catch(() => ({})) };
     };
     const done = async text => {
-      toast(text); kuvSrv = ""; // Kurulum kartlarındaki değerler yeniden okunsun
+      toast(text); catSrv = ""; // katalog kartlarındaki değerler yeniden okunsun
       try { srv = await json("/api/server?name=" + encodeURIComponent(vSrv)); if (view === "server") renderServer(); } catch (e) { /* bir sonraki turda */ }
       const top = $("#vars-list").parentElement.scrollTop; await loadVars(); $("#vars-list").parentElement.scrollTop = top;
     };
@@ -1393,57 +1393,79 @@
     $$("#srv-body [data-actcat]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.actcat === actFilter)));
   }
 
-  /* ---------------- Kurulum: uygulama kataloğu ---------------- */
-  // Görsel kabuk: kartlar, kurulu/kurulmadı (son `durum` çıktısından) ve uygulamaya özel değişkenler.
-  // Kur/Yükselt/Kaldır düğmeleri KAPALI: eylemler paket düzeyindedir ve önizleme önkoşulu uygulamaya özel tutulmaz;
-  // uygulamaya özel çalıştırma (paketin `items` bildirimi + koşuya özel seçim) gelene dek yalnız "Genel eylemler" çalışır.
-  let storeFilter = "all", kuvData = [], kuvSrv = "";
-  const APPS = [
-    ["docker", "🐳", "Docker Engine", "Konteyner çalışma ortamı ve Docker Compose eklentisi. Konteyner modundaki uygulamalar için gereklidir.", "Docker"],
-    ["nginx", "🌐", "Nginx", "HTTP ters proxy ve statik dosya sunucusu.", "nginx"],
-    ["mariadb", "🗄️", "MariaDB", "MySQL uyumlu ilişkisel SQL veritabanı sunucusu.", "mariadb"],
-    ["redis", "⚡", "Redis", "Anahtar-değer veri önbelleği ve mesaj kuyruğu.", "redis"],
+  /* ---------------- Yazılım kataloğu (paketin `items` bildirimi) ---------------- */
+  // GENEL sayfa: component.json'da `items` (+ item_var) taşıyan HER paket için çizilir; sayfa belirli bir paket kimliğine bağlı değildir
+  // (bkz. docs/package-standard.md). Kurulu/kurulmadı durumu son `durum` eyleminin `kurulu` ("kimlik[:mod]+kimlik…") ve `portlar`
+  // ("kimlik:port+…") anahtarlarından gelir. Uyumluluk: `items` bildirmeyen kurulum 0.1.0 için LEGACY_ITEMS kullanılır.
+  // Kur/Yükselt/Kaldır düğmeleri KAPALI: eylemler paket düzeyindedir ve önizleme önkoşulu öğeye özel tutulmaz;
+  // öğeye özel çalıştırma (koşuya özel seçim + öğe başına kapı) gelene dek yalnız "Genel eylemler" çalışır.
+  let storeFilter = "all", catVars = [], catSrv = "", catPkg = "";
+  const LEGACY_ICONS = { docker: "🐳", nginx: "🌐", mariadb: "🗄️", redis: "⚡" };
+  const LEGACY_ITEMS = [
+    { id: "docker", label: "Docker Engine", description: "Konteyner çalışma ortamı ve Docker Compose eklentisi. Konteyner modundaki uygulamalar için gereklidir.", params: [], group: "Docker" },
+    { id: "nginx", label: "Nginx", description: "HTTP ters proxy ve statik dosya sunucusu.", params: [], group: "nginx" },
+    { id: "mariadb", label: "MariaDB", description: "MySQL uyumlu ilişkisel SQL veritabanı sunucusu.", params: [], group: "mariadb" },
+    { id: "redis", label: "Redis", description: "Anahtar-değer veri önbelleği ve mesaj kuyruğu.", params: [], group: "redis" },
   ];
+  const LEGACY_GEN = [["Kurulum modu", "kurulum_mod"], ["Ana klasör", "kurulum_ana_klasor"], ["Dışarıya açık", "kurulum_dis_erisim"], ["Eylem hedefi", "kurulum_yazilim"]];
   const splitPlus = v => (!v || v === "yok" ? [] : v.split("+").map(x => x.split(":")));
-  const kuv = n => { const v = kuvData.find(x => x.name === n); return v ? varCur(v) : ""; };
+  const catVal = n => { const v = catVars.find(x => x.name === n); return v ? varCur(v) : ""; };
 
-  async function loadKuv() {
-    kuvSrv = srvName; // başarısız olsa da yeniden denemeyi bir sonraki tazelemeye bırak (döngü olmasın)
-    try { kuvData = (await json(`/api/vars?server=${encodeURIComponent(srvName)}&package=kurulum`)).vars || []; } catch (e) { return; }
-    if (view === "server" && srvTab === "kurulum" && srv) renderServer();
+  // Katalog öğeleri: paketin `items` alanı; yoksa yalnız eski kurulum paketi için yerleşik liste; yoksa null (katalog sayfası yok).
+  function catalogItems(p) {
+    if (p.items && p.items.length) return p.items.map(it => ({ id: it.id, label: it.label || it.id, description: it.description || "", params: it.params || [], group: "" }));
+    if (p.id === "kurulum") return LEGACY_ITEMS;
+    return null;
   }
 
-  function kurulumStore(s, p, ok, na) {
-    const d = p.actions.find(a => a.id === "durum"), k = (d && d.keys) || {}, known = Object.keys(k).length > 0;
+  async function loadCatVars(pkg) {
+    catSrv = srvName; catPkg = pkg; // başarısız olsa da yeniden denemeyi bir sonraki tazelemeye bırak (döngü olmasın)
+    try { catVars = (await json(`/api/vars?server=${encodeURIComponent(srvName)}&package=${encodeURIComponent(pkg)}`)).vars || []; } catch (e) { return; }
+    if (view === "server" && srvTab === pkg && srv) renderServer();
+  }
+
+  function catalogStore(s, p, ok, na, items) {
+    const legacy = !(p.items && p.items.length);
+    const d = p.actions.find(a => a.id === "durum"), k = (d && d.keys) || {}, known = "kurulu" in k;
     const inst = Object.fromEntries(splitPlus(k.kurulu)), ports = Object.fromEntries(splitPlus(k.portlar));
     const dattr = d ? actBtnAttr(d, p) : "";
-    const onN = APPS.filter(a => a[0] in inst).length;
-    const cards = APPS.map(([id, ico, title, desc, group]) => {
-      const on = id in inst, mode = inst[id];
+    const onN = items.filter(it => it.id in inst).length;
+    const loaded = catSrv === srvName && catPkg === p.id;
+    const varsOf = it => (it.params && it.params.length) ? catVars.filter(v => it.params.includes(v.name)) : catVars.filter(v => it.group && v.group === it.group);
+    const short = (v, it) => { let n = v.name; if (n.startsWith(p.id + "_")) n = n.slice(p.id.length + 1); if (n.startsWith(it.id + "_")) n = n.slice(it.id.length + 1); return n; };
+    const claimed = new Set();
+    const cards = items.map(it => {
+      const id = it.id, on = id in inst, mode = inst[id];
       const badge = !known ? '<span class="badge plain">durum okunmadı</span>' : on ? `<span class="badge ok">✔ Kurulu${mode ? " (" + esc(mode) + ")" : ""}</span>` : '<span class="badge plain">Kurulmadı</span>';
       const meta = [];
       if (on && ports[id]) meta.push(`Port: <strong>${esc(ports[id])}</strong>`);
-      const vars = kuvData.filter(v => v.group === group);
-      const rows = vars.map(v => `<div class="av-row"><span class="mono av-name" title="${esc(v.name)}">${esc(v.name.replace(/^kurulum_(docker_|nginx_|mariadb_|redis_)?/, ""))}</span><span class="chip">${esc(varCur(v)) || "(boş)"}</span>${v.set ? '<span class="badge ok">ayarlı</span>' : ""}</div>`).join("") || `<div class="small muted">${kuvSrv === srvName ? "Değişken bulunamadı." : "Değişkenler yükleniyor…"}</div>`;
+      const vars = varsOf(it);
+      vars.forEach(v => claimed.add(v.name));
+      const groups = [...new Set(vars.map(v => v.group).filter(Boolean))];
+      const rows = vars.map(v => `<div class="av-row"><span class="mono av-name" title="${esc(v.name)}">${esc(short(v, it))}</span><span class="chip">${esc(varCur(v)) || "(boş)"}</span>${v.set ? '<span class="badge ok">ayarlı</span>' : ""}</div>`).join("") || `<div class="small muted">${loaded ? "Değişken bulunamadı." : "Değişkenler yükleniyor…"}</div>`;
       const off = (label, tip) => `<button class="btn sm" disabled title="${tip}">${label}</button>`;
-      const tip = "Uygulamaya özel çalıştırma yakında: önizleme önkoşulu her uygulama için ayrı tutulacak. Şimdilik aşağıdaki Genel eylemler kullanılır.";
-      return `<div class="card app-card" data-app="${id}" data-st="${!known ? "?" : on ? "on" : "off"}">
-        <div class="app-top"><div class="app-ico" aria-hidden="true">${ico}</div><div class="app-titles"><div class="app-title"><span>${title}</span>${badge}</div><p class="app-desc">${desc}</p></div></div>
+      const tip = "Öğeye özel çalıştırma yakında: önizleme önkoşulu her öğe için ayrı tutulacak. Şimdilik aşağıdaki Genel eylemler kullanılır.";
+      const ico = esc(LEGACY_ICONS[id] || String(it.label).charAt(0).toUpperCase());
+      return `<div class="card app-card" data-app="${esc(id)}" data-st="${!known ? "?" : on ? "on" : "off"}">
+        <div class="app-top"><div class="app-ico" aria-hidden="true">${ico}</div><div class="app-titles"><div class="app-title"><span>${esc(it.label)}</span>${badge}</div><p class="app-desc">${esc(it.description)}</p></div></div>
         ${meta.length ? `<div class="app-meta">${meta.map(m => `<span class="meta-chip">${m}</span>`).join("")}</div>` : ""}
-        <div class="app-vars"><div class="av-head"><span class="oz-title">Değişkenler</span><button class="link" data-kvars="${esc(group)}">Düzenle…</button></div>${rows}</div>
+        <div class="app-vars"><div class="av-head"><span class="oz-title">Değişkenler</span><button class="link" data-kvars="${esc(groups.length === 1 ? groups[0] : "")}">Düzenle…</button></div>${rows}</div>
         <div class="app-foot"><span class="small muted">Eylemler yakında</span><div class="app-btns">${off("Önizle", tip)}${on ? off("Yükselt", tip) + off("Kaldır", tip) : off("Kur", tip)}</div></div></div>`;
     }).join("");
     const chip = (key, label, n) => `<button class="fchip" data-sf="${key}" aria-pressed="${storeFilter === key}">${label}${n === undefined ? "" : ` <span class="muted">${n}</span>`}</button>`;
-    const gen = [["Kurulum modu", "kurulum_mod"], ["Ana klasör", "kurulum_ana_klasor"], ["Dışarıya açık", "kurulum_dis_erisim"], ["Eylem hedefi", "kurulum_yazilim"]]
-      .map(([l, n]) => `<div class="kv"><span class="muted">${l}</span><span class="chip" title="${n}">${esc(kuv(n)) || "—"}</span></div>`).join("");
-    return `<div class="store-head"><div><h2>Uygulama kataloğu</h2><div class="small muted">Kurulum motoru <span class="mono">v${esc(p.version)}</span> · bu USB'de. Docker ya da yerel paket (native) olarak kurulur.</div></div>
-        <div class="fchips2">${chip("all", "Tümü", APPS.length)}${known ? chip("on", "Kurulu", onN) + chip("off", "Kurulabilir", APPS.length - onN) : ""}</div></div>
+    // genel ayarlar: eski kurulum için sabit dört değişken; diğerlerinde hiçbir öğeye ait olmayan değişkenler (en çok 8)
+    const genPairs = legacy && p.id === "kurulum" ? LEGACY_GEN.map(([l, n]) => [l, n]) : catVars.filter(v => !claimed.has(v.name)).slice(0, 8).map(v => [v.name.startsWith(p.id + "_") ? v.name.slice(p.id.length + 1) : v.name, v.name]);
+    const gen = genPairs.map(([l, n]) => `<div class="kv"><span class="muted">${esc(l)}</span><span class="chip" title="${esc(n)}">${esc(catVal(n)) || "—"}</span></div>`).join("") || '<div class="small muted">Ortak ayar yok.</div>';
+    const itemVar = p.itemVar || (legacy && p.id === "kurulum" ? "kurulum_yazilim" : "");
+    const sub = legacy ? "Kurulum motoru" : esc(p.name || p.id);
+    return `<div class="store-head"><div><h2>Uygulama kataloğu</h2><div class="small muted">${sub} <span class="mono">v${esc(p.version)}</span> · bu USB'de.${legacy ? " Docker ya da yerel paket (native) olarak kurulur." : p.description ? " " + esc(p.description) : ""}</div></div>
+        <div class="fchips2">${chip("all", "Tümü", items.length)}${known ? chip("on", "Kurulu", onN) + chip("off", "Kurulabilir", items.length - onN) : ""}</div></div>
       ${known ? "" : `<div class="notice" style="margin-bottom:14px"><span class="ico" aria-hidden="true">ℹ</span><div>Hangi uygulamaların kurulu olduğu henüz okunmadı. ${dattr ? `<button class="link" ${dattr}>Durumu oku</button> (salt okunur).` : ""}</div></div>`}
       <div class="store-grid" id="store-grid">${cards}</div>
       <div class="card gen-card"><div class="oz-top"><span class="oz-title">Genel ayarlar</span><span class="oz-tag">tüm uygulamalar</span></div>
         <div class="gen-grid">${gen}</div>
         <div class="oz-foot oz-foot-row"><span>${known && dattr ? `<button class="link" ${dattr}>Durumu yenile</button> · ` : ""}Son durum: ${d && d.lastTime ? esc(ago(d.lastTime)) + " önce" : "okunmadı"}</span><button class="link" data-kvars-all>Tüm değişkenler…</button></div></div>
-      <details class="card store-actions"><summary><b>Genel eylemler</b> <span class="small muted">durum, preview, kur, yukselt, kaldir · <span class="mono">kurulum_yazilim</span> seçimine göre çalışır</span></summary>${actionsSection(ok, na, p)}</details>`;
+      <details class="card store-actions"><summary><b>Genel eylemler</b> <span class="small muted">durum, preview, kur, yukselt, kaldir${itemVar ? ` · <span class="mono">${esc(itemVar)}</span> seçimine göre çalışır` : ""}</span></summary>${actionsSection(ok, na, p)}</details>`;
   }
 
   function applyStoreFilter() {
@@ -1451,14 +1473,14 @@
     $$("#srv-body [data-sf]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.sf === storeFilter)));
   }
 
-  function bindKurulum() {
+  function bindCatalog(pkg) {
     $$("#srv-body [data-sf]").forEach(b => b.addEventListener("click", () => { storeFilter = b.dataset.sf; applyStoreFilter(); }));
-    $$("#srv-body [data-kvars]").forEach(b => b.addEventListener("click", () => openVars(srvName, "kurulum", b.dataset.kvars)));
-    $("#srv-body [data-kvars-all]")?.addEventListener("click", () => openVars(srvName, "kurulum"));
+    $$("#srv-body [data-kvars]").forEach(b => b.addEventListener("click", () => openVars(srvName, pkg, b.dataset.kvars || undefined)));
+    $("#srv-body [data-kvars-all]")?.addEventListener("click", () => openVars(srvName, pkg));
     $$("#srv-body [data-actcat]").forEach(b => b.addEventListener("click", () => { actFilter = b.dataset.actcat; applyActFilter(); }));
     if (!$$("#srv-body [data-sf]").some(b => b.dataset.sf === storeFilter)) storeFilter = "all";
     applyStoreFilter(); applyActFilter();
-    if (kuvSrv !== srvName) loadKuv();
+    if (catSrv !== srvName || catPkg !== pkg) loadCatVars(pkg);
   }
 
   function renderServer() {
@@ -1492,7 +1514,7 @@
     const pk = [...srv.packages].sort((a, b) => ti(a.id) - ti(b.id));
     const tabs = [{ id: "ozet" }, ...pk];
     if (!tabs.some(p => p.id === srvTab)) srvTab = "ozet";
-    $("#srv-tabs").innerHTML = tabs.map(p => `<button role="tab" id="tab-${esc(p.id)}" aria-selected="${p.id === srvTab}" data-p="${esc(p.id)}">${esc(p.id === "ozet" ? "Özet" : TAB_LABEL[p.id] || p.id)}</button>`).join("");
+    $("#srv-tabs").innerHTML = tabs.map(p => `<button role="tab" id="tab-${esc(p.id)}" aria-selected="${p.id === srvTab}" data-p="${esc(p.id)}">${esc(p.id === "ozet" ? "Özet" : TAB_LABEL[p.id] || p.name || p.id)}</button>`).join("");
     $$("#srv-tabs button").forEach(b => b.addEventListener("click", () => { srvTab = b.dataset.p; history.replaceState(null, "", `#s=${encodeURIComponent(srvName)}&p=${encodeURIComponent(srvTab)}`); renderServer(); }));
 
     const p = pk.find(x => x.id === srvTab);
@@ -1503,7 +1525,8 @@
     setTimeout(() => $$("#srv-body [data-run]").forEach(b => b.addEventListener("click", () => { const [pid, aid] = b.dataset.run.split("|"); openRun(srvName, pid, aid); })), 0);
     if (!p) { $("#srv-body").innerHTML = '<div class="card"><div class="card-body small muted">Bu sunucu için paket bulunamadı.</div></div>'; return; }
     const ok = p.actions.filter(a => a.applicable), na = p.actions.filter(a => !a.applicable);
-    if (p.id === "kurulum") { $("#srv-body").innerHTML = kurulumStore(s, p, ok, na); bindKurulum(); return; }
+    const cat = catalogItems(p);
+    if (cat) { $("#srv-body").innerHTML = catalogStore(s, p, ok, na, cat); bindCatalog(p.id); return; }
     $("#srv-body").innerHTML = `${p.id === "linux-hardening" ? lynisHero(s, p) : ""}<div class="pk-top">${pkgInfoCard(p, ok)}${varsCard(p)}</div>${statusCard(p)}${actionsSection(ok, na, p)}`;
     $$("#srv-body [data-actcat]").forEach(b => b.addEventListener("click", () => { actFilter = b.dataset.actcat; applyActFilter(); }));
     $("#srv-body [data-go-lynis-p]")?.addEventListener("click", () => goLynis(srvName, s.lynis && s.lynis.warnings > 0 ? "uyari" : "all"));
