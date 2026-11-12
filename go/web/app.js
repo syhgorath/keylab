@@ -213,12 +213,36 @@
   $("#lang-btn").addEventListener("click", () => { const L = window.KeyLabI18n; L.setLang(L.getLang() === "tr" ? "en" : "tr"); });
   window.addEventListener("keylab:langchange", () => { render(); renderSrvTree(); if (view === "server" && srv) renderServer(); });
 
+  /* Sunucu süzgeci (Tümü / Çevrimiçi / Kapalı / Uyarılı / Anahtarsız / Knock): home.servers değişmez, yalnız görünüm süzülür */
+  let fleetFilter = "all";
+  const hasWarn = s => !!((s.lynis && s.lynis.warnings > 0) || (s.recent || []).some(a => !isOk(a.result)));
+  const FLEET_TESTS = {
+    all: () => true,
+    up: s => s.checked && s.up,
+    down: s => s.checked && !s.up,
+    warn: hasWarn,
+    nokey: s => s.valid && !s.hasKey,
+    knock: s => !!s.knock,
+  };
+  function renderFleetFilter() {
+    const defs = [["all", t("ff_all", "Tümü"), true], ["up", t("ff_up", "Çevrimiçi"), true], ["down", t("ff_down", "Kapalı"), true], ["warn", "⚠ " + t("ff_warn", "Uyarılı"), true], ["nokey", t("ff_nokey", "Anahtarsız"), false], ["knock", "🔒 knock", false]];
+    const html = defs.map(([k, label, always]) => {
+      const n = home.servers.filter(FLEET_TESTS[k]).length;
+      return always || n || fleetFilter === k ? `<button class="fchip" data-ff="${k}" aria-pressed="${fleetFilter === k}">${label} <span class="muted">${n}</span></button>` : "";
+    }).join("");
+    $$(".fleet-filter").forEach(el => { el.innerHTML = home.servers.length ? html : ""; });
+  }
+  document.addEventListener("click", e => {
+    const b = e.target.closest(".fleet-filter [data-ff]"); if (!b) return;
+    fleetFilter = b.dataset.ff; render();
+  });
   function render() {
     renderSrvTree();
-    const sv = home.servers.filter(s => matches(s.name, s.platform, s.last && s.last.package));
+    const sv = home.servers.filter(s => matches(s.name, s.platform, s.last && s.last.package)).filter(FLEET_TESTS[fleetFilter] || FLEET_TESTS.all);
+    renderFleetFilter();
     const pk = home.packages.filter(p => matches(p.id));
     const addTile = '<li class="stile add" tabindex="0" data-add="1" aria-label="Sunucu ekle"><div class="plus" aria-hidden="true">+</div><div>Sunucu ekle</div></li>';
-    const rows = (sv.map(mode === "tiles" ? tile : serverRow).join("") || emptyServers) + (mode === "tiles" && !query ? addTile : "");
+    const rows = (sv.map(mode === "tiles" ? tile : serverRow).join("") || emptyServers) + (mode === "tiles" && !query && fleetFilter === "all" ? addTile : "");
     for (const id of ["#servers", "#servers-all"]) { $(id).innerHTML = rows; $(id).classList.toggle("tiles", mode === "tiles"); }
     $$(".mode-toggle button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
     $("#servers-count").textContent = home.servers.length + " kayıt";
