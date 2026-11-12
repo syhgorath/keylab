@@ -35,6 +35,7 @@
   function unlock() {
     const el = $("#privacy-lock"); if (!el || !locked) return;
     locked = false; el.hidden = true; setInert(false);
+    if (window.KeyLabModalTrap) window.KeyLabModalTrap.sync(); // açık pencere varsa arka plan yeniden inert olsun
     if (from && from.isConnected && from.focus) from.focus();
     from = null; arm();
   }

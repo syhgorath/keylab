@@ -39,12 +39,30 @@
   const matches = (...parts) => !query || parts.join(" ").toLowerCase().includes(query);
 
   /* ---------------- Gezinme ---------------- */
+  // Adres çubuğu = konum: "" (pano) · #v=<sayfa> · #s=<sunucu>&p=<sekme>. Yeni sayfa/sunucu geçmişe EKLENİR (geri/ileri çalışır);
+  // aynı sunucudaki sekme değişimi ve geçmişten uygulanan gezinme geçmişi ÇOĞALTMAZ (replace).
+  const VIEWS = ["dash", "servers", "packages", "compare", "reports", "lynis", "logs", "settings", "add"];
+  let routing = false; // geçmişten (geri/ileri/elle hash) ya da açılışta uygulanıyor: yeni geçmiş kaydı açma
+  function setHash(h, replace) {
+    if (location.hash === h || (h === "" && location.hash === "")) return;
+    try { (replace || routing ? history.replaceState : history.pushState).call(history, null, "", h || location.pathname); } catch (e) { /* adres çubuğu güncellenemezse sayfa yine çalışır */ }
+  }
+  function applyHash() {
+    const q = new URLSearchParams(location.hash.slice(1));
+    routing = true;
+    try {
+      if (q.get("s")) { if (!(view === "server" && srvName === q.get("s"))) openServer(q.get("s"), q.get("p") || ""); else if (q.get("p") && q.get("p") !== srvTab) { srvTab = q.get("p"); renderServer(); } }
+      else showView(VIEWS.includes(q.get("v")) ? q.get("v") : "dash");
+    } finally { routing = false; }
+  }
+  window.addEventListener("popstate", applyHash); // geri/ileri ve elle yazılan #… (hashchange ile aynı olay zinciri)
+
   function showView(name) {
     view = name;
     $$(".view").forEach(v => (v.hidden = v.id !== "view-" + name));
     const navName = name === "server" || name === "add" ? "servers" : name;
     $$(".nav-item[data-nav]").forEach(b => b.setAttribute("aria-current", b.dataset.nav === navName ? "page" : "false"));
-    if (name !== "server" && location.hash) history.replaceState(null, "", location.pathname);
+    if (name !== "server") setHash(name === "dash" ? "" : "#v=" + name);
     $(".aside").style.display = name === "dash" ? "" : "none";
     const app = $(".app");
     app.classList.toggle("v-wide", name !== "dash");
@@ -1608,7 +1626,7 @@
     srvName = name; srvTab = tab || "ozet";
     srv = null;
     showView("server"); renderSrvTree();
-    history.replaceState(null, "", `#s=${encodeURIComponent(name)}&p=${encodeURIComponent(srvTab || "")}`);
+    setHash(`#s=${encodeURIComponent(name)}&p=${encodeURIComponent(srvTab || "")}`, new URLSearchParams(location.hash.slice(1)).get("s") === name);
     $("#srv-head").innerHTML = `<button class="back" id="srv-back">← Sunucular</button><div class="srv-title"><h1>${esc(name)}</h1></div>`;
     $("#srv-back").addEventListener("click", () => showView("servers"));
     $("#srv-tabs").innerHTML = ""; $("#srv-body").innerHTML = '<div class="small muted">yükleniyor…</div>';
@@ -1788,9 +1806,9 @@
   /* ---------------- Başlangıç ---------------- */
   json("/api/about").then(a => { askAvail = !!a.askpass; paintAsk(); }).catch(() => {});
   const startHash = new URLSearchParams(location.hash.slice(1)); // showView adres çubuğundaki #s=… kısmını siler: ÖNCE oku
-  showView("dash");
+  routing = true; showView(VIEWS.includes(startHash.get("v")) ? startHash.get("v") : "dash"); routing = false;
   load().then(() => {
-    if (startHash.get("s")) openServer(startHash.get("s"), startHash.get("p") || "");
+    if (startHash.get("s")) { routing = true; openServer(startHash.get("s"), startHash.get("p") || ""); routing = false; }
   });
   setInterval(() => {
     if (document.hidden || wiz.classList.contains("open")) return;
