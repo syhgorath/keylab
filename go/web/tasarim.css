@@ -1329,4 +1329,5 @@ td.diff-val{box-shadow:inset 3px 0 0 var(--warn)}
 .sj-e51ab5{gap:5px !important}
 .sj-342cb5{padding:24px !important;text-align:center !important}
 .sj-fdf33f{margin-bottom:8px !important}
+.fleet-filter{padding:8px 12px 4px}
 [hidden]{display:none !important} /* sj-sonu: !important yardımcı sınıfların display bildirimi hidden özniteliğini ezmesin; DOSYANIN SONUNDA kalmalı */
