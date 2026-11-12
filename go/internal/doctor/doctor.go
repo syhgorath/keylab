@@ -1,4 +1,4 @@
-// Package doctor: ön koşul denetimi (Doctor.sh, `./start.sh --doctor`). Yalnızca okur; hiçbir şey kurmaz.
+// Package doctor: ön koşul denetimi (Doctor.sh'ın Go karşılığı, `keylab doctor`). Yalnızca okur; hiçbir şey kurmaz.
 // Politika: eksik olanı söyler ve ÇÖZÜM KOMUTUNU gösterir; Homebrew/pip/sudo ÇALIŞTIRMAZ.
 // Çıkış kodu: 0 hepsi tamam (uyarılar olabilir), 1 zorunlu bir şey eksik.
 //

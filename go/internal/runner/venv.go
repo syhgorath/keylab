@@ -266,7 +266,7 @@ func VenvEnsure(id, pkgDir, rng, wheelhouse string) (string, error) {
 	}
 	py, ok := PickPython(rng)
 	if !ok {
-		return "", fmt.Errorf("uygun Python bulunamadı (%s); ./start.sh --doctor", rng)
+		return "", fmt.Errorf("uygun Python bulunamadı (%s); keylab doctor", rng)
 	}
 	envid, err := EnvID(req, PythonVersion(py))
 	if err != nil {

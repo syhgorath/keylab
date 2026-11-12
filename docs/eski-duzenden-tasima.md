@@ -2,6 +2,8 @@
 
 Ana sayfa: [README](../README.md).
 
+> **Not:** Bu belge eski kabuk sürümü (v3) içindir. Sürüm 4'te (Go) `--migrate` yoktur; eski motor `kabuk-referansi` etiketinde durur.
+
 Eski `sistem/Modules/<ad>/` sunucularınız **otomatik** taşınır; dışa/içe aktarma gerekmez.
 
 ```bash
