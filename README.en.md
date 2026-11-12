@@ -136,6 +136,7 @@ docs/                        detailed docs (packages, updating, tested environme
 cd go
 go vet ./... && go test ./... -short       # drop -short for the long differential tests
 go build -o keylab .
+bash go/scripts/keylabtest.sh           # updates the local test folder (~/Developer/keylabtest) and starts KeyLab from there
 ```
 
 The differential tests compare Go's result against golden files in `testdata/*.json` (recorded outputs of the old shell/Python engine); no shell engine is needed.
