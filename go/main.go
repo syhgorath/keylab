@@ -95,6 +95,17 @@ func (a *App) findServer(name string) (Server, bool) {
 	return Server{}, false
 }
 
+// findServerQuiet: findServer'ın ağa dokunmayan hali (erişilebilirlik ölçülmez; Up/Conn alanları güvenilmez). Yetki/kapı kararları ve
+// toplu işlem için: kapalı bir sunucuyu aramak her seferinde bağlantı zaman aşımı beklememeli.
+func (a *App) findServerQuiet(name string) (Server, bool) {
+	for _, s := range a.servers(false, name) {
+		if s.Name == name {
+			return s, true
+		}
+	}
+	return Server{}, false
+}
+
 func shQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'" }
 
 func (s Server) sshCmd() string {
@@ -362,6 +373,9 @@ func main() {
 		_, _ = w.Write([]byte(`{"ok":true}`))
 	}))
 	mux.HandleFunc("/api/jobs", app.guard(app.jobsHandler))
+	mux.HandleFunc("/api/batch", app.guard(app.batchHandler))
+	mux.HandleFunc("/api/batch/options", app.guard(app.batchOptionsHandler))
+	mux.HandleFunc("/api/batch/cancel", app.guard(app.batchCancelHandler))
 	mux.HandleFunc("/api/backup-export", app.guard(app.backupExportHandler))
 	mux.HandleFunc("/api/backup-import", app.guard(app.backupImportHandler))
 	mux.HandleFunc("/api/ssh-config-hosts", app.guard(app.sshConfigHostsHandler))

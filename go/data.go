@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -96,6 +97,9 @@ type App struct {
 	vmu        sync.Mutex // değişken dosyası yazımı
 	jobs       map[string]*Job
 	running    *Job
+	bmu        sync.Mutex         // toplu işlem durumu
+	batch      *Batch             // son/çalışan toplu işlem
+	batchOn    atomic.Bool        // toplu işlem sürerken tek tek iş başlatılamaz
 	up         map[string]bool    // son ölçülen erişilebilirlik (sayfa beklemeden gösterilsin)
 	conn       map[string]string  // son ölçülen bağlantı durumu: up | refused | down
 	idxDL      trust.DownloadFunc // indeks indirme (nil: HTTPS); testte değiştirilir

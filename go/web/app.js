@@ -215,6 +215,7 @@
 
   /* Sunucu süzgeci (Tümü / Çevrimiçi / Kapalı / Uyarılı / Anahtarsız / Knock): home.servers değişmez, yalnız görünüm süzülür */
   let fleetFilter = "all";
+  let visibleServers = []; // süzgeç + arama sonrası listede görünen geçerli sunucular (toplu işlem hedefi)
   const hasWarn = s => !!((s.lynis && s.lynis.warnings > 0) || (s.recent || []).some(a => !isOk(a.result)));
   const FLEET_TESTS = {
     all: () => true,
@@ -239,6 +240,7 @@
   function render() {
     renderSrvTree();
     const sv = home.servers.filter(s => matches(s.name, s.platform, s.last && s.last.package)).filter(FLEET_TESTS[fleetFilter] || FLEET_TESTS.all);
+    visibleServers = sv.filter(s => s.valid).map(s => s.name);
     renderFleetFilter();
     const pk = home.packages.filter(p => matches(p.id));
     const addTile = '<li class="stile add" tabindex="0" data-add="1" aria-label="Sunucu ekle"><div class="plus" aria-hidden="true">+</div><div>Sunucu ekle</div></li>';
@@ -1756,6 +1758,7 @@
   });
 
   window.KeyLabBackup.init({ json, toast, reload: load });
+  window.KeyLabBatch.init({ json, toast, reload: load, targets: () => visibleServers.slice(), tabLabel: id => TAB_LABEL[id] || (home.packages.find(p => p.id === id) || {}).name || id });
   adoptJob();
   window.KeyLabPalette.init({ getHome: () => home, showView, openServer, goLynis, goLogs, openShortcuts, reload: load });
   window.KeyLabPrivacy.init();
