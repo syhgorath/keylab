@@ -16,9 +16,9 @@ Sıra bağlayıcı değildir; fikir ve PR'lara açıktır.
 ### Taşınabilirlik (Linux)
 Şu an yalnızca macOS: `security` (Keychain), `osascript` (Terminal), `diskutil` (eject) kullanılıyor.
 - Gizli bilgi deposu soyutlaması: macOS Keychain / `secret-tool` (libsecret) / `pass`.
-- Terminal açma soyutlaması: `osascript` / `gnome-terminal` / `x-terminal-emulator` / aynı pencere.
+- Terminal açma soyutlaması: `osascript` / `gnome-terminal` / `x-terminal-emulator` / aynı pencere. (Tarayıcı içinde gömülü terminal macOS ve Linux'ta var, Windows'ta yok.)
 - Eject soyutlaması: `diskutil` / `udisksctl`.
-- CI'da Linux üzerinde de tüm testlerin çalışması (Bats testleri zaten Linux'ta koşuyor; sahte komutlar eklenecek).
+- Linux/Windows çalışma zamanı: Go testleri CI'da Ubuntu ve macOS'ta koşuyor, Windows/Linux için derleme doğrulanıyor; kalan: Keychain, knock (`sh` bağımlılığı) ve Windows'ta gömülü terminal (ConPTY).
 
 ### Güvenlik
 - Hardware key desteği (YubiKey, `ed25519-sk`).
@@ -28,7 +28,7 @@ Sıra bağlayıcı değildir; fikir ve PR'lara açıktır.
 ### Kullanışlılık
 - Menüde arama / kısayol tuşları.
 - ProxyJump/bastion, SSH tüneli, `scp`/`sftp` kısayolları.
-- Arayüz metinlerinin çevirisi (i18n); şu an Türkçe.
+- Arayüz çevirisi: Türkçe/İngilizce var (üst çubuktaki TR/EN düğmesi; ifade tablosu `go/web/js/core/i18n-phrases-en.js`); kalanlar: sunucudan gelen iletiler, tarih biçimi ve yeni dil eklemek için `t()` anahtarlarına geçiş.
 - `~/.ssh/config`'te `Include` desteği.
 
 ### Dağıtım
