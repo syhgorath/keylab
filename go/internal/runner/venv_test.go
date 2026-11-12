@@ -30,7 +30,7 @@ func fakePythons(t *testing.T, versions map[string]string) {
 }
 
 func TestPythonInRangeMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	for _, v := range []string{"3.12.0", "3.12.4", "3.11.9", "3.13.1", "4.0.0", "3.9.6", "2.7.18", "3.12", "x", "", "3.12.4.1", "03.12.0", "3.100.0"} {
 		for _, r := range []string{">=3.12", ">=3.12,<4.0", ">=3.10,<3.13", ">=3.12,<3.12", ">=3", "3.12", ">=3.12,", ">=3.12,<4", ""} {
 			sh := runShell(t, root, nil, "", "", "comp_python_in_range", v, r)
@@ -42,7 +42,7 @@ func TestPythonInRangeMatchesShell(t *testing.T) {
 }
 
 func TestRequirementsHashedMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	h := "--hash=sha256:" + strings.Repeat("a", 64)
 	cases := map[string]string{
 		"geçerli":         "pkg==1.0 \\\n  " + h + "\n",
@@ -69,7 +69,8 @@ func TestRequirementsHashedMatchesShell(t *testing.T) {
 		"sha512":          "a==1 \\\n  --hash=sha512:" + strings.Repeat("a", 128) + "\n",
 	}
 	dir := t.TempDir()
-	for name, content := range cases {
+	for _, p := range ordered(cases) {
+		name, content := p.K, p.V
 		f := filepath.Join(dir, "r.txt")
 		os.WriteFile(f, []byte(content), 0o600)
 		sh := runShell(t, root, nil, "", "", "comp_requirements_hashed", f)
@@ -90,7 +91,7 @@ func TestPickPythonAndEnvIDMatchShell(t *testing.T) {
 	for _, cands := range []string{"py-old py-mid py-new", "py-new py-mid", "py-old", "yok py-broken py-mid", "py-broken", ""} {
 		for _, rng := range []string{">=3.12", ">=3.10,<3.12", ">=3.14"} {
 			t.Setenv("SSHPOCKET_PYTHON_CANDIDATES", cands)
-			sh := runShell(t, root, nil, "", "", "comp_pick_python", rng)
+			sh := runShellLive(t, root, nil, "", "", "comp_pick_python", rng)
 			got, ok := PickPython(rng)
 			if (sh.code == 0) != ok || (ok && sh.stdout != got) {
 				t.Errorf("%q %q: kabuk=%d %q go=%v %q", cands, rng, sh.code, sh.stdout, ok, got)
@@ -101,14 +102,14 @@ func TestPickPythonAndEnvIDMatchShell(t *testing.T) {
 	req := filepath.Join(dir, "requirements.txt")
 	os.WriteFile(req, []byte("a==1 \\\n  --hash=sha256:"+strings.Repeat("b", 64)+"\n"), 0o600)
 	for _, pv := range []string{"3.12.4", "3.13.0", ""} {
-		sh := runShell(t, root, nil, "", "", "comp_env_id", req, pv)
+		sh := runShellLive(t, root, nil, "", "", "comp_env_id", req, pv)
 		got, err := EnvID(req, pv)
 		if err != nil || strings.TrimSpace(sh.stdout) != got {
 			t.Errorf("env_id %q: kabuk=%q go=%q %v", pv, sh.stdout, got, err)
 		}
 	}
 	// saplama: SSHPOCKET_PY_STUB_PATH ile verilen yol xcode-select -p başarısızsa atlanır (macOS dışı: asla stub değil)
-	sh := runShell(t, root, []string{"SSHPOCKET_PY_STUB_PATH=/usr/bin/python3"}, "", "", "comp_python_is_stub", "/usr/bin/python3")
+	sh := runShellLive(t, root, []string{"SSHPOCKET_PY_STUB_PATH=/usr/bin/python3"}, "", "", "comp_python_is_stub", "/usr/bin/python3")
 	if got := func() bool {
 		t.Setenv("SSHPOCKET_PY_STUB_PATH", "/usr/bin/python3")
 		return PythonIsStub("/usr/bin/python3")
@@ -179,7 +180,7 @@ func TestVenvEnsureMatchesShell(t *testing.T) {
 				c.pre(goCache, envid)
 			}
 			t.Setenv("SSHPOCKET_CACHE_DIR", shCache)
-			sh := runShell(t, root, nil, "", "", "comp_venv_ensure", "pk", pkg, ">=3.12")
+			sh := runShellLive(t, root, nil, "", "", "comp_venv_ensure", "pk", pkg, ">=3.12")
 			t.Setenv("SSHPOCKET_CACHE_DIR", goCache)
 			dir, err := VenvEnsure("pk", pkg, ">=3.12", "")
 			if (sh.code == 0) != (err == nil) {
@@ -205,7 +206,7 @@ func TestVenvEnsureMatchesShell(t *testing.T) {
 				if err2 != nil || d2 != dir || !ok || l != dir {
 					t.Errorf("ikinci çağrı/lookup: %v %q %v %q", err2, d2, ok, l)
 				}
-				shL := runShell(t, root, nil, "", "", "comp_venv_lookup", "pk", pkg, ">=3.12")
+				shL := runShellLive(t, root, nil, "", "", "comp_venv_lookup", "pk", pkg, ">=3.12")
 				_ = shL
 			}
 		})

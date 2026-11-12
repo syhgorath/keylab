@@ -52,7 +52,7 @@ func realKey(t *testing.T, dir string) (priv, pubLine string) {
 }
 
 func TestKnownHostMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	dir := t.TempDir()
 	_, pub := realKey(t, dir)
 	kh := filepath.Join(dir, "known_hosts")
@@ -74,7 +74,7 @@ func TestKnownHostMatchesShell(t *testing.T) {
 }
 
 func TestAgentMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	fakeBin(t)
 	dir := t.TempDir()
 	priv, _ := realKey(t, dir)
@@ -85,7 +85,7 @@ func TestAgentMatchesShell(t *testing.T) {
 			t.Setenv("FAKE_AGENT", c.agent)
 			sh := runShell(t, root, nil, "", "", "comp_gate_agent", "pfx", key)
 			err := Agent("pfx", key, nil)
-			if (sh.code == 0) != (err == nil) || (err != nil && strings.TrimSpace(sh.stderr) != err.Error()) {
+			if (sh.code == 0) != (err == nil) || (err != nil && strings.TrimSpace(sh.stderr) != reTmp.ReplaceAllString(err.Error(), "<T>")) {
 				t.Errorf("%s %s: kabuk=%d %q go=%v", c.name, filepath.Base(key), sh.code, sh.stderr, err)
 			}
 		}
@@ -100,9 +100,9 @@ func TestAgentMatchesShell(t *testing.T) {
 }
 
 func TestDetectProfileMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	fakeBin(t)
-	for name, osrel := range map[string]string{
+	for _, p := range ordered(map[string]string{
 		"ubuntu":        "NAME=\"Ubuntu\"\nID=ubuntu\nVERSION_ID=\"26.04\"\n",
 		"debian":        "ID=debian\nVERSION_ID=\"13\"\n",
 		"büyük harf":    "ID=Ubuntu\nVERSION_ID=\"22.04\"\n",
@@ -116,7 +116,8 @@ func TestDetectProfileMatchesShell(t *testing.T) {
 		"eşit işaretli": "ID=a=b\nVERSION_ID=1\n",
 		"ilk kazanır":   "ID=first\nID=second\nVERSION_ID=1\nVERSION_ID=2\n",
 		"ID_LIKE":       "ID_LIKE=debian\nID=ubuntu\nVERSION_ID=\"26.04\"\n",
-	} {
+	}) {
+		name, osrel := p.K, p.V
 		t.Setenv("FAKE_OSREL", osrel)
 		sh := runShell(t, root, nil, "", "", "comp_detect_profile", "10.0.0.5", "22", "root", "/k")
 		got, _, err := DetectProfile("10.0.0.5", "22", "root", "/k")
@@ -133,7 +134,7 @@ func TestDetectProfileMatchesShell(t *testing.T) {
 }
 
 func TestDetectSudoWSMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	fakeBin(t)
 	for _, out := range []string{"SSHPOCKET_SUDO_WS=yes\n", "", "baska\n", "x SSHPOCKET_SUDO_WS=yes\n", "SSHPOCKET_SUDO_WS=yes\nextra\n", "SSHPOCKET_SUDO_WS=no\n"} {
 		for _, rc := range []string{"0", "1"} {
@@ -161,20 +162,22 @@ func normClock(s string, exactMinutes bool) string {
 }
 
 func TestWarnClockSkewMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	fakeBin(t)
 	dir := t.TempDir()
 	priv, _ := realKey(t, dir)
 	now := func() int64 { var n int64; fmt.Sscan(strings.TrimSpace(mustRun(t, "date", "+%s")), &n); return n }()
-	for name, c := range map[string]struct {
+	type skewCase struct {
 		off  int64
 		tail string
-	}{
+	}
+	for _, p := range ordered(map[string]skewCase{
 		"uyarı yok": {10, "Timezone=Europe/Istanbul\nNTPSynchronized=yes\n"}, "60 sn": {60, ""},
 		"10 dk geride": {-600, "Timezone=Europe/Istanbul\nNTPSynchronized=yes\n"}, "10 dk ileride ntp kapalı": {600, "Timezone=UTC\nNTPSynchronized=no\n"},
 		"tam 1 saat": {-3600, "Timezone=Europe/Istanbul\nNTPSynchronized=yes\n"}, "3 saat": {10800, "NTPSynchronized=yes\n"},
 		"yarım saat + 1 dk": {1860, ""}, "kötü saat dilimi": {-600, "Timezone=Bad Zone$\n"}, "kötü epoch": {0, ""},
-	} {
+	}) {
+		name, c := p.K, p.V
 		epoch := fmt.Sprintf("%d\n", now+c.off)
 		if name == "kötü epoch" {
 			epoch = "abc\n"
@@ -184,7 +187,7 @@ func TestWarnClockSkewMatchesShell(t *testing.T) {
 		var sb strings.Builder
 		WarnClockSkew("10.0.0.5", "2222", "root", priv, nil, &sb)
 		// ±1-2 sn kayması: dakika sayıları yuvarlama sınırında değilse aynı; zaman damgaları normalize
-		a, b := normClock(sh.stderr, false), normClock(sb.String(), false)
+		a, b := normClock(sh.stderr, false), normClock(reTmp.ReplaceAllString(sb.String(), "<T>"), false)
 		if a != b {
 			t.Errorf("[%s]\n kabuk=%q\n go   =%q", name, a, b)
 		}
@@ -208,7 +211,7 @@ func mustRun(t *testing.T, name string, args ...string) string {
 }
 
 func TestSSHHintMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	dir := t.TempDir()
 	texts := []string{
 		"", "WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!\nx", "Offending ED25519 key in /home/u/.ssh/known_hosts:3", "No ED25519 host key is known for 10.0.0.5 and you have requested strict checking.",

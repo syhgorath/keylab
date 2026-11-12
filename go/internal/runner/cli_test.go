@@ -215,7 +215,7 @@ func TestCLIRunMatchesShell(t *testing.T) {
 				if impl == 0 {
 					env := []string{"SSHPOCKET_SERVERS_DIR=" + servers, "SSHPOCKET_STATE_DIR=" + state, "SSHPOCKET_COMPONENTS_DIR=" + compDir,
 						"SSHPOCKET_COMPONENTS_LOCK=" + lockPath, "SSHPOCKET_CACHE_DIR=" + cache}
-					o := runShell(t, root, env, c.stdin, "", "comp_cli_run", c.args[0], c.args[1], c.args[2])
+					o := runShellLive(t, root, env, c.stdin, "", "comp_cli_run", c.args[0], c.args[1], c.args[2])
 					out[0] = res{o.code, normCLI(o.stdout, dirs), normCLI(o.stderr, dirs), treeOf(servers, dirs), treeOf(state, dirs), treeOf(cache, dirs)}
 				} else {
 					var so, se bytes.Buffer

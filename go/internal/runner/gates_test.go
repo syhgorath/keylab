@@ -7,12 +7,68 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
+	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"keylab/internal/manifest"
+	"keylab/internal/shellgold"
 )
+
+// goldRoot: altın dosyalı testler için kök; oynatmada kabuk motoru gerekmez, yalnız kayıt modunda gerekir.
+func goldRoot(t *testing.T) string {
+	t.Helper()
+	if os.Getenv("KEYLAB_KAYIT_KABUK") == "1" {
+		return repoRoot(t)
+	}
+	root, _ := filepath.Abs("../../..")
+	return root
+}
+
+var (
+	goldOnce  sync.Once
+	goldStore *shellgold.Store
+	reTmp     = regexp.MustCompile(`(?:/private)?(?:/var/folders/[^/\s]+/[^/\s]+/T|/tmp)/[^\s"']+`) // geçici yollar altın dosyaya girmesin
+)
+
+type gOut struct {
+	Code           int
+	Stdout, Stderr string
+}
+
+// runShell: kabuk çalışmasının altın dosyalı hali (yan etkisiz testler için; anahtar = test adı + sıra).
+// Kabuğun dosya sistemine yazdığı sonucu okuyan testler runShellLive kullanır (kabuk motoru gerekir).
+func runShell(t *testing.T, root string, env []string, stdin, prelude, fn string, args ...string) shOut {
+	t.Helper()
+	goldOnce.Do(func() { goldStore = shellgold.Open(t, "shell") })
+	g := shellgold.Do(t, goldStore, goldStore.Next(t), func() gOut {
+		r := runShellLive(t, root, env, stdin, prelude, fn, args...)
+		return gOut{r.code, reTmp.ReplaceAllString(r.stdout, "<T>"), reTmp.ReplaceAllString(r.stderr, "<T>")}
+	})
+	return shOut{g.Code, g.Stdout, g.Stderr}
+}
+
+// ordered: harita gezintisini deterministik yapar (altın dosya anahtarı sıraya bağlı).
+type kv[V any] struct {
+	K string
+	V V
+}
+
+func ordered[V any](m map[string]V) []kv[V] {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	out := make([]kv[V], 0, len(keys))
+	for _, k := range keys {
+		out = append(out, kv[V]{k, m[k]})
+	}
+	return out
+}
 
 func repoRoot(t *testing.T) string {
 	t.Helper()
@@ -30,8 +86,8 @@ type shOut struct {
 
 var gateLibs = []string{"Components.sh", "ComponentsInstall.sh", "ComponentsManifest.sh", "ComponentsRun.sh", "ComponentsVars.sh", "ComponentsGates.sh", "ComponentsExec.sh", "ComponentsRunCLI.sh", "ComponentsVenv.sh", "Validate.sh", "ModuleFiles.sh", "SSHModule.sh", "Servers.sh"}
 
-// runShell: kütüphaneleri yükler, PRELUDE'u çalıştırır, işlevi çağırır; stdin verilebilir.
-func runShell(t *testing.T, root string, env []string, stdin, prelude, fn string, args ...string) shOut {
+// runShellLive: kütüphaneleri yükler, PRELUDE'u çalıştırır, işlevi çağırır; stdin verilebilir (gerçek kabuk).
+func runShellLive(t *testing.T, root string, env []string, stdin, prelude, fn string, args ...string) shOut {
 	t.Helper()
 	script := `export SISTEM_PATH="$1"; shift; for l in $LIBS; do . "$SISTEM_PATH/Helpers/$l" || exit 99; done; eval "$PRELUDE"; "$@"`
 	cmd := exec.Command("bash", append([]string{"-c", script, "_", filepath.Join(root, "referans/kabuk/sistem"), fn}, args...)...)
@@ -88,24 +144,24 @@ func TestStatelessGatesMatchShell(t *testing.T) {
 			label := rel + " " + a
 			// NotRoot
 			for _, user := range []string{"root", "deploy"} {
-				sh := runShell(t, root, nil, "", "", "comp_gate_not_root", joined, a, user)
+				sh := runShellLive(t, root, nil, "", "", "comp_gate_not_root", joined, a, user)
 				if err := NotRoot(info, a, user); (sh.code == 0) != (err == nil) || (err != nil && strings.TrimSpace(sh.stderr) != err.Error()) {
 					t.Errorf("%s not_root %s: kabuk=%d %q go=%v", label, user, sh.code, sh.stderr, err)
 				}
 			}
 			// WarnApplies / RequiredApplies
-			sh := runShell(t, root, nil, "", "", "comp_gate_warn_applies", joined, a)
+			sh := runShellLive(t, root, nil, "", "", "comp_gate_warn_applies", joined, a)
 			if (sh.code == 0) != WarnApplies(info, a) {
 				t.Errorf("%s warn_applies", label)
 			}
-			sh = runShell(t, root, nil, "", "", "comp_gate_required_applies", joined, a)
+			sh = runShellLive(t, root, nil, "", "", "comp_gate_required_applies", joined, a)
 			if (sh.code == 0) != RequiredApplies(info, a) {
 				t.Errorf("%s required_applies", label)
 			}
 		}
 		// Profile
 		for _, d := range []string{"", "ubuntu-26.04", "debian-13", "arch-1", "ubuntu-24.04"} {
-			sh := runShell(t, root, nil, "", "", "comp_gate_profile", joined, d)
+			sh := runShellLive(t, root, nil, "", "", "comp_gate_profile", joined, d)
 			if err := Profile(info, d); (sh.code == 0) != (err == nil) || (err != nil && strings.TrimSpace(sh.stderr) != err.Error()) {
 				t.Errorf("%s profile %q: kabuk=%d %q go=%v", rel, d, sh.code, sh.stderr, err)
 			}
@@ -126,7 +182,7 @@ func TestConfirmMatchesShell(t *testing.T) {
 			}
 			seen[rel+mode] = true
 			for _, ans := range answers {
-				sh := runShell(t, root, nil, ans, "", "comp_gate_confirm", strings.Join(info, "\n"), a, "srv")
+				sh := runShellLive(t, root, nil, ans, "", "comp_gate_confirm", strings.Join(info, "\n"), a, "srv")
 				var out bytes.Buffer
 				rd := strings.NewReader(ans)
 				ask := func(p string) (string, bool) {
@@ -167,7 +223,7 @@ func readLine(r *strings.Reader) (string, error) {
 }
 
 func TestWarnVarsMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	for _, in := range []string{"", "e\n", "h\n", "e\ne\n", "e\nh\n"} {
 		for _, names := range [][]string{nil, {"a"}, {"a", "b"}} {
 			sh := runShell(t, root, nil, in, "", "comp_gate_warn_vars", names...)
@@ -217,18 +273,18 @@ func TestVarGatesMatchShell(t *testing.T) {
 			}
 			for _, a := range manifest.InfoAll(info, "action") {
 				label := fmt.Sprintf("%s %s vars#%d", rel, a, ci)
-				sh := runShell(t, root, nil, "", "", "comp_gate_requires_vars", joined, a, vf)
+				sh := runShellLive(t, root, nil, "", "", "comp_gate_requires_vars", joined, a, vf)
 				err := RequiresVars(info, a, vf)
 				if (sh.code == 0) != (err == nil) || (err != nil && strings.TrimSpace(sh.stderr) != err.Error()) {
 					t.Errorf("%s requires_vars: kabuk=%d %q go=%v", label, sh.code, sh.stderr, err)
 				}
-				sh = runShell(t, root, nil, "", "", "comp_gate_apply_vars", joined, a, vf)
+				sh = runShellLive(t, root, nil, "", "", "comp_gate_apply_vars", joined, a, vf)
 				got := ApplyVars(info, a, vf)
 				if want := splitNonEmpty(sh.stdout); !reflect.DeepEqual(want, got) {
 					t.Errorf("%s apply_vars: kabuk=%q go=%q", label, want, got)
 				}
 				if len(got) > 0 {
-					shn := runShell(t, root, nil, "", "", "comp_gate_apply_vars_notice", append([]string{joined, vf}, got...)...)
+					shn := runShellLive(t, root, nil, "", "", "comp_gate_apply_vars_notice", append([]string{joined, vf}, got...)...)
 					var out bytes.Buffer
 					ApplyVarsNotice(info, vf, got, &out)
 					if shn.stderr != out.String() {
@@ -277,7 +333,7 @@ func TestRunSetsMatchesShell(t *testing.T) {
 	}
 	for _, a := range manifest.InfoAll(info, "action") {
 		for _, rs := range sets {
-			sh := runShell(t, root, []string{"COMP_CTX_RUNSET=" + rs}, "", "", "comp_gate_run_sets", joined, a)
+			sh := runShellLive(t, root, []string{"COMP_CTX_RUNSET=" + rs}, "", "", "comp_gate_run_sets", joined, a)
 			got, err := RunSets(info, a, rs)
 			if (sh.code == 0) != (err == nil) || (err != nil && strings.TrimSpace(sh.stderr) != err.Error()) ||
 				(err == nil && !reflect.DeepEqual(splitNonEmpty(sh.stdout), got)) {
@@ -302,7 +358,7 @@ func TestStateRecordRequiresMatchShell(t *testing.T) {
 		{"utility", "srv", "0.1.0", "preview", "ok"}, {"utility", "srv", "0.1.0", "apply", "fail"}, {"UTILITY", "srv", "0.1.0", "x", "ok"},
 		{"utility", "-bad", "0.1.0", "x", "ok"}, {"utility", "srv", "0.1", "x", "ok"}, {"utility", "srv", "0.1.0", "X", "ok"}, {"utility", "srv", "0.1.0", "x", "maybe"},
 	} {
-		sh := runShell(t, root, []string{"SSHPOCKET_STATE_DIR=" + stateSh}, "", "", "comp_gate_record", c[0], c[1], c[2], c[3], c[4])
+		sh := runShellLive(t, root, []string{"SSHPOCKET_STATE_DIR=" + stateSh}, "", "", "comp_gate_record", c[0], c[1], c[2], c[3], c[4])
 		err := gg.Record(c[0], c[1], c[2], c[3], c[4])
 		if (sh.code == 0) != (err == nil) || (err != nil && strings.TrimSpace(sh.stderr) != err.Error()) {
 			t.Errorf("record %v: kabuk=%d %q go=%v", c, sh.code, sh.stderr, err)
@@ -357,14 +413,14 @@ func TestStateRecordRequiresMatchShell(t *testing.T) {
 	for name, content := range cases {
 		os.WriteFile(filepath.Join(rdir, "results"), []byte(content), 0o600)
 		for _, act := range []string{"apply", "preview"} {
-			sh := runShell(t, root, env, "", "", "comp_gate_requires", joined, "utility", "srv", "0.1.0", act)
+			sh := runShellLive(t, root, env, "", "", "comp_gate_requires", joined, "utility", "srv", "0.1.0", act)
 			err := g.Requires(info, "utility", "srv", "0.1.0", act)
 			if (sh.code == 0) != (err == nil) || (err != nil && strings.TrimSpace(sh.stderr) != err.Error()) {
 				t.Errorf("requires [%s] %s: kabuk=%d %q go=%v", name, act, sh.code, sh.stderr, err)
 			}
 		}
 		for _, act := range []string{"preview", "durum"} {
-			sh := runShell(t, root, env, "", "", "comp_gate_requires_age", "utility", "srv", "0.1.0", act)
+			sh := runShellLive(t, root, env, "", "", "comp_gate_requires_age", "utility", "srv", "0.1.0", act)
 			age, ok := g.RequiresAge("utility", "srv", "0.1.0", act)
 			if (sh.code == 0) != ok {
 				t.Errorf("age [%s] %s: kabuk=%d %q go=%v", name, act, sh.code, sh.stdout, ok)
