@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -88,7 +89,8 @@ func TestRequirementsHashedMatchesShell(t *testing.T) {
 func TestPickPythonAndEnvIDMatchShell(t *testing.T) {
 	root := goldRoot(t)
 	fakePythons(t, map[string]string{"py-old": "3.9.1", "py-mid": "3.11.2", "py-new": "3.13.0", "py-broken": ""})
-	for _, cands := range []string{"py-old py-mid py-new", "py-new py-mid", "py-old", "yok py-broken py-mid", "py-broken", ""} {
+	// (boş aday listesi makinedeki python'lara bağlı: altın dosyaya girmez)
+	for _, cands := range []string{"py-old py-mid py-new", "py-new py-mid", "py-old", "yok py-broken py-mid", "py-broken"} {
 		for _, rng := range []string{">=3.12", ">=3.10,<3.12", ">=3.14"} {
 			t.Setenv("SSHPOCKET_PYTHON_CANDIDATES", cands)
 			sh := runShell(t, root, nil, "", "", "comp_pick_python", rng)
@@ -102,11 +104,19 @@ func TestPickPythonAndEnvIDMatchShell(t *testing.T) {
 	dir := t.TempDir()
 	req := filepath.Join(dir, "requirements.txt")
 	os.WriteFile(req, []byte("a==1 \\\n  --hash=sha256:"+strings.Repeat("b", 64)+"\n"), 0o600)
+	// env_id işletim sistemi/mimariye bağlıdır (macOS ve Linux'ta farklı özet): altın dosyaya girmez; kabuk motoru varsa canlı karşılaştırılır,
+	// yoksa yalnız biçim denetlenir.
 	for _, pv := range []string{"3.12.4", "3.13.0", ""} {
-		sh := runShell(t, root, nil, "", "", "comp_env_id", req, pv)
 		got, err := EnvID(req, pv)
-		if err != nil || strings.TrimSpace(sh.stdout) != got {
-			t.Errorf("env_id %q: kabuk=%q go=%q %v", pv, sh.stdout, got, err)
+		if err != nil || !regexp.MustCompile(`^[0-9a-f]{16}$`).MatchString(got) {
+			t.Errorf("env_id %q: go=%q %v", pv, got, err)
+			continue
+		}
+		if lroot, ok := liveRoot(); ok {
+			sh := runShellLive(t, lroot, nil, "", "", "comp_env_id", req, pv)
+			if strings.TrimSpace(sh.stdout) != got {
+				t.Errorf("env_id %q: kabuk=%q go=%q", pv, sh.stdout, got)
+			}
 		}
 	}
 	// saplama: SSHPOCKET_PY_STUB_PATH ile verilen yol xcode-select -p başarısızsa atlanır (macOS dışı: asla stub değil)
@@ -189,13 +199,15 @@ func TestVenvEnsureMatchesShell(t *testing.T) {
 				Stdout, Stderr string
 				Snap           map[string]string
 			}
+			// ortam kimliği (16 onaltılık) işletim sistemi/mimariye bağlıdır: yer tutucuya çevrilir
+			reID := regexp.MustCompile(`[0-9a-f]{16}`)
 			cn := func(s, cache string) string {
-				return reTmp.ReplaceAllString(strings.ReplaceAll(s, cache, "<C>"), "<T>")
+				return reID.ReplaceAllString(reTmp.ReplaceAllString(strings.ReplaceAll(s, cache, "<C>"), "<T>"), "<ID>")
 			}
 			snapN := func(m map[string]string, cache string) map[string]string {
 				o := map[string]string{}
 				for k, v := range m {
-					o[k] = cn(v, cache)
+					o[cn(k, cache)] = cn(v, cache)
 				}
 				return o
 			}
