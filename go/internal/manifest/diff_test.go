@@ -8,14 +8,78 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
 	"testing"
+
+	"keylab/internal/shellgold"
 )
 
 // Kabuk motorundaki Python doğrulayıcı referanstır: aynı girdide çıkış kodu, stdout ve stderr aynı olmalı.
 // Bilinçli fark: Go, Python'un `$` ile kabul ettiği sondaki satır sonunu reddeder (TestTrailingNewlineStricter).
+
+// goldRoot: altın dosyalı testler için kök; oynatmada kabuk/python gerekmez, yalnız kayıt modunda gerekir.
+func goldRoot(t *testing.T) string {
+	t.Helper()
+	if os.Getenv("KEYLAB_KAYIT_KABUK") == "1" {
+		return repoRoot(t)
+	}
+	root, _ := filepath.Abs("../../..")
+	return root
+}
+
+var (
+	goldOnce  sync.Once
+	goldStore *shellgold.Store
+	reTmp     = regexp.MustCompile(`(?:/private)?(?:/var/folders/[^/\s]+/[^/\s]+/T|/tmp)/[^\s"']+`) // geçici yollar altın dosyaya girmesin
+)
+
+func goldDo[T any](t *testing.T, f func() T) T {
+	t.Helper()
+	goldOnce.Do(func() { goldStore = shellgold.Open(t, "shell") })
+	return shellgold.Do(t, goldStore, goldStore.Next(t), f)
+}
+
+// pyGold: python/kabuk çalışmasının kaydedilen biçimi (anahtar: test adı + sıra).
+type pyGold struct {
+	Code           int
+	Stdout, Stderr []string
+}
+
+func normSS(ss []string, extra string) []string {
+	if len(ss) == 0 {
+		return nil
+	}
+	out := make([]string, len(ss))
+	for i, l := range ss {
+		if extra != "" {
+			l = strings.ReplaceAll(l, extra, "<A>")
+		}
+		out[i] = reTmp.ReplaceAllString(l, "<T>")
+	}
+	return out
+}
+
+// ordered: harita gezintisini deterministik yapar (altın dosya anahtarı sıraya bağlı).
+type kv[V any] struct {
+	K string
+	V V
+}
+
+func ordered[V any](m map[string]V) []kv[V] {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	out := make([]kv[V], 0, len(keys))
+	for _, k := range keys {
+		out = append(out, kv[V]{k, m[k]})
+	}
+	return out
+}
 
 func repoRoot(t *testing.T) string {
 	t.Helper()

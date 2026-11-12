@@ -24,6 +24,38 @@ var testFnDef string
 
 func runBash(t *testing.T, root string, libs []string, fn string, args ...string) shOut {
 	t.Helper()
+	type bGold struct {
+		Code           int
+		Stdout, Stderr string
+	}
+	g := goldDo(t, func() bGold {
+		o := runBashLive(t, root, libs, fn, args...)
+		return bGold{o.code, reTmp.ReplaceAllString(o.stdout, "<T>"), reTmp.ReplaceAllString(o.stderr, "<T>")}
+	})
+	return shOut{g.Code, g.Stdout, g.Stderr}
+}
+
+// runBashF: runBash + kabuğun çalıştıktan sonra bıraktığı dosyaların durumu (yan etkili işlevler için; altın dosyadan).
+func runBashF(t *testing.T, root string, libs []string, fn string, files []string, args ...string) (shOut, []string) {
+	t.Helper()
+	type fGold struct {
+		Code           int
+		Stdout, Stderr string
+		States         []string
+	}
+	g := goldDo(t, func() fGold {
+		o := runBashLive(t, root, libs, fn, args...)
+		var st []string
+		for _, f := range files {
+			st = append(st, fileState(f))
+		}
+		return fGold{o.code, reTmp.ReplaceAllString(o.stdout, "<T>"), reTmp.ReplaceAllString(o.stderr, "<T>"), st}
+	})
+	return shOut{g.Code, g.Stdout, g.Stderr}, g.States
+}
+
+func runBashLive(t *testing.T, root string, libs []string, fn string, args ...string) shOut {
+	t.Helper()
 	script := `export SISTEM_PATH="$1"; shift; for l in $LIBS; do . "$SISTEM_PATH/Helpers/$l" || exit 99; done; if [ -n "$TEST_FN_DEF" ]; then eval "$TEST_FN_DEF"; fi; "$@"`
 	cmd := exec.Command("bash", append([]string{"-c", script, "_", filepath.Join(root, "referans/kabuk/sistem"), fn}, args...)...)
 	cmd.Env = append(os.Environ(), "LIBS="+strings.Join(libs, " "), "TEST_FN_DEF="+testFnDef)
@@ -49,7 +81,7 @@ func fileState(p string) string {
 }
 
 func TestVarsFileOpsMatchShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	inits := map[string]string{
 		"yok":           "\x00",
 		"bos":           "",
@@ -68,7 +100,8 @@ func TestVarsFileOpsMatchShell(t *testing.T) {
 		{"set", "1x", "x"}, {"set", "", "x"},
 		{"unset", "a", ""}, {"unset", "b", ""}, {"unset", "yok", ""}, {"unset", "A", ""},
 	}
-	for iname, content := range inits {
+	for _, ip := range ordered(inits) {
+		iname, content := ip.K, ip.V
 		for _, o := range ops {
 			dir := t.TempDir()
 			sf, gf := filepath.Join(dir, "sh.vars"), filepath.Join(dir, "go.vars")
@@ -77,13 +110,14 @@ func TestVarsFileOpsMatchShell(t *testing.T) {
 				os.WriteFile(gf, []byte(content), 0o644)
 			}
 			var sh shOut
+			var shStates []string
 			var gerr error
 			switch o.kind {
 			case "set":
-				sh = runBash(t, root, []string{"ComponentsVars.sh"}, "comp_vars_set", sf, o.name, o.val)
+				sh, shStates = runBashF(t, root, []string{"ComponentsVars.sh"}, "comp_vars_set", []string{sf}, sf, o.name, o.val)
 				gerr = VarsSet(gf, o.name, o.val)
 			case "unset":
-				sh = runBash(t, root, []string{"ComponentsVars.sh"}, "comp_vars_unset", sf, o.name)
+				sh, shStates = runBashF(t, root, []string{"ComponentsVars.sh"}, "comp_vars_unset", []string{sf}, sf, o.name)
 				gerr = VarsUnset(gf, o.name)
 			}
 			gcode := 0
@@ -98,7 +132,7 @@ func TestVarsFileOpsMatchShell(t *testing.T) {
 			if gerr != nil && sh.stderr != "" && strings.TrimSpace(sh.stderr) != gerr.Error() {
 				t.Errorf("%s: ileti kabuk=%q go=%q", label, sh.stderr, gerr)
 			}
-			if a, b := fileState(sf), fileState(gf); a != b {
+			if a, b := shStates[0], fileState(gf); a != b {
 				t.Errorf("%s: dosya farkı\n kabuk=%s\n go   =%s", label, a, b)
 			}
 			// get: aynı dosya durumunda aynı değer
@@ -153,7 +187,7 @@ func TestVarsSetKeepsBackslash(t *testing.T) {
 }
 
 func TestShellMangledBackslashOnExistingFile(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	f := filepath.Join(t.TempDir(), "v.vars")
 	os.WriteFile(f, []byte("x=1\n"), 0o600)
 	runBash(t, root, []string{"ComponentsVars.sh"}, "comp_vars_set", f, "p", `a\nq=evil`)
@@ -182,7 +216,7 @@ func TestVarsMissingMatchesShell(t *testing.T) {
 			} else {
 				os.Remove(vf)
 			}
-			sh := runBash(t, root, []string{"ComponentsRun.sh", "ComponentsVars.sh"}, "comp_vars_missing", p, vf)
+			sh := runBashLive(t, root, []string{"ComponentsRun.sh", "ComponentsVars.sh"}, "comp_vars_missing", p, vf)
 			want := splitLines(sh.stdout)
 			got := VarsMissing(p, vf)
 			if !reflect.DeepEqual(got, want) {
@@ -195,7 +229,7 @@ func TestVarsMissingMatchesShell(t *testing.T) {
 			for _, n := range miss {
 				VarsSet(vf, n, "x")
 			}
-			sh := runBash(t, root, []string{"ComponentsRun.sh", "ComponentsVars.sh"}, "comp_vars_missing", p, vf)
+			sh := runBashLive(t, root, []string{"ComponentsRun.sh", "ComponentsVars.sh"}, "comp_vars_missing", p, vf)
 			if got := VarsMissing(p, vf); !reflect.DeepEqual(got, splitLines(sh.stdout)) {
 				t.Errorf("doldurma sonrası fark: kabuk=%q go=%q", sh.stdout, got)
 			}
@@ -211,7 +245,7 @@ func TestVarsSaveMatchesShell(t *testing.T) {
 		sf, gf := filepath.Join(dir, "s.vars"), filepath.Join(dir, "g.vars")
 		os.Remove(sf)
 		os.Remove(gf)
-		sh := runBash(t, root, []string{"ComponentsRun.sh", "ComponentsVars.sh"}, "comp_vars_save", p, sf, c[0], c[1])
+		sh := runBashLive(t, root, []string{"ComponentsRun.sh", "ComponentsVars.sh"}, "comp_vars_save", p, sf, c[0], c[1])
 		warn, err := VarsSave(p, gf, c[0], c[1])
 		gcode := 0
 		if err != nil {
@@ -224,7 +258,7 @@ func TestVarsSaveMatchesShell(t *testing.T) {
 }
 
 func TestInventoryMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	type c struct{ group, alias, host, user, port, key, become string }
 	base := c{"Grup", "srv1", "10.0.0.5", "root", "22", "/home/u/.ssh/id", ""}
 	cases := []c{base}
@@ -258,14 +292,14 @@ func TestInventoryMatchesShell(t *testing.T) {
 	for i, cs := range cases {
 		dir := t.TempDir()
 		sf, gf := filepath.Join(dir, "sh.ini"), filepath.Join(dir, "go.ini")
-		sh := runBash(t, root, []string{"ComponentsRun.sh"}, "comp_run_write_inventory", sf, cs.group, cs.alias, cs.host, cs.user, cs.port, cs.key, cs.become)
+		sh, shStates := runBashF(t, root, []string{"ComponentsRun.sh"}, "comp_run_write_inventory", []string{sf}, sf, cs.group, cs.alias, cs.host, cs.user, cs.port, cs.key, cs.become)
 		err := WriteInventory(gf, cs.group, cs.alias, cs.host, cs.user, cs.port, cs.key, cs.become)
 		gcode := 0
 		if err != nil {
 			gcode = 1
 		}
-		if sh.code != gcode || fileState(sf) != fileState(gf) || (err != nil && strings.TrimSpace(sh.stderr) != err.Error()) {
-			t.Errorf("#%d %+v: kabuk=%d %q go=%v\n kabuk dosya=%s\n go dosya   =%s", i, cs, sh.code, sh.stderr, err, fileState(sf), fileState(gf))
+		if sh.code != gcode || shStates[0] != fileState(gf) || (err != nil && strings.TrimSpace(sh.stderr) != err.Error()) {
+			t.Errorf("#%d %+v: kabuk=%d %q go=%v\n kabuk dosya=%s\n go dosya   =%s", i, cs, sh.code, sh.stderr, err, shStates[0], fileState(gf))
 		}
 	}
 	// var olan dosyanın üzerine yazmaz
@@ -287,7 +321,7 @@ func TestBuildArgvMatchesShell(t *testing.T) {
 	defer func() { testFnDef = "" }()
 	check := func(label string, info []string, action string) {
 		t.Helper()
-		sh := runBash(t, root, libs, "th", strings.Join(info, "\n"), action)
+		sh := runBashLive(t, root, libs, "th", strings.Join(info, "\n"), action)
 		argv, inter, err := BuildArgv(info, action, "/tmp/inv.ini", "srvx", "/tmp/vars.json")
 		gcode := 0
 		if err != nil {
@@ -346,7 +380,7 @@ func TestBuildArgvMatchesShell(t *testing.T) {
 }
 
 func TestNetSuggestForMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	for _, a := range []string{"10.0.0.5/24", "10.0.0.5", "::1", "fe80::1/64", "10.0.0.5/32", "10.0.0.5/33", "10.0.0.5/x", "x/24", "10.0.0.5/", "2001:db8::5/128", "1.2.3.4/0", "1.2.3.4/1000"} {
 		sh := runBash(t, root, []string{"ComponentsRun.sh", "ComponentsVars.sh"}, "comp_net_suggest", a)
 		l, c := NetSuggestFor(a)
@@ -357,7 +391,7 @@ func TestNetSuggestForMatchesShell(t *testing.T) {
 }
 
 func TestInfoAccessorsMatchShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	info := []string{"id=x", "action=a", "action=b", "action.a.platforms=ubuntu-26.04,debian-13", "action.b.cmd=c d", "runner=ansible", "x=a=b"}
 	for _, k := range []string{"id", "action", "x", "yok", "action.a.platforms"} {
 		sh := runBash(t, root, []string{"ComponentsManifest.sh"}, "comp_info_get", strings.Join(info, "\n"), k)

@@ -19,6 +19,15 @@ import (
 
 func runValidatePy(t *testing.T, root string, args ...string) pyOut {
 	t.Helper()
+	g := goldDo(t, func() pyGold {
+		o := runValidatePyLive(t, root, args...)
+		return pyGold{o.code, normSS(o.stdout, args[0]), normSS(o.stderr, args[0])}
+	})
+	return pyOut{g.Code, g.Stdout, g.Stderr}
+}
+
+func runValidatePyLive(t *testing.T, root string, args ...string) pyOut {
+	t.Helper()
 	cmd := exec.Command("python3", append([]string{"-I", filepath.Join(root, "referans/kabuk/sistem/Helpers/component_validate.py")}, args...)...)
 	var so, se bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &so, &se
@@ -43,6 +52,24 @@ func cmpValidate(t *testing.T, label, root, arg string, strict, unsigned bool) {
 	}
 	py := runValidatePy(t, root, args...)
 	lines, code := ValidatePackage(arg, strict, unsigned)
+	lines = normSS(lines, arg)
+	// Python çıktısı "...\n\nSonuç" biçimindedir; yalnızca sondaki boş satırı kırpar
+	if code != py.code || !reflect.DeepEqual(lines, py.stdout) {
+		t.Errorf("%s: fark\n--- python (kod %d)\n%s\n--- go (kod %d)\n%s", label, py.code, strings.Join(py.stdout, "\n"), code, strings.Join(lines, "\n"))
+	}
+}
+
+func cmpValidateLive(t *testing.T, label, root, arg string, strict, unsigned bool) {
+	t.Helper()
+	args := []string{arg}
+	if strict {
+		args = append(args, "--strict")
+	}
+	if unsigned {
+		args = append(args, "--unsigned")
+	}
+	py := runValidatePyLive(t, root, args...)
+	lines, code := ValidatePackage(arg, strict, unsigned)
 	// Python çıktısı "...\n\nSonuç" biçimindedir; yalnızca sondaki boş satırı kırpar
 	if code != py.code || !reflect.DeepEqual(lines, py.stdout) {
 		t.Errorf("%s: fark\n--- python (kod %d)\n%s\n--- go (kod %d)\n%s", label, py.code, strings.Join(py.stdout, "\n"), code, strings.Join(lines, "\n"))
@@ -61,8 +88,8 @@ func TestValidatePackageRealDirs(t *testing.T) {
 	for _, p := range realManifests(t, root) {
 		dir := filepath.Dir(p)
 		rel, _ := filepath.Rel(root, dir)
-		cmpValidate(t, rel, root, dir, false, false)
-		cmpValidate(t, rel+" --strict", root, dir, true, false)
+		cmpValidateLive(t, rel, root, dir, false, false)
+		cmpValidateLive(t, rel+" --strict", root, dir, true, false)
 	}
 }
 
@@ -157,8 +184,8 @@ func TestValidatePackageMutations(t *testing.T) {
 				d := filepath.Join(t.TempDir(), "pkg")
 				copyTree(t, filepath.Join(root, src), d)
 				m.fn(t, d)
-				cmpValidate(t, src+" "+m.name, root, d, false, false)
-				cmpValidate(t, src+" "+m.name+" --strict", root, d, true, false)
+				cmpValidateLive(t, src+" "+m.name, root, d, false, false)
+				cmpValidateLive(t, src+" "+m.name+" --strict", root, d, true, false)
 			})
 		}
 	}
@@ -197,11 +224,15 @@ func sortStrings(s []string) {
 }
 
 func TestValidatePackageArchives(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	// gerçek paket → <id>-<sürüm>.tar.gz
 	for _, src := range []string{"components/utility/0.1.0", "components/kurulum/0.1.0"} {
 		if _, err := os.Stat(filepath.Join(root, src)); err != nil {
 			t.Logf("atlandı (paket yok; components/ eşitlenmemiş): %s", src)
+			continue
+		}
+		// gerçek paketler makineye bağlıdır (tar'ın ek dosyaları, yerel paket içeriği): altın dosyaya girmez, yalnız kabuk/python varsa canlı
+		if _, err := os.Stat(filepath.Join(root, "referans/kabuk/sistem/Helpers/component_validate.py")); err != nil {
 			continue
 		}
 		parts := strings.Split(src, "/")
@@ -213,10 +244,10 @@ func TestValidatePackageArchives(t *testing.T) {
 		if out, err := exec.Command("tar", "czf", arc, "-C", tmp, id+"-"+ver).CombinedOutput(); err != nil {
 			t.Fatalf("tar: %v %s", err, out)
 		}
-		cmpValidate(t, id+" arşiv imzasız", root, arc, false, false)
-		cmpValidate(t, id+" arşiv --unsigned", root, arc, false, true)
+		cmpValidateLive(t, id+" arşiv imzasız", root, arc, false, false)
+		cmpValidateLive(t, id+" arşiv --unsigned", root, arc, false, true)
 		os.WriteFile(arc+".sig", []byte("sig"), 0o644)
-		cmpValidate(t, id+" arşiv .sig", root, arc, false, false)
+		cmpValidateLive(t, id+" arşiv .sig", root, arc, false, false)
 	}
 	man := `{"id":"abc","version":"1.0.0","sshpocket_api":1,"runner":"ansible","profiles":[{"id":"ubuntu-26.04","status":"supported"}],"actions":{"durum":{"cmd":"ansible-playbook playbooks/x.yml","effects":[]}}}`
 	tmp := t.TempDir()
@@ -236,7 +267,8 @@ func TestValidatePackageArchives(t *testing.T) {
 			tw.WriteHeader(&tar.Header{Name: "abc-1.0.0/bag", Linkname: "/etc/passwd", Typeflag: tar.TypeSymlink, Mode: 0o777})
 		}, true},
 	}
-	for name, c := range cases {
+	for _, p := range ordered(cases) {
+		name, c := p.K, p.V
 		arc := filepath.Join(tmp, c.name)
 		makeArchive(t, arc, c.files, c.extra)
 		cmpValidate(t, "arşiv "+name, root, arc, false, true)
