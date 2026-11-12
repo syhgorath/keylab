@@ -233,16 +233,17 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		if r.Method == http.MethodPost {
 			var req struct {
-				Server, Package, Action, Confirm string
-				Snapshot                         bool
-				AckDestructive                   bool
+				Server, Package, Action, Item, Confirm string
+				Snapshot                               bool
+				AckDestructive                         bool
 			}
 			if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req) != nil ||
-				!reName.MatchString(req.Server) || !reName.MatchString(req.Package) || !reAction.MatchString(req.Action) {
+				!reName.MatchString(req.Server) || !reName.MatchString(req.Package) || !reAction.MatchString(req.Action) ||
+				(req.Item != "" && !reName.MatchString(req.Item)) {
 				http.Error(w, "geçersiz istek", http.StatusBadRequest)
 				return
 			}
-			j, code, err := app.startJob(req.Server, req.Package, req.Action, req.Snapshot, req.Confirm, req.AckDestructive)
+			j, code, err := app.startJob(req.Server, req.Package, req.Action, req.Item, req.Snapshot, req.Confirm, req.AckDestructive)
 			if err != nil {
 				http.Error(w, err.Error(), code)
 				return
@@ -513,13 +514,17 @@ func main() {
 			return
 		}
 		var req struct {
-			Server, Package, Action, Confirm string
-			Snapshot                         bool
-			AckDestructive                   bool
+			Server, Package, Action, Item, Confirm string
+			Snapshot                               bool
+			AckDestructive                         bool
 		}
 		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req) != nil ||
 			!reName.MatchString(req.Server) || !reName.MatchString(req.Package) || !reAction.MatchString(req.Action) {
 			http.Error(w, "geçersiz istek", http.StatusBadRequest)
+			return
+		}
+		if req.Item != "" { // macOS Terminal komutu öğe seçimi taşımaz: öğe eylemleri yalnız uygulama içinde (kapılı iş olarak) çalışır
+			http.Error(w, "öğe eylemleri macOS Terminal'de açılamaz; uygulama içinde çalıştırın", http.StatusBadRequest)
 			return
 		}
 		if _, code, err := app.authorizeRun(req.Server, req.Package, req.Action, req.Snapshot, req.Confirm, req.AckDestructive); err != nil {

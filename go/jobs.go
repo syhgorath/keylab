@@ -155,51 +155,78 @@ func validUTF8Prefix(b []byte) int {
 
 // findAction: sunucu ve paket için eylem üst verisini bulur (istemciye güvenilmez)
 func (a *App) findAction(server, pkg, action string) (*ActionInfo, error) {
+	ai, _, err := a.findActionItem(server, pkg, action, "")
+	return ai, err
+}
+
+// findActionItem: item doluysa eylem o katalog öğesi için aranır: öğe paketin `items` listesinde olmalı ve (liste doluysa) eylem öğenin
+// `actions` listesinde olmalıdır; önkoşul/son sonuç durumu O ÖĞENİN kapsamında hesaplanır. Dönen ikinci değer paketin `item_var` adıdır.
+func (a *App) findActionItem(server, pkg, action, item string) (*ActionInfo, string, error) {
 	s, ok := a.findServer(server)
 	if !ok || !s.Valid {
-		return nil, fmt.Errorf("sunucu yok ya da yapılandırması geçersiz")
+		return nil, "", fmt.Errorf("sunucu yok ya da yapılandırması geçersiz")
 	}
-	for _, p := range a.packageInfos(s) {
+	for _, p := range a.packageInfosFor(s, item) {
 		if p.ID != pkg {
 			continue
 		}
+		if item != "" {
+			var it *ItemInfo
+			for i := range p.Items {
+				if p.Items[i].ID == item {
+					it = &p.Items[i]
+				}
+			}
+			if it == nil {
+				return nil, "", fmt.Errorf("katalogda olmayan öğe: %s", item)
+			}
+			if len(it.Actions) > 0 && !strings.Contains(","+strings.Join(it.Actions, ",")+",", ","+action+",") {
+				return nil, "", fmt.Errorf("%s için '%s' eylemi tanımlı değil", item, action)
+			}
+		}
 		for i := range p.Actions {
 			if p.Actions[i].ID == action {
-				return &p.Actions[i], nil
+				return &p.Actions[i], p.ItemVar, nil
 			}
 		}
 	}
-	return nil, fmt.Errorf("paket ya da eylem bulunamadı")
+	return nil, "", fmt.Errorf("paket ya da eylem bulunamadı")
 }
 
 // authorizeRun: eylem arayüzden çalıştırılabilir mi, gerekli onaylar tamam mı? (yazan eylemlerde onaylar burada yeniden denetlenir)
 func (a *App) authorizeRun(server, pkg, action string, snapshot bool, confirm string, ackDestructive bool) (*ActionInfo, int, error) {
-	ai, err := a.findAction(server, pkg, action)
+	ai, _, code, err := a.authorizeRunItem(server, pkg, action, "", snapshot, confirm, ackDestructive)
+	return ai, code, err
+}
+
+// authorizeRunItem: authorizeRun'ın öğe kapsamlı hali (item boşsa aynısı). Dönen string paketin item_var adıdır (item doluysa).
+func (a *App) authorizeRunItem(server, pkg, action, item string, snapshot bool, confirm string, ackDestructive bool) (*ActionInfo, string, int, error) {
+	ai, itemVar, err := a.findActionItem(server, pkg, action, item)
 	if err != nil {
-		return nil, http.StatusConflict, err
+		return nil, "", http.StatusConflict, err
 	}
 	switch {
 	case ai.Runnable || ai.Terminal:
 	case ai.Write:
 		if !snapshot {
-			return nil, http.StatusBadRequest, fmt.Errorf("snapshot onayı gerekli")
+			return nil, "", http.StatusBadRequest, fmt.Errorf("snapshot onayı gerekli")
 		}
 		if !confirmOK(*ai, server, confirm) {
-			return nil, http.StatusBadRequest, fmt.Errorf("onay eşleşmedi")
+			return nil, "", http.StatusBadRequest, fmt.Errorf("onay eşleşmedi")
 		}
 		if ai.Destructive {
 			// yıkıcı eylem: motorun kuralı ne olursa olsun sunucu adı birebir yazılmalı ve geri alınamama onayı verilmeli
 			if confirm != server {
-				return nil, http.StatusBadRequest, fmt.Errorf("yıkıcı eylem: onay için sunucu adı birebir yazılmalı")
+				return nil, "", http.StatusBadRequest, fmt.Errorf("yıkıcı eylem: onay için sunucu adı birebir yazılmalı")
 			}
 			if !ackDestructive {
-				return nil, http.StatusBadRequest, fmt.Errorf("yıkıcı eylem: geri alınamayabileceğini onaylamalısınız")
+				return nil, "", http.StatusBadRequest, fmt.Errorf("yıkıcı eylem: geri alınamayabileceğini onaylamalısınız")
 			}
 		}
 	default:
-		return nil, http.StatusConflict, fmt.Errorf("bu eylem arayüzden çalıştırılamaz: %s", ai.Reason)
+		return nil, "", http.StatusConflict, fmt.Errorf("bu eylem arayüzden çalıştırılamaz: %s", ai.Reason)
 	}
-	return ai, 0, nil
+	return ai, itemVar, 0, nil
 }
 
 // ptyArgv: komutu sahte terminal altında çalıştıran sarmalayıcı (macOS/BSD ve Linux script)
@@ -309,17 +336,28 @@ func (a *App) newJob(server, pkg, action string) (*Job, error) {
 	return job, nil
 }
 
+// runArgv: `keylab run` komut satırı. Öğe seçimi koşuya özel `-set <item_var>=<öğe>` ile verilir (değer dosyasına yazılmaz; motor
+// kapsamı ve kapıları aynı seçimle yeniden hesaplar).
+func runArgv(exe, servers, comps, state, pkg, action, server, itemVar, item string) []string {
+	argv := []string{exe, "run", "-servers", servers, "-components", comps, "-state", state}
+	if item != "" && itemVar != "" {
+		argv = append(argv, "-set", itemVar+"="+item)
+	}
+	return append(argv, pkg, action, server)
+}
+
 // startJob: eylemi pty altında Go yürütücüsüyle (`keylab run`) çalıştırır. Kapılar, günlük ve sonuç kaydı yürütücünün işidir.
-func (a *App) startJob(server, pkg, action string, snapshot bool, confirm string, ackDestructive bool) (*Job, int, error) {
-	if _, code, err := a.authorizeRun(server, pkg, action, snapshot, confirm, ackDestructive); err != nil {
-		return nil, code, err
+func (a *App) startJob(server, pkg, action, item string, snapshot bool, confirm string, ackDestructive bool) (*Job, int, error) {
+	_, itemVar, code, err0 := a.authorizeRunItem(server, pkg, action, item, snapshot, confirm, ackDestructive)
+	if err0 != nil {
+		return nil, code, err0
 	}
 	root := filepath.Dir(filepath.Clean(a.compDir))
 	exe, err := os.Executable() // eylemi Go yürütücüsü (internal/runner) çalıştırır: kendi ikilimiz, `run` alt komutu
 	if err != nil {
 		return nil, http.StatusInternalServerError, fmt.Errorf("sshpocket ikilisinin yolu bulunamadı: %w", err)
 	}
-	argv := []string{exe, "run", "-servers", a.serversDir, "-components", a.compDir, "-state", a.stateDir, pkg, action, server}
+	argv := runArgv(exe, a.serversDir, a.compDir, a.stateDir, pkg, action, server, itemVar, item)
 	job, err := a.newJob(server, pkg, action)
 	if err != nil {
 		return nil, http.StatusConflict, err

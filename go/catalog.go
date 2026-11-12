@@ -70,6 +70,8 @@ type ItemInfo struct {
 	Modes       []string `json:"modes,omitempty"`
 	Actions     []string `json:"actions,omitempty"`
 	Params      []string `json:"params,omitempty"`
+	// States: öğenin eylemleri için BU öğenin kapsamında hesaplanmış durum (önkoşul, son sonuç, çalıştırılabilirlik); arayüz öğe düğmelerini bundan çizer.
+	States map[string]ActionInfo `json:"states,omitempty"`
 }
 
 type PackageInfo struct {
@@ -183,156 +185,186 @@ func lastResults(path, scope string) map[string][2]string {
 	return out
 }
 
-func (a *App) packageInfos(s Server) []PackageInfo {
+func (a *App) packageInfos(s Server) []PackageInfo { return a.packageInfosFor(s, "") }
+
+// packageInfosFor: item doluysa kapsam (önkoşul rozetleri, son sonuçlar) o katalog öğesi için hesaplanır; boşsa şimdiki seçim için.
+func (a *App) packageInfosFor(s Server, item string) []PackageInfo {
 	pkgs, _ := a.packages()
 	out := []PackageInfo{}
 	for _, p := range pkgs {
-		if !reName.MatchString(p.ID) || !reVer.MatchString(p.Version) {
-			continue
+		if info, ok := a.buildPackageInfo(s, p, item); ok {
+			out = append(out, info)
 		}
-		b, err := os.ReadFile(filepath.Join(a.compDir, p.ID, p.Version, "component.json"))
-		if err != nil {
-			continue
-		}
-		var c struct {
-			Name        string `json:"name"`
-			Description string `json:"description"`
-			ItemVar     string `json:"item_var"`
-			ModeVar     string `json:"mode_var"`
-			Items       []struct {
-				ID          string   `json:"id"`
-				Label       string   `json:"label"`
-				Description string   `json:"description"`
-				Modes       []string `json:"modes"`
-				Actions     []string `json:"actions"`
-				Params      []string `json:"params"`
-			} `json:"items"`
-			Actions map[string]struct {
-				Effects      []string `json:"effects"`
-				RequiresSudo bool     `json:"requires_sudo"`
-				Confirm      string   `json:"confirm"`
-				Requires     []string `json:"requires"`
-				Warnings     []string `json:"warnings"`
-				Platforms    []string `json:"platforms"`
-				RequiresVars []string `json:"requires_vars"`
-			} `json:"actions"`
-			Vars []struct {
-				Name        string          `json:"name"`
-				Group       string          `json:"group"`
-				Type        string          `json:"type"`
-				Values      []string        `json:"values"`
-				Default     json.RawMessage `json:"default"`
-				Description string          `json:"description"`
-			} `json:"vars"`
-		}
-		if json.Unmarshal(b, &c) != nil {
-			continue
-		}
-		info := PackageInfo{ID: p.ID, Version: p.Version, Name: c.Name, Description: c.Description, Vars: []VarInfo{}}
-		if reName.MatchString(c.ItemVar) && len(c.Items) > 0 {
-			info.ItemVar = c.ItemVar
-			if reName.MatchString(c.ModeVar) {
-				info.ModeVar = c.ModeVar
-			}
-			raw := make([]ItemInfo, 0, len(c.Items))
-			for _, it := range c.Items {
-				raw = append(raw, ItemInfo{ID: it.ID, Label: it.Label, Description: it.Description, Modes: it.Modes, Actions: it.Actions, Params: it.Params})
-			}
-			info.Items = cleanItems(raw)
-		}
-		sdir := filepath.Join(a.stateDir, p.ID, s.Name)
-		// kapsam: `items` bildiren pakette şimdiki seçim (değer dosyası/varsayılan); okunamazsa hiçbir kayıtla eşleşmeyen kapsam
-		scope := ""
-		if info.ItemVar != "" {
-			scope = "\x00"
-			names := []string{info.ItemVar}
-			if info.ModeVar != "" {
-				names = append(names, info.ModeVar)
-			}
-			if ev, err := manifest.EffectiveVars(filepath.Join(a.compDir, p.ID, p.Version, "component.json"), filepath.Join(a.serversDir, s.Name, p.ID+".vars"), nil, names...); err == nil {
-				scope = ev[info.ItemVar] + ":" + ev[info.ModeVar]
-			}
-		}
-		last := lastResults(filepath.Join(sdir, "results"), scope)
-		// sunucuya özel değişkenler: servers/<ad>/<paket>.vars (anahtar=değer); yalnızca ayarlı olanlar ve eylemlerin zorunlu kıldıkları gösterilir
-		set := parseEnv(filepath.Join(a.serversDir, s.Name, p.ID+".vars"))
-		needed := map[string]bool{}
-		for _, x := range c.Actions {
-			for _, v := range x.RequiresVars {
-				needed[v] = true
-			}
-		}
-		for _, v := range c.Vars {
-			val, isSet := set[v.Name]
-			if !reName.MatchString(v.Name) || (!isSet && !needed[v.Name]) {
-				continue
-			}
-			def := strings.Trim(string(v.Default), `"`)
-			if def == "null" {
-				def = ""
-			}
-			vi := VarInfo{Name: v.Name, Group: v.Group, Type: v.Type, Values: v.Values, Default: def, Description: v.Description, Value: val, Set: isSet && val != "", Needed: needed[v.Name]}
-			if len(vi.Description) > 600 {
-				vi.Description = vi.Description[:600]
-			}
-			if len(vi.Value) > 300 {
-				vi.Value = vi.Value[:300]
-			}
-			info.Vars = append(info.Vars, vi)
-		}
-		for id, x := range c.Actions {
-			if !reName.MatchString(id) {
-				continue
-			}
-			ai := ActionInfo{ID: id, Effects: x.Effects, RequiresSud: x.RequiresSudo, Confirm: x.Confirm, Requires: x.Requires, Warnings: x.Warnings, Platforms: x.Platforms, Applicable: len(x.Platforms) == 0}
-			for _, pl := range x.Platforms {
-				if pl == s.Platform {
-					ai.Applicable = true
-				}
-			}
-			for _, e := range x.Effects {
-				if e == "destructive" {
-					ai.Destructive = true
-				}
-			}
-			ai.PrereqsOK = true
-			for _, rq := range x.Requires {
-				pr := Prereq{Action: rq}
-				if r, ok := last[rq]; ok {
-					pr.Result = r[1]
-					if t, err := time.Parse(time.RFC3339, r[0]); err == nil {
-						pr.AgeSec = int64(time.Since(t).Seconds())
-						pr.OK = r[1] == "ok" && pr.AgeSec <= prereqTTL
-					}
-				}
-				if !pr.OK {
-					ai.PrereqsOK = false
-				}
-				ai.Prereqs = append(ai.Prereqs, pr)
-			}
-			ai.RequiresVars = x.RequiresVars
-			for _, rv := range x.RequiresVars {
-				if val, ok := set[rv]; !ok || strings.TrimSpace(val) == "" {
-					ai.MissingVars = append(ai.MissingVars, rv)
-				}
-			}
-			ai.Runnable, ai.Terminal, ai.Write, ai.Reason = classify(ai)
-			ts, keys := readResultFile(filepath.Join(sdir, "result."+id))
-			ai.Keys = keys
-			ai.LastTime = ts
-			if r, ok := last[id]; ok {
-				ai.LastTime, ai.LastResult = r[0], r[1]
-			}
-			info.Actions = append(info.Actions, ai)
-		}
-		sort.Slice(info.Actions, func(i, j int) bool {
-			oi, oj := orderIndex(info.Actions[i].ID), orderIndex(info.Actions[j].ID)
-			if oi != oj {
-				return oi < oj
-			}
-			return info.Actions[i].ID < info.Actions[j].ID
-		})
-		out = append(out, info)
 	}
 	return out
+}
+
+func (a *App) buildPackageInfo(s Server, p Package, itemOverride string) (PackageInfo, bool) {
+	if !reName.MatchString(p.ID) || !reVer.MatchString(p.Version) {
+		return PackageInfo{}, false
+	}
+	b, err := os.ReadFile(filepath.Join(a.compDir, p.ID, p.Version, "component.json"))
+	if err != nil {
+		return PackageInfo{}, false
+	}
+	var c struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		ItemVar     string `json:"item_var"`
+		ModeVar     string `json:"mode_var"`
+		Items       []struct {
+			ID          string   `json:"id"`
+			Label       string   `json:"label"`
+			Description string   `json:"description"`
+			Modes       []string `json:"modes"`
+			Actions     []string `json:"actions"`
+			Params      []string `json:"params"`
+		} `json:"items"`
+		Actions map[string]struct {
+			Effects      []string `json:"effects"`
+			RequiresSudo bool     `json:"requires_sudo"`
+			Confirm      string   `json:"confirm"`
+			Requires     []string `json:"requires"`
+			Warnings     []string `json:"warnings"`
+			Platforms    []string `json:"platforms"`
+			RequiresVars []string `json:"requires_vars"`
+		} `json:"actions"`
+		Vars []struct {
+			Name        string          `json:"name"`
+			Group       string          `json:"group"`
+			Type        string          `json:"type"`
+			Values      []string        `json:"values"`
+			Default     json.RawMessage `json:"default"`
+			Description string          `json:"description"`
+		} `json:"vars"`
+	}
+	if json.Unmarshal(b, &c) != nil {
+		return PackageInfo{}, false
+	}
+	info := PackageInfo{ID: p.ID, Version: p.Version, Name: c.Name, Description: c.Description, Vars: []VarInfo{}}
+	if reName.MatchString(c.ItemVar) && len(c.Items) > 0 {
+		info.ItemVar = c.ItemVar
+		if reName.MatchString(c.ModeVar) {
+			info.ModeVar = c.ModeVar
+		}
+		raw := make([]ItemInfo, 0, len(c.Items))
+		for _, it := range c.Items {
+			raw = append(raw, ItemInfo{ID: it.ID, Label: it.Label, Description: it.Description, Modes: it.Modes, Actions: it.Actions, Params: it.Params})
+		}
+		info.Items = cleanItems(raw)
+	}
+	sdir := filepath.Join(a.stateDir, p.ID, s.Name)
+	// kapsam: `items` bildiren pakette şimdiki seçim (değer dosyası/varsayılan); okunamazsa hiçbir kayıtla eşleşmeyen kapsam
+	scope := ""
+	if info.ItemVar != "" {
+		scope = "\x00"
+		names := []string{info.ItemVar}
+		if info.ModeVar != "" {
+			names = append(names, info.ModeVar)
+		}
+		var forced map[string]string
+		if itemOverride != "" {
+			forced = map[string]string{info.ItemVar: itemOverride} // bu öğe için hesapla (seçim değişkeninin değerinden bağımsız)
+		}
+		if ev, err := manifest.EffectiveVars(filepath.Join(a.compDir, p.ID, p.Version, "component.json"), filepath.Join(a.serversDir, s.Name, p.ID+".vars"), forced, names...); err == nil {
+			scope = ev[info.ItemVar] + ":" + ev[info.ModeVar]
+		}
+	}
+	last := lastResults(filepath.Join(sdir, "results"), scope)
+	// sunucuya özel değişkenler: servers/<ad>/<paket>.vars (anahtar=değer); yalnızca ayarlı olanlar ve eylemlerin zorunlu kıldıkları gösterilir
+	set := parseEnv(filepath.Join(a.serversDir, s.Name, p.ID+".vars"))
+	needed := map[string]bool{}
+	for _, x := range c.Actions {
+		for _, v := range x.RequiresVars {
+			needed[v] = true
+		}
+	}
+	for _, v := range c.Vars {
+		val, isSet := set[v.Name]
+		if !reName.MatchString(v.Name) || (!isSet && !needed[v.Name]) {
+			continue
+		}
+		def := strings.Trim(string(v.Default), `"`)
+		if def == "null" {
+			def = ""
+		}
+		vi := VarInfo{Name: v.Name, Group: v.Group, Type: v.Type, Values: v.Values, Default: def, Description: v.Description, Value: val, Set: isSet && val != "", Needed: needed[v.Name]}
+		if len(vi.Description) > 600 {
+			vi.Description = vi.Description[:600]
+		}
+		if len(vi.Value) > 300 {
+			vi.Value = vi.Value[:300]
+		}
+		info.Vars = append(info.Vars, vi)
+	}
+	for id, x := range c.Actions {
+		if !reName.MatchString(id) {
+			continue
+		}
+		ai := ActionInfo{ID: id, Effects: x.Effects, RequiresSud: x.RequiresSudo, Confirm: x.Confirm, Requires: x.Requires, Warnings: x.Warnings, Platforms: x.Platforms, Applicable: len(x.Platforms) == 0}
+		for _, pl := range x.Platforms {
+			if pl == s.Platform {
+				ai.Applicable = true
+			}
+		}
+		for _, e := range x.Effects {
+			if e == "destructive" {
+				ai.Destructive = true
+			}
+		}
+		ai.PrereqsOK = true
+		for _, rq := range x.Requires {
+			pr := Prereq{Action: rq}
+			if r, ok := last[rq]; ok {
+				pr.Result = r[1]
+				if t, err := time.Parse(time.RFC3339, r[0]); err == nil {
+					pr.AgeSec = int64(time.Since(t).Seconds())
+					pr.OK = r[1] == "ok" && pr.AgeSec <= prereqTTL
+				}
+			}
+			if !pr.OK {
+				ai.PrereqsOK = false
+			}
+			ai.Prereqs = append(ai.Prereqs, pr)
+		}
+		ai.RequiresVars = x.RequiresVars
+		for _, rv := range x.RequiresVars {
+			if val, ok := set[rv]; !ok || strings.TrimSpace(val) == "" {
+				ai.MissingVars = append(ai.MissingVars, rv)
+			}
+		}
+		ai.Runnable, ai.Terminal, ai.Write, ai.Reason = classify(ai)
+		ts, keys := readResultFile(filepath.Join(sdir, "result."+id))
+		ai.Keys = keys
+		ai.LastTime = ts
+		if r, ok := last[id]; ok {
+			ai.LastTime, ai.LastResult = r[0], r[1]
+		}
+		info.Actions = append(info.Actions, ai)
+	}
+	sort.Slice(info.Actions, func(i, j int) bool {
+		oi, oj := orderIndex(info.Actions[i].ID), orderIndex(info.Actions[j].ID)
+		if oi != oj {
+			return oi < oj
+		}
+		return info.Actions[i].ID < info.Actions[j].ID
+	})
+	if itemOverride == "" && len(info.Items) > 0 {
+		for i := range info.Items {
+			sub, ok := a.buildPackageInfo(s, p, info.Items[i].ID)
+			if !ok {
+				continue
+			}
+			st := map[string]ActionInfo{}
+			for _, ai := range sub.Actions {
+				for _, want := range info.Items[i].Actions {
+					if ai.ID == want {
+						st[ai.ID] = ai
+					}
+				}
+			}
+			info.Items[i].States = st
+		}
+	}
+	return info, true
 }
