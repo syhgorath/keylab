@@ -68,7 +68,7 @@
       const r = await hooks.json("/api/backup-import", { file: pending, apply: true, pick });
       const ok = r.results.filter(x => x.status === "ok").length, bad = r.results.filter(x => x.status === "error" && x.action !== "invalid"), inv = r.results.filter(x => x.action === "invalid").length;
       $("#bk-result").innerHTML = `<div class="notice"><span class="ico" aria-hidden="true">✔</span><div><b>${ok}</b> ${esc(L("sunucu uygulandı", "server(s) applied"))}${bad.length ? `, ${bad.length} ${esc(L("hata", "error(s)"))}` : ""}${inv ? `, ${inv} ${esc(L("geçersiz kayıt atlandı", "invalid entr(ies) skipped"))}` : ""}.</div></div>`
-        + `<ul class="small" style="margin-top:10px">${r.results.filter(x => (x.notes || []).length && (x.status === "ok" || x.status === "error")).map(x => `<li><b>${esc(x.name)}</b>: ${esc(x.notes.join(" · "))}</li>`).join("")}</ul>`;
+        + `<ul class="small sj-d2c171">${r.results.filter(x => (x.notes || []).length && (x.status === "ok" || x.status === "error")).map(x => `<li><b>${esc(x.name)}</b>: ${esc(x.notes.join(" · "))}</li>`).join("")}</ul>`;
       $("#bk-apply").hidden = true; $("#bk-status").textContent = ""; pending = null; $("#bk-file").value = "";
       await hooks.reload();
     } catch (e) { $("#bk-status").textContent = L("Hata: ", "Error: ") + e.message; $("#bk-apply").disabled = false; }

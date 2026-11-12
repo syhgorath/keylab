@@ -1304,4 +1304,29 @@ td.diff-val{box-shadow:inset 3px 0 0 var(--warn)}
 .sj-d64673{color:var(--danger) !important;margin-top:8px !important}
 .sj-d6f2af{margin-top:14px !important}
 .sj-e4a423{gap:10px !important;flex-wrap:wrap !important}
+.chip.chip-key{border-color:var(--danger-border);color:var(--danger)}
+.sj-0996f7{background:var(--danger-weak) !important;color:var(--danger) !important;border-color:var(--danger-border) !important}
+.sj-0e2fcf{margin-top:4px !important;color:var(--warn) !important}
+.sj-11a508{font-size:11px !important}
+.sj-2173cd{margin:12px 0 4px !important}
+.sj-4e420a{margin-bottom:6px !important}
+.sj-56f435{margin-top:12px !important}
+.sj-6693ed{display:flex !important;gap:8px !important;align-items:flex-start !important;margin-top:14px !important}
+.sj-6abd0a{display:flex !important;gap:8px !important;align-items:flex-start !important;margin-top:10px !important}
+.sj-752397{word-break:break-all !important}
+.sj-8657c7{grid-template-columns:minmax(120px,.6fr) 1.6fr !important}
+.sj-8a77e5{margin-top:8px !important}
+.sj-9162a2{align-self:center !important}
+.sj-b12f21{margin:10px 0 0 !important;white-space:pre-wrap !important;color:var(--text-2) !important}
+.sj-b97486{display:flex !important;gap:8px !important;align-items:flex-start !important;margin-top:10px !important;color:var(--danger) !important}
+.sj-cf5387{margin:4px 0 0 !important;padding-left:18px !important;color:var(--text-2) !important;line-height:1.5 !important}
+.sj-dc5781{margin:12px 0 0 !important;padding-left:18px !important;line-height:1.6 !important}
+.sj-e15e9c{padding-left:18px !important}
+.sj-fdf20b{padding:12px 16px !important}
+.sj-453f6c{text-align:center !important;padding:32px !important}
+.sj-6fbd93{padding:32px !important;text-align:center !important}
+.sj-b32a76{padding:28px !important;text-align:center !important}
+.sj-e51ab5{gap:5px !important}
+.sj-342cb5{padding:24px !important;text-align:center !important}
+.sj-fdf33f{margin-bottom:8px !important}
 [hidden]{display:none !important} /* sj-sonu: !important yardımcı sınıfların display bildirimi hidden özniteliğini ezmesin; DOSYANIN SONUNDA kalmalı */

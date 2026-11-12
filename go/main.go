@@ -58,6 +58,12 @@ func (a *App) guard(next http.HandlerFunc) http.HandlerFunc {
 }
 
 // root: başlatma adresindeki ?t=<jeton> geçerliyse oturum çerezi verir ve adresi temizler; yenilemede çerez devam eder.
+// contentSecurityPolicy: parola kutusu bu sayfada çıkabildiği için yalnızca kendi kaynağımızdan betik, dışarıya bağlantı yok, çerçeveye gömülemez.
+// style-src 'unsafe-inline' KALIR: gömülü terminalin xterm.js'i çalışırken iki <style> ELEMENTİ ekler (nonce desteği yok). Buna karşılık
+// style-src-attr 'none' satır içi `style="…"` ÖZNİTELİKLERİNİ yasaklar (CSS ile veri sızdırma/arayüz taklidi yüzeyi); arayüz stilleri sınıflardır,
+// dinamik değerler CSSOM (el.style.x = …) ile verilir. Web dosyalarında `style="` kalmadığı csp_test.go'da denetlenir.
+const contentSecurityPolicy = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; style-src-attr 'none'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+
 func (a *App) root(static http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Host != a.host {
@@ -73,7 +79,7 @@ func (a *App) root(static http.Handler) http.Handler {
 		}
 		w.Header().Set("Cache-Control", "no-store")
 		// parola kutusu bu sayfada çıkabildiği için: yalnızca kendi kaynağımızdan betik, dışarıya bağlantı yok, çerçeveye gömülemez
-		w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+		w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		static.ServeHTTP(w, r)

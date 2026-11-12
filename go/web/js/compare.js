@@ -25,10 +25,10 @@
   async function load(force) {
     const el = $("#compare-matrix-view"); if (!el) return;
     const home = hooks.getHome();
-    if (!home.servers.length) { el.innerHTML = `<div class="small muted" style="padding:32px;text-align:center">${esc(L("Henüz kayıtlı sunucu yok.", "No servers registered yet."))}</div>`; $("#compare-summary").textContent = ""; return; }
+    if (!home.servers.length) { el.innerHTML = `<div class="small muted sj-6fbd93">${esc(L("Henüz kayıtlı sunucu yok.", "No servers registered yet."))}</div>`; $("#compare-summary").textContent = ""; return; }
     if (!force && Date.now() - fetchedAt < TTL && home.servers.every(s => details[s.name])) { render(); return; }
     const my = ++gen;
-    el.innerHTML = `<div class="small muted" style="padding:28px;text-align:center">${esc(L("Değişkenler okunuyor…", "Reading variables…"))}</div>`;
+    el.innerHTML = `<div class="small muted sj-b32a76">${esc(L("Değişkenler okunuyor…", "Reading variables…"))}</div>`;
     pkgIds = home.packages.map(p => p.id);
     const jobs = [];
     for (const s of home.servers) for (const p of pkgIds) jobs.push([s.name, p]);
@@ -68,7 +68,7 @@
     out.push(makeRow("sys", L("Ana makine / IP", "Hostname / IP"), s => cell(s.host || "", `<span class="mono">${esc(s.host || "—")}</span>`)));
     out.push(makeRow("sys", L("SSH portu", "SSH port"), s => cell(s.port || "22", `<span class="mono">${esc(s.port || "22")}</span>`)));
     out.push(makeRow("sys", L("SSH kullanıcısı", "SSH user"), s => cell(s.user || "", `<span class="mono">${esc(s.user || "—")}</span>`)));
-    out.push(makeRow("sys", L("OS / profil", "OS / profile"), s => cell(s.os || "", `<span class="row-flex" style="gap:5px">${hooks.osIcon(s.os, 16)} <span>${esc(s.platform || s.os || "linux")}</span></span>`, s.platform || s.os || "")));
+    out.push(makeRow("sys", L("OS / profil", "OS / profile"), s => cell(s.os || "", `<span class="row-flex sj-e51ab5">${hooks.osIcon(s.os, 16)} <span>${esc(s.platform || s.os || "linux")}</span></span>`, s.platform || s.os || "")));
     out.push(makeRow("sys", L("SSH anahtarı", "SSH key"), s => cell(s.hasKey ? "var" : "yok", s.hasKey ? `<span class="res ok">✔ ${esc(L("var", "present"))}</span>` : `<span class="muted">— ${esc(L("yok", "none"))}</span>`, s.hasKey ? L("var", "present") : L("yok", "none"))));
     out.push(makeRow("sys", "Port knocking", s => cell(s.knock ? "açık" : "kapalı", s.knock ? `<span class="badge warn">🔒 ${esc(L("etkin", "enabled"))}</span>` : `<span class="muted">— ${esc(L("kapalı", "off"))}</span>`, s.knock ? L("etkin", "enabled") : L("kapalı", "off"))));
 
@@ -133,7 +133,7 @@
     const nDrift = rows.filter(r => !r.section && r.drift).length;
     $("#compare-summary").innerHTML = isEn() ? `<b>${servers.length}</b> servers · <b>${nDrift}</b> parameters differ` : `<b>${servers.length}</b> sunucu · <b>${nDrift}</b> parametrede fark var`;
     let h = `<div class="matrix-wrap"><table class="matrix-table" aria-label="${esc(L("Sunucu karşılaştırma matrisi", "Server comparison matrix"))}"><thead><tr><th class="sticky-col">${esc(L("Parametre", "Parameter"))}</th>${servers.map(s => `<th><div class="srv-col-head"><span class="status-dot ${esc(hooks.dotState(s))}" aria-hidden="true"></span>${hooks.osIcon(s.os, 16)}<a href="#" class="plain-link" data-open="${esc(s.name)}">${esc(s.name)}</a></div></th>`).join("")}</tr></thead><tbody>`;
-    if (!filtered.length) h += `<tr><td colspan="${servers.length + 1}" class="muted" style="text-align:center;padding:32px">${esc(driftOnly ? L("Seçili süzgeçte fark yok: yapılandırmalar aynı.", "No differences in this filter: configurations match.") : L("Aramayla eşleşen parametre yok.", "No parameter matches the search."))}</td></tr>`;
+    if (!filtered.length) h += `<tr><td colspan="${servers.length + 1}" class="muted sj-453f6c">${esc(driftOnly ? L("Seçili süzgeçte fark yok: yapılandırmalar aynı.", "No differences in this filter: configurations match.") : L("Aramayla eşleşen parametre yok.", "No parameter matches the search."))}</td></tr>`;
     for (const r of filtered) {
       if (r.section) { h += `<tr class="matrix-section-row"><td colspan="${servers.length + 1}" class="sticky-col">${esc(r.label)}</td></tr>`; continue; }
       h += `<tr class="matrix-row${r.drift ? " has-drift" : ""}"><td class="sticky-col" title="${esc(r.desc || r.label)}"><span>${esc(r.label)}</span>${r.drift ? `<span class="drift-badge" title="${esc(L("Sunucular arasında değerler uyuşmuyor", "Values differ between servers"))}">⚡ DRIFT</span>` : ""}</td>${servers.map(s => { const v = r.vals[s.name]; return `<td${r.drift && v.diff ? ' class="diff-val"' : ""}>${v.html}</td>`; }).join("")}</tr>`;

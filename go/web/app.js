@@ -293,9 +293,9 @@
     const groups = {};
     list.forEach(v => (groups[v.group || "Diğer"] = groups[v.group || "Diğer"] || []).push(v));
     const row = v => `<div class="vrow" data-n="${esc(v.name)}">
-      <div><div class="vname">${esc(v.name)} ${v.set ? '<span class="badge ok">ayarlı</span>' : v.required && !v.default ? '<span class="badge danger">gerekli</span>' : '<span class="badge plain">varsayılan</span>'} <span class="chip" style="font-size:11px">${esc(v.type)}</span></div>
+      <div><div class="vname">${esc(v.name)} ${v.set ? '<span class="badge ok">ayarlı</span>' : v.required && !v.default ? '<span class="badge danger">gerekli</span>' : '<span class="badge plain">varsayılan</span>'} <span class="chip sj-11a508">${esc(v.type)}</span></div>
         <div class="vdesc small muted" title="Tamamını görmek için tıklayın">${esc(v.description)}</div>
-        ${v.warnIf ? `<div class="small" style="margin-top:4px;color:var(--warn)">⚠ uyarı eşiği: ${esc(v.warnIf)}</div>` : ""}</div>
+        ${v.warnIf ? `<div class="small sj-0e2fcf">⚠ uyarı eşiği: ${esc(v.warnIf)}</div>` : ""}</div>
       <div class="vctl">${varControl(v)}
         <div class="row-flex"><button class="btn sm primary" data-save disabled>Kaydet</button>${v.set ? '<button class="btn sm ghost" data-reset title="Satırı siler; paket varsayılanına döner">Varsayılana dön</button>' : ""}<span class="small muted">${v.default !== "" ? `varsayılan: <span class="mono">${esc(v.default)}</span>` : "varsayılan yok"}</span></div>
         <div class="vmsg" role="status"></div></div></div>`;
@@ -412,24 +412,24 @@
     const prereq = (a.prereqs || []).map(q => {
       const act = p.actions.find(x => x.id === q.action);
       const chips = act && act.keys ? Object.entries(act.keys).map(([k, v]) => `<span class="chip">${esc(k)}=${esc(v)}</span>`).join("") : "";
-      return `<div style="margin-top:6px"><span class="ok">✔ ${esc(q.action)}</span> <span class="muted small">${Math.max(1, Math.round(q.ageSec / 60))} dk önce</span>${chips ? `<div class="chips">${chips}</div>` : ""}</div>`;
+      return `<div class="sj-fe7b49"><span class="ok">✔ ${esc(q.action)}</span> <span class="muted small">${Math.max(1, Math.round(q.ageSec / 60))} dk önce</span>${chips ? `<div class="chips">${chips}</div>` : ""}</div>`;
     }).join("");
     const warns = (a.warnings || []);
     const destr = !!a.destructive;
     const typeName = destr || a.confirm === "type-server-name";
-    $("#run-title").innerHTML = `<span class="mono">${esc(action)}</span> · ${esc(TAB_LABEL[pkg] || pkg)}${runItem ? ` · <b>${esc(runItem)}</b>` : ""} <span class="draft-tag" style="background:var(--danger-weak);color:var(--danger);border-color:var(--danger-border)">${destr ? "YIKICI" : "yazar"}</span>`;
+    $("#run-title").innerHTML = `<span class="mono">${esc(action)}</span> · ${esc(TAB_LABEL[pkg] || pkg)}${runItem ? ` · <b>${esc(runItem)}</b>` : ""} <span class="draft-tag sj-0996f7">${destr ? "YIKICI" : "yazar"}</span>`;
     $("#run-confirm-text").innerHTML = destr
       ? `<b>⚠ YIKICI EYLEM.</b> <b>${esc(server)}</b> sunucusunda dosya/veri <b>silinebilir ya da değiştirilebilir ve geri alınamayabilir</b>: ${(a.effects || []).map(e => esc(EFFECT_TXT[e] || e)).join(", ")}. Aşağıdaki uyarıların tamamını okuyun.`
       : `<b>${esc(server)}</b> sunucusuna <b>gerçekten yazılacak</b>: ${(a.effects || []).map(e => esc(EFFECT_TXT[e] || e)).join(", ")}.`;
     $("#run-confirm-extra").hidden = false;
     $("#run-confirm-extra").innerHTML = `
-      ${prereq ? `<div class="small muted" style="margin-top:12px">Önkoşul (motor 30 dk tazelik ister)</div>${prereq}` : ""}
-      ${pv.length ? `<div class="small muted" style="margin-top:12px">Bu değişkenlerle</div><div class="chips">${pv.map(v => `<span class="chip">${esc(v.name)}=${esc(v.value.length > 48 ? v.value.slice(0, 48) + "…" : v.value)}</span>`).join("")}</div>` : ""}
-      ${warns.length ? `<div class="small muted" style="margin-top:12px">Paketin uyarıları${destr ? " (tamamı)" : ""}</div><ul class="small" style="margin:4px 0 0;padding-left:18px;color:var(--text-2);line-height:1.5">${warns.slice(0, destr ? warns.length : 3).map(w => `<li>${esc(w)}</li>`).join("")}</ul>${!destr && warns.length > 3 ? `<details class="small" style="margin-top:4px"><summary class="muted" style="cursor:pointer">${warns.length - 3} uyarı daha</summary><ul style="padding-left:18px">${warns.slice(3).map(w => `<li>${esc(w)}</li>`).join("")}</ul></details>` : ""}` : ""}
-      <label class="small" style="display:flex;gap:8px;align-items:flex-start;margin-top:14px"><input type="checkbox" id="w-snap"> <span><b>VM snapshot'ı aldım</b>; sorun çıkarsa geri dönebilirim.</span></label>
-      ${destr ? `<label class="small" style="display:flex;gap:8px;align-items:flex-start;margin-top:10px;color:var(--danger)"><input type="checkbox" id="w-destr"> <span><b>Bu eylemin geri alınamayabileceğini anlıyorum</b>; yedeğim var ve sonuçlarını üstleniyorum.</span></label>` : ""}
-      ${typeName ? `<div class="field" style="margin-top:12px"><label for="w-confirm">Onay için sunucu adını yazın: <span class="mono">${esc(server)}</span></label><input id="w-confirm" autocomplete="off" spellcheck="false" placeholder="${esc(server)}"><div class="hint">Büyük/küçük harf duyarlıdır.</div></div>`
-        : `<label class="small" style="display:flex;gap:8px;align-items:flex-start;margin-top:10px"><input type="checkbox" id="w-yes"> <span>Evet, bu eylemi <b>${esc(server)}</b> üzerinde çalıştırmak istiyorum.</span></label>`}`;
+      ${prereq ? `<div class="small muted sj-56f435">Önkoşul (motor 30 dk tazelik ister)</div>${prereq}` : ""}
+      ${pv.length ? `<div class="small muted sj-56f435">Bu değişkenlerle</div><div class="chips">${pv.map(v => `<span class="chip">${esc(v.name)}=${esc(v.value.length > 48 ? v.value.slice(0, 48) + "…" : v.value)}</span>`).join("")}</div>` : ""}
+      ${warns.length ? `<div class="small muted sj-56f435">Paketin uyarıları${destr ? " (tamamı)" : ""}</div><ul class="small sj-cf5387">${warns.slice(0, destr ? warns.length : 3).map(w => `<li>${esc(w)}</li>`).join("")}</ul>${!destr && warns.length > 3 ? `<details class="small sj-96ad60"><summary class="muted sj-3b6a3a">${warns.length - 3} uyarı daha</summary><ul class="sj-e15e9c">${warns.slice(3).map(w => `<li>${esc(w)}</li>`).join("")}</ul></details>` : ""}` : ""}
+      <label class="small sj-6693ed"><input type="checkbox" id="w-snap"> <span><b>VM snapshot'ı aldım</b>; sorun çıkarsa geri dönebilirim.</span></label>
+      ${destr ? `<label class="small sj-b97486"><input type="checkbox" id="w-destr"> <span><b>Bu eylemin geri alınamayabileceğini anlıyorum</b>; yedeğim var ve sonuçlarını üstleniyorum.</span></label>` : ""}
+      ${typeName ? `<div class="field sj-56f435"><label for="w-confirm">Onay için sunucu adını yazın: <span class="mono">${esc(server)}</span></label><input id="w-confirm" autocomplete="off" spellcheck="false" placeholder="${esc(server)}"><div class="hint">Büyük/küçük harf duyarlıdır.</div></div>`
+        : `<label class="small sj-6abd0a"><input type="checkbox" id="w-yes"> <span>Evet, bu eylemi <b>${esc(server)}</b> üzerinde çalıştırmak istiyorum.</span></label>`}`;
     $("#run-confirm-note").textContent = "Motor aynı onayları (snapshot, e/h ya da ad) ve sudo parolasını çıktıda yeniden sorabilir: kurallar menüdekiyle aynıdır, yanıtları burada verirsiniz. Çalışırken ilerleme izlenir. Parolayı web sayfasına yazmak istemezseniz \"macOS Terminal'de aç\" düğmesini kullanın.";
     $("#run-go").textContent = destr ? "Yıkıcı eylemi çalıştır" : "Çalıştır (onaylı)"; $("#run-go").classList.add(destr ? "dangerbtn" : "warnbtn"); $("#run-go").disabled = true; $("#run-ext").hidden = !!runItem; // öğe eylemleri macOS Terminal'de açılamaz (yalnız uygulama içinde, kapılı iş olarak)
     const check = () => { const okc = $("#w-snap").checked && (!destr || $("#w-destr").checked) && (typeName ? $("#w-confirm").value === server : $("#w-yes").checked); $("#run-go").disabled = !okc; $("#run-ext").disabled = !okc; };
@@ -438,6 +438,8 @@
   }
 
   // last-run.log'u izle: SSHPOCKET_PROGRESS satırlarından alan alan ilerleme, geri alma güvenlik ağı durumu
+  // ilerleme çubuğu genişliği: satır içi stil özniteliği yerine data-w + CSSOM (CSP style-src-attr 'none' ile uyumlu)
+  const applyBars = root => $$("i[data-w]", root).forEach(i => { i.style.width = (parseInt(i.dataset.w, 10) || 0) + "%"; });
   async function pollProgress(pkg, server, since) {
     try {
       const q = new URLSearchParams({ package: pkg, server, file: "last-run.log" });
@@ -452,10 +454,11 @@
       const armed = /TASK \[hardening_rollback : Arm[^\]]*\][^\n]*\n(ok|changed):/.test(txt), disarmed = /TASK \[hardening_rollback : Disarm[^\]]*\][^\n]*\n(ok|changed):/.test(txt);
       const tail = txt.trimEnd().split("\n").slice(-6).map(esc).join("\n");
       $("#run-result").innerHTML = (total ? `<div class="run-meta"><span>${done.size} / ${total} alan tamam${cur ? ` · şu an: <b>${esc(cur)}</b>` : ""}</span></div>
-          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done.size}"><i style="width:${Math.round(done.size / total * 100)}%"></i></div>` : '<div class="small muted">Motor başlıyor…</div>') +
-        (armed && !disarmed ? '<div class="notice" style="margin-top:10px"><span class="ico" aria-hidden="true">⏱</span><div><b>Geri alma güvenlik ağı devrede.</b> Erişim doğrulanınca kaldırılır; doğrulanamazsa önceki hâl geri yüklenir.</div></div>' : "") +
-        (disarmed ? '<div class="small muted" style="margin-top:8px">Geri alma güvenlik ağı kaldırıldı (erişim doğrulandı).</div>' : "") +
-        `<pre class="mono small" style="margin:10px 0 0;white-space:pre-wrap;color:var(--text-2)">${tail}</pre>`;
+          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done.size}"><i data-w="${Math.round(done.size / total * 100)}"></i></div>` : '<div class="small muted">Motor başlıyor…</div>') +
+        (armed && !disarmed ? '<div class="notice sj-d2c171"><span class="ico" aria-hidden="true">⏱</span><div><b>Geri alma güvenlik ağı devrede.</b> Erişim doğrulanınca kaldırılır; doğrulanamazsa önceki hâl geri yüklenir.</div></div>' : "") +
+        (disarmed ? '<div class="small muted sj-8a77e5">Geri alma güvenlik ağı kaldırıldı (erişim doğrulandı).</div>' : "") +
+        `<pre class="mono small sj-b12f21">${tail}</pre>`;
+      applyBars($("#run-result"));
     } catch (e) { /* günlük henüz yok ya da okunamadı: bir sonraki turda */ }
   }
 
@@ -473,7 +476,7 @@
     $("#run-confirm-text").innerHTML = `<b>${esc(server)}</b> sunucusunda <span class="mono">${esc(action)}</span> (<b>salt okunur</b>) çalışacak. Motor <b>sudo parolası</b> isteyecek: bu pencerede çıkan parola kutusuna yazarsınız; doğrudan Ansible'a iletilir, arayüz onu saklamaz ya da günlüğe yazmaz.`;
     $("#run-go").textContent = "Çalıştır"; $("#run-ext").hidden = !!runItem;
     const pv = (actionOf(pkg, action) && srv && srv.packages.find(x => x.id === pkg).vars || []).filter(v => v.set);
-    if (pv.length) $("#run-confirm-text").insertAdjacentHTML("beforeend", `<div class="chips" style="margin-top:8px"><span class="small muted" style="align-self:center">Bu değişkenlerle:</span>${pv.map(v => `<span class="chip">${esc(v.name)}=${esc(v.value.length > 48 ? v.value.slice(0, 48) + "…" : v.value)}</span>`).join("")}</div>`);
+    if (pv.length) $("#run-confirm-text").insertAdjacentHTML("beforeend", `<div class="chips sj-8a77e5"><span class="small muted sj-9162a2">Bu değişkenlerle:</span>${pv.map(v => `<span class="chip">${esc(v.name)}=${esc(v.value.length > 48 ? v.value.slice(0, 48) + "…" : v.value)}</span>`).join("")}</div>`);
     $("#run-confirm-note").textContent = "Parola istemi çıktıda belirince burada bir kutu açılır. Sonuç menüdekiyle aynı şekilde kaydedilir. ssh anahtarınızın ssh-agent'ta yüklü olması gerekir. Parolayı bir web sayfasına yazmak istemezseniz \"macOS Terminal'de aç\" düğmesini kullanın.";
   }
   async function startTerm() {
@@ -503,7 +506,7 @@
           clearInterval(termTimer); termTimer = 0; clearInterval(prgTimer); srv = r; if (view === "server") renderServer(); load();
           $("#run-state").innerHTML = a1.lastResult === "ok" ? '<span class="res ok">✔ tamamlandı</span> · sonuç kartta güncellendi' : '<span class="res fail">✖ başarısız</span> · ayrıntı için Terminal penceresine ve Günlükler sayfasına bakın';
           $("#run-result").innerHTML = (a1.keys ? `<div class="chips">${Object.entries(a1.keys).map(([k, v]) => `<span class="chip">${esc(k)}=${esc(v)}</span>`).join("")}</div>` : "") +
-            `<div style="margin-top:10px"><button class="btn sm" id="run-open-log">Çıktıyı aç (son çalıştırma günlüğü)</button></div>`;
+            `<div class="sj-d2c171"><button class="btn sm" id="run-open-log">Çıktıyı aç (son çalıştırma günlüğü)</button></div>`;
           $("#run-open-log").addEventListener("click", () => { const pk = runPkg, sv = runSrv; closeRun(); openLastLog(pk, sv); });
         }
       } catch (e) { /* bir sonraki turda yeniden denenir */ }
@@ -526,9 +529,9 @@
     if (done.has(cur)) cur = "";
     const armed = /TASK \[hardening_rollback : Arm[^\]]*\][^\n]*\n(ok|changed):/.test(txt), disarmed = /TASK \[hardening_rollback : Disarm[^\]]*\][^\n]*\n(ok|changed):/.test(txt);
     return `<div class="run-meta"><span>${done.size} / ${total} alan tamam${cur ? ` · şu an: <b>${esc(cur)}</b>` : ""}</span></div>
-      <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done.size}"><i style="width:${Math.round(done.size / total * 100)}%"></i></div>` +
-      (armed && !disarmed ? '<div class="notice" style="margin-top:10px"><span class="ico" aria-hidden="true">⏱</span><div><b>Geri alma güvenlik ağı devrede.</b> Erişim doğrulanınca kaldırılır; doğrulanamazsa önceki hâl geri yüklenir.</div></div>' : "") +
-      (disarmed ? '<div class="small muted" style="margin-top:8px">Geri alma güvenlik ağı kaldırıldı (erişim doğrulandı).</div>' : "");
+      <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done.size}"><i data-w="${Math.round(done.size / total * 100)}"></i></div>` +
+      (armed && !disarmed ? '<div class="notice sj-d2c171"><span class="ico" aria-hidden="true">⏱</span><div><b>Geri alma güvenlik ağı devrede.</b> Erişim doğrulanınca kaldırılır; doğrulanamazsa önceki hâl geri yüklenir.</div></div>' : "") +
+      (disarmed ? '<div class="small muted sj-8a77e5">Geri alma güvenlik ağı kaldırıldı (erişim doğrulandı).</div>' : "");
   }
 
   async function startRun() {
@@ -560,7 +563,7 @@
           const txt = cleanTerm(raw);
           logEl.innerHTML = txt.split("\n").map(lineHtml).join("");
           if (stick) logEl.scrollTop = logEl.scrollHeight;
-          $("#run-progress").innerHTML = progressHtml(txt);
+          $("#run-progress").innerHTML = progressHtml(txt); applyBars($("#run-progress"));
         } else idle++;
         from = d.next;
         if (d.done) { $("#run-input").hidden = true; finishRun(d, cleanTerm(raw)); return; }
@@ -631,9 +634,9 @@
     const i = all.lastIndexOf("Sonuç:");
     if (i >= 0) {
       const chips = all.slice(i + 1).filter(l => /^\s{2}[A-Za-z0-9_]+=/.test(l)).map(l => `<span class="chip">${esc(l.trim())}</span>`).join("");
-      if (chips) $("#run-result").innerHTML = `<div class="small muted" style="margin-bottom:6px">Sonuç</div><div class="chips">${chips}</div>`;
+      if (chips) $("#run-result").innerHTML = `<div class="small muted sj-4e420a">Sonuç</div><div class="chips">${chips}</div>`;
     }
-    if (!ok) $("#run-result").insertAdjacentHTML("beforeend", `<div class="notice danger" style="margin-top:10px"><span class="ico" aria-hidden="true">✕</span><div>Eylem başarısız oldu. Ayrıntı için yukarıdaki çıktıya bakın; tam günlük <b>Günlükler</b> sayfasında.</div></div>`);
+    if (!ok) $("#run-result").insertAdjacentHTML("beforeend", `<div class="notice danger sj-d2c171"><span class="ico" aria-hidden="true">✕</span><div>Eylem başarısız oldu. Ayrıntı için yukarıdaki çıktıya bakın; tam günlük <b>Günlükler</b> sayfasında.</div></div>`);
     $("#run-close").hidden = false; $("#run-close").textContent = "Kapat";
     // kartları yenile (sonuç dosyaları motor tarafından yazıldı)
     if (runMode === "upgrade") { if (view === "packages") { await loadPackages(); checkUpdatesUI(); } load(); return; }
@@ -673,10 +676,10 @@
     paintMode(); applyTheme(); paintAsk();
     let a;
     try { a = await json("/api/about"); askAvail = !!a.askpass; paintAsk(); } catch (e) { $("#set-paths").innerHTML = `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div>Yüklenemedi: ${esc(e.message)}</div></div>`; return; }
-    const row = (k, v) => `<div class="urow" style="grid-template-columns:minmax(120px,.6fr) 1.6fr"><div class="muted">${esc(k)}</div><div class="mono small" style="word-break:break-all">${esc(v) || "—"}</div></div>`;
+    const row = (k, v) => `<div class="urow sj-8657c7"><div class="muted">${esc(k)}</div><div class="mono small sj-752397">${esc(v) || "—"}</div></div>`;
     $("#set-paths").innerHTML = [["KeyLab sürümü", a.version], ["Kök klasör (USB)", a.root], ["Sunucular", a.serversDir], ["Paketler", a.componentsDir], ["Durum ve günlükler", a.stateDir], ["Platform", a.platform], ["Go", a.go]].map(([k, v]) => row(k, v)).join("");
     const conf = Object.entries(a.conf || {});
-    $("#set-conf").innerHTML = conf.length ? conf.map(([k, v]) => row(k, v)).join("") : '<div class="small muted" style="padding:12px 16px">sshpocket.conf bulunamadı ya da boş.</div>';
+    $("#set-conf").innerHTML = conf.length ? conf.map(([k, v]) => row(k, v)).join("") : '<div class="small muted sj-fdf20b">sshpocket.conf bulunamadı ya da boş.</div>';
   }
 
   /* ---------------- Sunucu yeniden adlandırma ve silme ---------------- */
@@ -697,7 +700,7 @@
     openDlg({
       title: "Sunucuyu yeniden adlandır", sub: name,
       body: `<div class="field"><label for="rn-new">Yeni ad</label><input id="rn-new" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="40" value="${esc(name)}"><div class="hint" id="rn-hint">Küçük harfle başlar; yalnızca küçük harf, rakam ve _ .</div></div>
-        <ul class="small muted" style="margin:12px 0 0;padding-left:18px;line-height:1.6"><li>Klasör ve anahtar dosyaları (<span class="mono">id_ed25519_${esc(name)}</span>) yeni ada taşınır; değişkenler ve sunucudaki kayıt geçmişi korunur.</li><li>Günlük ve sonuç geçmişi de yeni ada taşınır.</li><li><b>macOS Keychain</b>'deki passphrase ve Knock kaydı otomatik taşınmaz; passphrase kullanıyorsanız yeniden eklemeniz gerekir.</li></ul>`,
+        <ul class="small muted sj-dc5781"><li>Klasör ve anahtar dosyaları (<span class="mono">id_ed25519_${esc(name)}</span>) yeni ada taşınır; değişkenler ve sunucudaki kayıt geçmişi korunur.</li><li>Günlük ve sonuç geçmişi de yeni ada taşınır.</li><li><b>macOS Keychain</b>'deki passphrase ve Knock kaydı otomatik taşınmaz; passphrase kullanıyorsanız yeniden eklemeniz gerekir.</li></ul>`,
       ok: "Yeniden adlandır",
       onOk: async () => {
         const nn = $("#rn-new").value.trim();
@@ -721,11 +724,11 @@
     openDlg({
       title: "Sunucuyu sil", sub: name,
       body: `<div class="notice danger"><span class="ico" aria-hidden="true">⚠</span><div><b>Bu işlem geri alınamaz.</b> <span class="mono">servers/${esc(name)}/</span> klasörü ve içindeki her şey silinir${hasKey ? "; <b>özel SSH anahtarı dahil</b>" : ""}. Sunucunun kendisine dokunulmaz.</div></div>
-        <div class="small muted" style="margin:12px 0 4px">Silinecek dosyalar</div>
-        <div class="chips">${files.map(f => `<span class="chip" style="${f.isKey ? "border-color:var(--danger-border);color:var(--danger)" : ""}">${esc(f.name)}</span>`).join("") || '<span class="small muted">boş klasör</span>'}</div>
-        ${hasKey ? '<label class="small" style="display:flex;gap:8px;align-items:flex-start;margin-top:14px"><input type="checkbox" id="dl-key"> <span><b>Özel anahtarın silineceğini anlıyorum</b>; sunucuya giriş için tek yol buysa erişimi kaybedebilirim.</span></label>' : ""}
-        ${state.length ? `<label class="small" style="display:flex;gap:8px;align-items:flex-start;margin-top:10px"><input type="checkbox" id="dl-logs"> <span>Bu bilgisayardaki günlük ve sonuç geçmişini de sil (${state.map(esc).join(", ")}). İşaretlemezseniz günlükler kalır.</span></label>` : ""}
-        <div class="field" style="margin-top:14px"><label for="dl-name">Onay için sunucu adını yazın: <span class="mono">${esc(name)}</span></label><input id="dl-name" autocomplete="off" spellcheck="false" placeholder="${esc(name)}"><div class="hint">Büyük/küçük harf duyarlıdır. Motor Keychain kaydını silmek isteyip istemediğinizi ayrıca sorabilir.</div></div>`,
+        <div class="small muted sj-2173cd">Silinecek dosyalar</div>
+        <div class="chips">${files.map(f => `<span class="chip${f.isKey ? " chip-key" : ""}">${esc(f.name)}</span>`).join("") || '<span class="small muted">boş klasör</span>'}</div>
+        ${hasKey ? '<label class="small sj-6693ed"><input type="checkbox" id="dl-key"> <span><b>Özel anahtarın silineceğini anlıyorum</b>; sunucuya giriş için tek yol buysa erişimi kaybedebilirim.</span></label>' : ""}
+        ${state.length ? `<label class="small sj-6abd0a"><input type="checkbox" id="dl-logs"> <span>Bu bilgisayardaki günlük ve sonuç geçmişini de sil (${state.map(esc).join(", ")}). İşaretlemezseniz günlükler kalır.</span></label>` : ""}
+        <div class="field sj-d6f2af"><label for="dl-name">Onay için sunucu adını yazın: <span class="mono">${esc(name)}</span></label><input id="dl-name" autocomplete="off" spellcheck="false" placeholder="${esc(name)}"><div class="hint">Büyük/küçük harf duyarlıdır. Motor Keychain kaydını silmek isteyip istemediğinizi ayrıca sorabilir.</div></div>`,
       ok: "Sil", okClass: "dangerbtn",
       onOk: async () => {
         $("#dlg-ok").disabled = true;
@@ -735,7 +738,7 @@
         delName = name; delPurge = !!($("#dl-logs") && $("#dl-logs").checked);
         closeDlg();
         openRun("", "", "remove"); runMode = "remove";
-        $("#run-title").innerHTML = `Sunucu siliniyor <span class="draft-tag" style="background:var(--danger-weak);color:var(--danger);border-color:var(--danger-border)">${esc(name)}</span>`;
+        $("#run-title").innerHTML = `Sunucu siliniyor <span class="draft-tag sj-0996f7">${esc(name)}</span>`;
         $("#run-sub").textContent = "KeyLab motoru (ModuleManager.sh remove)";
         watchJob(r.id);
       },
@@ -761,7 +764,7 @@
     openRun(server, "", task);
     runMode = "task";
     const [, title, text] = TASKS[task];
-    $("#run-title").innerHTML = `${esc(title)} <span class=\"draft-tag\" style=\"background:var(--warn-weak);color:var(--warn);border-color:var(--warn-border)\">${esc(server)}</span>`;
+    $("#run-title").innerHTML = `${esc(title)} <span class=\"draft-tag sj-c8ceca\">${esc(server)}</span>`;
     $("#run-sub").textContent = "Bağlantı hazırlığı";
     $("#run-confirm-text").innerHTML = text;
     $("#run-confirm-note").textContent = "Motorun soruları çıktıda belirir: Evet/Hayır düğmeleriyle ya da kutuya yazarak yanıtlayın. Parolalar sistem parola penceresine yazılır.";
