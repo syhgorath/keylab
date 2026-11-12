@@ -1163,3 +1163,18 @@ td.diff-val{box-shadow:inset 3px 0 0 var(--warn)}
 .accent-sw:focus-visible{box-shadow:var(--focus)}
 .accent-sw[aria-pressed="true"]{border-color:var(--surface);box-shadow:0 0 0 2px var(--text)}
 .accent-row{display:flex;align-items:center;flex-wrap:wrap;gap:2px}
+
+/* Terminal oturum çubuğu (çoklu oturum) */
+.term-tabs{display:flex;gap:6px;flex-wrap:wrap;padding:0 20px 8px}
+.term-tabs:empty{display:none}
+.term-pane{height:100%}
+.term-pane[hidden]{display:none}
+.term-dock{position:fixed;left:16px;bottom:16px;z-index:45;display:flex;gap:8px;flex-wrap:wrap;max-width:calc(100vw - 32px)}
+.term-dock[hidden]{display:none}
+.term-chip{display:inline-flex;align-items:center;gap:8px;padding:5px 6px 5px 10px;border:1px solid var(--border);border-radius:var(--radius-pill);background:var(--surface);font-size:12.5px;cursor:pointer;box-shadow:var(--shadow-2)}
+.term-chip:hover{border-color:var(--accent)}
+.term-chip:focus-visible{box-shadow:var(--focus);outline:none}
+.term-chip.active{background:var(--accent-weak);border-color:var(--accent);color:var(--accent-ink)}
+.term-chip.unread::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--warn)}
+.term-chip-x{all:unset;cursor:pointer;width:20px;height:20px;border-radius:50%;text-align:center;line-height:20px;font-size:11px;color:var(--muted)}
+.term-chip-x:hover,.term-chip-x:focus-visible{background:var(--danger-weak);color:var(--danger)}

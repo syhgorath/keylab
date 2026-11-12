@@ -501,11 +501,12 @@
     <div class="modal-head">
       <div><h3 id="term-title" class="mono">&gt;_ SSH</h3><div class="sub" data-i18n="term_sub">Gömülü terminal: kayıtlı sunucuya ssh ile bağlanır. Parola ve passphrase burada, terminalde sorulur.</div></div>
       <div class="spacer"></div>
-      <button class="icon-btn" data-term-close aria-label="Oturumu kapat" title="Oturumu kapat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      <button class="icon-btn" data-term-min aria-label="Pencereyi küçült (oturum açık kalır)" title="Pencereyi küçült (oturum açık kalır)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg></button>
     </div>
+    <div class="term-tabs" id="term-tabs" role="tablist" aria-label="Terminal oturumları"></div>
     <div id="term-note" class="notice danger" role="alert" hidden></div>
     <div class="term-host" id="term-host"></div>
-    <div class="modal-foot"><span class="small muted" data-i18n="term_foot">Kapatınca oturum sonlanır. Terminal açma/kapama durum klasöründe terminal-audit.log dosyasına yazılır.</span><div class="spacer"></div><button class="btn" data-term-close data-i18n="term_end">Oturumu kapat</button></div>
+    <div class="modal-foot"><span class="small muted" data-i18n="term_foot">Küçültmek oturumu kapatmaz; "Oturumu kapat" ssh'ı sonlandırır. Terminal açma/kapama durum klasöründe terminal-audit.log dosyasına yazılır.</span><div class="spacer"></div><button class="btn" data-term-close data-i18n="term_end">Oturumu kapat</button></div>
   </div>
 </div>
 
@@ -519,6 +520,7 @@
   </div>
 </div>
 
+<div class="term-dock" id="term-dock" role="toolbar" aria-label="Açık terminal oturumları" hidden></div>
 <div id="toast" role="status" style="position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--text,#222);color:var(--surface,#fff);padding:8px 14px;border-radius:8px;display:none;font-size:13px;z-index:50"></div>
 <script src="js/core/i18n-phrases-en.js"></script>
 <script src="js/core/i18n.js"></script>

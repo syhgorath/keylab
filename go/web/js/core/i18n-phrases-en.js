@@ -3,6 +3,8 @@
    (değişken/eylem adları, dosya yolları) ve kullanıcı verisi çevrilmez. Eksik ifade Türkçe kalır; tabloya eklenerek genişletilir. */
 window.KeyLabPhrasesEN = {
   exact: {
+    "Pencereyi küçült (oturum açık kalır)": "Minimize window (session stays open)", "Terminal oturumları": "Terminal sessions", "Açık terminal oturumları": "Open terminal sessions",
+    "Küçültmek oturumu kapatmaz; \"Oturumu kapat\" ssh'ı sonlandırır. Terminal açma/kapama durum klasöründe terminal-audit.log dosyasına yazılır.": "Minimizing does not close the session; \"End session\" terminates ssh. Opening/closing a terminal is logged to terminal-audit.log in the state folder.",
     "Envanter yedeği": "Inventory backup", "sunucu adresleri + değişkenler": "server addresses + variables", "Dışa aktar": "Export", "İçe aktar": "Import",
     "Yedeği indir (.json)": "Download backup (.json)", "Yedek dosyası": "Backup file", "Seçilenleri uygula": "Apply selected",
     "Yedek sır içermez: private key, knock dizisi ve adında parola/token/secret geçen değişkenler dışarıda kalır. Yine de sunucu adreslerini içerir; dosyayı güvenli saklayın.": "The backup contains no secrets: private keys, the knock sequence and variables with password/token/secret in their name are left out. It does contain server addresses, so keep the file safe.",
