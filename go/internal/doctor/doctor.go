@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"sshpocket-go/internal/runner"
+	"keylab/internal/runner"
 )
 
 // Options: Python aralığı ve ağ denetiminin kapatılması (SSHPOCKET_DOCTOR_OFFLINE=1 de kapatır).

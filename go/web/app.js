@@ -326,10 +326,10 @@
     $("#run-confirm-extra").hidden = true; $("#run-confirm-extra").innerHTML = ""; $("#run-go").classList.remove("warnbtn", "dangerbtn"); $("#run-ext").hidden = true; $("#run-ext").disabled = false; $("#run-input").hidden = true;
     runSrv = server; runPkg = pkg; runAct = action; runJob = "";
     $("#run-title").innerHTML = `<span class="mono">${esc(action)}</span> · ${esc(TAB_LABEL[pkg] || pkg)}`;
-    $("#run-confirm-note").textContent = "Çalıştırma sshpocket'in kendi motoruyla yapılır; kapılar, günlük ve sonuç kaydı menüdekiyle aynıdır. Parola sorulmaz: ssh anahtarınız ssh-agent'ta yüklü olmalı.";
+    $("#run-confirm-note").textContent = "Çalıştırma uygulamanın kendi motoruyla yapılır; kapılar, günlük ve sonuç kaydı menüdekiyle aynıdır. Parola sorulmaz: ssh anahtarınız ssh-agent'ta yüklü olmalı.";
     $("#run-sub").textContent = `Sunucu: ${server}`;
     $("#run-confirm-text").innerHTML = `<b>${esc(server)}</b> sunucusuna ssh ile bağlanılacak ve <span class="mono">${esc(action)}</span> <b>salt okunur</b> çalıştırılacak: sunucuda hiçbir şey değişmez.`;
-    $("#run-confirm-note").textContent = "Çalıştırma sshpocket'in kendi motoruyla yapılır; kapılar, günlük ve sonuç kaydı menüdekiyle aynıdır. Parola sorulmaz: ssh anahtarınız ssh-agent'ta yüklü olmalı.";
+    $("#run-confirm-note").textContent = "Çalıştırma uygulamanın kendi motoruyla yapılır; kapılar, günlük ve sonuç kaydı menüdekiyle aynıdır. Parola sorulmaz: ssh anahtarınız ssh-agent'ta yüklü olmalı.";
     $("#run-confirm").hidden = false; $("#run-live").hidden = true;
     $("#run-go").hidden = false; $("#run-go").disabled = false; $("#run-go").textContent = "Çalıştır";
     $("#run-close").hidden = false; $("#run-close").textContent = "Vazgeç";
@@ -608,7 +608,7 @@
     let a;
     try { a = await json("/api/about"); askAvail = !!a.askpass; paintAsk(); } catch (e) { $("#set-paths").innerHTML = `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div>Yüklenemedi: ${esc(e.message)}</div></div>`; return; }
     const row = (k, v) => `<div class="urow" style="grid-template-columns:minmax(120px,.6fr) 1.6fr"><div class="muted">${esc(k)}</div><div class="mono small" style="word-break:break-all">${esc(v) || "—"}</div></div>`;
-    $("#set-paths").innerHTML = [["sshpocket sürümü", a.version], ["Kök klasör (USB)", a.root], ["Sunucular", a.serversDir], ["Paketler", a.componentsDir], ["Durum ve günlükler", a.stateDir], ["Platform", a.platform], ["Go", a.go]].map(([k, v]) => row(k, v)).join("");
+    $("#set-paths").innerHTML = [["KeyLab sürümü", a.version], ["Kök klasör (USB)", a.root], ["Sunucular", a.serversDir], ["Paketler", a.componentsDir], ["Durum ve günlükler", a.stateDir], ["Platform", a.platform], ["Go", a.go]].map(([k, v]) => row(k, v)).join("");
     const conf = Object.entries(a.conf || {});
     $("#set-conf").innerHTML = conf.length ? conf.map(([k, v]) => row(k, v)).join("") : '<div class="small muted" style="padding:12px 16px">sshpocket.conf bulunamadı ya da boş.</div>';
   }
@@ -669,7 +669,7 @@
         closeDlg();
         openRun("", "", "remove"); runMode = "remove";
         $("#run-title").innerHTML = `Sunucu siliniyor <span class="draft-tag" style="background:var(--danger-weak);color:var(--danger);border-color:var(--danger-border)">${esc(name)}</span>`;
-        $("#run-sub").textContent = "sshpocket motoru (ModuleManager.sh remove)";
+        $("#run-sub").textContent = "KeyLab motoru (ModuleManager.sh remove)";
         watchJob(r.id);
       },
     });
@@ -949,7 +949,7 @@
     runMode = "upgrade"; runUpgTo = to;
     const ov = pkgRepo[pkg];
     $("#run-title").innerHTML = `<span class="mono">upgrade</span> · ${esc(pkg)} <span class="draft-tag" style="background:var(--warn-weak);color:var(--warn);border-color:var(--warn-border)">USB'ye yazar</span>`;
-    $("#run-sub").textContent = "sshpocket paket güncellemesi (imzalı indeks)";
+    $("#run-sub").textContent = "KeyLab paket güncellemesi (imzalı indeks)";
     $("#run-confirm-text").innerHTML = `<b>${esc(pkg)}</b> ${from === "-" ? "kurulacak" : `<span class="mono">${esc(from)}</span> → <span class="mono">${esc(to)}</span> yükseltilecek`}: ${from === "-" ? `<span class="mono">${esc(to)}</span> sürümü ` : ""}indirilip <b>imzası ve özeti doğrulanarak</b> USB'deki <span class="mono">components/</span> klasörüne yazılacak. Eski sürüm klasörü silinmez; hiçbir sunucuya dokunulmaz.`;
     $("#run-confirm-extra").hidden = false;
     $("#run-confirm-extra").innerHTML = `<label class="small" style="display:flex;gap:8px;align-items:flex-start;margin-top:12px"><input type="checkbox" id="u-ack"> <span>İndeksin gösterdiği kaynaktan${ov ? ` (<span class="mono">${esc(ov)}</span>)` : ""} indirilen sürümü kurmak istiyorum.</span></label>`;

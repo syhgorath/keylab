@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"sshpocket-go/internal/trust"
+	"keylab/internal/trust"
 )
 
 func needKeygen(t *testing.T) {

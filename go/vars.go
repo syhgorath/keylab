@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"strings"
 
-	"sshpocket-go/internal/manifest"
+	"keylab/internal/manifest"
 )
 
 /* ---------- değişken düzenleme: doğrulama ve yazma sshpocket'in kendi kütüphanesiyle (menüdekiyle aynı) ---------- */

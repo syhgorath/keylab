@@ -14,10 +14,10 @@ import (
 	"sort"
 	"strings"
 
-	"sshpocket-go/internal/manifest"
-	"sshpocket-go/internal/runner"
-	"sshpocket-go/internal/servers"
-	"sshpocket-go/internal/trust"
+	"keylab/internal/manifest"
+	"keylab/internal/runner"
+	"keylab/internal/servers"
+	"keylab/internal/trust"
 )
 
 // Options: dizinler ve bölüm başına en çok satır (varsayılan 12).

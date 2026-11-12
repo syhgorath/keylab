@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"sshpocket-go/internal/trust"
+	"keylab/internal/trust"
 )
 
 func repoRoot(t *testing.T) string {

@@ -1,6 +1,8 @@
 <p align="center"><img src="img/logo.jpg" alt="sshpocket" width="140"></p>
 
-# sshpocket
+# KeyLab
+
+> **KeyLab**, formerly **sshpocket**. Command and file names (sshpocket.conf, the `sshpocket` binary, the signing namespace) have not changed yet.
 
 [![ci](https://github.com/syhgorath/sshpocket/actions/workflows/ci.yml/badge.svg)](https://github.com/syhgorath/sshpocket/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/syhgorath/sshpocket)](https://github.com/syhgorath/sshpocket/releases/latest)

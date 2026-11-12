@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"sshpocket-go/internal/manifest"
-	"sshpocket-go/internal/trust"
+	"keylab/internal/manifest"
+	"keylab/internal/trust"
 )
 
 // ComponentsExec.sh'ın yerel işlevleri: ilerleme ve sonuç satırı ayrıştırma, sonuç kaydı, günlük maskeleme ve kalıcı arşiv.

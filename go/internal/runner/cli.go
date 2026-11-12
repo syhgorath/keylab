@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"sshpocket-go/internal/manifest"
-	"sshpocket-go/internal/trust"
+	"keylab/internal/manifest"
+	"keylab/internal/trust"
 )
 
 // CLI, `--components run <paket> <eylem> <sunucu>` akışının bağımlılıklarıdır (ComponentsRunCLI.sh comp_cli_run).

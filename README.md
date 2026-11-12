@@ -1,6 +1,8 @@
 <p align="center"><img src="img/logo.jpg" alt="sshpocket" width="140"></p>
 
-# sshpocket
+# KeyLab
+
+> **KeyLab**, eski adıyla **sshpocket**. Komut ve dosya adları (sshpocket.conf, `sshpocket` ikilisi, imza ad alanı) şimdilik değişmedi.
 
 [![ci](https://github.com/syhgorath/sshpocket/actions/workflows/ci.yml/badge.svg)](https://github.com/syhgorath/sshpocket/actions/workflows/ci.yml)
 [![Sürüm](https://img.shields.io/github/v/release/syhgorath/sshpocket)](https://github.com/syhgorath/sshpocket/releases/latest)
