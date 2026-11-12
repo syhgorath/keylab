@@ -32,7 +32,7 @@ var (
 	reHost = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,253}$`)
 	reUser = regexp.MustCompile(`^[a-z_][a-z0-9_.-]{0,31}$`)
 	rePort = regexp.MustCompile(`^[0-9]{1,5}$`)
-	reName = regexp.MustCompile(`^[A-Za-z0-9._-]{1,64}$`)
+	reName = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9._-]{0,63}$`) // alfasayısal ya da _ ile başlar: "." ve ".." (yol kaçışı), gizli dosya ve baştaki "-" (bayrak) adı OLAMAZ
 	reFile = regexp.MustCompile(`^(logs/)?[A-Za-z0-9._-]{1,128}\.log$`)
 )
 
