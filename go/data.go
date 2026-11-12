@@ -99,6 +99,9 @@ type App struct {
 	up         map[string]bool    // son ölçülen erişilebilirlik (sayfa beklemeden gösterilsin)
 	conn       map[string]string  // son ölçülen bağlantı durumu: up | refused | down
 	idxDL      trust.DownloadFunc // indeks indirme (nil: HTTPS); testte değiştirilir
+	tmu        sync.Mutex         // gömülü terminal oturumları
+	topen      sync.Mutex         // terminal açılışlarını sıraya sokar
+	terms      map[string]*TermSession
 }
 
 func parseEnv(path string) map[string]string {

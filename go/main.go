@@ -176,6 +176,13 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"servers": app.servers(false), "packages": pk, "indexSerial": serial})
 	}))
+	// gömülü terminal (bkz. term.go): hepsi guard'lı; POST uç noktaları CSRF başlığı ister
+	mux.HandleFunc("/api/term/open", app.guard(app.termOpenHandler))
+	mux.HandleFunc("/api/term/stream", app.guard(app.termStreamHandler))
+	mux.HandleFunc("/api/term/input", app.guard(app.termInputHandler))
+	mux.HandleFunc("/api/term/resize", app.guard(app.termResizeHandler))
+	mux.HandleFunc("/api/term/close", app.guard(app.termCloseHandler))
+	mux.HandleFunc("/api/term/list", app.guard(app.termListHandler))
 	mux.HandleFunc("/api/status", app.guard(func(w http.ResponseWriter, r *http.Request) {
 		detail := r.URL.Query().Get("detail") == "1" // ayrıntı: {ad: {up, conn}}; varsayılan eski biçim {ad: up}
 		res := map[string]bool{}
@@ -673,6 +680,7 @@ func main() {
 	if !*noOpen && runtime.GOOS == "darwin" {
 		_ = exec.Command("open", url).Start()
 	}
+	go app.reapTerms() // boşta/bitmiş terminal oturumlarını temizler
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 	if err := srv.Serve(ln); err != nil {
 		fmt.Fprintln(os.Stderr, err)
