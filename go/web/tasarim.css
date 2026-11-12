@@ -1124,3 +1124,12 @@ td.diff-val{box-shadow:inset 3px 0 0 var(--warn)}
   body.print-report .rep-section{break-inside:avoid-page}
   body.print-report .rep-table tr{break-inside:avoid}
 }
+
+/* Gizlilik kilidi */
+.privacy-lock{position:fixed;inset:0;z-index:9999;background:var(--bg,#0b0e14);display:flex;align-items:center;justify-content:center;padding:20px}
+.privacy-lock[hidden]{display:none}
+.privacy-lock-card{max-width:420px;width:100%;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;box-shadow:var(--shadow-2);display:flex;flex-direction:column;align-items:center;gap:10px}
+.privacy-lock-card h3{margin:4px 0 0;font-size:18px}
+.privacy-lock-card p{margin:0}
+.privacy-lock-ico{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--accent-weak);color:var(--accent-ink)}
+.privacy-lock-card .btn{margin-top:10px}
