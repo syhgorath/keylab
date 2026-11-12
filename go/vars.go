@@ -147,6 +147,10 @@ func (a *App) varSchemas(server, pkg string) ([]VarSchema, error) {
 
 // saveVar: doğrular (motorun doğrulayıcısı) ve yazar. warn=… dönerse onay (ack) ister.
 func (a *App) saveVar(server, pkg, name, value, action string, ack bool) (warn string, status int, err error) {
+	// derinlemesine savunma: çağıran doğrulamış olsa bile ad dosya yoluna (servers/<sunucu>/<paket>.vars) girer
+	if !reName.MatchString(server) || !reName.MatchString(pkg) {
+		return "", http.StatusBadRequest, fmt.Errorf("geçersiz sunucu ya da paket adı")
+	}
 	a.jmu.Lock()
 	busy := a.running != nil && !a.running.Done
 	a.jmu.Unlock()
