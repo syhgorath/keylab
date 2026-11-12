@@ -64,6 +64,7 @@ func Do[T any](t testing.TB, s *Store, key string, run func() T) T {
 		}
 		s.data[key] = b
 		s.dirty = true
+		s.flush(t) // kayıt modunda hemen yaz: alt testlerin Cleanup sırası ve paylaşılan paket düzeyi mağazalar için güvenli
 		return v
 	}
 	raw, ok := s.data[key]
@@ -114,6 +115,11 @@ func (s *Store) flush(t testing.TB) {
 func (s *Store) Next(t testing.TB) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.seq[t.Name()]++
-	return fmt.Sprintf("%s#%d", t.Name(), s.seq[t.Name()])
+	name := t.Name()
+	if _, ok := s.seq[name]; !ok {
+		// test bitince sayaç sıfırlanır (-count=N ya da paket düzeyi paylaşılan mağaza için)
+		t.Cleanup(func() { s.mu.Lock(); delete(s.seq, name); s.mu.Unlock() })
+	}
+	s.seq[name]++
+	return fmt.Sprintf("%s#%d", name, s.seq[name])
 }

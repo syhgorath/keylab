@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"keylab/internal/shellgold"
 )
 
 var reMB = regexp.MustCompile(`boş alan: \d+ MB`)
@@ -45,7 +47,27 @@ func goDoctor(t *testing.T, path string) (int, string) {
 	return Run(&b, Options{}), b.String()
 }
 
+// dGold: kabuk doctor'ının kaydedilen sonucu (altın dosya testdata/shell.json). İşletim sistemine özgü satırlar (Keychain/macOS) çıkarılır.
+type dGold struct {
+	Code int
+	Out  string
+}
+
+var reCache = regexp.MustCompile(`önbellek: [^)]*\)`) // kişisel yol altın dosyaya girmesin
+
+func osNeutral(s string) string {
+	var keep []string
+	for _, l := range strings.Split(s, "\n") {
+		if strings.Contains(l, "Keychain") || strings.Contains(l, "macOS") || strings.Contains(l, "↳") {
+			continue
+		}
+		keep = append(keep, reCache.ReplaceAllString(l, "önbellek: <C>)"))
+	}
+	return strings.Join(keep, "\n")
+}
+
 func TestDoctorMatchesShell(t *testing.T) {
+	gold := shellgold.Open(t, "shell")
 	base := os.Getenv("PATH")
 	// 1) gerçek PATH
 	// 2) ssh-copy-id ve python'suz sınırlı PATH (yalnız temel araçlar bir klasöre bağlanır)
@@ -60,13 +82,21 @@ func TestDoctorMatchesShell(t *testing.T) {
 	}
 	bash, _ := exec.LookPath("bash")
 	_ = bash
+	// "gerçek PATH" kabuk karşılaştırması makineye bağlı (python sürümü, kurulu araçlar); yalnız çökmediği denenir, altın dosyaya girmez.
+	if _, o := goDoctor(t, base); !strings.Contains(o, "Temel araçlar") {
+		t.Errorf("gerçek PATH: beklenen çıktı yok:\n%s", o)
+	}
 	for name, path := range map[string]string{
-		"gerçek PATH": base,
 		"python yok":  mk("ssh", "ssh-keygen", "ssh-add", "ssh-copy-id", "security", "bash", "env", "df", "awk", "dirname", "uname", "tr", "head", "sort", "mktemp", "cat", "sed", "grep", "basename"),
 		"ssh-add yok": mk("ssh", "ssh-keygen", "security", "bash", "env", "df", "awk", "dirname", "uname", "tr", "head", "sort", "mktemp", "cat", "sed", "grep", "basename"),
 	} {
-		sc, so := shellDoctor(t, path)
+		g := shellgold.Do(t, gold, "doctor|"+name, func() dGold {
+			c, o := shellDoctor(t, path)
+			return dGold{c, norm(osNeutral(o))}
+		})
+		sc, so := g.Code, g.Out
 		gc, go_ := goDoctor(t, path)
+		go_ = osNeutral(go_)
 		// "Sonuç" satırındaki eksik sayısı kaldırılan denetimler yüzünden farklı olabilir: yalnız kod ve satırlar (sonuç satırı hariç)
 		cut := func(s string) string {
 			i := strings.Index(s, "Sonuç:")

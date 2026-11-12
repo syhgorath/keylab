@@ -1,0 +1,8 @@
+{
+  "anahtar yok ajanda": {"Out":"\n📤 USB çıkarılıyor: SSHUSB\n✅ USB çıkarıldı\n|LOG|ssh-add -d \u003cUSB\u003e/servers/db/id_ed25519_db.pub\nssh-add -d \u003cUSB\u003e/servers/web1/baska.pub\nssh-add -d \u003cUSB\u003e/servers/web1/id_ed25519_web1.pub\ndiskutil info \u003cUSB\u003e\ndiskutil eject disk9s1\n","Code":0},
+  "diskutil yok": {"Out":"⚠️  diskutil yok, USB'yi elle çıkarın\n|LOG|","Code":1},
+  "eject başarısız, force unmount tamam": {"Out":"🔑 1 anahtar ssh-agent'tan çıkarıldı\n\n📤 USB çıkarılıyor: SSHUSB\n✅ USB unmount edildi (force)\n|LOG|ssh-add -d \u003cUSB\u003e/servers/db/id_ed25519_db.pub\nssh-add -d \u003cUSB\u003e/servers/web1/baska.pub\nssh-add -d \u003cUSB\u003e/servers/web1/id_ed25519_web1.pub\ndiskutil info \u003cUSB\u003e\ndiskutil eject disk9s1\ndiskutil unmount force \u003cUSB\u003e\ndiskutil eject disk9s1\n","Code":0},
+  "hepsi tamam": {"Out":"🔑 2 anahtar ssh-agent'tan çıkarıldı\n\n📤 USB çıkarılıyor: SSHUSB\n✅ USB çıkarıldı\n|LOG|ssh-add -d \u003cUSB\u003e/servers/db/id_ed25519_db.pub\nssh-add -d \u003cUSB\u003e/servers/web1/baska.pub\nssh-add -d \u003cUSB\u003e/servers/web1/id_ed25519_web1.pub\ndiskutil info \u003cUSB\u003e\ndiskutil eject disk9s1\n","Code":0},
+  "ikisi de başarısız": {"Out":"🔑 1 anahtar ssh-agent'tan çıkarıldı\n\n📤 USB çıkarılıyor: SSHUSB\n⚠️  USB çıkarılamadı (kullanımda olabilir), elle çıkarabilirsiniz\n|LOG|ssh-add -d \u003cUSB\u003e/servers/db/id_ed25519_db.pub\nssh-add -d \u003cUSB\u003e/servers/web1/baska.pub\nssh-add -d \u003cUSB\u003e/servers/web1/id_ed25519_web1.pub\ndiskutil info \u003cUSB\u003e\ndiskutil eject disk9s1\ndiskutil unmount force \u003cUSB\u003e\n","Code":1},
+  "usb yok": {"Out":"|LOG|","Code":0}
+}
