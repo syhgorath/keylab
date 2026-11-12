@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"keylab/internal/shellgold"
 )
 
 const fakeSecurityStdin = `#!/bin/bash
@@ -82,7 +84,7 @@ func dirTree(t *testing.T, dir string) string {
 
 func runShellScript(t *testing.T, r, script string, env []string, stdin string, args ...string) res {
 	cmd := exec.Command("bash", append([]string{"-c", script, "_", filepath.Join(r, "referans/kabuk/sistem")}, args...)...)
-	cmd.Env = append(os.Environ(), append(env, "LC_ALL=en_US.UTF-8", "SSHPOCKET_UI=numbers")...)
+	cmd.Env = append(os.Environ(), append(env, "LC_ALL=en_US.UTF-8", "SSHPOCKET_UI=numbers", "USER=testkullanici")...) // sabit kullanıcı: altın dosyada kişisel ad olmasın, CI'da da aynı
 	cmd.Stdin = strings.NewReader(stdin)
 	var so, se bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &so, &se
@@ -99,12 +101,19 @@ func goServers(root, answers, secret string) (*Servers, *bytes.Buffer, *bytes.Bu
 	pr, pw, _ := os.Pipe()
 	pw.WriteString(secret)
 	pw.Close()
-	s := &Servers{Dir: root, In: bufio.NewReader(strings.NewReader(answers)), Out: &so, Err: &se, ChildIn: pr, DefaultUser: os.Getenv("USER")}
+	s := &Servers{Dir: root, In: bufio.NewReader(strings.NewReader(answers)), Out: &so, Err: &se, ChildIn: pr, DefaultUser: "testkullanici"}
 	return s, &so, &se, func() { pr.Close() }
+}
+
+// sgold: kabuk çalışmasının kaydedilen sonucu (altın dosya testdata/servers.json).
+type sgold struct {
+	Code          int
+	Out, Tree, KC string
 }
 
 func TestImportSSHConfigMatchesShell(t *testing.T) {
 	r := repoRoot(t)
+	gold := shellgold.Open(t, "servers")
 	cfg := filepath.Join(t.TempDir(), "config")
 	os.WriteFile(cfg, []byte("Host web1\n  HostName 10.0.0.5\n  User root\n  IdentityFile ~/k\nHost mevcut\n  HostName 10.0.0.6\nHost bozuk\n  HostName a b\nHost Yeni-Ad\n  HostName y.example\n  Port 2200\nHost *\n  User x\n"), 0o600)
 	empty := filepath.Join(t.TempDir(), "bos")
@@ -117,18 +126,23 @@ func TestImportSSHConfigMatchesShell(t *testing.T) {
 		for _, d := range []string{d1, d2} {
 			os.MkdirAll(filepath.Join(d, "mevcut"), 0o700)
 		}
-		sh := runShellScript(t, r, `export SISTEM_PATH="$1"; bash "$1/ImportSSHConfig.sh" "$2"`, []string{"SSHPOCKET_SERVERS_DIR=" + d1, "SSHPOCKET_MODULES_DIR=" + filepath.Join(d1, "..yok")}, c.in, c.cfg)
+		sh := shellgold.Do(t, gold, gold.Next(t), func() sgold {
+			x := runShellScript(t, r, `export SISTEM_PATH="$1"; bash "$1/ImportSSHConfig.sh" "$2"`, []string{"SSHPOCKET_SERVERS_DIR=" + d1, "SSHPOCKET_MODULES_DIR=" + filepath.Join(d1, "..yok")}, c.in, c.cfg)
+			return sgold{x.code, strings.ReplaceAll(strings.ReplaceAll(x.out, d1, "<D>"), c.cfg, "<CFG>"), dirTree(t, d1), ""}
+		})
 		s, so, _, closeFn := goServers(d2, c.in, "")
 		code := s.ImportSSHConfig(c.cfg)
 		closeFn()
-		if code != sh.code || so.String() != sh.out || dirTree(t, d1) != dirTree(t, d2) {
-			t.Errorf("%s: kabuk=%d go=%d\nkabuk: %q\ngo:    %q\nağaç kabuk: %s\nağaç go:    %s", c.name, sh.code, code, sh.out, so.String(), dirTree(t, d1), dirTree(t, d2))
+		got := strings.ReplaceAll(strings.ReplaceAll(so.String(), d2, "<D>"), c.cfg, "<CFG>")
+		if code != sh.Code || got != sh.Out || dirTree(t, d2) != sh.Tree {
+			t.Errorf("%s: kabuk=%d go=%d\nkabuk: %q\ngo:    %q\nağaç kabuk: %s\nağaç go:    %s", c.name, sh.Code, code, sh.Out, got, sh.Tree, dirTree(t, d2))
 		}
 	}
 }
 
 func TestKnockManageMatchesShell(t *testing.T) {
 	r := repoRoot(t)
+	gold := shellgold.Open(t, "servers")
 	mgrEnv(t)
 	libs := "Validate.sh ModuleFiles.sh SSHHelper.sh SSHModule.sh SSHModuleEdit.sh Servers.sh Knock.sh"
 	script := `export SISTEM_PATH="$1"; shift; for l in ` + libs + `; do . "$SISTEM_PATH/Helpers/$l" || exit 99; done; knock_manage "$@"`
@@ -147,23 +161,26 @@ func TestKnockManageMatchesShell(t *testing.T) {
 		os.WriteFile(kc2, []byte(c.kc), 0o600)
 		mkServer(t, d1, "web1", c.env, false)
 		mkServer(t, d2, "web1", c.env, false)
-		sh := runShellScript(t, r, script, []string{"FAKE_KC=" + kc1}, c.answers+c.secret, "WEB1", filepath.Join(d1, "web1"))
+		sh := shellgold.Do(t, gold, gold.Next(t), func() sgold {
+			x := runShellScript(t, r, script, []string{"FAKE_KC=" + kc1}, c.answers+c.secret, "WEB1", filepath.Join(d1, "web1"))
+			k, _ := os.ReadFile(kc1)
+			return sgold{x.code, strings.ReplaceAll(x.out, d1, "<D>"), dirTree(t, d1), string(k)}
+		})
 		t.Setenv("FAKE_KC", kc2)
 		s, so, _, closeFn := goServers(d2, c.answers, c.secret)
 		code := s.KnockManage("web1")
 		closeFn()
-		k1, _ := os.ReadFile(kc1)
 		k2, _ := os.ReadFile(kc2)
-		out := strings.ReplaceAll(sh.out, d1, "<D>")
 		got := strings.ReplaceAll(so.String(), d2, "<D>")
-		if code != sh.code || out != got || dirTree(t, d1) != dirTree(t, d2) || string(k1) != string(k2) {
-			t.Errorf("%s: kabuk=%d go=%d\nkabuk: %q\ngo:    %q\nağaç kabuk: %s\nağaç go:    %s\nkc kabuk=%q go=%q", c.name, sh.code, code, out, got, dirTree(t, d1), dirTree(t, d2), k1, k2)
+		if code != sh.Code || sh.Out != got || dirTree(t, d2) != sh.Tree || sh.KC != string(k2) {
+			t.Errorf("%s: kabuk=%d go=%d\nkabuk: %q\ngo:    %q\nağaç kabuk: %s\nağaç go:    %s\nkc kabuk=%q go=%q", c.name, sh.Code, code, sh.Out, got, sh.Tree, dirTree(t, d2), sh.KC, k2)
 		}
 	}
 }
 
 func TestKeychainManageMatchesShell(t *testing.T) {
 	r := repoRoot(t)
+	gold := shellgold.Open(t, "servers")
 	mgrEnv(t)
 	libs := "Validate.sh ModuleFiles.sh SSHHelper.sh SSHModule.sh SSHModuleEdit.sh Servers.sh"
 	script := `export SISTEM_PATH="$1"; shift; for l in ` + libs + `; do . "$SISTEM_PATH/Helpers/$l" || exit 99; done; ssh_keychain_manage "$@"`
@@ -197,7 +214,11 @@ func TestKeychainManageMatchesShell(t *testing.T) {
 			o2, _ := exec.Command("ssh-keygen", "-lf", filepath.Join(d2, "web1", "id_ed25519_web1")).Output()
 			os.WriteFile(a2, o2, 0o600)
 		}
-		sh := runShellScript(t, r, script, []string{"FAKE_KC=" + kc1, "FAKE_AGENT=" + a1, "FAKE_ADD_FAIL=" + c.addFail, "FAKE_ADD_FAIL_KC=" + c.kcFail}, c.answers+c.secret, "WEB1", filepath.Join(d1, "web1", "id_ed25519_web1"))
+		sh := shellgold.Do(t, gold, gold.Next(t), func() sgold {
+			x := runShellScript(t, r, script, []string{"FAKE_KC=" + kc1, "FAKE_AGENT=" + a1, "FAKE_ADD_FAIL=" + c.addFail, "FAKE_ADD_FAIL_KC=" + c.kcFail}, c.answers+c.secret, "WEB1", filepath.Join(d1, "web1", "id_ed25519_web1"))
+			k, _ := os.ReadFile(kc1)
+			return sgold{x.code, strings.ReplaceAll(x.out, d1, "<D>"), "", string(k)}
+		})
 		t.Setenv("FAKE_KC", kc2)
 		t.Setenv("FAKE_AGENT", a2)
 		t.Setenv("FAKE_ADD_FAIL", c.addFail)
@@ -205,11 +226,10 @@ func TestKeychainManageMatchesShell(t *testing.T) {
 		s, so, _, closeFn := goServers(d2, c.answers, c.secret)
 		code := s.KeychainManage("web1")
 		closeFn()
-		k1, _ := os.ReadFile(kc1)
 		k2, _ := os.ReadFile(kc2)
 		// kabuk iletileri: ssh_agent_add'in stderr satırları ayrı akışta; yalnızca stdout karşılaştırılır
-		if code != sh.code || strings.ReplaceAll(sh.out, d1, "<D>") != strings.ReplaceAll(so.String(), d2, "<D>") || string(k1) != string(k2) {
-			t.Errorf("%s: kabuk=%d go=%d\nkabuk: %q\ngo:    %q\nkc kabuk=%q go=%q", c.name, sh.code, code, sh.out, so.String(), k1, k2)
+		if code != sh.Code || sh.Out != strings.ReplaceAll(so.String(), d2, "<D>") || sh.KC != string(k2) {
+			t.Errorf("%s: kabuk=%d go=%d\nkabuk: %q\ngo:    %q\nkc kabuk=%q go=%q", c.name, sh.Code, code, sh.Out, so.String(), sh.KC, k2)
 		}
 	}
 }
