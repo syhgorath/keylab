@@ -32,6 +32,8 @@ func shellDoctor(t *testing.T, path string, env ...string) (int, string) {
 }
 
 func norm(s string) string {
+	// önbellek klasörü adı bilerek değişti (kabuk: .cache/sshpocket, Go: .cache/keylab; eski klasör varsa o); karşılaştırmada eşitle
+	s = strings.ReplaceAll(s, ".cache/keylab", ".cache/sshpocket")
 	s = reDropped.ReplaceAllString(s, "")
 	return reMB.ReplaceAllString(s, "boş alan: N MB")
 }
