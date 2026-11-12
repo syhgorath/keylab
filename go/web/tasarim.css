@@ -1279,4 +1279,29 @@ td.diff-val{box-shadow:inset 3px 0 0 var(--warn)}
 .sj-fe7b49{margin-top:6px !important}
 .c-ok{color:var(--ok)}
 .c-danger{color:var(--danger)}
+.sj-03c4bb{justify-content:center !important}
+.sj-0b3aae{color:var(--ok) !important}
+.sj-215683{padding:12px 0 !important}
+.sj-25b528{display:flex !important;gap:6px !important;align-items:center !important}
+.sj-27af89{max-width:220px !important}
+.sj-361285{max-width:190px !important;margin-left:8px !important}
+.sj-497726{color:var(--danger) !important}
+.sj-5417cf{padding:24px 12px !important}
+.sj-5dd2a6{margin-left:8px !important}
+.sj-6926eb{margin:6px 0 10px !important}
+.sj-6ba842{gap:12px !important;flex-wrap:wrap !important}
+.sj-75ff53{margin:0 !important;color:var(--text-2) !important}
+.sj-7e3a94{font-weight:400 !important}
+.sj-87c136{margin-bottom:16px !important}
+.sj-a548ea{white-space:pre-wrap !important}
+.sj-a5d7a0{max-width:240px !important}
+.sj-ab2990{max-width:170px !important;margin-left:8px !important}
+.sj-b4411e{display:grid !important;grid-template-columns:34px 1fr auto !important;gap:12px !important;align-items:center !important}
+.sj-c2ee2b{white-space:pre-wrap !important;margin:8px 0 0 !important}
+.sj-c842b0{display:flex !important;gap:8px !important;align-items:flex-start !important;margin-top:12px !important}
+.sj-c8ceca{background:var(--warn-weak) !important;color:var(--warn) !important;border-color:var(--warn-border) !important}
+.sj-d2c171{margin-top:10px !important}
+.sj-d64673{color:var(--danger) !important;margin-top:8px !important}
+.sj-d6f2af{margin-top:14px !important}
+.sj-e4a423{gap:10px !important;flex-wrap:wrap !important}
 [hidden]{display:none !important} /* sj-sonu: !important yardımcı sınıfların display bildirimi hidden özniteliğini ezmesin; DOSYANIN SONUNDA kalmalı */
