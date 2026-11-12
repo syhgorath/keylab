@@ -355,6 +355,7 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"ok":true}`))
 	}))
+	mux.HandleFunc("/api/jobs", app.guard(app.jobsHandler))
 	mux.HandleFunc("/api/backup-export", app.guard(app.backupExportHandler))
 	mux.HandleFunc("/api/backup-import", app.guard(app.backupImportHandler))
 	mux.HandleFunc("/api/ssh-config-hosts", app.guard(app.sshConfigHostsHandler))

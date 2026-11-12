@@ -323,8 +323,41 @@
   let runJob = "", runPoll = 0, runTick = 0, runStart = 0, runSrv = "", runPkg = "", runAct = "", runItem = ""; // runItem: katalog öğesi eylemi (kapsam o öğeye göre)
   const runBusy = () => !!runJob;
 
+  /* ---------------- İş izleyici: arka plana alma, üst çubuk iş düğmesi, sayfa yenilenince yeniden bağlanma ---------------- */
+  // Sunucu tek iş çalıştırır (a.running). Pencere küçültülünce iş sürer; düğme çalışan/biten işi gösterir ve pencereyi geri açar.
+  let pill = null; // { label, state: "run" | "ok" | "fail" }
+  const runLabel = () => `${runAct} · ${TAB_LABEL[runPkg] || runPkg} · ${runSrv}`;
+  function renderPill() {
+    const el = $("#job-pill");
+    if (!pill || runm.classList.contains("open")) { el.hidden = true; return; }
+    el.hidden = false; el.className = "job-pill " + pill.state;
+    const sec = Math.max(0, Math.round((Date.now() - runStart) / 1000));
+    el.textContent = pill.state === "run" ? `⏳ ${pill.label} · ${sec} sn` : (pill.state === "ok" ? "✔ " : "✖ ") + pill.label;
+    el.setAttribute("aria-label", el.textContent);
+  }
+  const showRunModal = () => { runm.classList.add("open"); renderPill(); setTimeout(() => ($("#run-cancel").hidden ? $("#run-close") : $("#run-cancel")).focus(), 40); };
+  const minimizeRun = () => { runm.classList.remove("open"); renderPill(); };
+  // başka eylem başlatmayı engelle: tek pencere durumu çalışan işe ait (sunucu da ikinci işi reddeder)
+  function jobBusy() { if (!runBusy()) return false; toast("Bir eylem çalışıyor; bitmesini bekleyin ya da üst çubuktaki iş düğmesinden açın."); showRunModal(); return true; }
+  $("#job-pill").addEventListener("click", showRunModal);
+  $("#run-min").addEventListener("click", minimizeRun);
+  // sayfa yenilenmiş olabilir: sunucuda çalışan iş varsa yeniden bağlan (çıktı baştan okunur), pencere kapalı kalır
+  async function adoptJob() {
+    try {
+      const r = await json("/api/jobs");
+      const j = (r.jobs || []).find(x => x.id === r.running && !x.done);
+      if (!j || runBusy()) return;
+      runMode = "exec"; runSrv = j.server; runPkg = j.package; runAct = j.action; runItem = "";
+      $("#run-title").innerHTML = `<span class="mono">${esc(j.action)}</span> · ${esc(TAB_LABEL[j.package] || j.package)}`;
+      $("#run-sub").textContent = `Sunucu: ${j.server}`;
+      watchJob(j.id, Date.parse(j.started) || Date.now());
+      pill = { label: runLabel(), state: "run" }; renderPill();
+    } catch (e) { /* iş yok ya da liste alınamadı */ }
+  }
+
   let runMode = "exec", termTimer = 0;
   function openRun(server, pkg, action, item) {
+    if (jobBusy()) return;
     runMode = "exec"; $("#run-log").hidden = false; $("#run-cancel").hidden = false;
     $("#run-yes").hidden = $("#run-no").hidden = true;
     $("#run-confirm-extra").hidden = true; $("#run-confirm-extra").innerHTML = ""; $("#run-go").classList.remove("warnbtn", "dangerbtn"); $("#run-ext").hidden = true; $("#run-ext").disabled = false; $("#run-input").hidden = true;
@@ -346,13 +379,14 @@
     const l = logAll.find(x => x.package === pkg && x.server === server && x.file === "last-run.log");
     if (l) { const i = $$("#loglist button[data-i]").findIndex(b => b.textContent.includes("last-run.log")); await openLog(l, $$("#loglist button[data-i]")[i]); }
   }
-  function closeRun() { if (runBusy()) return; clearInterval(termTimer); termTimer = 0; runm.classList.remove("open"); }
+  function closeRun() { if (runBusy()) return; clearInterval(termTimer); termTimer = 0; runm.classList.remove("open"); pill = null; renderPill(); }
 
   /* değişiklik yapan eylem: plan → snapshot + onay → Terminal (sudo parolası orada) → canlı ilerleme.
      Motor Terminal'de aynı onayları yeniden ister (tek doğruluk kaynağı); arayüz onayı bunun ÖN adımıdır. */
   const EFFECT_TXT = { "installs-package": "paket kurar", "changes-config": "yapılandırmayı değiştirir", destructive: "yıkıcı" };
   let wAct = null, logSince = 0;
   function openWrite(server, pkg, action, item) {
+    if (jobBusy()) return;
     openRun(server, pkg, action, item);
     runMode = "write";
     const p = srv.packages.find(x => x.id === pkg), a = actionOf(pkg, action); wAct = a;
@@ -415,6 +449,7 @@
     return p.actions.find(x => x.id === action);
   }
   function openTerm(server, pkg, action, item) {
+    if (jobBusy()) return;
     openRun(server, pkg, action, item);
     runMode = "term";
     $("#run-confirm-text").innerHTML = `<b>${esc(server)}</b> sunucusunda <span class="mono">${esc(action)}</span> (<b>salt okunur</b>) çalışacak. Motor <b>sudo parolası</b> isteyecek: bu pencerede çıkan parola kutusuna yazarsınız; doğrudan Ansible'a iletilir, arayüz onu saklamaz ya da günlüğe yazmaz.`;
@@ -489,14 +524,14 @@
     watchJob(r.id);
   }
 
-  function watchJob(id) {
-    runJob = id; runStart = Date.now();
+  function watchJob(id, startedAt) {
+    runJob = id; runStart = startedAt || Date.now(); pill = { label: runLabel(), state: "run" }; $("#run-min").hidden = false;
     $("#run-confirm").hidden = true; $("#run-live").hidden = false; $("#run-go").hidden = true; $("#run-ext").hidden = true; $("#run-close").hidden = true;
     $("#run-log").innerHTML = ""; $("#run-log").hidden = false; $("#run-progress").innerHTML = ""; $("#run-result").innerHTML = ""; $("#run-input").hidden = true;
     $("#run-cancel").hidden = false; $("#run-cancel").disabled = false;
     let from = 0, raw = "", idle = 0;
     const logEl = $("#run-log");
-    const tick = () => { $("#run-state").innerHTML = `<span class="spinner" aria-hidden="true"></span> çalışıyor… ${Math.round((Date.now() - runStart) / 1000)} sn`; };
+    const tick = () => { $("#run-state").innerHTML = `<span class="spinner" aria-hidden="true"></span> çalışıyor… ${Math.round((Date.now() - runStart) / 1000)} sn`; renderPill(); };
     tick(); runTick = setInterval(tick, 1000);
     const poll = async () => {
       try {
@@ -517,7 +552,7 @@
           const prompt = txt.slice(txt.lastIndexOf("\n") + 1).trim();
           if (prompt) showInput(prompt, raw.length);
         } else if (idle < 2) $("#run-input").hidden = true;
-      } catch (e) { clearInterval(runTick); runJob = ""; $("#run-state").textContent = "Bağlantı koptu: " + e.message; $("#run-close").hidden = false; $("#run-close").textContent = "Kapat"; return; }
+      } catch (e) { clearInterval(runTick); runJob = ""; pill = null; $("#run-min").hidden = true; renderPill(); showRunModal(); $("#run-state").textContent = "Bağlantı koptu: " + e.message; $("#run-close").hidden = false; $("#run-close").textContent = "Kapat"; return; }
       runPoll = setTimeout(poll, 600);
     };
     poll();
@@ -544,6 +579,7 @@
       return;
     }
     const box = $("#run-input"), inp = $("#run-in");
+    if (!runm.classList.contains("open")) { showRunModal(); toast("İş sizden yanıt bekliyor."); }
     if (!box.hidden && $("#run-prompt").textContent === prompt) return;
     $("#run-prompt").textContent = prompt;
     const qa = /\[e\/h\]|\(e\/h\)/i.test(prompt) ? ["e", "H"] : /\(yes\/no/i.test(prompt) ? ["yes", "no"] : /\(y\/n\)|\[y\/n\]/i.test(prompt) ? ["y", "n"] : null;
@@ -568,8 +604,9 @@
 
   async function finishRun(d, txt) {
     clearInterval(runTick); clearTimeout(runPoll); runJob = "";
-    $("#run-cancel").hidden = true;
+    $("#run-cancel").hidden = true; $("#run-min").hidden = true;
     const ok = d.exit === 0, secs = Math.round((Date.now() - runStart) / 1000);
+    pill = { label: runLabel(), state: ok ? "ok" : "fail" }; if (!runm.classList.contains("open")) toast((ok ? "✔ " : "✖ ") + runLabel()); renderPill();
     $("#run-state").innerHTML = ok ? `<span class="res ok">✔ başarılı</span> · ${secs} sn` : `<span class="res fail">✖ başarısız</span> · çıkış kodu ${d.exit} · ${secs} sn`;
     // sonuç özeti: motorun "Sonuç:" bölümündeki anahtar=değer satırları
     const all = (txt || "").split("\n");
@@ -658,6 +695,7 @@
   }
 
   async function openDelete(name) {
+    if (jobBusy()) return;
     let info;
     try { info = await json("/api/server-files?name=" + encodeURIComponent(name)); }
     catch (e) { toast("Okunamadı: " + e.message); return; }
@@ -701,6 +739,7 @@
     sshadd: ["ssh-agent'a ekle", "Anahtarı ssh-agent'a ekle", "Anahtar ssh-agent'a eklenecek (macOS'ta Keychain'e kaydedilerek); eylemler parola sormadan bağlanabilsin. Anahtarın passphrase'i istenecek."],
   };
   function openTask(server, task) {
+    if (jobBusy()) return;
     openRun(server, "", task);
     runMode = "task";
     const [, title, text] = TASKS[task];
@@ -956,6 +995,7 @@
 
   let runUpgTo = "";
   function openUpgrade(pkg, from, to) {
+    if (jobBusy()) return;
     openRun("", pkg, "upgrade");
     runMode = "upgrade"; runUpgTo = to;
     const ov = pkgRepo[pkg];
@@ -1671,6 +1711,7 @@
   });
 
   window.KeyLabBackup.init({ json, toast, reload: load });
+  adoptJob();
   window.KeyLabPrivacy.init();
   window.KeyLabReports.init({
     getHome: () => home, json, toast, stateText,
