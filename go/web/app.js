@@ -316,18 +316,18 @@
 
   /* ---------------- Eylem çalıştırma (salt okunur eylemler) ---------------- */
   const runm = $("#runmodal");
-  let runJob = "", runPoll = 0, runTick = 0, runStart = 0, runSrv = "", runPkg = "", runAct = "";
+  let runJob = "", runPoll = 0, runTick = 0, runStart = 0, runSrv = "", runPkg = "", runAct = "", runItem = ""; // runItem: katalog öğesi eylemi (kapsam o öğeye göre)
   const runBusy = () => !!runJob;
 
   let runMode = "exec", termTimer = 0;
-  function openRun(server, pkg, action) {
+  function openRun(server, pkg, action, item) {
     runMode = "exec"; $("#run-log").hidden = false; $("#run-cancel").hidden = false;
     $("#run-yes").hidden = $("#run-no").hidden = true;
     $("#run-confirm-extra").hidden = true; $("#run-confirm-extra").innerHTML = ""; $("#run-go").classList.remove("warnbtn", "dangerbtn"); $("#run-ext").hidden = true; $("#run-ext").disabled = false; $("#run-input").hidden = true;
-    runSrv = server; runPkg = pkg; runAct = action; runJob = "";
-    $("#run-title").innerHTML = `<span class="mono">${esc(action)}</span> · ${esc(TAB_LABEL[pkg] || pkg)}`;
+    runSrv = server; runPkg = pkg; runAct = action; runJob = ""; runItem = item || "";
+    $("#run-title").innerHTML = `<span class="mono">${esc(action)}</span> · ${esc(TAB_LABEL[pkg] || pkg)}${runItem ? ` · <b>${esc(runItem)}</b>` : ""}`;
     $("#run-confirm-note").textContent = "Çalıştırma uygulamanın kendi motoruyla yapılır; kapılar, günlük ve sonuç kaydı menüdekiyle aynıdır. Parola sorulmaz: ssh anahtarınız ssh-agent'ta yüklü olmalı.";
-    $("#run-sub").textContent = `Sunucu: ${server}`;
+    $("#run-sub").textContent = `Sunucu: ${server}${runItem ? ` · Öğe: ${runItem}` : ""}`;
     $("#run-confirm-text").innerHTML = `<b>${esc(server)}</b> sunucusuna ssh ile bağlanılacak ve <span class="mono">${esc(action)}</span> <b>salt okunur</b> çalıştırılacak: sunucuda hiçbir şey değişmez.`;
     $("#run-confirm-note").textContent = "Çalıştırma uygulamanın kendi motoruyla yapılır; kapılar, günlük ve sonuç kaydı menüdekiyle aynıdır. Parola sorulmaz: ssh anahtarınız ssh-agent'ta yüklü olmalı.";
     $("#run-confirm").hidden = false; $("#run-live").hidden = true;
@@ -348,8 +348,8 @@
      Motor Terminal'de aynı onayları yeniden ister (tek doğruluk kaynağı); arayüz onayı bunun ÖN adımıdır. */
   const EFFECT_TXT = { "installs-package": "paket kurar", "changes-config": "yapılandırmayı değiştirir", destructive: "yıkıcı" };
   let wAct = null, logSince = 0;
-  function openWrite(server, pkg, action) {
-    openRun(server, pkg, action);
+  function openWrite(server, pkg, action, item) {
+    openRun(server, pkg, action, item);
     runMode = "write";
     const p = srv.packages.find(x => x.id === pkg), a = actionOf(pkg, action); wAct = a;
     const pv = (p.vars || []).filter(v => v.set);
@@ -361,7 +361,7 @@
     const warns = (a.warnings || []);
     const destr = !!a.destructive;
     const typeName = destr || a.confirm === "type-server-name";
-    $("#run-title").innerHTML = `<span class="mono">${esc(action)}</span> · ${esc(TAB_LABEL[pkg] || pkg)} <span class="draft-tag" style="background:var(--danger-weak);color:var(--danger);border-color:var(--danger-border)">${destr ? "YIKICI" : "yazar"}</span>`;
+    $("#run-title").innerHTML = `<span class="mono">${esc(action)}</span> · ${esc(TAB_LABEL[pkg] || pkg)}${runItem ? ` · <b>${esc(runItem)}</b>` : ""} <span class="draft-tag" style="background:var(--danger-weak);color:var(--danger);border-color:var(--danger-border)">${destr ? "YIKICI" : "yazar"}</span>`;
     $("#run-confirm-text").innerHTML = destr
       ? `<b>⚠ YIKICI EYLEM.</b> <b>${esc(server)}</b> sunucusunda dosya/veri <b>silinebilir ya da değiştirilebilir ve geri alınamayabilir</b>: ${(a.effects || []).map(e => esc(EFFECT_TXT[e] || e)).join(", ")}. Aşağıdaki uyarıların tamamını okuyun.`
       : `<b>${esc(server)}</b> sunucusuna <b>gerçekten yazılacak</b>: ${(a.effects || []).map(e => esc(EFFECT_TXT[e] || e)).join(", ")}.`;
@@ -375,7 +375,7 @@
       ${typeName ? `<div class="field" style="margin-top:12px"><label for="w-confirm">Onay için sunucu adını yazın: <span class="mono">${esc(server)}</span></label><input id="w-confirm" autocomplete="off" spellcheck="false" placeholder="${esc(server)}"><div class="hint">Büyük/küçük harf duyarlıdır.</div></div>`
         : `<label class="small" style="display:flex;gap:8px;align-items:flex-start;margin-top:10px"><input type="checkbox" id="w-yes"> <span>Evet, bu eylemi <b>${esc(server)}</b> üzerinde çalıştırmak istiyorum.</span></label>`}`;
     $("#run-confirm-note").textContent = "Motor aynı onayları (snapshot, e/h ya da ad) ve sudo parolasını çıktıda yeniden sorabilir: kurallar menüdekiyle aynıdır, yanıtları burada verirsiniz. Çalışırken ilerleme izlenir. Parolayı web sayfasına yazmak istemezseniz \"macOS Terminal'de aç\" düğmesini kullanın.";
-    $("#run-go").textContent = destr ? "Yıkıcı eylemi çalıştır" : "Çalıştır (onaylı)"; $("#run-go").classList.add(destr ? "dangerbtn" : "warnbtn"); $("#run-go").disabled = true; $("#run-ext").hidden = false;
+    $("#run-go").textContent = destr ? "Yıkıcı eylemi çalıştır" : "Çalıştır (onaylı)"; $("#run-go").classList.add(destr ? "dangerbtn" : "warnbtn"); $("#run-go").disabled = true; $("#run-ext").hidden = !!runItem; // öğe eylemleri macOS Terminal'de açılamaz (yalnız uygulama içinde, kapılı iş olarak)
     const check = () => { const okc = $("#w-snap").checked && (!destr || $("#w-destr").checked) && (typeName ? $("#w-confirm").value === server : $("#w-yes").checked); $("#run-go").disabled = !okc; $("#run-ext").disabled = !okc; };
     $("#run-ext").disabled = true;
     ["#w-snap", "#w-destr", "#w-confirm", "#w-yes"].forEach(id => { const e = $(id); if (e) { e.addEventListener("input", check); e.addEventListener("change", check); } });
@@ -404,12 +404,17 @@
   }
 
   /* sudo gerektiren salt okunur eylem: macOS Terminal'de sshpocket motoru; parolayı kullanıcı orada girer, arayüz görmez */
-  function actionOf(pkg, action) { const p = srv && srv.packages.find(x => x.id === pkg); return p && p.actions.find(x => x.id === action); }
-  function openTerm(server, pkg, action) {
-    openRun(server, pkg, action);
+  // runItem doluysa eylem durumu O ÖĞENİN kapsamında hesaplanmış olandır (önkoşul, son sonuç); yoksa paketin şimdiki seçimine göre.
+  function actionOf(pkg, action) {
+    const p = srv && srv.packages.find(x => x.id === pkg); if (!p) return undefined;
+    if (runItem) { const it = (p.items || []).find(x => x.id === runItem); return it && it.states && it.states[action]; }
+    return p.actions.find(x => x.id === action);
+  }
+  function openTerm(server, pkg, action, item) {
+    openRun(server, pkg, action, item);
     runMode = "term";
     $("#run-confirm-text").innerHTML = `<b>${esc(server)}</b> sunucusunda <span class="mono">${esc(action)}</span> (<b>salt okunur</b>) çalışacak. Motor <b>sudo parolası</b> isteyecek: bu pencerede çıkan parola kutusuna yazarsınız; doğrudan Ansible'a iletilir, arayüz onu saklamaz ya da günlüğe yazmaz.`;
-    $("#run-go").textContent = "Çalıştır"; $("#run-ext").hidden = false;
+    $("#run-go").textContent = "Çalıştır"; $("#run-ext").hidden = !!runItem;
     const pv = (actionOf(pkg, action) && srv && srv.packages.find(x => x.id === pkg).vars || []).filter(v => v.set);
     if (pv.length) $("#run-confirm-text").insertAdjacentHTML("beforeend", `<div class="chips" style="margin-top:8px"><span class="small muted" style="align-self:center">Bu değişkenlerle:</span>${pv.map(v => `<span class="chip">${esc(v.name)}=${esc(v.value.length > 48 ? v.value.slice(0, 48) + "…" : v.value)}</span>`).join("")}</div>`);
     $("#run-confirm-note").textContent = "Parola istemi çıktıda belirince burada bir kutu açılır. Sonuç menüdekiyle aynı şekilde kaydedilir. ssh anahtarınızın ssh-agent'ta yüklü olması gerekir. Parolayı bir web sayfasına yazmak istemezseniz \"macOS Terminal'de aç\" düğmesini kullanın.";
@@ -418,6 +423,7 @@
     $("#run-go").disabled = true; $("#run-ext").hidden = true;
     const a0 = actionOf(runPkg, runAct), base = a0 ? a0.lastTime || "" : "";
     const body = { server: runSrv, package: runPkg, action: runAct };
+    if (runItem) body.item = runItem;
     if (runMode === "write") { body.snapshot = $("#w-snap").checked; body.ackDestructive = !!($("#w-destr") && $("#w-destr").checked); body.confirm = $("#w-confirm") ? $("#w-confirm").value : $("#w-yes").checked ? "evet" : ""; }
     logSince = Date.now();
     try { await json("/api/run-terminal", body); }
@@ -471,6 +477,7 @@
   async function startRun() {
     $("#run-go").disabled = true; askedAt = askCancelledAt = -1; askBusy = false;
     const body = { server: runSrv, package: runPkg, action: runAct };
+    if (runItem) body.item = runItem;
     if (runMode === "write") { body.snapshot = $("#w-snap").checked; body.ackDestructive = !!($("#w-destr") && $("#w-destr").checked); body.confirm = $("#w-confirm") ? $("#w-confirm").value : $("#w-yes").checked ? "evet" : ""; }
     let r;
     try { r = runMode === "upgrade" ? await json("/api/upgrade", { package: runPkg, version: runUpgTo, ack: true }) : runMode === "task" ? await json("/api/server-task", { server: runSrv, task: runAct }) : await json("/api/run", body); }
@@ -1413,7 +1420,7 @@
 
   // Katalog öğeleri: paketin `items` alanı; yoksa yalnız eski kurulum paketi için yerleşik liste; yoksa null (katalog sayfası yok).
   function catalogItems(p) {
-    if (p.items && p.items.length) return p.items.map(it => ({ id: it.id, label: it.label || it.id, description: it.description || "", params: it.params || [], group: "" }));
+    if (p.items && p.items.length) return p.items.map(it => ({ id: it.id, label: it.label || it.id, description: it.description || "", params: it.params || [], group: "", actions: it.actions || [], states: it.states || {} }));
     if (p.id === "kurulum") return LEGACY_ITEMS;
     return null;
   }
@@ -1443,14 +1450,27 @@
       vars.forEach(v => claimed.add(v.name));
       const groups = [...new Set(vars.map(v => v.group).filter(Boolean))];
       const rows = vars.map(v => `<div class="av-row"><span class="mono av-name" title="${esc(v.name)}">${esc(short(v, it))}</span><span class="chip">${esc(varCur(v)) || "(boş)"}</span>${v.set ? '<span class="badge ok">ayarlı</span>' : ""}</div>`).join("") || `<div class="small muted">${loaded ? "Değişken bulunamadı." : "Değişkenler yükleniyor…"}</div>`;
-      const off = (label, tip) => `<button class="btn sm" disabled title="${tip}">${label}</button>`;
+      const off = (label, tip) => `<button class="btn sm" disabled title="${esc(tip)}">${label}</button>`;
       const tip = "Öğeye özel çalıştırma yakında: önizleme önkoşulu her öğe için ayrı tutulacak. Şimdilik aşağıdaki Genel eylemler kullanılır.";
+      // öğe eylemi düğmesi: durum BU öğenin kapsamında hesaplanmıştır (önkoşul = aynı öğe + mod için taze önizleme)
+      const ACT_LBL = { preview: "Önizle", kur: "Kur", yukselt: "Yükselt", kaldir: "Kaldır" };
+      const ibtn = a => {
+        const st = (it.states || {})[a], label = ACT_LBL[a];
+        if (!st) return off(label, "durum okunamadı");
+        const kind = st.runnable ? "irun" : st.write ? "iwrite" : st.terminal ? "iterm" : "";
+        if (!kind) return off(label, st.reason || "şimdi çalıştırılamaz");
+        const cls = st.destructive ? "dangerbtn" : st.write ? "warnbtn" : "";
+        return `<button class="btn sm ${cls}" data-${kind}="${esc(p.id)}|${esc(a)}|${esc(id)}" title="${esc(st.reason || "")}">${label}</button>`;
+      };
+      const itemActs = Object.keys(ACT_LBL).filter(a => (it.actions || []).includes(a));
+      const live = itemActs.length > 0; // öğe eylemlerini bildirmeyen (ör. eski kurulum 0.1.0) kartlar eskisi gibi kapalı kalır
+      const btns = live ? itemActs.filter(a => a === "preview" || (a === "kur" ? !on : on)).map(ibtn).join("") : `${off("Önizle", tip)}${on ? off("Yükselt", tip) + off("Kaldır", tip) : off("Kur", tip)}`;
       const ico = esc(LEGACY_ICONS[id] || String(it.label).charAt(0).toUpperCase());
       return `<div class="card app-card" data-app="${esc(id)}" data-st="${!known ? "?" : on ? "on" : "off"}">
         <div class="app-top"><div class="app-ico" aria-hidden="true">${ico}</div><div class="app-titles"><div class="app-title"><span>${esc(it.label)}</span>${badge}</div><p class="app-desc">${esc(it.description)}</p></div></div>
         ${meta.length ? `<div class="app-meta">${meta.map(m => `<span class="meta-chip">${m}</span>`).join("")}</div>` : ""}
         <div class="app-vars"><div class="av-head"><span class="oz-title">Değişkenler</span><button class="link" data-kvars="${esc(groups.length === 1 ? groups[0] : "")}">Düzenle…</button></div>${rows}</div>
-        <div class="app-foot"><span class="small muted">Eylemler yakında</span><div class="app-btns">${off("Önizle", tip)}${on ? off("Yükselt", tip) + off("Kaldır", tip) : off("Kur", tip)}</div></div></div>`;
+        <div class="app-foot"><span class="small muted">${live ? "Önizlemeden sonra kurulur" : "Eylemler yakında"}</span><div class="app-btns">${btns}</div></div></div>`;
     }).join("");
     const chip = (key, label, n) => `<button class="fchip" data-sf="${key}" aria-pressed="${storeFilter === key}">${label}${n === undefined ? "" : ` <span class="muted">${n}</span>`}</button>`;
     // genel ayarlar: eski kurulum için sabit dört değişken; diğerlerinde hiçbir öğeye ait olmayan değişkenler (en çok 8)
@@ -1476,6 +1496,8 @@
   function bindCatalog(pkg) {
     $$("#srv-body [data-sf]").forEach(b => b.addEventListener("click", () => { storeFilter = b.dataset.sf; applyStoreFilter(); }));
     $$("#srv-body [data-kvars]").forEach(b => b.addEventListener("click", () => openVars(srvName, pkg, b.dataset.kvars || undefined)));
+    const itemRun = (attr, fn) => $$(`#srv-body [data-${attr}]`).forEach(b => b.addEventListener("click", () => { const [pid, aid, iid] = b.dataset[attr].split("|"); fn(srvName, pid, aid, iid); }));
+    itemRun("irun", openRun); itemRun("iwrite", openWrite); itemRun("iterm", openTerm);
     $("#srv-body [data-kvars-all]")?.addEventListener("click", () => openVars(srvName, pkg));
     $$("#srv-body [data-actcat]").forEach(b => b.addEventListener("click", () => { actFilter = b.dataset.actcat; applyActFilter(); }));
     if (!$$("#srv-body [data-sf]").some(b => b.dataset.sf === storeFilter)) storeFilter = "all";

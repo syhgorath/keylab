@@ -149,8 +149,12 @@ window.KeyLabPhrasesEN = {
     "şimdi": "just now",
     "Öğeye özel çalıştırma yakında: önizleme önkoşulu her öğe için ayrı tutulacak. Şimdilik aşağıdaki Genel eylemler kullanılır.": "Item-specific running is coming: the preview prerequisite will be tracked per item. For now use the General actions below.",
     "Ortak ayar yok.": "No shared settings.",
+    "Önizlemeden sonra kurulur": "Installs after a preview",
+    "durum okunamadı": "status could not be read",
+    "şimdi çalıştırılamaz": "cannot run now",
   },
   patterns: [
+    [/^Sunucu: (.+) · Öğe: (.+)$/, "Server: $1 · Item: $2"],
     [/^(\d+) dk( · .*)?$/, "$1 min$2"], [/^(\d+) sa( · .*)?$/, "$1 h$2"], [/^(\d+) gün( · .*)?$/, "$1 d$2"],
     [/^anahtar var: (\d+) ·$/, "key present: $1 ·"], [/^1 ölçüm$/, "1 measurement"], [/^(\d+) ölçüm$/, "$1 measurements"],
     [/^(\d+) ölçüm · rapor$/, "$1 measurements · report"], [/^(\d+) sunucu · ([+-]?\d+) toplam değişim$/, "$1 servers · $2 total change"],
