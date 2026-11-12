@@ -55,7 +55,8 @@ func TestScoresFixturesMatchPython(t *testing.T) {
 		"dizede NaN":    `{"tool":"NaN","score":9,"date":"2026-11-07T00:00:00Z"}`,
 	}
 	i := 0
-	for name, c := range sums {
+	for _, p := range ordered(sums) {
+		name, c := p.K, p.V
 		state := t.TempDir()
 		put(t, state, "linux-hardening/web1/out/web1/x/summary.json", c, 1_700_000_000+int64(i))
 		compareScores(t, name, state, py)

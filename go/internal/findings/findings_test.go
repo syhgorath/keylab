@@ -7,12 +7,73 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
+
+	"keylab/internal/shellgold"
 )
 
+// pyScript: altın dosyalı testler için betik yolu; oynatmada python ve betik gerekmez, yalnız kayıt modunda gerekir.
 func pyScript(t *testing.T, name string) string {
+	t.Helper()
+	if os.Getenv("KEYLAB_KAYIT_KABUK") != "1" {
+		p, _ := filepath.Abs("../../../referans/kabuk/sistem/Helpers/" + name)
+		return p
+	}
+	return pyScriptLive(t, name)
+}
+
+var (
+	goldOnce  sync.Once
+	goldStore *shellgold.Store
+	reTmp     = regexp.MustCompile(`(?:/private)?(?:/var/folders/[^/\s]+/[^/\s]+/T|/tmp)/[^\s"']+`) // geçici yollar altın dosyaya girmesin
+)
+
+func goldDo[T any](t *testing.T, f func() T) T {
+	t.Helper()
+	goldOnce.Do(func() { goldStore = shellgold.Open(t, "python") })
+	return shellgold.Do(t, goldStore, goldStore.Next(t), f)
+}
+
+type pyGold struct {
+	Code int
+	Out  string
+}
+
+// runPy: python referansının altın dosyalı hali (anahtar: test adı + sıra). state yolu çıktıda geçerse yer tutucuya çevrilir.
+func runPy(t *testing.T, script string, args ...string) (int, string) {
+	t.Helper()
+	g := goldDo(t, func() pyGold {
+		c, o := runPyLive(t, script, args...)
+		return pyGold{c, reTmp.ReplaceAllString(o, "<T>")}
+	})
+	return g.Code, g.Out
+}
+
+// ordered: harita gezintisini deterministik yapar (altın dosya anahtarı sıraya bağlı).
+type kv[V any] struct {
+	K string
+	V V
+}
+
+func ordered[V any](m map[string]V) []kv[V] {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	out := make([]kv[V], 0, len(keys))
+	for _, k := range keys {
+		out = append(out, kv[V]{k, m[k]})
+	}
+	return out
+}
+
+func pyScriptLive(t *testing.T, name string) string {
 	t.Helper()
 	p, _ := filepath.Abs("../../../referans/kabuk/sistem/Helpers/" + name)
 	if _, err := os.Stat(p); err != nil {
@@ -24,7 +85,7 @@ func pyScript(t *testing.T, name string) string {
 	return p
 }
 
-func runPy(t *testing.T, script string, args ...string) (int, string) {
+func runPyLive(t *testing.T, script string, args ...string) (int, string) {
 	t.Helper()
 	cmd := exec.Command("python3", append([]string{"-I", script}, args...)...)
 	var so bytes.Buffer
@@ -61,7 +122,7 @@ func compareFindings(t *testing.T, label, state, py string) {
 	} else if err != nil {
 		gcode = 2
 	}
-	got := res.Format()
+	got := reTmp.ReplaceAllString(res.Format(), "<T>")
 	if code != gcode || out != got {
 		t.Errorf("%s: python=%d go=%d\npython: %q\ngo:     %q", label, code, gcode, trunc(out), trunc(got))
 	}
@@ -99,7 +160,8 @@ func TestFindingsFixturesMatchPython(t *testing.T) {
 		"eşlemeli":          hdr + good + row("e2", "orta", "uyari", "x", "", "", "", "ubuntu") + row("e3", "orta", "uyari", "x", "ufw", "", "", "ubuntu"),
 		"tekrar":            hdr + good + good,
 	}
-	for name, c := range cases {
+	for _, p := range ordered(cases) {
+		name, c := p.K, p.V
 		state := t.TempDir()
 		put(t, state, "linux-hardening/web1/out/web1/2026/bulgular.tsv", c, 1_700_000_000)
 		compareFindings(t, name, state, py)
