@@ -1200,3 +1200,50 @@ td.diff-val{box-shadow:inset 3px 0 0 var(--warn)}
 .palette-opt.active .palette-hint{color:inherit;opacity:.8}
 .palette-empty{padding:18px;text-align:center;color:var(--muted);font-size:13px}
 .palette-foot{padding:8px 14px;border-top:1px solid var(--border)}
+
+/* Satır içi stillerden taşınanlar (index.html). Sınıf adı = stil metninin özetidir; eşdeğerlik tarayıcıda hesaplanmış stil karşılaştırmasıyla doğrulandı. */
+.sx-046678{width:100%}
+.sx-05a3db{margin:0;padding-left:18px;color:var(--text-2);line-height:1.8}
+.sx-0b06a2{margin-top:10px;flex-wrap:nowrap}
+.sx-100841{border-bottom:1px solid var(--border)}
+.sx-116966{margin:0}
+.sx-15ab33{font-size:11px;font-weight:700}
+.sx-26d3d1{margin-top:auto}
+.sx-31f8f5{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--text,#222);color:var(--surface,#fff);padding:8px 14px;border-radius:8px;display:none;font-size:13px;z-index:50}
+.sx-46884b{display:flex;flex-direction:column;gap:6px;color:var(--text-2)}
+.sx-471df9{margin-right:auto}
+.sx-48a649{width:min(640px,94vw)}
+.sx-497726{color:var(--danger) !important} /* .btn kuralları rengi eziyordu: satır içi stille aynı öncelik için */
+.sx-4a5ead{margin-top:10px;gap:12px;align-items:center}
+.sx-4ae17f{max-height:62vh;overflow:auto}
+.sx-4fb60c{align-items:flex-start;gap:12px}
+.sx-532b40{max-width:180px}
+.sx-56f435{margin-top:12px}
+.sx-5c43ad{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;color:var(--text-2)}
+.sx-607468{width:110px}
+.sx-6a5188{max-width:48%;word-break:break-word}
+.sx-6c2dda{margin-left:12px}
+.sx-761d3a{margin-bottom:10px}
+.sx-81178e{position:relative;display:inline-block}
+.sx-86aeea{color:var(--danger);margin-right:auto}
+.sx-87c136{margin-bottom:16px}
+.sx-87d4fb{width:min(580px,94vw)}
+.sx-97445a{flex:1}
+.sx-98b197{width:min(480px,94vw)}
+.sx-a3d12b{display:flex;justify-content:space-between}
+.sx-a5d903{max-height:60vh;overflow:auto}
+.sx-a82890{max-width:200px}
+.sx-afaad9{max-height:68vh;overflow:auto}
+.sx-b3842e{color:var(--text-2)}
+.sx-c017e7{margin:0;background:var(--surface-2);border-color:var(--border)}
+.sx-d0fc9f{width:min(900px,94vw);max-width:900px}
+.sx-d17f9e{font-size:13px;font-weight:700}
+.sx-d2c171{margin-top:10px}
+.sx-d6f2af{margin-top:14px}
+.sx-d870e8{margin:12px 0 0}
+.sx-d87ce2{gap:8px;margin-top:10px}
+.sx-da12f2{margin-bottom:12px}
+.sx-df6718{margin:0 0 8px}
+.sx-f0abc1{gap:6px}
+.sx-f2ae6a{font-family:var(--mono);font-size:14px}
+.sx-fe7b49{margin-top:6px}
