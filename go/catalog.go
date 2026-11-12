@@ -60,13 +60,54 @@ type VarInfo struct {
 	Needed      bool     `json:"needed"` // bir eylem bu değişkeni zorunlu kılıyor
 }
 
+// ItemInfo: paketin yazılım kataloğu öğesi (component.json "items"; bkz. docs/package-standard.md). Arayüz katalog sayfasını bundan çizer.
+type ItemInfo struct {
+	ID          string   `json:"id"`
+	Label       string   `json:"label"`
+	Description string   `json:"description,omitempty"`
+	Modes       []string `json:"modes,omitempty"`
+	Actions     []string `json:"actions,omitempty"`
+	Params      []string `json:"params,omitempty"`
+}
+
 type PackageInfo struct {
 	ID          string       `json:"id"`
 	Version     string       `json:"version"`
 	Name        string       `json:"name"`
 	Description string       `json:"description"`
+	ItemVar     string       `json:"itemVar,omitempty"` // "items" varsa: yazılım seçimini taşıyan değişken
+	ModeVar     string       `json:"modeVar,omitempty"`
+	Items       []ItemInfo   `json:"items,omitempty"`
 	Vars        []VarInfo    `json:"vars"`
 	Actions     []ActionInfo `json:"actions"`
+}
+
+// cleanItems: component.json'dan gelen "items"ı güvenli sınırlara indirir (kimlikler reName, metinler kısaltılır, listeler sınırlanır).
+func cleanItems(in []ItemInfo) []ItemInfo {
+	var out []ItemInfo
+	clip := func(s string, n int) string {
+		if r := []rune(s); len(r) > n {
+			return string(r[:n])
+		}
+		return s
+	}
+	ids := func(l []string, max int) []string {
+		var o []string
+		for _, x := range l {
+			if reName.MatchString(x) && len(o) < max {
+				o = append(o, x)
+			}
+		}
+		return o
+	}
+	for _, it := range in {
+		if !reName.MatchString(it.ID) || len(out) >= 30 {
+			continue
+		}
+		out = append(out, ItemInfo{ID: it.ID, Label: clip(it.Label, 80), Description: clip(it.Description, 400),
+			Modes: ids(it.Modes, 5), Actions: ids(it.Actions, 20), Params: ids(it.Params, 12)})
+	}
+	return out
 }
 
 var reAction = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
@@ -146,7 +187,17 @@ func (a *App) packageInfos(s Server) []PackageInfo {
 		var c struct {
 			Name        string `json:"name"`
 			Description string `json:"description"`
-			Actions     map[string]struct {
+			ItemVar     string `json:"item_var"`
+			ModeVar     string `json:"mode_var"`
+			Items       []struct {
+				ID          string   `json:"id"`
+				Label       string   `json:"label"`
+				Description string   `json:"description"`
+				Modes       []string `json:"modes"`
+				Actions     []string `json:"actions"`
+				Params      []string `json:"params"`
+			} `json:"items"`
+			Actions map[string]struct {
 				Effects      []string `json:"effects"`
 				RequiresSudo bool     `json:"requires_sudo"`
 				Confirm      string   `json:"confirm"`
@@ -168,6 +219,17 @@ func (a *App) packageInfos(s Server) []PackageInfo {
 			continue
 		}
 		info := PackageInfo{ID: p.ID, Version: p.Version, Name: c.Name, Description: c.Description, Vars: []VarInfo{}}
+		if reName.MatchString(c.ItemVar) && len(c.Items) > 0 {
+			info.ItemVar = c.ItemVar
+			if reName.MatchString(c.ModeVar) {
+				info.ModeVar = c.ModeVar
+			}
+			raw := make([]ItemInfo, 0, len(c.Items))
+			for _, it := range c.Items {
+				raw = append(raw, ItemInfo{ID: it.ID, Label: it.Label, Description: it.Description, Modes: it.Modes, Actions: it.Actions, Params: it.Params})
+			}
+			info.Items = cleanItems(raw)
+		}
 		sdir := filepath.Join(a.stateDir, p.ID, s.Name)
 		last := lastResults(filepath.Join(sdir, "results"))
 		// sunucuya özel değişkenler: servers/<ad>/<paket>.vars (anahtar=değer); yalnızca ayarlı olanlar ve eylemlerin zorunlu kıldıkları gösterilir
