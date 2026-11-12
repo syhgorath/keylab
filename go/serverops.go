@@ -204,7 +204,7 @@ func (a *App) serverFiles(name string) ([]SrvFile, []string, error) {
 	return files, state, nil
 }
 
-// removeServer: `sshpocket-go server-remove` (Go) pty altında (Keychain soruları arayüze düşer).
+// removeServer: `keylab server-remove` (Go) pty altında (Keychain soruları arayüze düşer).
 // Motor "sunucu adını yazın" diye sorar: arayüzde zaten birebir yazılan ad (sunucu tarafında yeniden denetlenir) o istem belirince iletilir.
 func (a *App) removeServer(name, confirm string, ack bool) (*Job, int, error) {
 	if !reNewName.MatchString(name) {

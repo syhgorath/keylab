@@ -136,7 +136,7 @@ docs/                        ayrıntılı belgeler (paketler, güncelleme, test 
 ```bash
 cd go
 go vet ./... && go test ./... -short       # uzun karşılaştırmalı testler için -short'u kaldırın
-go build -o sshpocket-go .
+go build -o keylab .
 ```
 
 Karşılaştırmalı testler `referans/kabuk/` içindeki kabuk/Python motorunu aynı girdilerle çalıştırıp çıkış kodu, çıktı ve dosya ağacını Go ile karşılaştırır;

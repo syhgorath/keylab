@@ -97,12 +97,12 @@ You can verify it yourself before running it (OpenSSH ≥ 8.0, ready on macOS). 
 confirming it with the maintainer **through another channel** is better than trusting the file in the repo blindly.
 
 ```bash
-# after downloading sshpocket-X.Y.Z-darwin-universal and its .sig from the Release:
+# after downloading keylab-X.Y.Z-darwin-universal and its .sig from the Release:
 cat > /tmp/sshpocket_signers <<'EOF'
 sshpocket-release namespaces="sshpocket-release" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKVJS3mGlCaOT/l8XfR0TxuKxqLUs6PpVDa9TYqm0fLn
 EOF
 ssh-keygen -Y verify -f /tmp/sshpocket_signers -I sshpocket-release -n sshpocket-release \
-  -s sshpocket-X.Y.Z-darwin-universal.sig < sshpocket-X.Y.Z-darwin-universal      # must print "Good ... signature"
+  -s keylab-X.Y.Z-darwin-universal.sig < keylab-X.Y.Z-darwin-universal      # must print "Good ... signature"
 ```
 
 ## Security model
@@ -136,7 +136,7 @@ docs/                        detailed docs (packages, updating, tested environme
 ```bash
 cd go
 go vet ./... && go test ./... -short       # drop -short for the long differential tests
-go build -o sshpocket-go .
+go build -o keylab .
 ```
 
 The differential tests run the shell/Python engine in `referans/kabuk/` and Go on the same inputs and compare exit code, output and file tree;

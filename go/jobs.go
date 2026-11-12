@@ -309,7 +309,7 @@ func (a *App) newJob(server, pkg, action string) (*Job, error) {
 	return job, nil
 }
 
-// startJob: eylemi pty altında Go yürütücüsüyle (`sshpocket-go run`) çalıştırır. Kapılar, günlük ve sonuç kaydı yürütücünün işidir.
+// startJob: eylemi pty altında Go yürütücüsüyle (`keylab run`) çalıştırır. Kapılar, günlük ve sonuç kaydı yürütücünün işidir.
 func (a *App) startJob(server, pkg, action string, snapshot bool, confirm string, ackDestructive bool) (*Job, int, error) {
 	if _, code, err := a.authorizeRun(server, pkg, action, snapshot, confirm, ackDestructive); err != nil {
 		return nil, code, err

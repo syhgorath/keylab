@@ -8,7 +8,8 @@
 //   - Geri sürüme düşülmez. Yerleştirme atomiktir (aynı klasörde yeni dosya + rename); eski ikili .update-backup/ altına yedeklenir ve
 //     hata olursa geri konur. Kullanıcı verisine (servers/, components/, anahtarlar) dokunulmaz.
 //
-// Yayın varlıkları: sshpocket-X.Y.Z-<os>-<mimari> (macOS için önce -darwin-universal) ve aynı adla .sig.
+// Yayın varlıkları: keylab-X.Y.Z-<os>-<mimari> (macOS için önce -darwin-universal) ve aynı adla .sig; geçiş döneminde aynı dosyalar
+// eski sshpocket-X.Y.Z-… adıyla da yayımlanır (eski istemciler onu arar; onların `version` çıktısı beklentisi "sshpocket X.Y.Z" de korunur).
 package selfupdate
 
 import (
@@ -26,7 +27,7 @@ import (
 )
 
 const (
-	DefaultRepo = "syhgorath/sshpocket"
+	DefaultRepo = "syhgorath/keylab"
 	Namespace   = "sshpocket-release"
 	Principal   = "sshpocket-release"
 	maxBinary   = 200 << 20
@@ -103,11 +104,16 @@ func (u *Updater) assetNames(ver string) []string {
 	if arch == "" {
 		arch = runtime.GOARCH
 	}
+	// Önce yeni ad (keylab-…), sonra eski ad (sshpocket-…): geçiş döneminde her sürüm iki adla da yayımlanır
+	// (eski istemciler yalnız sshpocket-… arar). Aynı içerik, aynı imza; imza ad alanı değişmez.
 	var names []string
-	if goos == "darwin" {
-		names = append(names, fmt.Sprintf("sshpocket-%s-darwin-universal", ver))
+	for _, pre := range []string{"keylab", "sshpocket"} {
+		if goos == "darwin" {
+			names = append(names, fmt.Sprintf("%s-%s-darwin-universal", pre, ver))
+		}
+		names = append(names, fmt.Sprintf("%s-%s-%s-%s", pre, ver, goos, arch))
 	}
-	return append(names, fmt.Sprintf("sshpocket-%s-%s-%s", ver, goos, arch))
+	return names
 }
 
 func (u *Updater) runVersion(path string) (string, error) {
