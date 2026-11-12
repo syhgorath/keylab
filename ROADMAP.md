@@ -30,7 +30,7 @@ Sıra bağlayıcı değildir; fikir ve PR'lara açıktır.
 - ProxyJump/bastion, SSH tüneli, `scp`/`sftp` kısayolları.
 - Arayüz çevirisi: Türkçe/İngilizce var (üst çubuktaki TR/EN düğmesi; ifade tablosu `go/web/js/core/i18n-phrases-en.js`); kalanlar: sunucudan gelen iletiler, tarih biçimi ve yeni dil eklemek için `t()` anahtarlarına geçiş.
 - `~/.ssh/config`'te `Include` desteği.
-- Arayüz: pocketui'den planlanan özellikler tamam (Agatha ayrı repoda, ping/shutdown/reboot şimdilik yok). Kalanlar: toplu işlemin yazan eylemlere genişletilmesi (sunucu başına snapshot/sudo/ad onayı gerektiğinden ayrı tasarım), `html` etiketli şablon, `app.js`'in ES modüllerine bölünmesi. Gerçek ortamda denenmesi gerekenler: yazdırma/PDF, çoklu terminal (knock'lı sunucu), gerçek ansible işini arka plana alma, yedeği gerçek sunucularla geri yükleme.
+- Arayüz: pocketui'den planlanan özellikler tamam (Agatha ayrı repoda, ping/shutdown/reboot şimdilik yok). Kalanlar: toplu işlemin yazan eylemlere genişletilmesi (sunucu başına snapshot/sudo/ad onayı gerektiğinden ayrı tasarım), `app.js`'in ES modüllerine bölünmesi. Gerçek ortamda denenmesi gerekenler: yazdırma/PDF, çoklu terminal (knock'lı sunucu), gerçek ansible işini arka plana alma, yedeği gerçek sunucularla geri yükleme.
 
 ### Dağıtım
 - **Kilit kanalı:** paket sürümleri için sshpocket sürümü beklememek (imzalı, sayaçlı, süreli, onaylı); tasarım taslağı [docs/kilit-kanali.md](docs/kilit-kanali.md).
