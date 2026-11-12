@@ -3,6 +3,7 @@
    (değişken/eylem adları, dosya yolları) ve kullanıcı verisi çevrilmez. Eksik ifade Türkçe kalır; tabloya eklenerek genişletilir. */
 window.KeyLabPhrasesEN = {
   exact: {
+    "Vurgu rengi": "Accent color", "İndigo": "Indigo", "Mavi": "Blue", "Turkuaz": "Teal", "Zümrüt": "Emerald", "Kehribar": "Amber", "Gül": "Rose", "Mor": "Violet", "Grafit": "Graphite",
     "Ekranı gizle (L)": "Hide screen (L)", "Ekranı gizle (gizlilik kilidi)": "Hide the screen (privacy lock)", "Gizlilik kilidi": "Privacy lock", "parola yok": "no password",
     "Boşta kilidi": "Idle lock", "Boşta kalma süresi": "Idle time", "Kapalı": "Off", "5 dk": "5 min", "10 dk": "10 min", "30 dk": "30 min", "Şimdi gizle": "Hide now",
     "Ekran gizlendi": "Screen hidden", "Ekranı göster": "Show screen", "Bu bir gizlilik perdesidir, parola kilidi değil.": "This is a privacy screen, not a password lock.",
