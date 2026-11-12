@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -82,17 +83,17 @@ func TestKeyCopyMatchesShell(t *testing.T) {
 		if s.dropPub {
 			os.Remove(key + ".pub")
 		}
-		sh1 := shell(t, r, []string{"FAKE_SSH_RC=" + s.sshRC, "FAKE_COPY_RC=" + s.copyRC}, "ssh_copy_key", s.user, "10.0.0.5", "22", s.keyPath)
-		if s.dropPub {
-			os.Remove(key + ".pub")
-		}
-		_ = sh1
-		// kabuk stdin'i: shell() yardımcısı stdin vermiyor; doğrudan çalıştır
-		shOut := runShellStdin(t, r, s.stdin, []string{"FAKE_SSH_RC=" + s.sshRC, "FAKE_COPY_RC=" + s.copyRC}, "ssh_copy_key", s.user, "10.0.0.5", "22", s.keyPath)
+		// kabuk stdin'i: shell() yardımcısı stdin vermiyor; doğrudan çalıştır (altın dosyadan)
+		shG := goldDo(t, func() shT {
+			x := runShellStdin(t, r, s.stdin, []string{"FAKE_SSH_RC=" + s.sshRC, "FAKE_COPY_RC=" + s.copyRC}, "ssh_copy_key", s.user, "10.0.0.5", "22", s.keyPath)
+			return shT{x.code, fpn(nt(strings.ReplaceAll(x.out, dir, "<D>"))), fpn(nt(strings.ReplaceAll(x.err, dir, "<D>"))), ""}
+		})
+		shOut := sh{shG.Code, shG.Out, shG.Err}
 		if s.dropPub {
 			os.Remove(key + ".pub")
 		}
 		code, got := goKeyCopy(s.stdin, s.user, "10.0.0.5", "22", s.keyPath)
+		got = fpn(nt(strings.ReplaceAll(got, dir, "<D>")))
 		want := fmt.Sprintf("%s|ERR|%s", shOut.out, strings.TrimRight(stripPrompts(shOut.err), "\n"))
 		if code != shOut.code || got != want {
 			t.Errorf("%s: kabuk=%d go=%d\nkabuk: %q\ngo:    %q", s.name, shOut.code, code, want, got)
@@ -102,6 +103,15 @@ func TestKeyCopyMatchesShell(t *testing.T) {
 		}
 	}
 }
+
+var reFP = regexp.MustCompile(`SHA256:[A-Za-z0-9+/]+`)
+
+// fpn: her koşuda yeni üretilen anahtarın parmak izi altın dosyaya girmesin.
+func fpn(s string) string {
+	return rePub.ReplaceAllString(reFP.ReplaceAllString(s, "SHA256:<FP>"), "ssh-ed25519 <PUB>")
+}
+
+var rePub = regexp.MustCompile(`ssh-ed25519 AAAA[A-Za-z0-9+/=]+`)
 
 func runShellStdin(t *testing.T, r, stdin string, env []string, fn string, args ...string) sh {
 	t.Helper()
@@ -148,31 +158,39 @@ func TestRemoveInteractiveMatchesShell(t *testing.T) {
 		kc1, kc2 := filepath.Join(t.TempDir(), "kc"), filepath.Join(t.TempDir(), "kc")
 		os.WriteFile(kc1, []byte(c.kc), 0o600)
 		os.WriteFile(kc2, []byte(c.kc), 0o600)
-		cmd := exec.Command("bash", filepath.Join(r, "referans/kabuk/sistem/ModuleManager.sh"), "remove", c.target)
-		cmd.Env = append(os.Environ(), "SSHPOCKET_SERVERS_DIR="+d1, "SSHPOCKET_MODULES_DIR="+filepath.Join(d1, "..yok"), "FAKE_KC="+kc1)
-		cmd.Stdin = strings.NewReader(c.stdin)
-		var so, se bytes.Buffer
-		cmd.Stdout, cmd.Stderr = &so, &se
-		shErr := cmd.Run()
-		shCode := 0
-		if ee, ok := shErr.(*exec.ExitError); ok {
-			shCode = ee.ExitCode()
+		type rm struct {
+			Code          int
+			Out, Tree, KC string
 		}
+		g := goldDo(t, func() rm {
+			cmd := exec.Command("bash", filepath.Join(r, "referans/kabuk/sistem/ModuleManager.sh"), "remove", c.target)
+			cmd.Env = append(os.Environ(), "SSHPOCKET_SERVERS_DIR="+d1, "SSHPOCKET_MODULES_DIR="+filepath.Join(d1, "..yok"), "FAKE_KC="+kc1)
+			cmd.Stdin = strings.NewReader(c.stdin)
+			var so, se bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &so, &se
+			shErr := cmd.Run()
+			code := 0
+			if ee, ok := shErr.(*exec.ExitError); ok {
+				code = ee.ExitCode()
+			}
+			k, _ := os.ReadFile(kc1)
+			return rm{code, strings.ReplaceAll(so.String(), d1, "<D>"), tree(t, d1), string(k)}
+		})
+		shCode := g.Code
 		t.Setenv("FAKE_KC", kc2)
 		var out, errb bytes.Buffer
 		goCode := RemoveInteractive(Console{In: bufio.NewReader(strings.NewReader(c.stdin)), Out: &out, Err: &errb}, Keychain{}, d2, c.target)
-		wantOut := strings.ReplaceAll(so.String(), d1, "<D>")
+		wantOut := g.Out
 		gotOut := strings.ReplaceAll(out.String(), d2, "<D>")
 		if goCode != shCode || wantOut != gotOut {
 			t.Errorf("%s: kabuk=%d go=%d\nkabuk: %q\ngo:    %q", c.name, shCode, goCode, wantOut, gotOut)
 		}
-		if a, b := tree(t, d1), tree(t, d2); a != b {
+		if a, b := g.Tree, tree(t, d2); a != b {
 			t.Errorf("%s: ağaç farklı\nkabuk: %s\ngo:    %s", c.name, a, b)
 		}
-		k1, _ := os.ReadFile(kc1)
 		k2, _ := os.ReadFile(kc2)
-		if string(k1) != string(k2) {
-			t.Errorf("%s: Keychain kalanı farklı kabuk=%q go=%q", c.name, k1, k2)
+		if g.KC != string(k2) {
+			t.Errorf("%s: Keychain kalanı farklı kabuk=%q go=%q", c.name, g.KC, k2)
 		}
 		_ = tools
 	}

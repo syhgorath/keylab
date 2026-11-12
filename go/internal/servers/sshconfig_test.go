@@ -37,7 +37,7 @@ func TestParseSSHConfigMatchesShell(t *testing.T) {
 	for i, c := range sshConfigs {
 		f := filepath.Join(dir, fmt.Sprintf("c%d", i))
 		os.WriteFile(f, []byte(c), 0o600)
-		s := shell(t, r, nil, "ssh_config_hosts", f)
+		s := shellG(t, r, nil, "ssh_config_hosts", f)
 		ents, err := ParseSSHConfig(f)
 		if err != nil || s.code != 0 {
 			t.Fatalf("durum %d: kabuk=%d %q go=%v", i, s.code, s.err, err)
@@ -58,7 +58,7 @@ func TestParseSSHConfigMatchesShell(t *testing.T) {
 func TestModuleNameFromAliasMatchesShell(t *testing.T) {
 	r := root(t)
 	for _, a := range []string{"web1", "Web-1", "1web", "_x", "a.b", "ü", "A B", "", "web_01", "ÇĞ", "x-y.z", "9"} {
-		s := shell(t, r, nil, "ssh_config_module_name", a)
+		s := shellG(t, r, nil, "ssh_config_module_name", a)
 		if got := ModuleNameFromAlias(a); got != s.out {
 			t.Errorf("%q: kabuk=%q go=%q", a, s.out, got)
 		}
@@ -67,6 +67,7 @@ func TestModuleNameFromAliasMatchesShell(t *testing.T) {
 
 func TestImportHostsMatchesShell(t *testing.T) {
 	r := root(t)
+	t.Setenv("USER", "testkullanici") // sabit kullanıcı: altın dosyada kişisel ad olmasın, CI'da da aynı
 	cfg := filepath.Join(t.TempDir(), "config")
 	os.WriteFile(cfg, []byte("Host web1\n  HostName 10.0.0.5\n  User root\n  IdentityFile ~/k\nHost mevcut\n  HostName 10.0.0.6\nHost bozuk\n  HostName a b\nHost Yeni-Ad\n  HostName y.example\n  Port 2200\n"), 0o600)
 	d1, d2 := t.TempDir(), t.TempDir()
@@ -74,16 +75,19 @@ func TestImportHostsMatchesShell(t *testing.T) {
 		os.MkdirAll(filepath.Join(d, "mevcut"), 0o700)
 	}
 	// kabuk betiği etkileşimli seçim sorar: numaralar "1,2,3,4" stdin'den (ok tuşları kapalı: boruda ui_arrows_enabled yanlış)
-	cmd := execCommand(r, d1, cfg)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("kabuk: %v\n%s", err, out)
-	}
+	shTree := goldDo(t, func() string {
+		cmd := execCommand(r, d1, cfg)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("kabuk: %v\n%s", err, out)
+		}
+		return tree(t, d1)
+	})
 	ents, _ := ParseSSHConfig(cfg)
 	res := ImportHosts(d2, ents, os.Getenv("USER"))
 	if len(res) != 4 || !res[1].Skipped || res[2].Err == nil || res[0].Err != nil || res[3].Err != nil {
 		t.Fatalf("sonuçlar beklenmedik: %+v", res)
 	}
-	if a, b := tree(t, d1), tree(t, d2); a != b {
+	if a, b := shTree, tree(t, d2); a != b {
 		t.Errorf("ağaç farklı\nkabuk: %s\ngo:    %s", a, b)
 	}
 }
