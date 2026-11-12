@@ -3,6 +3,12 @@
    (değişken/eylem adları, dosya yolları) ve kullanıcı verisi çevrilmez. Eksik ifade Türkçe kalır; tabloya eklenerek genişletilir. */
 window.KeyLabPhrasesEN = {
   exact: {
+    "~/.ssh/config'ten içe aktar…": "Import from ~/.ssh/config…", "ssh config'ten içe aktar": "Import from ssh config",
+    "~/.ssh/config dosyasındaki Host kayıtları. Private key kopyalanmaz; yalnızca yolu kaydedilir.": "Host entries from ~/.ssh/config. Private keys are not copied; only the path is stored.",
+    "İçe aktar": "Import", "Taranıyor…": "Scanning…", "Ekli": "Added", "seçili": "selected", "Hata:": "Error:",
+    "~/.ssh/config dosyası bulunamadı.": "~/.ssh/config was not found.",
+    "Dosyada içe aktarılabilir Host kaydı yok (joker karakterli kayıtlar ve Match/Include blokları desteklenmez).": "No importable Host entries in the file (wildcard entries and Match/Include blocks are not supported).",
+    "sunucu eklendi": "server(s) added", "zaten vardı (atlandı)": "already existed (skipped)", "hata": "error(s)",
     "Klavye kısayolları": "Keyboard shortcuts", "Klavye kısayolları (?)": "Keyboard shortcuts (?)",
     "Yazı alanındayken tek tuşlu kısayollar çalışmaz.": "Single-key shortcuts do not work while typing in a field.",
     "Arama çubuğuna odaklan": "Focus the search box", "Bu pencereyi aç / kapat": "Open / close this window",
