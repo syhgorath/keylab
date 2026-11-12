@@ -41,7 +41,7 @@
     return fallback != null ? fallback : key;
   }
 
-  function applyI18n(root) {
+  let applyI18n = function (root) {
     const base = root || document;
     const each = (attr, fn) => base.querySelectorAll("[" + attr + "]").forEach(el => fn(el, t(el.getAttribute(attr), null)));
     each("data-i18n", (el, v) => { if (v != null) el.textContent = v; });
@@ -50,7 +50,7 @@
     each("data-i18n-aria", (el, v) => { if (v != null) el.setAttribute("aria-label", v); });
     const badge = document.getElementById("lang-cur");
     if (badge) badge.textContent = currentLang.toUpperCase();
-  }
+  };
 
   function setLang(lang) {
     if (!SUPPORTED_LANGS.includes(lang)) lang = "tr";
@@ -69,7 +69,72 @@
     applyI18n(document);
   }
 
-  window.KeyLabI18n = { getLang, setLang, t, applyI18n, SUPPORTED_LANGS, DICTS };
+  /* ---- Ekranda çizilen metin için ifade çevirisi (geçiş katmanı) ----
+     Çizim kodları Türkçe metni doğrudan üretir. İngilizce seçiliyken burada, tam eşleşen metin düğümleri (ve title / placeholder /
+     aria-label öznitelikleri) js/core/i18n-phrases-en.js tablosuna göre değiştirilir; Türkçeye dönünce özgün metin geri konur.
+     Tam eşleşme aranır: kullanıcı verisi (sunucu adı, günlük satırı) bir ifadeyle tıpatıp aynı değilse asla değişmez.
+     Eşleşmeyen metin Türkçe kalır (çeviri parça parça eklenir). Kalıcı çözüm: metinleri data-i18n / t() anahtarlarına taşımak. */
+  const PHRASES = window.KeyLabPhrasesEN || { exact: {}, patterns: [] };
+  const tracked = new Map(); // düğüm -> özgün değer (metin düğümü için nodeValue; öznitelik için {attr: değer})
+  const ATTRS = ["title", "placeholder", "aria-label"];
+  const SKIP = new Set(["SCRIPT", "STYLE", "TEXTAREA", "INPUT", "PRE", "CODE"]);
+  function trPhrase(raw) {
+    const k = raw.replace(/\s+/g, " ").trim();
+    if (!k) return null;
+    if (PHRASES.exact[k] != null) return PHRASES.exact[k];
+    for (const [re, rep] of PHRASES.patterns) if (re.test(k)) return k.replace(re, rep);
+    return null;
+  }
+  let busy = false, scheduled = false;
+  function translateTree() {
+    if (busy) return;
+    busy = true;
+    try {
+      if (currentLang !== "en") {
+        tracked.forEach((orig, node) => {
+          if (!node.isConnected) { tracked.delete(node); return; }
+          if (node.nodeType === 3) node.nodeValue = orig;
+          else Object.keys(orig).forEach(a => node.setAttribute(a, orig[a]));
+        });
+        tracked.clear();
+        return;
+      }
+      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode: n => (n.parentNode && SKIP.has(n.parentNode.nodeName)) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+      });
+      let n;
+      while ((n = w.nextNode())) {
+        if (tracked.has(n)) continue;
+        const r = trPhrase(n.nodeValue);
+        if (r == null) continue;
+        const lead = n.nodeValue.match(/^\s*/)[0], trail = n.nodeValue.match(/\s*$/)[0];
+        tracked.set(n, n.nodeValue);
+        n.nodeValue = lead + r + trail;
+      }
+      document.body.querySelectorAll("[title],[placeholder],[aria-label]").forEach(el => {
+        const orig = tracked.get(el) || {};
+        let changed = false;
+        ATTRS.forEach(a => {
+          const v = el.getAttribute(a);
+          if (v == null) return;
+          const r = trPhrase(orig[a] != null ? orig[a] : v);
+          if (r != null && r !== v) { orig[a] = orig[a] != null ? orig[a] : v; el.setAttribute(a, r); changed = true; }
+        });
+        if (changed) tracked.set(el, orig);
+      });
+    } finally { busy = false; }
+  }
+  function scheduleTranslate() {
+    if (scheduled) return;
+    scheduled = true;
+    // setTimeout: arka plandaki sekmede requestAnimationFrame durur; kısa bir gecikme art arda çizimleri de tek turda toplar
+    setTimeout(() => { scheduled = false; translateTree(); }, 20);
+  }
+  const origApply = applyI18n;
+  applyI18n = function (root) { origApply(root); translateTree(); };
+
+  window.KeyLabI18n = { getLang, setLang, t, applyI18n, translateTree, SUPPORTED_LANGS, DICTS };
   init();
+  new MutationObserver(() => { if (!busy) scheduleTranslate(); }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => applyI18n(document));
 })();
