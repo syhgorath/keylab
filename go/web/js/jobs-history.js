@@ -5,7 +5,7 @@
   "use strict";
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
-  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const { html, setHtml } = window.KeyLabHtml;
   const isEn = () => window.KeyLabI18n && window.KeyLabI18n.getLang() === "en";
   const L = (tr, en) => (isEn() ? en : tr);
   let hooks = null, timer = 0, jobs = [], running = "", openId = "", outText = "";
@@ -16,14 +16,14 @@
 
   function paint() {
     const box = $("#jobs-list");
-    if (!jobs.length) { box.innerHTML = `<p class="muted">${esc(L("Bu oturumda henüz iş çalışmadı.", "No job has run in this session yet."))}</p>`; return; }
-    box.innerHTML = jobs.map(j => {
+    if (!jobs.length) { setHtml(box, html`<p class="muted">${L("Bu oturumda henüz iş çalışmadı.", "No job has run in this session yet.")}</p>`); return; }
+    setHtml(box, html`${jobs.map(j => {
       const [, ico, tr, cls] = state(j), open = openId === j.id;
       const what = j.action === "upgrade" ? `${L("paket kurulumu", "package install")} · ${j.package || ""}` : `${j.action}${j.package ? " · " + hooks.tabLabel(j.package) : ""}`;
-      return `<div class="batch-item"><div class="imp-row" data-id="${esc(j.id)}" role="button" tabindex="0" aria-expanded="${open}">
-        <span class="imp-main"><b>${esc(j.server || "—")}</b><span class="small muted mono">${esc(what)} · ${esc(clock(j.started))}</span></span>
-        <span class="badge ${cls}">${ico} ${esc(tr)}</span></div>${open ? `<pre class="batch-out">${esc(outText)}</pre>` : ""}</div>`;
-    }).join("");
+      return html`<div class="batch-item"><div class="imp-row" data-id="${j.id}" role="button" tabindex="0" aria-expanded="${open}">
+        <span class="imp-main"><b>${j.server || "—"}</b><span class="small muted mono">${what} · ${clock(j.started)}</span></span>
+        <span class="badge ${cls}">${ico} ${tr}</span></div>${open && html`<pre class="batch-out">${outText}</pre>`}</div>`;
+    })}`);
   }
 
   async function load() {
