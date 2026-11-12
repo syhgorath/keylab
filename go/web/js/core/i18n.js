@@ -17,6 +17,8 @@
       search_ph: "Sunucu, paket ara…",
       tree_title: "Sunucular", tree_add: "+ Ekle", tree_search: "Sunucu veya IP ara…", tree_none: "Eşleşen sunucu yok.",
       lang_title: "Dil / Language",
+      st_invalid: "yapılandırma geçersiz", st_checking: "denetleniyor", st_up: "çevrimiçi", st_knock: "🔒 kapalı — knock gerekir",
+      st_closed: "port kapalı (makine yanıt veriyor)", st_down: "bağlantı yok",
     },
     en: {
       nav_general: "General", nav_security: "Security", nav_system: "System",
@@ -25,6 +27,8 @@
       search_ph: "Search servers, packages…",
       tree_title: "Servers", tree_add: "+ Add", tree_search: "Search server or IP…", tree_none: "No matching server.",
       lang_title: "Dil / Language",
+      st_invalid: "invalid configuration", st_checking: "checking", st_up: "online", st_knock: "🔒 closed — knock required",
+      st_closed: "port closed (host is responding)", st_down: "no connection",
     },
   };
 

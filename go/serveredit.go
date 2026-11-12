@@ -35,6 +35,7 @@ func (a *App) updateServerAddr(name, host, user, port string) (int, error) {
 		}
 	}
 	a.mu.Lock()
+	delete(a.conn, name)
 	delete(a.up, name) // eski adrese göre ölçülmüş durum geçersiz: yeniden ölçülsün
 	a.mu.Unlock()
 	return 0, nil

@@ -189,6 +189,7 @@ func (a *App) renameServer(oldName, newName string) (int, error) {
 	}
 	a.mu.Lock()
 	delete(a.up, oldName)
+	delete(a.conn, oldName)
 	a.mu.Unlock()
 	return 0, nil
 }

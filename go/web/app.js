@@ -101,8 +101,9 @@
       <div class="stile-last ${!s.valid || (s.last && !isOk(s.last.result)) ? "bad" : ""}">${last}</div></li>`;
   }
 
-  const dotState = s => (!s.valid ? "bad" : !s.checked ? "unk" : s.up ? "on" : s.knock ? "lock" : "off");
-  const stateText = s => (!s.valid ? "yapılandırma geçersiz" : !s.checked ? "denetleniyor" : s.up ? "çevrimiçi" : s.knock ? "🔒 kapalı — knock gerekir" : "bağlantı yok");
+  // Durumlar: on (yeşil) · lock (turuncu, knock gerekir) · closed (turuncu, makine yanıt veriyor ama port kapalı) · off (kırmızı, yanıt yok)
+  const dotState = s => (!s.valid ? "bad" : !s.checked ? "unk" : s.up ? "on" : s.knock ? "lock" : s.conn === "refused" ? "closed" : "off");
+  const stateText = s => (!s.valid ? t("st_invalid", "yapılandırma geçersiz") : !s.checked ? t("st_checking", "denetleniyor") : s.up ? t("st_up", "çevrimiçi") : s.knock ? t("st_knock", "🔒 kapalı — knock gerekir") : s.conn === "refused" ? t("st_closed", "port kapalı (makine yanıt veriyor)") : t("st_down", "bağlantı yok"));
   const emptyServers = '<li class="server" style="cursor:default"><div class="srv-ident"><div class="srv-name">Sunucu bulunamadı</div><div class="srv-addr">USB\'de servers/&lt;ad&gt;/server.env yok ya da arama eşleşmedi</div></div></li>';
 
   function pkgRow(p) {
@@ -229,8 +230,8 @@
     if (statusBusy) return;
     statusBusy = true;
     try {
-      const st = await json("/api/status");
-      home.servers.forEach(s => { if (s.name in st) { s.up = st[s.name]; s.checked = true; } });
+      const st = await json("/api/status?detail=1");
+      home.servers.forEach(s => { if (s.name in st) { s.up = st[s.name].up; s.conn = st[s.name].conn; s.checked = true; } });
       render();
     } catch (e) { /* bir sonraki turda yeniden denenir */ }
     statusBusy = false;
@@ -1463,7 +1464,7 @@
   function renderServer() {
     if (!srv) return;
     const s = srv.server;
-    const stCls = !s.valid ? "warn" : !s.checked ? "plain" : s.up ? "ok" : s.knock ? "warn" : "danger";
+    const stCls = !s.valid ? "warn" : !s.checked ? "plain" : s.up ? "ok" : s.knock || s.conn === "refused" ? "warn" : "danger";
     const addr = s.valid ? `${s.user}@${s.host}:${s.port}` : "";
     $("#srv-head").innerHTML = `<nav class="sv-crumb" aria-label="Konum"><a href="#" id="srv-back">Sunucular</a><span aria-hidden="true">/</span><span>${esc(s.name)}</span></nav>
       <div class="sv-bar">
