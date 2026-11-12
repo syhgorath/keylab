@@ -179,7 +179,8 @@ func extractTo(archive, dest string) error {
 			return errors.New("arşivde çok fazla öğe")
 		}
 		target := filepath.Join(dest, filepath.FromSlash(h.Name))
-		if rel, err := filepath.Rel(dest, target); err != nil || strings.HasPrefix(rel, "..") {
+		// hedef, dest'in ALTINDA kalmalı (zip-slip): dest'in kendisi de reddedilir (CheckArchive zaten tek kök klasör ister)
+		if !strings.HasPrefix(target, filepath.Clean(dest)+string(os.PathSeparator)) {
 			return errors.New("güvensiz yol")
 		}
 		switch h.Typeflag {
