@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>sshpocket</title>
+<title>KeyLab</title>
 <link rel="icon" href="logo.jpg" type="image/jpeg">
 <link rel="stylesheet" href="tasarim.css">
 </head>
@@ -12,7 +12,7 @@
 
   <div class="brandbar">
     <div class="logo" aria-hidden="true"><img src="logo.jpg" alt="" width="36" height="36"></div>
-    <div class="brand-text">sshpocket<small id="brand-sub">yerel · taslak</small></div>
+    <div class="brand-text">KeyLab<small id="brand-sub">yerel · taslak</small></div>
   </div>
 
   <header class="topbar">
@@ -125,7 +125,7 @@
         <div class="card-body">
           <div id="add-steps" hidden></div>
           <div id="add-form-wrap">
-          <div class="notice" style="margin-bottom:16px"><span class="ico" aria-hidden="true">ℹ</span><div>Alanlar sshpocket'in kurallarıyla doğrulanır; <b>Sunucuyu oluştur</b> <span class="mono">servers/&lt;ad&gt;/server.env</span> dosyasını sshpocket'in kendi işleviyle yazar (var olanın üzerine yazılmaz). Ardından anahtar adımları sizi adım adım yönlendirir. Sunucuya bu aşamada <b>bağlanılmaz</b>.</div></div>
+          <div class="notice" style="margin-bottom:16px"><span class="ico" aria-hidden="true">ℹ</span><div>Alanlar uygulamanın kurallarıyla doğrulanır; <b>Sunucuyu oluştur</b> <span class="mono">servers/&lt;ad&gt;/server.env</span> dosyasını uygulamanın kendi işleviyle yazar (var olanın üzerine yazılmaz). Ardından anahtar adımları sizi adım adım yönlendirir. Sunucuya bu aşamada <b>bağlanılmaz</b>.</div></div>
           <div class="addgrid">
             <form id="add-form" novalidate autocomplete="off">
               <div class="field"><label for="add-name">Sunucu adı</label><input id="add-name" autocapitalize="off" spellcheck="false" placeholder="ornek_sunucu" maxlength="40"><div class="hint" id="e-name">Küçük harf, rakam ve _ ; harfle başlar.</div></div>
@@ -158,7 +158,7 @@
         <div class="card-body tight" id="set-paths"></div>
       </div>
       <div class="card">
-        <div class="card-head"><h2>sshpocket ayarları</h2><span class="hint"><span class="mono">sshpocket.conf</span> · salt okunur</span></div>
+        <div class="card-head"><h2>KeyLab ayarları</h2><span class="hint"><span class="mono">sshpocket.conf</span> · salt okunur</span></div>
         <div class="card-body tight" id="set-conf"></div>
       </div>
       <div class="card">
@@ -166,7 +166,7 @@
         <div class="card-body"><ul class="small" style="margin:0;padding-left:18px;color:var(--text-2);line-height:1.8">
           <li>Arayüz yalnızca <span class="mono">127.0.0.1</span>'de dinler; her çalıştırmada yeni oturum anahtarı üretilir.</li>
           <li><b>Sudo parolası</b> yalnızca motor sorduğunda çıkan kutuya yazılır; doğrudan Ansible'ın terminaline (pty) iletilir, saklanmaz, günlüğe yazılmaz, sayfada gösterilmez. İstemezseniz eylem penceresindeki <b>macOS Terminal'de aç</b> yolunu kullanın. SSH anahtar parolaları ve gizli anahtarlar arayüzde girilmez (ssh-agent).</li><li>Sayfa <span class="mono">Content-Security-Policy</span> ile yalnızca kendi betiğini çalıştırır ve dışarıya bağlanamaz.</li>
-          <li>Arayüzden yalnızca <b>salt okunur, sudo istemeyen, onay gerektirmeyen, önkoşulsuz</b> eylemler çalıştırılır; sunucu tarafında yeniden denetlenir. Çalıştırma sshpocket'in kendi motoruyla yapılır (kapılar, günlük, sonuç kaydı aynı). Eylemler arayüzdeki terminalde çalışır; sudo parolası istenince kutu açılır. Değişiklik yapan (yıkıcı olmayan) eylemler önce plan, snapshot ve ad/e-h onayından geçer; motor onayları yeniden sorabilir. Yıkıcı eylemler (kaldir, yukselt, sunucu silme) ek onay ister: sunucu adı birebir, snapshot ve "geri alınamayabilir" onayı.</li>
+          <li>Arayüzden yalnızca <b>salt okunur, sudo istemeyen, onay gerektirmeyen, önkoşulsuz</b> eylemler çalıştırılır; sunucu tarafında yeniden denetlenir. Çalıştırma uygulamanın kendi motoruyla yapılır (kapılar, günlük, sonuç kaydı aynı). Eylemler arayüzdeki terminalde çalışır; sudo parolası istenince kutu açılır. Değişiklik yapan (yıkıcı olmayan) eylemler önce plan, snapshot ve ad/e-h onayından geçer; motor onayları yeniden sorabilir. Yıkıcı eylemler (kaldir, yukselt, sunucu silme) ek onay ister: sunucu adı birebir, snapshot ve "geri alınamayabilir" onayı.</li>
         </ul></div>
       </div>
       <div class="card">
@@ -294,7 +294,7 @@
       <div id="run-confirm">
         <div class="notice"><span class="ico" aria-hidden="true">ℹ</span><div id="run-confirm-text"></div></div>
         <div id="run-confirm-extra" hidden></div>
-        <div class="small muted" id="run-confirm-note" style="margin-top:10px">Çalıştırma sshpocket'in kendi motoruyla yapılır; kapılar, günlük ve sonuç kaydı menüdekiyle aynıdır. Parola sorulmaz: ssh anahtarınız ssh-agent'ta yüklü olmalı.</div>
+        <div class="small muted" id="run-confirm-note" style="margin-top:10px">Çalıştırma uygulamanın kendi motoruyla yapılır; kapılar, günlük ve sonuç kaydı menüdekiyle aynıdır. Parola sorulmaz: ssh anahtarınız ssh-agent'ta yüklü olmalı.</div>
       </div>
       <div id="run-live" hidden>
         <div class="run-meta"><span id="run-state" role="status"></span><span style="flex:1"></span><button class="btn sm ghost" id="run-cancel">İptal</button></div>
@@ -328,7 +328,7 @@
       <div class="row-flex" style="margin-bottom:12px"><input id="vars-q" type="search" placeholder="değişken ya da açıklama ara…" aria-label="Değişken ara" style="flex:1"><label class="small row-flex" style="gap:6px"><input type="checkbox" id="vars-set"> yalnızca ayarlı</label><span class="small muted" id="vars-count"></span></div>
       <div id="vars-list"></div>
     </div>
-    <div class="modal-foot"><span class="small muted" style="margin-right:auto">Doğrulama sshpocket'in kendi doğrulayıcısıyla yapılır (menüdekiyle aynı). Değişiklik <span class="mono">servers/&lt;ad&gt;/&lt;paket&gt;.vars</span> dosyasına yazılır.</span><button class="btn" id="vars-close">Kapat</button></div>
+    <div class="modal-foot"><span class="small muted" style="margin-right:auto">Doğrulama uygulamanın kendi doğrulayıcısıyla yapılır (menüdekiyle aynı). Değişiklik <span class="mono">servers/&lt;ad&gt;/&lt;paket&gt;.vars</span> dosyasına yazılır.</span><button class="btn" id="vars-close">Kapat</button></div>
   </div>
 </div>
 

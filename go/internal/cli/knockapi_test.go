@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"sshpocket-go/internal/servers"
+	"keylab/internal/servers"
 )
 
 func knockFx(t *testing.T, env string) (*Servers, string, string) {

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"sshpocket-go/internal/servers"
+	"keylab/internal/servers"
 )
 
 // updateServerAddr: server.env'deki IP, USER ve PORT'u günceller. Diğer satırlar (yorumlar, KNOCK*, KEY, OS…), anahtar

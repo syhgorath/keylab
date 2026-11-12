@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"strings"
 
-	"sshpocket-go/internal/manifest"
-	"sshpocket-go/internal/trust"
+	"keylab/internal/manifest"
+	"keylab/internal/trust"
 )
 
 // BAKIMCI aracı: bir paket sürümünü components.lock'a güvenle yazar (scripts/lock-component.sh karşılığı).

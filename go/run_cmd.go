@@ -12,14 +12,14 @@ import (
 	"strings"
 	"syscall"
 
-	"sshpocket-go/internal/cli"
-	"sshpocket-go/internal/doctor"
-	"sshpocket-go/internal/eject"
-	"sshpocket-go/internal/report"
-	"sshpocket-go/internal/runner"
-	"sshpocket-go/internal/selfupdate"
-	"sshpocket-go/internal/servers"
-	"sshpocket-go/internal/settings"
+	"keylab/internal/cli"
+	"keylab/internal/doctor"
+	"keylab/internal/eject"
+	"keylab/internal/report"
+	"keylab/internal/runner"
+	"keylab/internal/selfupdate"
+	"keylab/internal/servers"
+	"keylab/internal/settings"
 )
 
 // `sshpocket-go run [-servers D] [-components D] [-state D] <paket> <eylem> <sunucu>`: kapılar → yürütme → sonuç akışının

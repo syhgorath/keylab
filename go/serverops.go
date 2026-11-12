@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"sshpocket-go/internal/servers"
+	"keylab/internal/servers"
 )
 
 /* ---------- sunucu ekleme: kayıt oluşturma ve anahtar adımları, sshpocket'in kendi kütüphaneleriyle ---------- */

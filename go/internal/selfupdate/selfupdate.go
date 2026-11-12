@@ -22,7 +22,7 @@ import (
 	"runtime"
 	"strings"
 
-	"sshpocket-go/internal/trust"
+	"keylab/internal/trust"
 )
 
 const (

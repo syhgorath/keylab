@@ -18,9 +18,9 @@ import (
 	"strings"
 	"time"
 
-	"sshpocket-go/internal/manifest"
-	"sshpocket-go/internal/report"
-	"sshpocket-go/internal/trust"
+	"keylab/internal/manifest"
+	"keylab/internal/report"
+	"keylab/internal/trust"
 )
 
 // Components: komutların bağımlılıkları.

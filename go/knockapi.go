@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"sshpocket-go/internal/cli"
+	"keylab/internal/cli"
 )
 
 // /api/knock: port knocking formu (Özet sekmesi).

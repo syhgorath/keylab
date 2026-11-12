@@ -16,7 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"sshpocket-go/internal/manifest"
+	"keylab/internal/manifest"
 )
 
 // Refused: çalıştırılmadan reddedildi (kapı/değişken/onay/hazırlık).

@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"strings"
 
-	"sshpocket-go/internal/runner"
-	"sshpocket-go/internal/servers"
+	"keylab/internal/runner"
+	"keylab/internal/servers"
 )
 
 // Etkileşimli sunucu işlemleri (kabuktaki ImportSSHConfig.sh, Knock.sh knock_manage, SSHModuleEdit.sh ssh_keychain_manage).

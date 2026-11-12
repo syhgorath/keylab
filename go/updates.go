@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"sshpocket-go/internal/trust"
+	"keylab/internal/trust"
 )
 
 /* ---------- paket güncelleme: imzalı indeks denetimi ve yükseltme, sshpocket'in kendi motoruyla ---------- */

@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"sshpocket-go/internal/manifest"
+	"keylab/internal/manifest"
 )
 
 const fakeAnsible = `#!/bin/bash

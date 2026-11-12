@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"sshpocket-go/internal/servers"
+	"keylab/internal/servers"
 )
 
 // PrepState: Özet sekmesindeki "Bağlantı hazırlığı" adımlarının BU BİLGİSAYARDA bilinen durumları.

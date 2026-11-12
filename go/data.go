@@ -17,10 +17,10 @@ import (
 	"syscall"
 	"time"
 
-	"sshpocket-go/internal/findings"
-	"sshpocket-go/internal/servers"
-	"sshpocket-go/internal/settings"
-	"sshpocket-go/internal/trust"
+	"keylab/internal/findings"
+	"keylab/internal/servers"
+	"keylab/internal/settings"
+	"keylab/internal/trust"
 )
 
 const (

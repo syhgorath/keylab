@@ -22,8 +22,8 @@ import (
 	"strings"
 	"time"
 
-	"sshpocket-go/internal/cli"
-	"sshpocket-go/internal/runner"
+	"keylab/internal/cli"
+	"keylab/internal/runner"
 )
 
 //go:embed web

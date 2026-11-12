@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"sshpocket-go/internal/manifest"
-	"sshpocket-go/internal/trust"
+	"keylab/internal/manifest"
+	"keylab/internal/trust"
 )
 
 // DefaultRequiresTTL: requires eylemlerinin tazelik süresi (sn): 30 dk.
