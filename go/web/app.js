@@ -774,8 +774,8 @@
     $("#add-form-wrap").hidden = true; wrap.hidden = false;
     const hasKey = !!(sv && sv.hasKey);
     const done = t => addDone.has(addServer + ":" + t);
-    const step = (n, title, desc, st, btn) => `<div class="act" style="display:grid;grid-template-columns:34px 1fr auto;gap:12px;align-items:center"><div class="badge ${st === "ok" ? "ok" : st === "todo" ? "warn" : "plain"}" style="justify-content:center">${st === "ok" ? "✔" : n}</div><div><div style="font-weight:600">${title}</div><div class="small muted">${desc}</div></div><div>${btn || ""}</div></div>`;
-    wrap.innerHTML = `<div class="notice ok" style="margin-bottom:12px"><span class="ico" aria-hidden="true">✔</span><div><b>${esc(addServer)}</b> oluşturuldu. Sunucuyu kullanıma hazırlamak için adımları sırayla izleyin; her adım isteğe bağlıdır ve yeniden yapılabilir.</div></div>
+    const step = (n, title, desc, st, btn) => `<div class="act sj-b4411e"><div class="badge ${st === "ok" ? "ok" : st === "todo" ? "warn" : "plain"} sj-03c4bb">${st === "ok" ? "✔" : n}</div><div><div class="sj-eed0f8">${title}</div><div class="small muted">${desc}</div></div><div>${btn || ""}</div></div>`;
+    wrap.innerHTML = `<div class="notice ok sj-da12f2"><span class="ico" aria-hidden="true">✔</span><div><b>${esc(addServer)}</b> oluşturuldu. Sunucuyu kullanıma hazırlamak için adımları sırayla izleyin; her adım isteğe bağlıdır ve yeniden yapılabilir.</div></div>
       <div class="card"><div class="card-body tight">
         ${step(1, "Sunucu kaydı", `<span class="mono">servers/${esc(addServer)}/server.env</span> yazıldı`, "ok")}
         ${step(2, "SSH anahtarı", hasKey ? "Anahtar var" : "Yeni bir ed25519 anahtarı üretin (ya da mevcut anahtarı <span class=\"mono\">servers/" + esc(addServer) + "/</span> içine koyun)", hasKey ? "ok" : "todo", hasKey ? "" : '<button class="btn sm primary" data-task="keygen">Yeni anahtar üret</button>')}
@@ -786,7 +786,7 @@
         ${step(7, "Bağlantıyı dene", "Salt okunur <span class=\"mono\">utility durum</span> çalıştırır: ssh bağlantısı, platform ve saat denetlenir", "idle", hasKey ? '<button class="btn sm" id="add-test">Dene</button>' : "")}
         ${step(8, "Değişkenler", "linux-hardening için <span class=\"mono\">hardening_ssh_allow_from</span> gibi zorunlu değerleri ayarlayın", "idle", '<button class="btn sm" id="add-vars">Değişkenleri ayarla</button>')}
       </div></div>
-      <div class="row-flex" style="margin-top:14px"><button class="btn primary" id="add-open">Sunucu sayfasına git</button><button class="btn ghost" id="add-another">Yeni bir sunucu daha ekle</button></div>`;
+      <div class="row-flex sj-d6f2af"><button class="btn primary" id="add-open">Sunucu sayfasına git</button><button class="btn ghost" id="add-another">Yeni bir sunucu daha ekle</button></div>`;
     $$("#add-steps [data-task]").forEach(b => b.addEventListener("click", () => openTask(addServer, b.dataset.task)));
     $("#add-test")?.addEventListener("click", () => openRun(addServer, "utility", "durum"));
     $("#add-vars").addEventListener("click", async () => { await openServer(addServer, "linux-hardening"); openVars(addServer, "linux-hardening"); });
@@ -822,17 +822,17 @@
       hint.classList.toggle("err", show);
       hint.textContent = show ? msg : f === "name" ? "Küçük harf, rakam ve _ ; harfle başlar." : f === "os" ? "Paketlerin desteklediği profiller listelenir." : "";
     });
-    if (!d.ok) { $("#add-preview").innerHTML = '<div class="empty-state" style="padding:24px 12px"><h3>Önizleme</h3><p>Alanlar geçerli olunca oluşturulacak dosya ve sonraki adımlar burada görünür.</p></div>'; return; }
+    if (!d.ok) { $("#add-preview").innerHTML = '<div class="empty-state sj-5417cf"><h3>Önizleme</h3><p>Alanlar geçerli olunca oluşturulacak dosya ve sonraki adımlar burada görünür.</p></div>'; return; }
     $("#add-preview").innerHTML = `
       <div class="small muted">Oluşturulacak dosya <span class="draft-tag">yazılmayacak</span></div>
-      <div class="mono small" style="margin-top:6px">${esc(d.envPath)}</div>
+      <div class="mono small sj-fe7b49">${esc(d.envPath)}</div>
       <div class="codeblock">${esc(d.envText)}</div>
       <div class="small muted">Anahtar</div>
-      <div class="mono small" style="margin:6px 0 10px">${esc(d.keyPath)}</div>
+      <div class="mono small sj-6926eb">${esc(d.keyPath)}</div>
       <div class="small muted">Sonraki adımlar (terminalde, parolayı ve passphrase'i orada siz girersiniz)</div>
       ${d.commands.map((c, i) => `<div class="codeblock" data-i="${i}">${esc(c)}</div>`).join("")}
       <div class="row-flex"><button class="btn sm" id="add-copy">Komutları kopyala</button><button class="btn sm primary" id="add-create">Sunucuyu oluştur</button></div>
-      <div id="add-err" class="small" style="color:var(--danger);margin-top:8px" role="alert"></div>`;
+      <div id="add-err" class="small sj-d64673" role="alert"></div>`;
     $("#add-create").addEventListener("click", async () => {
       $("#add-create").disabled = true; $("#add-err").textContent = "";
       try { await json("/api/server-create", { name: $("#add-name").value, host: $("#add-host").value, user: $("#add-user").value, port: $("#add-port").value, os: $("#add-os").value }); }
@@ -853,7 +853,7 @@
     if (!d.packages.length) { $("#pkg-page").innerHTML = '<div class="card"><div class="card-body"><div class="empty-state"><h3>Paket bulunamadı</h3><p>USB\'de <span class="mono">components/&lt;paket&gt;/current</span> yok. Paketler menüden ya da <span class="mono">sshpocket</span> ile yüklenir.</p></div></div></div>'; return; }
     const order = ["linux-hardening", "utility", "kurulum"];
     d.packages.sort((a, b) => (order.indexOf(a.id) + 1 || 99) - (order.indexOf(b.id) + 1 || 99));
-    $("#pkg-page").innerHTML = `<div id="upd-card"></div><div class="notice" style="margin-bottom:16px"><span class="ico" aria-hidden="true">ℹ</span><div>Bir pakete tıklayın: sürümler, kilit tabanı ve sunuculardaki son kullanım açılır. "Kullanıldı", paketin o sunucuda en son çalıştırıldığı anlamına gelir; paketler sunucuya kurulmaz, kontrolcüden çalıştırılır.</div></div>` +
+    $("#pkg-page").innerHTML = `<div id="upd-card"></div><div class="notice sj-87c136"><span class="ico" aria-hidden="true">ℹ</span><div>Bir pakete tıklayın: sürümler, kilit tabanı ve sunuculardaki son kullanım açılır. "Kullanıldı", paketin o sunucuda en son çalıştırıldığı anlamına gelir; paketler sunucuya kurulmaz, kontrolcüden çalıştırılır.</div></div>` +
       `<div class="card pk-list">` + (d.packages.filter(p => !query || `${p.id} ${p.name} ${p.repo || ""}`.toLowerCase().includes(query)).map(p => {
         const sm = pkgSummary(p, d.servers, cmp);
         const floorBad = p.floor && cmp(p.current, p.floor) < 0;
@@ -896,17 +896,17 @@
     };
     openDlg({
       title: p.name || p.id, sub: `${p.id}${p.repo ? " · " + p.repo : ""}`, wide: true, noOk: true,
-      body: `<p class="small" style="margin:0;color:var(--text-2)">${esc(p.description || "")}</p>
+      body: `<p class="small sj-75ff53">${esc(p.description || "")}</p>
         <div class="spec-grid">
           ${box("USB sürüm havuzu", (p.versions || []).map(v => `<span class="vchip${v === p.current ? " cur" : ""}">${esc(v)}</span>`).join("") || "—")}
-          ${box("Kilit tabanı", `${p.floor ? `<span class="vchip">${esc(p.floor)}</span>` : '<span class="muted small">kilitte yok</span>'}${floorBad ? '<span class="badge danger">USB sürümü tabanın altında</span>' : p.floor ? '<span class="small muted" style="font-weight:400">bu sürümün altı çalıştırılmaz</span>' : ""}`)}
-          ${box("Sunucularda", `${sm.used} kullandı${sm.stale ? ` · <span style="color:var(--warn)">${sm.stale} eski</span>` : ""}${sm.none ? ` · <span class="muted" style="font-weight:400">${sm.none} kullanmadı</span>` : ""}`)}
+          ${box("Kilit tabanı", `${p.floor ? `<span class="vchip">${esc(p.floor)}</span>` : '<span class="muted small">kilitte yok</span>'}${floorBad ? '<span class="badge danger">USB sürümü tabanın altında</span>' : p.floor ? '<span class="small muted sj-7e3a94">bu sürümün altı çalıştırılmaz</span>' : ""}`)}
+          ${box("Sunucularda", `${sm.used} kullandı${sm.stale ? ` · <span class="sj-81fa6c">${sm.stale} eski</span>` : ""}${sm.none ? ` · <span class="muted sj-7e3a94">${sm.none} kullanmadı</span>` : ""}`)}
         </div>
         <div class="pk-fleet-head"><b>Sunucularda son kullanım</b><span class="small muted">paket sunucuya kurulmaz; bu, en son çalıştırıldığı sürümdür</span></div>
-        ${many || sm.stale ? `<div class="row-flex" style="gap:12px;flex-wrap:wrap">
-          ${many ? '<input id="pd-q" type="search" placeholder="sunucu ara…" aria-label="Sunucu ara" style="max-width:220px">' : ""}
-          <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="pd-stale"${many && sm.stale ? " checked" : ""}> yalnız eski sürümlüler</label>
-          ${sm.none ? `<label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="pd-none"${many ? "" : " checked"}> kullanılmayanları da göster (${sm.none})</label>` : ""}</div>` : ""}
+        ${many || sm.stale ? `<div class="row-flex sj-6ba842">
+          ${many ? '<input class="sj-27af89" id="pd-q" type="search" placeholder="sunucu ara…" aria-label="Sunucu ara">' : ""}
+          <label class="small sj-25b528"><input type="checkbox" id="pd-stale"${many && sm.stale ? " checked" : ""}> yalnız eski sürümlüler</label>
+          ${sm.none ? `<label class="small sj-25b528"><input type="checkbox" id="pd-none"${many ? "" : " checked"}> kullanılmayanları da göster (${sm.none})</label>` : ""}</div>` : ""}
         <div class="pk-fleet"><div class="urow head"><div>Sunucu</div><div>Son sürüm</div><div>Durum</div><div>Son eylem</div></div><div id="pd-rows"></div></div>`,
       ok: "",
     });
@@ -928,26 +928,26 @@
     const el = $("#upd-card"); if (!el) return;
     let st;
     if (updBusy) st = '<span class="spinner" aria-hidden="true"></span> İmzalı indeks alınıyor ve doğrulanıyor…';
-    else if (updErr) st = '<span style="color:var(--danger)">✕ denetlenemedi</span>';
+    else if (updErr) st = '<span class="sj-497726">✕ denetlenemedi</span>';
     else if (!updRep) st = '<span class="muted">henüz denetlenmedi · hiçbir şey kurmaz</span>';
-    else if (!updRep.ok) st = '<span style="color:var(--danger)">✕ indeks doğrulanamadı (güvenli kapanma)</span>';
-    else st = updUp() ? `<b style="color:var(--warn)">⬆ ${updUp()} güncelleme var</b>` : '<span style="color:var(--ok)">✔ hepsi güncel</span>';
-    el.innerHTML = `<div class="card"><div class="card-head"><h2>Güncellemeler</h2><span class="hint">imzalı indeks · syhgorath/sshpocket-index</span><span style="flex:1"></span><span class="small">${st}</span><button class="btn sm" id="disc-open">Paketleri keşfet</button><button class="btn sm primary" id="upd-check"${updBusy ? " disabled" : ""}>${updRep || updErr ? "Ayrıntı" : "Güncellemeleri denetle"}</button></div></div>`;
+    else if (!updRep.ok) st = '<span class="sj-497726">✕ indeks doğrulanamadı (güvenli kapanma)</span>';
+    else st = updUp() ? `<b class="sj-81fa6c">⬆ ${updUp()} güncelleme var</b>` : '<span class="sj-0b3aae">✔ hepsi güncel</span>';
+    el.innerHTML = `<div class="card"><div class="card-head"><h2>Güncellemeler</h2><span class="hint">imzalı indeks · syhgorath/sshpocket-index</span><span class="sj-97445a"></span><span class="small">${st}</span><button class="btn sm" id="disc-open">Paketleri keşfet</button><button class="btn sm primary" id="upd-check"${updBusy ? " disabled" : ""}>${updRep || updErr ? "Ayrıntı" : "Güncellemeleri denetle"}</button></div></div>`;
     $("#upd-check").addEventListener("click", openUpdates);
     $("#disc-open").addEventListener("click", openDiscover);
     $$("#pkg-page [data-upd]").forEach(sp => { const r = updRep && updRep.ok ? updRep.rows.find(x => x.id === sp.dataset.upd) : null; sp.innerHTML = r && (r.verdict === "upgrade" || r.verdict === "install") ? `<span class="badge info">⬆ ${esc(r.version)} çıktı</span>` : ""; });
     if (isUpdDlg()) paintUpdDlg(); else if (isDiscDlg()) paintDisc();
   }
   function updBodyHtml() {
-    const head = `<div class="row-flex" style="gap:10px;flex-wrap:wrap"><span class="small muted">Motorun <span class="mono">--components update</span> raporu: imza ve süre doğrulanır, hiçbir şey kurulmaz.</span><span style="flex:1"></span><button class="btn sm" id="upd-recheck"${updBusy ? " disabled" : ""}>Yeniden denetle</button></div>`;
+    const head = `<div class="row-flex sj-e4a423"><span class="small muted">Motorun <span class="mono">--components update</span> raporu: imza ve süre doğrulanır, hiçbir şey kurulmaz.</span><span class="sj-97445a"></span><button class="btn sm" id="upd-recheck"${updBusy ? " disabled" : ""}>Yeniden denetle</button></div>`;
     if (updBusy) return head + '<div class="small muted"><span class="spinner" aria-hidden="true"></span> İmzalı indeks alınıyor ve doğrulanıyor…</div>';
     if (updErr) return head + `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div>${esc(updErr)}</div></div>`;
     if (!updRep) return head;
-    if (!updRep.ok) return head + `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div><b>İndeks doğrulanamadı</b> (güvenli kapanma): yükseltme yapılmaz.</div></div><details><summary class="small muted" style="cursor:pointer">motor çıktısı</summary><pre class="mono small" style="white-space:pre-wrap">${esc(updRep.raw)}</pre></details>`;
+    if (!updRep.ok) return head + `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div><b>İndeks doğrulanamadı</b> (güvenli kapanma): yükseltme yapılmaz.</div></div><details><summary class="small muted sj-3b6a3a">motor çıktısı</summary><pre class="mono small sj-a548ea">${esc(updRep.raw)}</pre></details>`;
     const rows = updRep.rows.map(r => { const [c, t] = VERDICT[r.verdict] || VERDICT.unknown; return `<div class="pkg-row"><div><div class="pkg-name">${esc(r.id)}</div><div class="pkg-meta"><span class="ver">${esc(r.installed === "-" ? "kurulu değil" : r.installed)}</span>${r.version ? `<span class="ver arrow">${esc(r.version)}</span>` : ""}<span class="badge ${c}">${t}</span></div></div>
       <div class="pkg-actions">${r.verdict === "upgrade" || r.verdict === "install" ? `<button class="btn sm primary" data-upg="${esc(r.id)}" data-from="${esc(r.installed)}" data-to="${esc(r.version)}">${r.verdict === "install" ? "Kur" : "Yükselt"}…</button>` : ""}</div></div>`; }).join("");
-    return head + `<div class="small muted">İndeks seri <span class="mono">${esc(updRep.serial)}</span> · geçerlilik <span class="mono">${esc(updRep.valid)}</span> · ${updUp() ? `<b style="color:var(--warn)">${updUp()} güncelleme var</b>` : "hepsi güncel"}${updAt ? ` · denetim ${new Date(updAt).toLocaleTimeString("tr-TR")}` : ""}</div>
-      <div>${rows}</div><details><summary class="small muted" style="cursor:pointer">motorun ham raporu</summary><pre class="mono small" style="white-space:pre-wrap;margin:8px 0 0">${esc(updRep.raw)}</pre></details>`;
+    return head + `<div class="small muted">İndeks seri <span class="mono">${esc(updRep.serial)}</span> · geçerlilik <span class="mono">${esc(updRep.valid)}</span> · ${updUp() ? `<b class="sj-81fa6c">${updUp()} güncelleme var</b>` : "hepsi güncel"}${updAt ? ` · denetim ${new Date(updAt).toLocaleTimeString("tr-TR")}` : ""}</div>
+      <div>${rows}</div><details><summary class="small muted sj-3b6a3a">motorun ham raporu</summary><pre class="mono small sj-c2ee2b">${esc(updRep.raw)}</pre></details>`;
   }
   function paintUpdDlg() {
     $("#dlg-body").innerHTML = updBodyHtml();
@@ -984,14 +984,14 @@
           <div class="small muted">${inf.description ? esc(inf.description) : have ? "" : "Açıklama, paket USB'ye indirildikten sonra görünür."}</div>
           <div class="pkg-meta"><span class="ver">${have ? esc(r.installed) : "kurulu değil"}</span>${r.version ? `<span class="ver arrow">${esc(r.version)}</span>` : ""}<span class="badge ${c}">${t}</span></div></div>
         ${act ? `<button class="btn sm primary" data-dget="${esc(r.id)}" data-from="${esc(r.installed)}" data-to="${esc(r.version)}">${r.verdict === "install" ? "Kur" : "Yükselt"}…</button>` : ""}</div>`;
-    }).join("") || '<div class="small muted" style="padding:12px 0">Bu süzgeçle eşleşen paket yok.</div>';
+    }).join("") || '<div class="small muted sj-215683">Bu süzgeçle eşleşen paket yok.</div>';
     $$("#disc-list [data-dget]").forEach(b => b.addEventListener("click", () => { const { dget, from, to } = b.dataset; closeDlg(); openUpgrade(dget, from, to); }));
   }
   function paintDisc() {
     if (updBusy) { $("#dlg-body").innerHTML = '<div class="small muted"><span class="spinner" aria-hidden="true"></span> İmzalı indeks alınıyor ve doğrulanıyor…</div>'; return; }
     if (updErr || !updRep || !updRep.ok) { $("#dlg-body").innerHTML = `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div>${updErr ? esc(updErr) : "İndeks doğrulanamadı (güvenli kapanma): paket listesi gösterilmez."}</div></div><div><button class="btn sm" id="disc-retry">Yeniden dene</button></div>`; $("#disc-retry").addEventListener("click", checkUpdatesUI); return; }
     const cnt = k => updRep.rows.filter(r => k === "all" || (k === "installed" ? r.installed !== "-" : r.verdict === k)).length;
-    $("#dlg-body").innerHTML = `<div class="row-flex" style="gap:10px;flex-wrap:wrap"><input id="disc-q" type="search" placeholder="paket ara…" aria-label="Paket ara" value="${esc(discQ)}" style="max-width:240px"><div class="seg" role="tablist" aria-label="Süzgeç">${DISC_F.map(([k, l]) => `<button class="btn sm${discF === k ? " primary" : ""}" data-df="${k}">${l} (${cnt(k)})</button>`).join("")}</div></div>
+    $("#dlg-body").innerHTML = `<div class="row-flex sj-e4a423"><input class="sj-a5d7a0" id="disc-q" type="search" placeholder="paket ara…" aria-label="Paket ara" value="${esc(discQ)}"><div class="seg" role="tablist" aria-label="Süzgeç">${DISC_F.map(([k, l]) => `<button class="btn sm${discF === k ? " primary" : ""}" data-df="${k}">${l} (${cnt(k)})</button>`).join("")}</div></div>
       <div class="small muted">Kaynak: imzalı indeks (seri <span class="mono">${esc(updRep.serial)}</span>). Kur ve Yükselt, imza ve özet doğrulamasıyla USB'ye yazar; sunucuya dokunmaz.</div>
       <div id="disc-list"></div>`;
     $("#disc-q").addEventListener("input", e => { discQ = e.target.value.trim().toLowerCase(); paintDiscList(); });
@@ -1017,11 +1017,11 @@
     openRun("", pkg, "upgrade");
     runMode = "upgrade"; runUpgTo = to;
     const ov = pkgRepo[pkg];
-    $("#run-title").innerHTML = `<span class="mono">upgrade</span> · ${esc(pkg)} <span class="draft-tag" style="background:var(--warn-weak);color:var(--warn);border-color:var(--warn-border)">USB'ye yazar</span>`;
+    $("#run-title").innerHTML = `<span class="mono">upgrade</span> · ${esc(pkg)} <span class="draft-tag sj-c8ceca">USB'ye yazar</span>`;
     $("#run-sub").textContent = "KeyLab paket güncellemesi (imzalı indeks)";
     $("#run-confirm-text").innerHTML = `<b>${esc(pkg)}</b> ${from === "-" ? "kurulacak" : `<span class="mono">${esc(from)}</span> → <span class="mono">${esc(to)}</span> yükseltilecek`}: ${from === "-" ? `<span class="mono">${esc(to)}</span> sürümü ` : ""}indirilip <b>imzası ve özeti doğrulanarak</b> USB'deki <span class="mono">components/</span> klasörüne yazılacak. Eski sürüm klasörü silinmez; hiçbir sunucuya dokunulmaz.`;
     $("#run-confirm-extra").hidden = false;
-    $("#run-confirm-extra").innerHTML = `<label class="small" style="display:flex;gap:8px;align-items:flex-start;margin-top:12px"><input type="checkbox" id="u-ack"> <span>İndeksin gösterdiği kaynaktan${ov ? ` (<span class="mono">${esc(ov)}</span>)` : ""} indirilen sürümü kurmak istiyorum.</span></label>`;
+    $("#run-confirm-extra").innerHTML = `<label class="small sj-c842b0"><input type="checkbox" id="u-ack"> <span>İndeksin gösterdiği kaynaktan${ov ? ` (<span class="mono">${esc(ov)}</span>)` : ""} indirilen sürümü kurmak istiyorum.</span></label>`;
     $("#run-confirm-note").textContent = "Çalıştır'a bastığınızda indeks yeniden alınıp imzası doğrulanır; gösterilen sürüm değişmişse kurulum durur. İmza, özet, depo eşleşmesi ve sürüm kapıları kurulum katmanının işidir; biri tutmazsa kurulum durur ve eski sürüm olduğu gibi kalır. Kurulum atomiktir, başladıktan sonra iptal edilemez.";
     $("#run-go").textContent = "Çalıştır"; $("#run-go").disabled = true;
     $("#u-ack").addEventListener("change", e => { $("#run-go").disabled = !e.target.checked; });
@@ -1067,14 +1067,14 @@
     const first = l.history[0], delta = l.score - first;
     $("#lynis-detail").innerHTML = `
       <div class="card"><div class="card-head"><h2>Skor geçmişi — ${esc(d.server)}</h2><div class="spacer"></div><span class="hint">${l.history.length} ölçüm · rapor ${esc(d.report)}</span></div>
-        <div class="card-body"><div class="lynis-head"><div class="lynis-score">${l.score}</div><div class="small muted" style="align-self:flex-end;margin-bottom:4px">/100</div>
+        <div class="card-body"><div class="lynis-head"><div class="lynis-score">${l.score}</div><div class="small muted sj-9da19d">/100</div>
           ${l.history.length > 1 ? `<div class="lynis-delta">${delta >= 0 ? "▲ +" : "▼ "}${delta}</div>` : ""}</div>
           <div class="lynis-meta"><span class="badge warn">uyarı ${l.warnings}</span><span class="badge info">öneri ${l.suggestions}</span>${l.history.length > 1 ? `<span class="badge plain">${first} → ${l.score}</span>` : ""}</div>
           <div class="chartbox">${chart(l)}</div>
-          <div class="small muted" style="margin-top:6px">Geçmiş, bu kontrolcüde kayıtlı tüm ölçümleri içerir; VM snapshot dönüşlerinden önceki ölçümler de dahildir.</div></div></div>
+          <div class="small muted sj-fe7b49">Geçmiş, bu kontrolcüde kayıtlı tüm ölçümleri içerir; VM snapshot dönüşlerinden önceki ölçümler de dahildir.</div></div></div>
       <div class="card"><div class="card-head"><h2>Bulgular</h2><div class="spacer"></div>
         <div class="segmented" role="group" aria-label="Tür"><button data-k="all" aria-pressed="${lynKind === "all"}">Tümü</button><button data-k="uyari" aria-pressed="${lynKind === "uyari"}">Uyarı</button><button data-k="oneri" aria-pressed="${lynKind === "oneri"}">Öneri</button></div>
-        <input id="lyn-q" type="search" value="${esc(lynQ)}" placeholder="ara…" aria-label="Bulgularda ara" style="max-width:170px;margin-left:8px"><span class="hint" id="lyn-count" style="margin-left:8px"></span></div>
+        <input class="sj-ab2990" id="lyn-q" type="search" value="${esc(lynQ)}" placeholder="ara…" aria-label="Bulgularda ara"><span class="hint sj-5dd2a6" id="lyn-count"></span></div>
         <div class="card-body tight"><div class="fgrid" id="lyn-rows"></div></div></div>`;
     $$("#lynis-detail .segmented button").forEach(b => b.addEventListener("click", () => { lynKind = b.dataset.k; $$("#lynis-detail .segmented button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); paintFindings(); }));
     $("#lyn-q").addEventListener("input", e => { lynQ = e.target.value.trim(); paintFindings(); });
@@ -1126,11 +1126,11 @@
         <button class="fchip" data-kind="all" aria-pressed="${logKind === "all"}">Tümü</button>
         <button class="fchip" data-kind="last" aria-pressed="${logKind === "last"}">Son çalıştırma</button>
         <button class="fchip" data-kind="arch" aria-pressed="${logKind === "arch"}">Arşiv / kopya</button>
-        <input id="logq" type="search" placeholder="dosya adında ara…" aria-label="Günlük dosyalarında ara" value="${esc(logQ)}" style="max-width:190px;margin-left:8px">
+        <input class="sj-361285" id="logq" type="search" placeholder="dosya adında ara…" aria-label="Günlük dosyalarında ara" value="${esc(logQ)}">
         ${(logSrv || logPkg || logKind !== "all" || logQ) ? '<button class="btn sm ghost" id="logclear">Süzgeçleri temizle</button>' : ""}</div></div>`;
     $("#logs-count").textContent = `${filtered.length} / ${logAll.length} dosya`;
     $("#loglist").innerHTML = filtered.map((l, i) => `<button data-i="${i}" aria-current="${logId(l) === logKey}"><span class="mono">${osIconSmall(l.server)}${esc(l.server)} · ${esc(l.package)} · ${esc(l.file)}</span>
-      <span class="muted small" title="${esc(localTime(l.mtime))}">${esc(ago(l.mtime))} · ${Math.max(1, Math.round(l.size / 1024))} KB</span></button>`).join("") || '<div class="small muted" style="padding:12px">Süzgece uyan günlük yok.</div>';
+      <span class="muted small" title="${esc(localTime(l.mtime))}">${esc(ago(l.mtime))} · ${Math.max(1, Math.round(l.size / 1024))} KB</span></button>`).join("") || '<div class="small muted sj-cc781b">Süzgece uyan günlük yok.</div>';
     $$("#loglist button[data-i]").forEach(b => b.addEventListener("click", () => openLog(filtered[+b.dataset.i], b)));
     $$("#logfilters [data-srv]").forEach(b => b.addEventListener("click", () => { logSrv = b.dataset.srv; paintLogs(); }));
     $$("#logfilters [data-pkg]").forEach(b => b.addEventListener("click", () => { logPkg = b.dataset.pkg; paintLogs(); }));
@@ -1710,7 +1710,7 @@
       const r = await json("/api/ssh-config-import", { aliases });
       const c = { imported: 0, skipped: 0, error: 0 }; r.results.forEach(x => { c[x.status] = (c[x.status] || 0) + 1; });
       const errs = r.results.filter(x => x.status === "error").map(x => `${esc(x.alias)}: ${esc(x.error)}`);
-      $("#imp-list").innerHTML = `<div class="notice"><span class="ico" aria-hidden="true">✔</span><div><b>${c.imported}</b> ${t("imp_done", "sunucu eklendi")}${c.skipped ? `, ${c.skipped} ${t("imp_skipped", "zaten vardı (atlandı)")}` : ""}${c.error ? `, ${c.error} ${t("imp_errors", "hata")}` : ""}.</div></div>` + (errs.length ? `<ul class="small" style="margin-top:10px">${errs.map(e => `<li>${e}</li>`).join("")}</ul>` : "");
+      $("#imp-list").innerHTML = `<div class="notice"><span class="ico" aria-hidden="true">✔</span><div><b>${c.imported}</b> ${t("imp_done", "sunucu eklendi")}${c.skipped ? `, ${c.skipped} ${t("imp_skipped", "zaten vardı (atlandı)")}` : ""}${c.error ? `, ${c.error} ${t("imp_errors", "hata")}` : ""}.</div></div>` + (errs.length ? `<ul class="small sj-d2c171">${errs.map(e => `<li>${e}</li>`).join("")}</ul>` : "");
       $("#imp-status").textContent = ""; $("#imp-go").hidden = true;
       await load();
     } catch (e) { $("#imp-status").textContent = t("imp_fail", "Hata:") + " " + e.message; $("#imp-go").disabled = false; }
