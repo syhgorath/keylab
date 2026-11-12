@@ -58,12 +58,6 @@ func runCommand(args []string) int {
 	return cli.Run(fs.Arg(0), fs.Arg(1), fs.Arg(2))
 }
 
-// goRunEnabled: arayüz eylem yürütmeyi Go yürütücüsüyle (internal/runner) yapsın mı. VARSAYILAN AÇIK (2026-11-07'den beri).
-// Kabuk motoruna dönüş yolu: SSHPOCKET_SHELL_RUN=1 (ya da eski anahtar SSHPOCKET_GO_RUN=0). Kabuk motoru sistem/Main.sh ister.
-func goRunEnabled() bool {
-	return os.Getenv("SSHPOCKET_SHELL_RUN") != "1" && os.Getenv("SSHPOCKET_GO_RUN") != "0"
-}
-
 // subcommand: GUI'nin pty altında başlattığı etkileşimli alt komutlar. İstem metinleri kabuk motoruyla aynıdır.
 //
 //	sshpocket-go run …                         paket eylemi
