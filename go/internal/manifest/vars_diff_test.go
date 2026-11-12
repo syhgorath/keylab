@@ -18,6 +18,15 @@ import (
 
 func runRunPy(t *testing.T, root string, args ...string) pyOut {
 	t.Helper()
+	g := goldDo(t, func() pyGold {
+		o := runRunPyLive(t, root, args...)
+		return pyGold{o.code, normSS(o.stdout, ""), normSS(o.stderr, "")}
+	})
+	return pyOut{g.Code, g.Stdout, g.Stderr}
+}
+
+func runRunPyLive(t *testing.T, root string, args ...string) pyOut {
+	t.Helper()
 	cmd := exec.Command("python3", append([]string{"-I", filepath.Join(root, "referans/kabuk/sistem/Helpers/component_run.py")}, args...)...)
 	var so, se bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &so, &se
@@ -51,7 +60,7 @@ func TestDescribePlatformMatchPython(t *testing.T) {
 	dir := t.TempDir()
 	for _, p := range realManifests(t, root) {
 		rel, _ := filepath.Rel(root, p)
-		py := runRunPy(t, root, "describe", p)
+		py := runRunPyLive(t, root, "describe", p)
 		l, e, c := Describe(p, "", false)
 		eq(t, rel+" describe", py, l, e, c)
 
@@ -67,14 +76,14 @@ func TestDescribePlatformMatchPython(t *testing.T) {
 		}
 		for _, id := range append(ids, "", "bilinmeyen") {
 			vf := writeTemp(t, dir, "v.vars", fmt.Sprintf("# not\n%s=%s\nother = 1\n", pv, id))
-			py := runRunPy(t, root, "describe", p, vf)
+			py := runRunPyLive(t, root, "describe", p, vf)
 			l, e, c := Describe(p, vf, true)
 			eq(t, rel+" describe vars="+id, py, l, e, c)
-			py = runRunPy(t, root, "platform", p, vf)
+			py = runRunPyLive(t, root, "platform", p, vf)
 			pl, pe, pc := Platform(p, vf)
 			eq(t, rel+" platform vars="+id, py, nonEmpty(pl), pe, pc)
 		}
-		py = runRunPy(t, root, "describe", p, filepath.Join(dir, "yok.vars"))
+		py = runRunPyLive(t, root, "describe", p, filepath.Join(dir, "yok.vars"))
 		l, e, c = Describe(p, filepath.Join(dir, "yok.vars"), true)
 		eq(t, rel+" describe yok", py, l, e, c)
 	}
@@ -141,7 +150,7 @@ func TestCheckMatchesPython(t *testing.T) {
 				go func(p, rel, name, raw string) {
 					defer wg.Done()
 					defer func() { <-sem }()
-					py := runRunPy(t, root, "check", p, name, raw)
+					py := runRunPyLive(t, root, "check", p, name, raw)
 					warn, e, c := Check(p, name, raw)
 					var out []string
 					if warn {
@@ -151,7 +160,7 @@ func TestCheckMatchesPython(t *testing.T) {
 				}(p, rel, name, raw)
 			}
 		}
-		py := runRunPy(t, root, "check", p, "olmayan_degisken", "x")
+		py := runRunPyLive(t, root, "check", p, "olmayan_degisken", "x")
 		_, e, c := Check(p, "olmayan_degisken", "x")
 		eq(t, rel+" check olmayan", py, nil, e, c)
 	}
@@ -243,7 +252,7 @@ func TestVarsMatchesPython(t *testing.T) {
 				k, v, _ := strings.Cut(forced[1], "=")
 				opt.Forced[k] = v
 			}
-			py := runRunPy(t, root, args...)
+			py := runRunPyLive(t, root, args...)
 			warns, errs, code := BuildVars(p, vf, opt)
 			var out []string
 			for _, w := range warns {
@@ -265,7 +274,7 @@ func TestVarsMatchesPython(t *testing.T) {
 				}
 				// env: aynı vars.json üzerinde
 				el, ee, ec := Env(filepath.Join(dir, "go.json"), "srv", "apply", "ubuntu-26.04")
-				epy := runRunPy(t, root, "env", filepath.Join(dir, "py.json"), "srv", "apply", "ubuntu-26.04")
+				epy := runRunPyLive(t, root, "env", filepath.Join(dir, "py.json"), "srv", "apply", "ubuntu-26.04")
 				eq(t, rel+" env", epy, el, ee, ec)
 			}
 		}
@@ -273,7 +282,7 @@ func TestVarsMatchesPython(t *testing.T) {
 }
 
 func TestEnvBadNames(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	dir := t.TempDir()
 	vj := writeTemp(t, dir, "v.json", `{"a_b": "it's \"q\" $x", "n": 5, "l": [1,"x",true], "t": true}`)
 	for _, args := range [][3]string{{"srv", "apply", "p"}, {"-bad", "apply", "p"}, {"srv", "a b", "p"}, {"srv", "apply", ""}} {
@@ -293,7 +302,7 @@ func TestEnvBadNames(t *testing.T) {
 }
 
 func TestNetMatchesPython(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	addrs := []string{"10.0.0.5", "192.168.1.200", "::1", "fe80::1", "2001:db8::5", "300.1.1.1", "", "1.2.3", "01.2.3.4", "10.0.0.5/24"}
 	for _, a := range addrs {
 		py := runRunPy(t, root, "net-valid", a)
