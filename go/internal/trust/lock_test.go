@@ -45,10 +45,15 @@ type gOut struct {
 }
 
 // runShellG: runShell'in altın dosyalı hali (yan etkisiz, yalnız çıktı/çıkış kodu karşılaştıran testler için). Anahtar: test adı + sıra.
-func runShellG(t *testing.T, root string, env []string, libs []string, prelude string, fn string, args ...string) shOut {
+func goldDo[T any](t *testing.T, f func() T) T {
 	t.Helper()
 	goldOnce.Do(func() { goldStore = shellgold.Open(t, "shell") })
-	g := shellgold.Do(t, goldStore, goldStore.Next(t), func() gOut {
+	return shellgold.Do(t, goldStore, goldStore.Next(t), f)
+}
+
+func runShellG(t *testing.T, root string, env []string, libs []string, prelude string, fn string, args ...string) shOut {
+	t.Helper()
+	g := goldDo(t, func() gOut {
 		r := runShell(t, root, env, libs, prelude, fn, args...)
 		return gOut{r.code, reTmp.ReplaceAllString(r.stdout, "<T>"), reTmp.ReplaceAllString(r.stderr, "<T>")}
 	})
