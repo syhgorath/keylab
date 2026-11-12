@@ -32,13 +32,16 @@ func stateSnap(dir string) map[string]string {
 			out[n] = "(yok)"
 		} else {
 			out[n] = shaHex(b)
+			if n == "index.json.sig" {
+				out[n] = "(var)" // imza özeti her koşuda yeni anahtara bağlıdır: yalnız varlığı karşılaştırılır
+			}
 		}
 	}
 	return out
 }
 
 func TestRefreshMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	needSSHKeygen(t)
 	type step struct {
 		name string
@@ -94,11 +97,13 @@ func TestRefreshMatchesShell(t *testing.T) {
 	// kapalı özellik
 	{
 		e := mk(false, priv, pub)
-		sh := runShell(t, root, []string{"SSHPOCKET_INDEX_SIGNERS=" + e.signers, "SSHPOCKET_COMPONENTS_DIR=" + e.comp}, []string{"Components.sh", "ComponentsInstall.sh", "ComponentsIndex.sh"}, "", "comp_index_refresh")
+		shCode := goldDo(t, func() int {
+			return runShell(t, root, []string{"SSHPOCKET_INDEX_SIGNERS=" + e.signers, "SSHPOCKET_COMPONENTS_DIR=" + e.comp}, []string{"Components.sh", "ComponentsInstall.sh", "ComponentsIndex.sh"}, "", "comp_index_refresh").code
+		})
 		c := &Client{ComponentsDir: e.comp, SignersFile: e.signers}
 		_, err := c.Refresh()
-		if sh.code != 2 || !errors.Is(err, ErrDisabled) {
-			t.Errorf("kapalı: kabuk=%d go=%v", sh.code, err)
+		if shCode != 2 || !errors.Is(err, ErrDisabled) {
+			t.Errorf("kapalı: kabuk=%d go=%v", shCode, err)
 		}
 	}
 
@@ -108,7 +113,16 @@ func TestRefreshMatchesShell(t *testing.T) {
 	for _, st := range steps {
 		st.prep(t, sh.src, priv)
 		st.prep(t, gv.src, priv)
-		out := runShell(t, root, []string{"SSHPOCKET_INDEX_SIGNERS=" + sh.signers, "SSHPOCKET_COMPONENTS_DIR=" + sh.comp, "SSHPOCKET_INDEX_NOW=" + fmt.Sprint(st.now), "SRC=" + sh.src}, []string{"Components.sh", "ComponentsInstall.sh", "ComponentsIndex.sh"}, prelude, "comp_index_refresh")
+		type refGold struct {
+			Code   int
+			Stderr string
+			Snap   map[string]string
+		}
+		rg := goldDo(t, func() refGold {
+			o := runShell(t, root, []string{"SSHPOCKET_INDEX_SIGNERS=" + sh.signers, "SSHPOCKET_COMPONENTS_DIR=" + sh.comp, "SSHPOCKET_INDEX_NOW=" + fmt.Sprint(st.now), "SRC=" + sh.src}, []string{"Components.sh", "ComponentsInstall.sh", "ComponentsIndex.sh"}, prelude, "comp_index_refresh")
+			return refGold{o.code, strings.ReplaceAll(reTmp.ReplaceAllString(o.stderr, "<T>"), sh.comp, "COMP"), stateSnap(sh.dir)}
+		})
+		out := shOut{rg.Code, "", rg.Stderr}
 		c := &Client{ComponentsDir: gv.comp, SignersFile: gv.signers, Now: func() int64 { return st.now },
 			Download: func(url, dest string, max int64) error {
 				return copyFile(filepath.Join(gv.src, filepath.Base(url)), dest)
@@ -122,10 +136,10 @@ func TestRefreshMatchesShell(t *testing.T) {
 			t.Errorf("[%s] çıkış kabuk=%d (%q) go=%d (%v)", st.name, out.code, strings.TrimSpace(out.stderr), gcode, err)
 			continue
 		}
-		if err != nil && strings.TrimSpace(strings.ReplaceAll(out.stderr, sh.comp, "COMP")) != strings.ReplaceAll(err.Error(), gv.comp, "COMP") {
+		if err != nil && strings.TrimSpace(out.stderr) != strings.ReplaceAll(reTmp.ReplaceAllString(err.Error(), "<T>"), gv.comp, "COMP") {
 			t.Errorf("[%s] ileti kabuk=%q go=%q", st.name, strings.TrimSpace(out.stderr), err)
 		}
-		if a, b := stateSnap(sh.dir), stateSnap(gv.dir); !reflect.DeepEqual(a, b) {
+		if a, b := rg.Snap, stateSnap(gv.dir); !reflect.DeepEqual(a, b) {
 			t.Errorf("[%s] durum farkı kabuk=%v go=%v", st.name, a, b)
 		}
 		if err == nil && idx == nil {
@@ -134,7 +148,7 @@ func TestRefreshMatchesShell(t *testing.T) {
 	}
 	// önbellekten yükleme: sağlam, sonra imza/durum bozulmaları
 	cached := func(label string) {
-		out := runShell(t, root, []string{"SSHPOCKET_INDEX_SIGNERS=" + sh.signers, "SSHPOCKET_COMPONENTS_DIR=" + sh.comp, "SSHPOCKET_INDEX_NOW=" + fmt.Sprint(testNow)}, []string{"Components.sh", "ComponentsInstall.sh", "ComponentsIndex.sh"}, "", "comp_index_load_cached")
+		out := runShellG(t, root, []string{"SSHPOCKET_INDEX_SIGNERS=" + sh.signers, "SSHPOCKET_COMPONENTS_DIR=" + sh.comp, "SSHPOCKET_INDEX_NOW=" + fmt.Sprint(testNow)}, []string{"Components.sh", "ComponentsInstall.sh", "ComponentsIndex.sh"}, "", "comp_index_load_cached")
 		c := &Client{ComponentsDir: gv.comp, SignersFile: gv.signers, Now: func() int64 { return testNow }}
 		_, err := c.LoadCached()
 		if (out.code == 0) != (err == nil) {
@@ -158,7 +172,7 @@ func TestRefreshMatchesShell(t *testing.T) {
 }
 
 func TestEvalMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	needSSHKeygen(t)
 	kd := t.TempDir()
 	priv, pub := newKey(t, kd, "idx")
@@ -225,12 +239,23 @@ func TestEvalMatchesShell(t *testing.T) {
 			os.MkdirAll(filepath.Join(comp, "p"), 0o755)
 			os.WriteFile(filepath.Join(comp, "p", "current"), []byte(c.installed+"\n"), 0o644)
 		}
-		out := runShell(t, root, []string{"SSHPOCKET_INDEX_SIGNERS=" + signers, "SSHPOCKET_COMPONENTS_DIR=" + comp, "SSHPOCKET_COMPONENTS_LOCK=" + lockPath,
-			"SSHPOCKET_INDEX_NOW=" + fmt.Sprint(testNow), "SRC=" + src, "SCRIPT_VERSION=" + c.me}, []string{"Components.sh", "ComponentsInstall.sh", "ComponentsIndex.sh"}, prelude, "th")
 		me := c.me
 		if me == "" { // kabuk SCRIPT_VERSION boşken repodaki VERSION dosyasını okur
 			me = ReadVersionFile(filepath.Join(root, "VERSION"))
 		}
+		// sürüm numarası (VERSION dosyasından geliyorsa) yer tutucuya çevrilir: sürüm artınca kayıt eskimesin
+		vn := func(s string) string {
+			if c.me == "" && me != "" {
+				return strings.ReplaceAll(s, me, "<V>")
+			}
+			return s
+		}
+		outStdout := goldDo(t, func() string {
+			o := runShell(t, root, []string{"SSHPOCKET_INDEX_SIGNERS=" + signers, "SSHPOCKET_COMPONENTS_DIR=" + comp, "SSHPOCKET_COMPONENTS_LOCK=" + lockPath,
+				"SSHPOCKET_INDEX_NOW=" + fmt.Sprint(testNow), "SRC=" + src, "SCRIPT_VERSION=" + c.me}, []string{"Components.sh", "ComponentsInstall.sh", "ComponentsIndex.sh"}, prelude, "th")
+			return vn(o.stdout)
+		})
+		out := shOut{0, outStdout, ""}
 		cl := &Client{ComponentsDir: comp, SignersFile: signers, SSHPocketVer: me, Now: func() int64 { return testNow },
 			Download: func(url, dest string, max int64) error { return copyFile(filepath.Join(src, filepath.Base(url)), dest) }}
 		idx, err := cl.Refresh()
@@ -242,7 +267,7 @@ func TestEvalMatchesShell(t *testing.T) {
 			t.Fatalf("%s: kilit: %v", c.name, err)
 		}
 		v := cl.Eval(idx, lock, "p")
-		got := v.Kind + "|" + v.Detail
+		got := vn(v.Kind + "|" + v.Detail)
 		if want := strings.TrimSpace(out.stdout); want != got {
 			t.Errorf("%s: kabuk=%q go=%q", c.name, want, got)
 		}

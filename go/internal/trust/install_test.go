@@ -138,7 +138,7 @@ type installCase struct {
 }
 
 func TestInstallArchiveMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	good := func(id, ver string) []byte { return buildTarGz(t, goodPkg(id, ver)) }
 	p := func(id, ver string, extra ...tfile) []byte { return buildTarGz(t, append(goodPkg(id, ver), extra...)) }
 	paxFirst := func(id, ver string) []byte { // git archive gibi: ilk kayıt pax genel başlığı
@@ -202,7 +202,7 @@ func TestInstallArchiveMatchesShell(t *testing.T) {
 				code int
 				msg  string
 			}
-			for impl := 0; impl < 2; impl++ { // 0 kabuk, 1 Go
+			runImpl := func(impl int) { // 0 kabuk, 1 Go
 				e := newSignEnv(t)
 				lockID := c.id
 				if c.name == "kilitte yok" {
@@ -284,6 +284,19 @@ func TestInstallArchiveMatchesShell(t *testing.T) {
 				}
 				res[impl].snap = snapshot(e.compDir)
 			}
+			// kabuk sonucu altın dosyadan (kayıt modunda gerçek kabuk koşar); Go gerçekten koşar
+			type instGold struct {
+				Code int
+				Msg  string
+				Snap map[string]string
+			}
+			ig := goldDo(t, func() instGold {
+				runImpl(0)
+				return instGold{res[0].code, reTmp.ReplaceAllString(res[0].msg, "<T>"), res[0].snap}
+			})
+			res[0].code, res[0].msg, res[0].snap = ig.Code, ig.Msg, ig.Snap
+			runImpl(1)
+			res[1].msg = reTmp.ReplaceAllString(res[1].msg, "<T>")
 			if res[0].code != res[1].code {
 				t.Errorf("çıkış kabuk=%d (%q) go=%d (%q)", res[0].code, res[0].msg, res[1].code, res[1].msg)
 				return
