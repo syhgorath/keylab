@@ -3,7 +3,7 @@
 #
 #   SSHPOCKET_SIGNING_KEY=~/.ssh/sshpocket_release go/scripts/build-release.sh [--dry-run]
 #
-# Çıktı (go/dist/): sshpocket-X.Y.Z-darwin-{arm64,amd64,universal} ve aynı adlarla .sig (SSHSIG, ad alanı sshpocket-release).
+# Çıktı (go/dist/): keylab-X.Y.Z-darwin-{arm64,amd64,universal} ve aynı adlarla .sig; geçiş için aynı dosyaların sshpocket-X.Y.Z-… adlı kopyaları da (eski istemciler) (SSHSIG, ad alanı sshpocket-release).
 # Sürüm kökteki VERSION dosyasından alınır ve ikiliye gömülür (-X main.buildVersion). Özel anahtar ASLA repoya/CI'a konmaz.
 # Sonraki adımlar sizde: etiket, GitHub Release'e yükleme (RELEASING.md).
 set -euo pipefail
@@ -30,7 +30,7 @@ rm -rf dist && mkdir -p dist
 build() { # goos goarch out
     CGO_ENABLED=0 GOOS="$1" GOARCH="$2" go build -trimpath -ldflags "-s -w -X main.buildVersion=$VERSION" -o "$3" .
 }
-A="dist/sshpocket-$VERSION-darwin-arm64"; B="dist/sshpocket-$VERSION-darwin-amd64"; U="dist/sshpocket-$VERSION-darwin-universal"
+A="dist/keylab-$VERSION-darwin-arm64"; B="dist/keylab-$VERSION-darwin-amd64"; U="dist/keylab-$VERSION-darwin-universal"
 build darwin arm64 "$A"; build darwin amd64 "$B"
 assets=("$A" "$B")
 if command -v lipo >/dev/null; then
@@ -45,6 +45,13 @@ for f in "${assets[@]}"; do
     ssh-keygen -Y sign -f "$KEY" -n "$NS" "$f"
     ssh-keygen -Y verify -f "$SIGNERS" -I "$ID" -n "$NS" -s "$f.sig" < "$f" >/dev/null \
         || die "$f imzası $SIGNERS ile DOĞRULANAMADI (yanlış anahtar?)"
+done
+# geçiş dönemi: eski adlı kopyalar (içerik ve imza aynı; imza içeriğe bağlıdır, ada değil). Eski istemciler yalnız sshpocket-… arar.
+for f in "${assets[@]}"; do
+    old="dist/sshpocket-${f#dist/keylab-}"
+    cp "$f" "$old"; cp "$f.sig" "$old.sig"
+    ssh-keygen -Y verify -f "$SIGNERS" -I "$ID" -n "$NS" -s "$old.sig" < "$old" >/dev/null || die "$old imzası doğrulanamadı"
+    assets+=("$old")
 done
 echo ""
 echo "✅ İmzalı varlıklar hazır ve doğrulandı:"

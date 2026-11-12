@@ -23,7 +23,7 @@ import (
 	"keylab/internal/settings"
 )
 
-// `sshpocket-go run [-servers D] [-components D] [-state D] <paket> <eylem> <sunucu>`: kapılar → yürütme → sonuç akışının
+// `keylab run [-servers D] [-components D] [-state D] <paket> <eylem> <sunucu>`: kapılar → yürütme → sonuç akışının
 // Go uygulaması (internal/runner). Çıkış kodu kabuk motoruyla aynıdır: 0 başarı, eylemin kodu, 2 kullanım/geçersiz girdi,
 // 190 çalıştırılmadı. Arayüz bunu varsayılan olarak pty altında çalıştırır (kabuğa dönüş: SSHPOCKET_SHELL_RUN=1).
 //
@@ -37,7 +37,7 @@ func runCommand(args []string) int {
 		return 2
 	}
 	if fs.NArg() != 3 || *servers == "" || *comps == "" {
-		fmt.Fprintln(os.Stderr, "kullanım: sshpocket-go run -servers <klasör> -components <klasör> [-state <klasör>] <paket> <eylem> <sunucu>")
+		fmt.Fprintln(os.Stderr, "kullanım: keylab run -servers <klasör> -components <klasör> [-state <klasör>] <paket> <eylem> <sunucu>")
 		return 2
 	}
 	st := *state
@@ -61,14 +61,14 @@ func runCommand(args []string) int {
 
 // subcommand: GUI'nin pty altında başlattığı etkileşimli alt komutlar. İstem metinleri kabuk motoruyla aynıdır.
 //
-//	sshpocket-go run …                         paket eylemi
-//	sshpocket-go keycopy <kullanıcı> <ip> <port> <anahtar>   (ssh_copy_key)
-//	sshpocket-go server-remove <servers-klasörü> <ad>        (ModuleManager.sh remove)
-//	sshpocket-go components [-root D] list|sync|update|upgrade|check-new|prune|validate|report|run …   (--components)
-//	sshpocket-go servers [-servers D] list | import-ssh-config [dosya] | knock <ad> | keychain <ad>
-//	sshpocket-go settings [get <ANAHTAR> | set <ANAHTAR> <değer>]
-//	sshpocket-go doctor | version | update [--check] | eject [USB-yolu]
-//	sshpocket-go report -servers D -components D [<paket> [<eski-sürüm>]]   (comp_report_pkg / comp_report_all)
+//	keylab run …                         paket eylemi
+//	keylab keycopy <kullanıcı> <ip> <port> <anahtar>   (ssh_copy_key)
+//	keylab server-remove <servers-klasörü> <ad>        (ModuleManager.sh remove)
+//	keylab components [-root D] list|sync|update|upgrade|check-new|prune|validate|report|run …   (--components)
+//	keylab servers [-servers D] list | import-ssh-config [dosya] | knock <ad> | keychain <ad>
+//	keylab settings [get <ANAHTAR> | set <ANAHTAR> <değer>]
+//	keylab doctor | version | update [--check] | eject [USB-yolu]
+//	keylab report -servers D -components D [<paket> [<eski-sürüm>]]   (comp_report_pkg / comp_report_all)
 func subcommand(args []string) (int, bool) {
 	if len(args) == 0 {
 		return 0, false
@@ -79,7 +79,7 @@ func subcommand(args []string) (int, bool) {
 		return runCommand(args[1:]), true
 	case "keycopy":
 		if len(args) != 5 {
-			fmt.Fprintln(os.Stderr, "kullanım: sshpocket-go keycopy <kullanıcı> <ip> <port> <anahtar>")
+			fmt.Fprintln(os.Stderr, "kullanım: keylab keycopy <kullanıcı> <ip> <port> <anahtar>")
 			return 2, true
 		}
 		if err := servers.ValidateTarget(args[2], args[1], args[3]); err != nil {
@@ -99,9 +99,9 @@ func subcommand(args []string) (int, bool) {
 	case "--check-update":
 		return updateCommand([]string{"--check"}), true
 	case "agent-add":
-		// sshpocket-go agent-add <anahtar-yolu> <ÖNEK>: parolalı anahtarı Keychain parolasıyla ssh-agent'a ekler (yanlışsa yeniden kaydetmeyi sorar).
+		// keylab agent-add <anahtar-yolu> <ÖNEK>: parolalı anahtarı Keychain parolasıyla ssh-agent'a ekler (yanlışsa yeniden kaydetmeyi sorar).
 		if len(args) != 3 || !servers.NameValid(strings.ToLower(args[2])) {
-			fmt.Fprintln(os.Stderr, "kullanım: sshpocket-go agent-add <anahtar-yolu> <ÖNEK>   (ÖNEK = sunucu adının büyük harfi)")
+			fmt.Fprintln(os.Stderr, "kullanım: keylab agent-add <anahtar-yolu> <ÖNEK>   (ÖNEK = sunucu adının büyük harfi)")
 			return 2, true
 		}
 		rd := bufio.NewReader(os.Stdin)
@@ -131,7 +131,7 @@ func subcommand(args []string) (int, bool) {
 		return reportCommand(args[1:]), true
 	case "server-remove":
 		if len(args) != 3 {
-			fmt.Fprintln(os.Stderr, "kullanım: sshpocket-go server-remove <servers-klasörü> <ad>")
+			fmt.Fprintln(os.Stderr, "kullanım: keylab server-remove <servers-klasörü> <ad>")
 			return 2, true
 		}
 		return servers.RemoveInteractive(con, servers.Keychain{}, args[1], args[2]), true
@@ -156,7 +156,7 @@ func reportCommand(args []string) int {
 		return 2
 	}
 	if *srv == "" || *comps == "" || fs.NArg() > 2 {
-		fmt.Fprintln(os.Stderr, "kullanım: sshpocket-go report -servers <klasör> -components <klasör> [<paket> [<eski-sürüm>]]")
+		fmt.Fprintln(os.Stderr, "kullanım: keylab report -servers <klasör> -components <klasör> [<paket> [<eski-sürüm>]]")
 		return 2
 	}
 	o := report.Options{ComponentsDir: *comps, ServersDir: *srv}

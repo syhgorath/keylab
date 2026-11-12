@@ -66,7 +66,7 @@ func newEnv(t *testing.T) *env {
 
 func (e *env) publish(t *testing.T, ver, goos, arch string, bin []byte, signWith string, ns string) {
 	name := fmt.Sprintf("sshpocket-%s-%s-%s", ver, goos, arch)
-	url := "https://github.com/syhgorath/sshpocket/releases/download/v" + ver + "/" + name
+	url := "https://github.com/syhgorath/keylab/releases/download/v" + ver + "/" + name
 	e.net[url] = bin
 	e.net[url+".sig"] = sign(t, signWith, ns, bin)
 }
@@ -77,7 +77,7 @@ func (e *env) updater(stdin string) (*Updater, *bytes.Buffer, *bytes.Buffer) {
 		In: strings.NewReader(stdin), Out: &so, Err: &se,
 		Head: func(url string) string {
 			if strings.HasSuffix(url, "/releases/latest") && e.latestTag != "" {
-				return "https://github.com/syhgorath/sshpocket/releases/tag/" + e.latestTag
+				return "https://github.com/syhgorath/keylab/releases/tag/" + e.latestTag
 			}
 			return ""
 		},
@@ -153,12 +153,12 @@ func TestUpdateRefusals(t *testing.T) {
 		}, "y\ny\n", false, 1, "İMZA DOĞRULANAMADI"},
 		{"imzadan sonra değiştirilmiş ikili", func(t *testing.T, e *env) {
 			good(t, e)
-			url := "https://github.com/syhgorath/sshpocket/releases/download/v1.2.0/sshpocket-1.2.0-darwin-arm64"
+			url := "https://github.com/syhgorath/keylab/releases/download/v1.2.0/sshpocket-1.2.0-darwin-arm64"
 			e.net[url] = append(e.net[url], []byte("# zehir\n")...)
 		}, "y\ny\n", false, 1, "İMZA DOĞRULANAMADI"},
 		{"imza dosyası yok", func(t *testing.T, e *env) {
 			good(t, e)
-			delete(e.net, "https://github.com/syhgorath/sshpocket/releases/download/v1.2.0/sshpocket-1.2.0-darwin-arm64.sig")
+			delete(e.net, "https://github.com/syhgorath/keylab/releases/download/v1.2.0/sshpocket-1.2.0-darwin-arm64.sig")
 		}, "y\ny\n", false, 1, "İndirme başarısız"},
 		{"varlık yok", func(t *testing.T, e *env) {}, "y\ny\n", false, 1, "İndirme başarısız"},
 		{"içerideki sürüm etiketle uyuşmuyor", func(t *testing.T, e *env) {
@@ -213,12 +213,12 @@ func TestUpdateUnwritableDirKeepsOldBinary(t *testing.T) {
 
 func TestLatestRequiresExactTagURL(t *testing.T) {
 	for loc, want := range map[string]string{
-		"https://github.com/syhgorath/sshpocket/releases/tag/v1.2.3":   "1.2.3",
-		"https://github.com/baska/repo/releases/tag/v1.2.3":            "",
-		"https://github.com/syhgorath/sshpocket/releases/tag/1.2.3":    "",
-		"https://github.com/syhgorath/sshpocket/releases/tag/v1.2":     "",
-		"http://github.com/syhgorath/sshpocket/releases/tag/v1.2.3":    "",
-		"https://github.com/syhgorath/sshpocket/releases/tag/v1.2.3/x": "",
+		"https://github.com/syhgorath/keylab/releases/tag/v1.2.3":   "1.2.3",
+		"https://github.com/baska/repo/releases/tag/v1.2.3":         "",
+		"https://github.com/syhgorath/keylab/releases/tag/1.2.3":    "",
+		"https://github.com/syhgorath/keylab/releases/tag/v1.2":     "",
+		"http://github.com/syhgorath/keylab/releases/tag/v1.2.3":    "",
+		"https://github.com/syhgorath/keylab/releases/tag/v1.2.3/x": "",
 		"": "",
 	} {
 		u := &Updater{Head: func(string) string { return loc }}
@@ -230,3 +230,15 @@ func TestLatestRequiresExactTagURL(t *testing.T) {
 }
 
 var _ = trust.VersionCmp
+
+func TestAssetNamesNewThenOld(t *testing.T) {
+	u := &Updater{GOOS: "darwin", GOARCH: "arm64"}
+	got := strings.Join(u.assetNames("1.2.3"), " ")
+	want := "keylab-1.2.3-darwin-universal keylab-1.2.3-darwin-arm64 sshpocket-1.2.3-darwin-universal sshpocket-1.2.3-darwin-arm64"
+	if got != want {
+		t.Fatalf("got %q", got)
+	}
+	if DefaultRepo != "syhgorath/keylab" {
+		t.Fatal(DefaultRepo)
+	}
+}

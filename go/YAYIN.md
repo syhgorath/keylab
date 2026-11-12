@@ -3,8 +3,9 @@
 **Ne dağıtılır:** macOS için tek dosya `sshpocket` (arm64 + amd64 `lipo` ile birleşik, ad-hoc `codesign`'lı). Web arayüzü ikilinin içinde gömülüdür.
 GitHub Release varlıkları (X.Y.Z sürümü için), her biri aynı adla `.sig` ile:
 
-- `sshpocket-X.Y.Z-darwin-universal` (USB için)
-- `sshpocket-X.Y.Z-darwin-arm64`, `sshpocket-X.Y.Z-darwin-amd64`
+- `keylab-X.Y.Z-darwin-universal` (USB için)
+- `keylab-X.Y.Z-darwin-arm64`, `keylab-X.Y.Z-darwin-amd64`
+- Geçiş dönemi: aynı dosyalar ve imzalar eski `sshpocket-X.Y.Z-darwin-…` adıyla da yüklenir (eski sürümlerin `--update`'i yalnız bu adı arar; `version` çıktısı da "sshpocket X.Y.Z" kalır). `build-release.sh` ikisini de üretir.
 
 İmza: SSHSIG, ad alanı `sshpocket-release`, anahtar `release_signers` dosyasındaki (kök klasör ya da `sistem/`) public key. Kabuk dönemindeki anahtar aynen kullanılır.
 
