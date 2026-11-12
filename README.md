@@ -79,6 +79,9 @@ servers/<ad>/      server.env + id_ed25519_<ad>   (kullanıcı verisi, repoya gi
 - **Port knocking (istemci):** arayüzdeki sunucu adımlarından ya da `./sshpocket servers knock <ad>`; dizi Keychain'de durur, "Terminal'de aç" bağlanmadan önce otomatik gönderir. Sunucu tarafı (knockd) bu araçta yoktur; klasik knocking şifreli değildir.
 - **Keychain parolası:** `./sshpocket servers keychain <ad>` (kaydet/güncelle/sil, kayıttan sonra anahtarı açarak doğrular).
 - **Ayarlar:** `sshpocket.conf` (`STATUS=on|off`, `STATUS_TIMEOUT=1-5`; ortam değişkeni `SSHPOCKET_STATUS` önceliklidir). `./sshpocket settings` değerleri gösterir, `settings set STATUS_TIMEOUT 3` yazar.
+- **Gömülü terminal:** sunucu sayfasında "Gömülü terminal" tarayıcıda `ssh -tt` oturumu açar (macOS ve Linux; Windows'ta henüz yok). Yerel shell açılmaz, yalnız kayıtlı sunucuya bağlanır; açma/kapama durum klasöründe `terminal-audit.log` dosyasına yazılır.
+- **Uygulama kataloğu:** `items` bildiren paketlerde (ör. kurulum) sunucu sayfasında uygulama kartları; öğeye özel Önizle/Kur/Yükselt/Kaldır, önkoşul kapısı öğe ve mod kapsamlıdır (docs/package-standard.md).
+- **Dil:** arayüz Türkçe ve İngilizce (üst çubuktaki TR/EN düğmesi).
 
 ### Go sürümünde olmayanlar (kabuk referansında vardı)
 

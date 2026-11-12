@@ -79,6 +79,9 @@ servers/<name>/    server.env + id_ed25519_<name>   (user data, never committed)
 - **Port knocking (client side):** from the UI's server steps or `./sshpocket servers knock <name>`; the sequence stays in the Keychain and "Open in Terminal" sends it automatically before connecting. The server side (knockd) is not part of this tool; classic knocking is not encrypted.
 - **Keychain passphrase:** `./sshpocket servers keychain <name>` (save/update/delete, then verifies by unlocking the key).
 - **Settings:** `sshpocket.conf` (`STATUS=on|off`, `STATUS_TIMEOUT=1-5`; the `SSHPOCKET_STATUS` environment variable wins). `./sshpocket settings` shows the values, `settings set STATUS_TIMEOUT 3` writes one.
+- **Embedded terminal:** the server page's "Embedded terminal" opens an `ssh -tt` session in the browser (macOS and Linux; not on Windows yet). No local shell is opened, only a registered server is reached; opening/closing is logged to `terminal-audit.log` in the state folder.
+- **Application catalog:** for packages that declare `items` (e.g. kurulum) the server page shows application cards with per-item Preview/Install/Upgrade/Remove; the prerequisite gate is scoped per item and mode (docs/package-standard.md).
+- **Language:** the UI is available in Turkish and English (TR/EN button in the top bar).
 
 ### Not in the Go version (the shell reference had them)
 
