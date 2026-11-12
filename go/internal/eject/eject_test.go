@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"keylab/internal/shellgold"
 )
 
 // Sahte araçlar: ssh-add -d yalnızca FAKE_DEL_OK içindeki .pub adlarında başarılı; diskutil davranışı FAKE_* ile seçilir.
@@ -37,8 +39,15 @@ func mkUSB(t *testing.T) string {
 
 func TestEjectMatchesShell(t *testing.T) {
 	root, _ := filepath.Abs("../../..")
-	if _, err := os.Stat(filepath.Join(root, "referans/kabuk/sistem/Helpers/Eject.sh")); err != nil {
-		t.Skip("kabuk motoru yok")
+	if os.Getenv("KEYLAB_KAYIT_KABUK") == "1" { // kayıt: kabuk motoru gerekir; oynatmada gerekmez (altın dosya)
+		if _, err := os.Stat(filepath.Join(root, "referans/kabuk/sistem/Helpers/Eject.sh")); err != nil {
+			t.Skip("kabuk motoru yok")
+		}
+	}
+	gold := shellgold.Open(t, "shell")
+	type eg struct {
+		Out  string
+		Code int
 	}
 	type tc struct {
 		name        string
@@ -100,7 +109,8 @@ func TestEjectMatchesShell(t *testing.T) {
 			norm := func(s string) string { return strings.ReplaceAll(s, usb, "<USB>") }
 			return norm(out) + "|LOG|" + norm(string(lg)), "", code
 		}
-		so, _, sc := run(true)
+		sg := shellgold.Do(t, gold, c.name, func() eg { o, _, c := run(true); return eg{o, c} })
+		so, sc := sg.Out, sg.Code
 		go_, _, gc := run(false)
 		if sc != gc || so != go_ {
 			t.Errorf("%s: kabuk=%d go=%d\nkabuk: %q\ngo:    %q", c.name, sc, gc, so, go_)

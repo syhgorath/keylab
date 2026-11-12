@@ -5,8 +5,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
+	"sync"
 	"testing"
+
+	"keylab/internal/shellgold"
 )
 
 func repoRoot(t *testing.T) string {
@@ -16,6 +21,38 @@ func repoRoot(t *testing.T) string {
 		t.Skip("kabuk motoru yok: " + root)
 	}
 	return root
+}
+
+// goldRoot: oynatmada kabuk motoru gerekmez (altın dosya); yalnız kayıt modunda gerekir.
+func goldRoot(t *testing.T) string {
+	t.Helper()
+	if os.Getenv("KEYLAB_KAYIT_KABUK") == "1" {
+		return repoRoot(t)
+	}
+	root, _ := filepath.Abs("../../..")
+	return root
+}
+
+var (
+	goldOnce  sync.Once
+	goldStore *shellgold.Store
+	reTmp     = regexp.MustCompile(`(?:/private)?(?:/var/folders/[^/\s]+/[^/\s]+/T|/tmp)/[^\s"']+`) // geçici yollar altın dosyaya girmesin
+)
+
+type gOut struct {
+	Code           int
+	Stdout, Stderr string
+}
+
+// runShellG: runShell'in altın dosyalı hali (yan etkisiz, yalnız çıktı/çıkış kodu karşılaştıran testler için). Anahtar: test adı + sıra.
+func runShellG(t *testing.T, root string, env []string, libs []string, prelude string, fn string, args ...string) shOut {
+	t.Helper()
+	goldOnce.Do(func() { goldStore = shellgold.Open(t, "shell") })
+	g := shellgold.Do(t, goldStore, goldStore.Next(t), func() gOut {
+		r := runShell(t, root, env, libs, prelude, fn, args...)
+		return gOut{r.code, reTmp.ReplaceAllString(r.stdout, "<T>"), reTmp.ReplaceAllString(r.stderr, "<T>")}
+	})
+	return shOut{g.Code, g.Stdout, g.Stderr}
 }
 
 type shOut struct {
@@ -57,7 +94,7 @@ func full(id string) string {
 }
 
 func TestLockMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	cases := map[string]string{
 		"geçerli":            full("utility") + "\n" + full("kurulum"),
 		"yorumlu":            "# başlık\n\n" + full("a") + "# son\n",
@@ -89,11 +126,17 @@ func TestLockMatchesShell(t *testing.T) {
 		"başlıkta yorum":     "[a] # x\n",
 		"çok paket":          full("a") + full("b") + full("c"),
 	}
-	for name, text := range cases {
+	names := make([]string, 0, len(cases))
+	for n := range cases {
+		names = append(names, n)
+	}
+	sort.Strings(names) // sıralı anahtar için deterministik sıra
+	for _, name := range names {
+		text := cases[name]
 		dir := t.TempDir()
 		lf := filepath.Join(dir, "components.lock")
 		os.WriteFile(lf, []byte(text), 0o600)
-		sh := runShell(t, root, []string{"SSHPOCKET_COMPONENTS_LOCK=" + lf}, []string{"Components.sh"}, "", "comp_lock_validate")
+		sh := runShellG(t, root, []string{"SSHPOCKET_COMPONENTS_LOCK=" + lf}, []string{"Components.sh"}, "", "comp_lock_validate")
 		lock, err := LoadLock(lf)
 		gcode := 0
 		if err != nil {
@@ -109,7 +152,7 @@ func TestLockMatchesShell(t *testing.T) {
 			}
 			continue
 		}
-		ids := runShell(t, root, []string{"SSHPOCKET_COMPONENTS_LOCK=" + lf}, []string{"Components.sh"}, "", "comp_ids")
+		ids := runShellG(t, root, []string{"SSHPOCKET_COMPONENTS_LOCK=" + lf}, []string{"Components.sh"}, "", "comp_ids")
 		want := strings.Fields(ids.stdout)
 		got := append([]string(nil), lock.IDs()...)
 		sortStr(got)
@@ -118,8 +161,10 @@ func TestLockMatchesShell(t *testing.T) {
 		}
 		for _, id := range want {
 			e, _ := lock.Get(id)
-			for k, v := range map[string]string{"repo": e.Repo, "version": e.Version, "sha256": e.SHA256, "signers": e.Signers} {
-				g := runShell(t, root, []string{"SSHPOCKET_COMPONENTS_LOCK=" + lf}, []string{"Components.sh"}, "", "comp_get", id, k)
+			fields := map[string]string{"repo": e.Repo, "version": e.Version, "sha256": e.SHA256, "signers": e.Signers}
+			for _, k := range []string{"repo", "sha256", "signers", "version"} { // sabit sıra: altın dosya anahtarı sıraya bağlı
+				v := fields[k]
+				g := runShellG(t, root, []string{"SSHPOCKET_COMPONENTS_LOCK=" + lf}, []string{"Components.sh"}, "", "comp_get", id, k)
 				if strings.TrimSuffix(g.stdout, "\n") != v {
 					t.Errorf("%s: %s.%s kabuk=%q go=%q", name, id, k, g.stdout, v)
 				}
@@ -155,11 +200,11 @@ func TestRealLockParses(t *testing.T) {
 }
 
 func TestVersionCmpMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	vs := []string{"0.0.0", "0.1.0", "0.1.2", "0.10.0", "0.9.9", "1.0.0", "1.0.01", "01.0.0", "10.0.0", "2.2.0", "3.7.0", "0.13.0", "0.12.1", "99999999.0.0"}
 	for _, a := range vs {
 		for _, b := range vs {
-			sh := runShell(t, root, nil, []string{"Components.sh", "ComponentsInstall.sh"}, "", "comp_version_cmp", a, b)
+			sh := runShellG(t, root, nil, []string{"Components.sh", "ComponentsInstall.sh"}, "", "comp_version_cmp", a, b)
 			want := strings.TrimSpace(sh.stdout)
 			got := map[int]string{1: "1", 0: "0", -1: "-1"}[VersionCmp(a, b)]
 			if want != got {

@@ -8,7 +8,7 @@ import (
 )
 
 func TestPrepareMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	e := newSignEnv(t)
 	data := buildTarGz(t, goodPkg("abc", "1.0.0"))
 	arc, sig := e.writeArchive(t, "p.tar.gz", data, ComponentNamespace)
@@ -19,7 +19,7 @@ func TestPrepareMatchesShell(t *testing.T) {
 	// çıkış kodu + (ileti) karşılaştırması; bildirim çıktısı yalnızca başarıda kıyaslanmaz (manifest paketi ayrı sınanır)
 	check := func(label, id string) {
 		t.Helper()
-		sh := runShell(t, root, shEnv, libs, `comp_manifest_info() { return 0; }`, "comp_prepare", id)
+		sh := runShellG(t, root, shEnv, libs, `comp_manifest_info() { return 0; }`, "comp_prepare", id)
 		_, mf, err := Prepare(e.compDir, lock, id)
 		if (sh.code == 0) != (err == nil) {
 			t.Errorf("%s: kabuk=%d (%q) go=%v", label, sh.code, sh.stderr, err)

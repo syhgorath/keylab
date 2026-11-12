@@ -1,0 +1,4 @@
+{
+  "doctor|python yok": {"Code":1,"Out":"sshpocket --doctor\n\nTemel araçlar\n  ✅ ssh\n  ✅ ssh-keygen\n  ✅ ssh-add\n  ✅ ssh-copy-id\n\nPython (paketler için; aralık: \u003e=3.12)\n  ❌ Python bulunamadı\n\nDisk ve ağ\n  ✅ boş alan: N MB (önbellek: \u003cC\u003e)\n  ⚠️  ağ denetimi atlandı (SSHPOCKET_DOCTOR_OFFLINE=1)\n\n"},
+  "doctor|ssh-add yok": {"Code":1,"Out":"sshpocket --doctor\n\nTemel araçlar\n  ✅ ssh\n  ✅ ssh-keygen\n  ❌ ssh-add bulunamadı\n  ⚠️  ssh-copy-id yok (key gönderme elle kurulum komutuyla yapılır)\n\nPython (paketler için; aralık: \u003e=3.12)\n  ❌ Python bulunamadı\n\nDisk ve ağ\n  ✅ boş alan: N MB (önbellek: \u003cC\u003e)\n  ⚠️  ağ denetimi atlandı (SSHPOCKET_DOCTOR_OFFLINE=1)\n\n"}
+}
