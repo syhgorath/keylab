@@ -3,12 +3,10 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -18,33 +16,6 @@ import (
 )
 
 /* ---------- sunucu ekleme: kayıt oluşturma ve anahtar adımları, sshpocket'in kendi kütüphaneleriyle ---------- */
-
-// engineBash: sistem/Helpers altındaki kütüphaneleri source edip bir işlevi çağırır; argümanlar ayrı geçer (kabuk dizesine gömülmez)
-func (a *App) engineBash(libs []string, fn string, args ...string) (string, int, error) {
-	hd := filepath.Join(a.engineRoot(), "sistem", "Helpers")
-	var src strings.Builder
-	for _, l := range libs {
-		src.WriteString(`. "$HD/` + l + `" && `)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, "bash", append([]string{"-c", src.String() + `"$@"`, "_", fn}, args...)...)
-	cmd.Env = append(os.Environ(), "HD="+hd, "SISTEM_PATH="+filepath.Join(a.engineRoot(), "sistem"))
-	var o, e strings.Builder
-	cmd.Stdout, cmd.Stderr = &o, &e
-	if err := cmd.Run(); err != nil {
-		code := 1
-		if ee, ok := err.(*exec.ExitError); ok {
-			code = ee.ExitCode()
-		}
-		msg := strings.TrimSpace(e.String())
-		if msg == "" {
-			msg = err.Error()
-		}
-		return o.String(), code, fmt.Errorf("%s", msg)
-	}
-	return o.String(), 0, nil
-}
 
 // createServer: doğrular (draft ile aynı kurallar) ve servers/<ad>/server.env dosyasını motorun server_write_files işleviyle yazar (dizin 0700, dosya 0600; var olanın üzerine yazmaz)
 func (a *App) createServer(name, host, user, port, osID string) (int, error) {

@@ -309,25 +309,17 @@ func (a *App) newJob(server, pkg, action string) (*Job, error) {
 	return job, nil
 }
 
-// startJob: eylemi pty altında çalıştırır; varsayılan Go yürütücüsü (`sshpocket-go run`), SSHPOCKET_SHELL_RUN=1 ile kabuk motoru. Kapılar, günlük ve sonuç kaydı yürütücünün işidir.
+// startJob: eylemi pty altında Go yürütücüsüyle (`sshpocket-go run`) çalıştırır. Kapılar, günlük ve sonuç kaydı yürütücünün işidir.
 func (a *App) startJob(server, pkg, action string, snapshot bool, confirm string, ackDestructive bool) (*Job, int, error) {
 	if _, code, err := a.authorizeRun(server, pkg, action, snapshot, confirm, ackDestructive); err != nil {
 		return nil, code, err
 	}
 	root := filepath.Dir(filepath.Clean(a.compDir))
-	var argv []string
-	if goRunEnabled() { // varsayılan: Go yürütücüsü (internal/runner); kabuk motoru gerekmez
-		if exe, err := os.Executable(); err == nil {
-			argv = []string{exe, "run", "-servers", a.serversDir, "-components", a.compDir, "-state", a.stateDir, pkg, action, server}
-		}
+	exe, err := os.Executable() // eylemi Go yürütücüsü (internal/runner) çalıştırır: kendi ikilimiz, `run` alt komutu
+	if err != nil {
+		return nil, http.StatusInternalServerError, fmt.Errorf("sshpocket ikilisinin yolu bulunamadı: %w", err)
 	}
-	if argv == nil { // SSHPOCKET_SHELL_RUN=1 (ya da ikili yolu bulunamadı): kabuk motoru
-		main := filepath.Join(root, "sistem", "Main.sh")
-		if st, err := os.Stat(main); err != nil || !st.Mode().IsRegular() {
-			return nil, http.StatusConflict, fmt.Errorf("sshpocket motoru bulunamadı (%s)", filepath.Join("sistem", "Main.sh"))
-		}
-		argv = []string{"bash", main, "--components", "run", pkg, action, server}
-	}
+	argv := []string{exe, "run", "-servers", a.serversDir, "-components", a.compDir, "-state", a.stateDir, pkg, action, server}
 	job, err := a.newJob(server, pkg, action)
 	if err != nil {
 		return nil, http.StatusConflict, err

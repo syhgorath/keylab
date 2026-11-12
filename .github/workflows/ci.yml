@@ -56,7 +56,8 @@ jobs:
           CGO_ENABLED: "0"
           MATRIX_TARGET: ${{ matrix.target }}
         run: GOOS="${MATRIX_TARGET%/*}" GOARCH="${MATRIX_TARGET#*/}" go build -trimpath ./...
-  # Referans kabuk motoru (dondurulmuş): Go portunun şartnamesi. Değişmemesi beklenir; yine de bozulmasın diye koşar.
+  # Ürünün kendi kabuk betikleri (başlatıcı ve yayın derlemesi). Dondurulmuş kabuk referansının bats testleri artık CI'da koşmaz
+  # (yavaş ve kararsızdı; ürün Go). Kalan parite testleri Go işinde koşar ve K3 ile emekliye ayrılacak.
   shellcheck:
     runs-on: ubuntu-26.04
     steps:
@@ -64,52 +65,6 @@ jobs:
       - name: ShellCheck kur (sabit sürüm, sha256 doğrulamalı)
         run: bash referans/kabuk/scripts/ci-install-shellcheck.sh
       - name: ShellCheck
-        working-directory: referans/kabuk
-        run: shellcheck -x -s bash start.sh start.command sistem/*.sh sistem/Helpers/*.sh
+        run: shellcheck -s bash go/launcher/start.command go/scripts/build-release.sh
       - name: Syntax check (bash -n)
-        working-directory: referans/kabuk
-        run: for f in start.sh start.command sistem/*.sh sistem/Helpers/*.sh; do bash -n "$f"; done
-  tests:
-    runs-on: ubuntu-26.04
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install bats
-        # apt bu runner'da *.ubuntu.com adreslerini çözemiyor (4 deneme de başarısız oldu); bats GitHub'dan, sabit commit ile kurulur.
-        # v1.13.0 = 3bca150ec86275d6d9d5a4fd7d48ab8b6c6f3d87 (apt'in verdiği sürümle aynı).
-        env:
-          BATS_COMMIT: 3bca150ec86275d6d9d5a4fd7d48ab8b6c6f3d87
-        run: |
-          git clone --quiet https://github.com/bats-core/bats-core.git /tmp/bats-core
-          cd /tmp/bats-core
-          git checkout --quiet "$BATS_COMMIT"
-          test "$(git rev-parse HEAD)" = "$BATS_COMMIT"
-          sudo ./install.sh /usr/local
-          bats --version
-      - name: Run tests
-        working-directory: referans/kabuk
-        run: bats test
-  # macOS (Apple Silicon, yeni macOS) + macOS'un kendi bash 3.2'si: referans motorun gerçek ortamı.
-  macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: Ortam bilgisi
-        run: |
-          uname -m
-          sw_vers
-          PATH="/bin:$PATH" bash --version | head -1
-          ssh -V
-      - name: Araçları kur
-        run: brew install bats-core
-      - name: ShellCheck kur (sabit sürüm, sha256 doğrulamalı)
-        run: bash referans/kabuk/scripts/ci-install-shellcheck.sh
-      - name: ShellCheck
-        working-directory: referans/kabuk
-        run: shellcheck -x -s bash start.sh start.command sistem/*.sh sistem/Helpers/*.sh
-      - name: Testler (macOS bash 3.2 ile)
-        working-directory: referans/kabuk
-        # LC_ALL=C: macOS bash 3.2 + UTF-8 yerelinde bats, Türkçe karakterli test adlarını yanlış kodlar
-        env:
-          LC_ALL: C
-          LANG: C
-        run: PATH="/bin:/usr/bin:$PATH" bats test
+        run: for f in go/launcher/start.command go/scripts/build-release.sh; do bash -n "$f"; done
