@@ -33,11 +33,20 @@ func runCommand(args []string) int {
 	servers := fs.String("servers", "", "sunucular klasörü")
 	comps := fs.String("components", "", "components klasörü")
 	state := fs.String("state", "", "durum/günlük klasörü")
+	var sets []string
+	fs.Func("set", "koşuya özel katalog seçimi ad=değer (tekrarlanabilir; değer dosyasına yazılmaz)", func(v string) error {
+		k, val, ok := strings.Cut(v, "=")
+		if !ok || !reName.MatchString(k) || strings.ContainsAny(val, "\n\r\x00") {
+			return fmt.Errorf("geçersiz -set (ad=değer bekleniyor): %q", v)
+		}
+		sets = append(sets, k+"="+val)
+		return nil
+	})
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
 	if fs.NArg() != 3 || *servers == "" || *comps == "" {
-		fmt.Fprintln(os.Stderr, "kullanım: keylab run -servers <klasör> -components <klasör> [-state <klasör>] <paket> <eylem> <sunucu>")
+		fmt.Fprintln(os.Stderr, "kullanım: keylab run -servers <klasör> -components <klasör> [-state <klasör>] [-set ad=değer]… <paket> <eylem> <sunucu>")
 		return 2
 	}
 	st := *state
@@ -55,6 +64,7 @@ func runCommand(args []string) int {
 		Stdin:         os.Stdin,
 		Stdout:        os.Stdout,
 		Stderr:        os.Stderr,
+		RunSet:        strings.Join(sets, "\n"),
 	}
 	return cli.Run(fs.Arg(0), fs.Arg(1), fs.Arg(2))
 }
