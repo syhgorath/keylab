@@ -30,6 +30,7 @@ type CLI struct {
 	Stderr        io.Writer // bilgi/hata iletileri
 	Now           func() time.Time
 	LogKeep       int
+	RunSet        string // katalog seçimi (koşuya özel): satır satır "ad=değer"; değer dosyasına YAZILMAZ (bkz. RunSets)
 }
 
 var (
@@ -264,7 +265,7 @@ func (c *CLI) Run(id, action, server string) int {
 		binDir = filepath.Join(venv, "bin")
 	}
 	ec := &ExecCtx{PkgDir: pkg, BinDir: binDir, Server: server, Host: ip, User: user, Port: port, Key: key, Prefix: prefix, Profile: profile,
-		ValuesFile: values, BecomeExe: become, Gates: &Gates{StateDir: c.StateDir}, AddRetry: addRetry, KnownHosts: c.KnownHosts,
+		ValuesFile: values, BecomeExe: become, RunSet: c.RunSet, Gates: &Gates{StateDir: c.StateDir}, AddRetry: addRetry, KnownHosts: c.KnownHosts,
 		Ctx: c.Ctx, Stdin: c.Stdin, Stdout: c.Stdout, Stderr: errw, LogKeep: c.LogKeep, rd: rd}
 	if c.Now != nil {
 		ec.Now = func() int64 { return c.Now().Unix() }

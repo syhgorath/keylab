@@ -100,8 +100,21 @@ func (g *Gates) StateEnsure(id, server string) (string, error) {
 	return dir, nil
 }
 
-// Record: sonucu kullanıcı klasörüne işler: "<epoch>|<sürüm>|<eylem>|<ok|fail>" (dosya 0600).
+// Record: kapsamsız kayıt (bkz. RecordScoped).
 func (g *Gates) Record(id, server, ver, action, res string) error {
+	return g.RecordScoped(id, server, ver, action, res, "")
+}
+
+// reScope: kayıt kapsamı = "<öğe>:<mod>" (katalog öğesi ve modu); öğesiz paketlerde boş.
+var reScope = regexp.MustCompile(`^[A-Za-z0-9._-]{0,64}:[A-Za-z0-9._-]{0,64}$`)
+
+// RecordScoped: sonucu kullanıcı klasörüne işler: "<epoch>|<sürüm>|<eylem>|<ok|fail>[|<kapsam>]" (dosya 0600).
+// Kapsam, `items` bildiren paketlerde eylemin hangi yazılım/mod için koşulduğudur; önkoşul (requires) denetimi YALNIZ aynı kapsamın
+// kaydını sayar (docker için önizleyip nginx kurmak kapıyı geçemez).
+func (g *Gates) RecordScoped(id, server, ver, action, res, scope string) error {
+	if scope != "" && !reScope.MatchString(scope) {
+		return errors.New("kayıt girdisi geçersiz")
+	}
 	if !trust.IDValid(id) || !NameOK(server) || !trust.VersionValid(ver) || !reActionName.MatchString(action) || (res != "ok" && res != "fail") {
 		return errors.New("kayıt girdisi geçersiz")
 	}
@@ -114,17 +127,22 @@ func (g *Gates) Record(id, server, ver, action, res string) error {
 		return err
 	}
 	defer f.Close()
-	_, err = fmt.Fprintf(f, "%d|%s|%s|%s\n", g.now(), ver, action, res)
+	if scope == "" {
+		_, err = fmt.Fprintf(f, "%d|%s|%s|%s\n", g.now(), ver, action, res)
+	} else {
+		_, err = fmt.Fprintf(f, "%d|%s|%s|%s|%s\n", g.now(), ver, action, res, scope)
+	}
 	return err
 }
 
-// resultRows, results dosyasının tam (satır sonlu) satırlarını (ts, sürüm, eylem, sonuç) verir; bozuk zaman damgalıları atlar.
-func (g *Gates) resultRows(id, server string) [][4]string {
+// resultRows, results dosyasının tam (satır sonlu) satırlarını (ts, sürüm, eylem, sonuç, kapsam) verir; bozuk zaman damgalıları atlar.
+// Kapsam alanı eski kayıtlarda yoktur (boş).
+func (g *Gates) resultRows(id, server string) [][5]string {
 	b, err := os.ReadFile(filepath.Join(g.StateDir, id, server, "results"))
 	if err != nil {
 		return nil
 	}
-	var rows [][4]string
+	var rows [][5]string
 	text := string(b)
 	for {
 		i := strings.IndexByte(text, '\n')
@@ -133,20 +151,26 @@ func (g *Gates) resultRows(id, server string) [][4]string {
 		}
 		line := text[:i]
 		text = text[i+1:]
-		f := strings.SplitN(line, "|", 4)
-		for len(f) < 4 {
+		f := strings.SplitN(line, "|", 5)
+		for len(f) < 5 {
 			f = append(f, "")
 		}
 		if !reDigits.MatchString(f[0]) {
 			continue
 		}
-		rows = append(rows, [4]string{f[0], f[1], f[2], f[3]})
+		rows = append(rows, [5]string{f[0], f[1], f[2], f[3], f[4]})
 	}
 	return rows
 }
 
-// Requires: requires eylemleri taze (<= TTL) ve başarılı mı.
+// Requires: kapsamsız önkoşul denetimi (bkz. RequiresScoped).
 func (g *Gates) Requires(info []string, id, server, ver, action string) error {
+	return g.RequiresScoped(info, id, server, ver, action, "")
+}
+
+// RequiresScoped: requires eylemleri taze (<= TTL), başarılı VE aynı kapsamda mı. Kapsamsız (eski) kayıt yalnız kapsamsız denetimi
+// karşılar: `items` bildiren pakette önizleme yeniden yapılmalıdır (güvenli yönde kapanır).
+func (g *Gates) RequiresScoped(info []string, id, server, ver, action, scope string) error {
 	if !NameOK(server) {
 		return errors.New("geçersiz sunucu adı")
 	}
@@ -158,7 +182,7 @@ func (g *Gates) Requires(info []string, id, server, ver, action string) error {
 		}
 		found := false
 		for _, r := range rows {
-			if r[1] != ver || r[2] != req || r[3] != "ok" {
+			if r[1] != ver || r[2] != req || r[3] != "ok" || r[4] != scope {
 				continue
 			}
 			ts, _ := strconv.ParseInt(r[0], 10, 64)
@@ -173,15 +197,20 @@ func (g *Gates) Requires(info []string, id, server, ver, action string) error {
 	return nil
 }
 
-// RequiresAge: eylemin en son BAŞARILI kaydının yaşı (sn); kayıt yoksa ok=false. Gelecekteki damgalar sayılmaz.
+// RequiresAge: kapsamsız (bkz. RequiresAgeScoped).
 func (g *Gates) RequiresAge(id, server, ver, action string) (int64, bool) {
+	return g.RequiresAgeScoped(id, server, ver, action, "")
+}
+
+// RequiresAgeScoped: eylemin bu kapsamdaki en son BAŞARILI kaydının yaşı (sn); kayıt yoksa ok=false. Gelecekteki damgalar sayılmaz.
+func (g *Gates) RequiresAgeScoped(id, server, ver, action, scope string) (int64, bool) {
 	if !NameOK(server) {
 		return 0, false
 	}
 	now := g.now()
 	best := int64(-1)
 	for _, r := range g.resultRows(id, server) {
-		if r[1] != ver || r[2] != action || r[3] != "ok" {
+		if r[1] != ver || r[2] != action || r[3] != "ok" || r[4] != scope {
 			continue
 		}
 		ts, _ := strconv.ParseInt(r[0], 10, 64)

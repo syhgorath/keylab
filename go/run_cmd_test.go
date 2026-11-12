@@ -56,3 +56,12 @@ func TestSettingsCommand(t *testing.T) {
 		t.Errorf("dosya: %q", b)
 	}
 }
+
+// -set: yalnız ad=değer kabul edilir; satır sonu/NUL ve geçersiz adlar reddedilir (çalıştırmadan, kullanım hatası: 2).
+func TestRunCommandRejectsBadSet(t *testing.T) {
+	for _, bad := range []string{"bozuk", "=x", "A B=1", "ad=de\ner", "ad=de\x00er", "../x=1"} {
+		if code := runCommand([]string{"-set", bad, "-servers", t.TempDir(), "-components", t.TempDir(), "p", "a", "s"}); code != 2 {
+			t.Errorf("-set %q: çıkış %d (2 bekleniyordu)", bad, code)
+		}
+	}
+}

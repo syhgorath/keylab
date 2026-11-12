@@ -11,6 +11,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"keylab/internal/manifest"
 )
 
 /* ---------- sunucu sayfası: paket eylem kataloğu (component.json) + son sonuçlar ---------- */
@@ -153,7 +155,8 @@ func readResultFile(path string) (string, map[string]string) {
 }
 
 // results: <epoch>|<sürüm>|<eylem>|<ok|fail>; eylem başına son satır
-func lastResults(path string) map[string][2]string {
+// lastResults: eylem başına son kayıt; yalnız verilen kapsamdakiler sayılır (kapsam: `items` bildiren pakette "<öğe>:<mod>", yoksa boş).
+func lastResults(path, scope string) map[string][2]string {
 	out := map[string][2]string{}
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -162,6 +165,13 @@ func lastResults(path string) map[string][2]string {
 	for _, l := range strings.Split(strings.TrimSpace(string(b)), "\n") {
 		p := strings.Split(l, "|")
 		if len(p) < 4 {
+			continue
+		}
+		rowScope := ""
+		if len(p) >= 5 {
+			rowScope = p[4]
+		}
+		if rowScope != scope {
 			continue
 		}
 		var sec int64
@@ -231,7 +241,19 @@ func (a *App) packageInfos(s Server) []PackageInfo {
 			info.Items = cleanItems(raw)
 		}
 		sdir := filepath.Join(a.stateDir, p.ID, s.Name)
-		last := lastResults(filepath.Join(sdir, "results"))
+		// kapsam: `items` bildiren pakette şimdiki seçim (değer dosyası/varsayılan); okunamazsa hiçbir kayıtla eşleşmeyen kapsam
+		scope := ""
+		if info.ItemVar != "" {
+			scope = "\x00"
+			names := []string{info.ItemVar}
+			if info.ModeVar != "" {
+				names = append(names, info.ModeVar)
+			}
+			if ev, err := manifest.EffectiveVars(filepath.Join(a.compDir, p.ID, p.Version, "component.json"), filepath.Join(a.serversDir, s.Name, p.ID+".vars"), nil, names...); err == nil {
+				scope = ev[info.ItemVar] + ":" + ev[info.ModeVar]
+			}
+		}
+		last := lastResults(filepath.Join(sdir, "results"), scope)
 		// sunucuya özel değişkenler: servers/<ad>/<paket>.vars (anahtar=değer); yalnızca ayarlı olanlar ve eylemlerin zorunlu kıldıkları gösterilir
 		set := parseEnv(filepath.Join(a.serversDir, s.Name, p.ID+".vars"))
 		needed := map[string]bool{}

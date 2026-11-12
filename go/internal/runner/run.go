@@ -38,7 +38,52 @@ type ExecCtx struct {
 	Now                                                            func() int64
 	LogKeep                                                        int
 
-	rd *bufio.Reader
+	rd    *bufio.Reader
+	scope string // bu koşunun kapsamı (bkz. scopeFor)
+}
+
+// scopeFor: `items` bildiren pakette bu koşunun kapsamı "<öğe>:<mod>" (koşuya özel seçim > değer dosyası > varsayılan, çalıştırıcıyla
+// aynı birleştirme); öğesiz pakette boş. Önkoşul kapısı ve sonuç kaydı bu kapsamla çalışır: başka bir öğe/mod için yapılmış
+// önizleme bu koşunun önkoşulunu KARŞILAMAZ.
+func (ec *ExecCtx) scopeFor(info []string, action string) (string, error) {
+	iv := manifest.InfoGet(info, "item_var")
+	if iv == "" {
+		return "", nil
+	}
+	mv := manifest.InfoGet(info, "mode_var")
+	rs, err := RunSets(info, action, ec.RunSet)
+	if err != nil {
+		return "", err
+	}
+	forced := map[string]string{}
+	for _, kv := range rs {
+		k, v, _ := strings.Cut(kv, "=")
+		forced[k] = v
+	}
+	names := []string{iv}
+	if mv != "" {
+		names = append(names, mv)
+	}
+	ev, err := manifest.EffectiveVars(filepath.Join(ec.PkgDir, "component.json"), ec.values(), forced, names...)
+	if err != nil {
+		return "", fmt.Errorf("Yazılım seçimi okunamadı: %v", err)
+	}
+	item, mode := ev[iv], ""
+	if mv != "" {
+		mode = ev[mv]
+	}
+	if item != "" {
+		found := false
+		for _, it := range manifest.InfoAll(info, "item") {
+			if strings.HasPrefix(it, item+"|") {
+				found = true
+			}
+		}
+		if !found {
+			return "", fmt.Errorf("Katalogda olmayan yazılım: %s", item)
+		}
+	}
+	return item + ":" + mode, nil
 }
 
 func (ec *ExecCtx) values() string {
@@ -196,7 +241,12 @@ func (ec *ExecCtx) execBody(info []string, id, ver, action string) (rc int, sdir
 	if err := Profile(info, ec.Profile); err != nil {
 		return ec.refuse(err.Error()), ""
 	}
-	if err := ec.Gates.Requires(info, id, ec.Server, ver, action); err != nil {
+	scope, serr := ec.scopeFor(info, action)
+	if serr != nil {
+		return ec.refuse(serr.Error()), ""
+	}
+	ec.scope = scope
+	if err := ec.Gates.RequiresScoped(info, id, ec.Server, ver, action, scope); err != nil {
 		return ec.refuse(err.Error()), ""
 	}
 	if err := RequiresVars(info, action, ec.values()); err != nil {
@@ -494,7 +544,7 @@ func ExecAction(ec *ExecCtx, info []string, id, ver, action string) ExecResult {
 	if rc == 0 {
 		outcome = "ok"
 	}
-	_ = ec.Gates.Record(id, ec.Server, ver, action, outcome)
+	_ = ec.Gates.RecordScoped(id, ec.Server, ver, action, outcome, ec.scope)
 	return res
 }
 
