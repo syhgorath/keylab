@@ -86,13 +86,14 @@ func TestRequirementsHashedMatchesShell(t *testing.T) {
 }
 
 func TestPickPythonAndEnvIDMatchShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	fakePythons(t, map[string]string{"py-old": "3.9.1", "py-mid": "3.11.2", "py-new": "3.13.0", "py-broken": ""})
 	for _, cands := range []string{"py-old py-mid py-new", "py-new py-mid", "py-old", "yok py-broken py-mid", "py-broken", ""} {
 		for _, rng := range []string{">=3.12", ">=3.10,<3.12", ">=3.14"} {
 			t.Setenv("SSHPOCKET_PYTHON_CANDIDATES", cands)
-			sh := runShellLive(t, root, nil, "", "", "comp_pick_python", rng)
+			sh := runShell(t, root, nil, "", "", "comp_pick_python", rng)
 			got, ok := PickPython(rng)
+			got = reTmp.ReplaceAllString(got, "<T>")
 			if (sh.code == 0) != ok || (ok && sh.stdout != got) {
 				t.Errorf("%q %q: kabuk=%d %q go=%v %q", cands, rng, sh.code, sh.stdout, ok, got)
 			}
@@ -102,20 +103,24 @@ func TestPickPythonAndEnvIDMatchShell(t *testing.T) {
 	req := filepath.Join(dir, "requirements.txt")
 	os.WriteFile(req, []byte("a==1 \\\n  --hash=sha256:"+strings.Repeat("b", 64)+"\n"), 0o600)
 	for _, pv := range []string{"3.12.4", "3.13.0", ""} {
-		sh := runShellLive(t, root, nil, "", "", "comp_env_id", req, pv)
+		sh := runShell(t, root, nil, "", "", "comp_env_id", req, pv)
 		got, err := EnvID(req, pv)
 		if err != nil || strings.TrimSpace(sh.stdout) != got {
 			t.Errorf("env_id %q: kabuk=%q go=%q %v", pv, sh.stdout, got, err)
 		}
 	}
 	// saplama: SSHPOCKET_PY_STUB_PATH ile verilen yol xcode-select -p başarısızsa atlanır (macOS dışı: asla stub değil)
-	sh := runShellLive(t, root, []string{"SSHPOCKET_PY_STUB_PATH=/usr/bin/python3"}, "", "", "comp_python_is_stub", "/usr/bin/python3")
-	if got := func() bool {
-		t.Setenv("SSHPOCKET_PY_STUB_PATH", "/usr/bin/python3")
-		return PythonIsStub("/usr/bin/python3")
-	}(); (sh.code == 0) != got {
-		t.Errorf("stub: kabuk=%d go=%v", sh.code, got)
+	// (işletim sistemine bağlı: altın dosyaya girmez; yalnız kabuk motoru varsa karşılaştırılır)
+	if lroot, ok := liveRoot(); ok {
+		sh := runShellLive(t, lroot, []string{"SSHPOCKET_PY_STUB_PATH=/usr/bin/python3"}, "", "", "comp_python_is_stub", "/usr/bin/python3")
+		if got := func() bool {
+			t.Setenv("SSHPOCKET_PY_STUB_PATH", "/usr/bin/python3")
+			return PythonIsStub("/usr/bin/python3")
+		}(); (sh.code == 0) != got {
+			t.Errorf("stub: kabuk=%d go=%v", sh.code, got)
+		}
 	}
+	t.Setenv("SSHPOCKET_PY_STUB_PATH", "/usr/bin/python3")
 	if PythonIsStub("/baska/python3") {
 		t.Error("başka yol stub sayıldı")
 	}
@@ -143,7 +148,7 @@ func venvSnapshot(cache string) map[string]string {
 }
 
 func TestVenvEnsureMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	h := "--hash=sha256:" + strings.Repeat("c", 64)
 	for _, c := range []struct {
 		name string
@@ -179,8 +184,27 @@ func TestVenvEnsureMatchesShell(t *testing.T) {
 				c.pre(shCache, envid)
 				c.pre(goCache, envid)
 			}
+			type venvGold struct {
+				Code           int
+				Stdout, Stderr string
+				Snap           map[string]string
+			}
+			cn := func(s, cache string) string {
+				return reTmp.ReplaceAllString(strings.ReplaceAll(s, cache, "<C>"), "<T>")
+			}
+			snapN := func(m map[string]string, cache string) map[string]string {
+				o := map[string]string{}
+				for k, v := range m {
+					o[k] = cn(v, cache)
+				}
+				return o
+			}
 			t.Setenv("SSHPOCKET_CACHE_DIR", shCache)
-			sh := runShellLive(t, root, nil, "", "", "comp_venv_ensure", "pk", pkg, ">=3.12")
+			shg := goldDo(t, func() venvGold {
+				x := runShellLive(t, root, nil, "", "", "comp_venv_ensure", "pk", pkg, ">=3.12")
+				return venvGold{x.code, cn(x.stdout, shCache), cn(x.stderr, shCache), snapN(venvSnapshot(shCache), shCache)}
+			})
+			sh := shOut{shg.Code, shg.Stdout, shg.Stderr}
 			t.Setenv("SSHPOCKET_CACHE_DIR", goCache)
 			dir, err := VenvEnsure("pk", pkg, ">=3.12", "")
 			if (sh.code == 0) != (err == nil) {
@@ -189,14 +213,14 @@ func TestVenvEnsureMatchesShell(t *testing.T) {
 			if err != nil {
 				// kabuk, başarısız temizlikte olmayan klasör için `rm` hatası da basar (gürültü); asıl ileti son satırdır
 				lines := strings.Split(strings.TrimSpace(sh.stderr), "\n")
-				if last := lines[len(lines)-1]; last != err.Error() {
+				if last := lines[len(lines)-1]; last != cn(err.Error(), goCache) {
 					t.Errorf("ileti kabuk=%q go=%q", last, err)
 				}
 			}
-			if err == nil && strings.TrimPrefix(sh.stdout, shCache) != strings.TrimPrefix(dir, goCache) {
+			if err == nil && sh.stdout != cn(dir, goCache) {
 				t.Errorf("dizin kabuk=%q go=%q", sh.stdout, dir)
 			}
-			if a, b := venvSnapshot(shCache), venvSnapshot(goCache); !reflect.DeepEqual(a, b) {
+			if a, b := shg.Snap, snapN(venvSnapshot(goCache), goCache); !reflect.DeepEqual(a, b) {
 				t.Errorf("önbellek farkı\n kabuk=%v\n go   =%v", a, b)
 			}
 			if err == nil {
@@ -206,8 +230,6 @@ func TestVenvEnsureMatchesShell(t *testing.T) {
 				if err2 != nil || d2 != dir || !ok || l != dir {
 					t.Errorf("ikinci çağrı/lookup: %v %q %v %q", err2, d2, ok, l)
 				}
-				shL := runShellLive(t, root, nil, "", "", "comp_venv_lookup", "pk", pkg, ">=3.12")
-				_ = shL
 			}
 		})
 	}

@@ -96,6 +96,24 @@ type runOut struct {
 	tree           map[string]string
 }
 
+// runGold: kabuk sonucunun kaydedilen biçimi.
+type runGold struct {
+	RC             int
+	Stdout, Stderr string
+	Tree           map[string]string
+}
+
+// normTmp: geçici yollar altın dosyaya girmesin (iki tarafa da uygulanır).
+func normTmp(o runOut) runOut {
+	r, _ := filepath.Abs("../../..")
+	n := func(s string) string { return reTmp.ReplaceAllString(strings.ReplaceAll(s, r, "<R>"), "<T>") } // depo kökü: kişisel yol altın dosyaya girmesin
+	tree := map[string]string{}
+	for k, v := range o.tree {
+		tree[k] = n(v)
+	}
+	return runOut{o.rc, n(o.stdout), n(o.stderr), tree}
+}
+
 var (
 	reWork  = regexp.MustCompile(`sshpocket-run\.[A-Za-z0-9]+`)
 	reStamp = regexp.MustCompile(`[0-9]{8}-[0-9]{6}`)
@@ -195,15 +213,19 @@ func runScenario(t *testing.T, root string, w *world, sc scenario) (sh, gv runOu
 				"COMP_CTX_PORT=22", "COMP_CTX_KEY=" + w.key, "COMP_CTX_PREFIX=SRV", "COMP_CTX_PROFILE=" + sc.profile, "COMP_CTX_VALUES=" + valArg,
 				"COMP_CTX_BECOME_EXE=" + sc.becomeExe, "COMP_CTX_RUNSET=" + sc.runset, "COMP_REQUIRES_TTL=1800",
 			}
-			o := runShellLive(t, root, env, sc.stdin, "", "comp_exec_action", strings.Join(info, "\n"), id, ver, sc.action)
-			sh = runOut{o.code, normOut(o.stdout, state), normOut(o.stderr, state), stateTree(state)}
+			g := goldDo(t, func() runGold {
+				o := runShellLive(t, root, env, sc.stdin, "", "comp_exec_action", strings.Join(info, "\n"), id, ver, sc.action)
+				x := normTmp(runOut{o.code, normOut(o.stdout, state), normOut(o.stderr, state), stateTree(state)})
+				return runGold{x.rc, x.stdout, x.stderr, x.tree}
+			})
+			sh = runOut{g.RC, g.Stdout, g.Stderr, g.Tree}
 		} else {
 			var so, se bytes.Buffer
 			ec := &ExecCtx{PkgDir: sc.pkgDir, BinDir: bin, Server: "srv", Host: host, User: sc.user, Port: "22", Key: w.key, Prefix: "SRV", Profile: sc.profile,
 				ValuesFile: valArg, BecomeExe: sc.becomeExe, RunSet: sc.runset, Gates: &Gates{StateDir: state}, KnownHosts: known,
 				Stdin: strings.NewReader(sc.stdin), Stdout: &so, Stderr: &se, Ctx: context.Background()}
 			res := ExecAction(ec, info, id, ver, sc.action)
-			gv = runOut{res.RC, normOut(so.String(), state), normOut(se.String(), state), stateTree(state)}
+			gv = normTmp(runOut{res.RC, normOut(so.String(), state), normOut(se.String(), state), stateTree(state)})
 		}
 	}
 	return
@@ -241,7 +263,7 @@ func compareRuns(t *testing.T, name string, sh, gv runOut) {
 }
 
 func TestAnsibleExecMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	util := filepath.Join(root, "components/utility/0.1.0")
 	kur := filepath.Join(root, "components/kurulum/0.1.0")
 	freshPreview := []string{"%d|0.1.0|preview|ok"}
@@ -304,7 +326,7 @@ func synthScriptPkg(t *testing.T, sudo bool) string {
 }
 
 func TestScriptRunnerMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	w := newWorld(t)
 	_ = manifest.InfoGet
 	for _, c := range []struct {

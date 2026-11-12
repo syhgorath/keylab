@@ -41,10 +41,22 @@ type gOut struct {
 
 // runShell: kabuk çalışmasının altın dosyalı hali (yan etkisiz testler için; anahtar = test adı + sıra).
 // Kabuğun dosya sistemine yazdığı sonucu okuyan testler runShellLive kullanır (kabuk motoru gerekir).
-func runShell(t *testing.T, root string, env []string, stdin, prelude, fn string, args ...string) shOut {
+func goldDo[T any](t *testing.T, f func() T) T {
 	t.Helper()
 	goldOnce.Do(func() { goldStore = shellgold.Open(t, "shell") })
-	g := shellgold.Do(t, goldStore, goldStore.Next(t), func() gOut {
+	return shellgold.Do(t, goldStore, goldStore.Next(t), f)
+}
+
+// liveRoot: kabuk motoru varsa kökü döndürür (makineye/OS'a bağlı, altın dosyaya girmeyen denetimler için).
+func liveRoot() (string, bool) {
+	root, _ := filepath.Abs("../../..")
+	_, err := os.Stat(filepath.Join(root, "referans/kabuk/sistem/Helpers/ComponentsGates.sh"))
+	return root, err == nil
+}
+
+func runShell(t *testing.T, root string, env []string, stdin, prelude, fn string, args ...string) shOut {
+	t.Helper()
+	g := goldDo(t, func() gOut {
 		r := runShellLive(t, root, env, stdin, prelude, fn, args...)
 		return gOut{r.code, reTmp.ReplaceAllString(r.stdout, "<T>"), reTmp.ReplaceAllString(r.stderr, "<T>")}
 	})

@@ -149,17 +149,15 @@ found:
 }
 
 func TestSaveLastResultMatchShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	shDir, goDir := t.TempDir(), t.TempDir()
-	for _, c := range []struct {
+	saves := []struct {
 		act string
 		res []string
-	}{{"preview", []string{"a=1", "b=2"}}, {"apply", nil}, {"BAD", []string{"a=1"}}, {"x_y", []string{"k=v"}}} {
-		sh := runShellLive(t, root, []string{"RES=" + strings.Join(c.res, "\n")}, "", `ths() { COMP_EXEC_RESULT="$RES"; comp_exec_save_result "$@"; }`, "ths", shDir, c.act)
-		err := SaveResult(goDir, c.act, c.res, time.Now().Unix())
-		if (sh.code == 0) != (err == nil) {
-			t.Errorf("%v: kabuk=%d go=%v", c, sh.code, err)
-		}
+	}{{"preview", []string{"a=1", "b=2"}}, {"apply", nil}, {"BAD", []string{"a=1"}}, {"x_y", []string{"k=v"}}}
+	type saveGold struct {
+		Codes []int
+		Files map[string]string
 	}
 	norm := func(d string) map[string]string {
 		out := map[string]string{}
@@ -173,7 +171,21 @@ func TestSaveLastResultMatchShell(t *testing.T) {
 		}
 		return out
 	}
-	if a, b := norm(shDir), norm(goDir); !reflect.DeepEqual(a, b) {
+	sg := goldDo(t, func() saveGold {
+		var codes []int
+		for _, c := range saves {
+			sh := runShellLive(t, root, []string{"RES=" + strings.Join(c.res, "\n")}, "", `ths() { COMP_EXEC_RESULT="$RES"; comp_exec_save_result "$@"; }`, "ths", shDir, c.act)
+			codes = append(codes, sh.code)
+		}
+		return saveGold{codes, norm(shDir)}
+	})
+	for i, c := range saves {
+		err := SaveResult(goDir, c.act, c.res, time.Now().Unix())
+		if (sg.Codes[i] == 0) != (err == nil) {
+			t.Errorf("%v: kabuk=%d go=%v", c, sg.Codes[i], err)
+		}
+	}
+	if a, b := sg.Files, norm(goDir); !reflect.DeepEqual(a, b) {
 		t.Errorf("sonuç dosyaları\n kabuk=%v\n go   =%v", a, b)
 	}
 	// LastResult: uzun dosya, geçersiz adlar
@@ -185,7 +197,7 @@ func TestSaveLastResultMatchShell(t *testing.T) {
 	}
 	os.WriteFile(filepath.Join(state, "pkg", "srv", "result.apply"), []byte("123\n"+strings.Join(big, "\n")+"\n"), 0o600)
 	for _, c := range [][3]string{{"pkg", "srv", "apply"}, {"pkg", "srv", "yok"}, {"PKG", "srv", "apply"}, {"pkg", "-x", "apply"}, {"pkg", "srv", "A"}} {
-		sh := runShellLive(t, root, []string{"SSHPOCKET_STATE_DIR=" + state}, "", "", "comp_exec_last_result", c[0], c[1], c[2])
+		sh := runShell(t, root, []string{"SSHPOCKET_STATE_DIR=" + state}, "", "", "comp_exec_last_result", c[0], c[1], c[2])
 		got, ok := LastResult(state, c[0], c[1], c[2])
 		if (sh.code == 0) != ok || (ok && !reflect.DeepEqual(splitNL(sh.stdout), got)) {
 			t.Errorf("%v: kabuk=%d %d satır, go=%v %d satır", c, sh.code, len(splitNL(sh.stdout)), ok, len(got))
@@ -241,7 +253,7 @@ func TestMaskMatchesShell(t *testing.T) {
 }
 
 func TestArchiveLogMatchesShell(t *testing.T) {
-	root := repoRoot(t)
+	root := goldRoot(t)
 	t0 := time.Now().Unix() - 7
 	body := "komut: ansible-playbook -e password=hunter2 x.yml\nbirinci satır\nTASK [x]\nBECOME password: sifre\nSSHPOCKET_PROGRESS alan=a sira=1/1 durum=bitti\n"
 	cases := []struct {
@@ -253,44 +265,65 @@ func TestArchiveLogMatchesShell(t *testing.T) {
 		{"başarı", body, 0, 50}, {"başarısız", body, 2, 50}, {"INT", body, 130, 50}, {"TERM", body, 143, 50}, {"HUP", body, 129, 50},
 		{"komut yok", "satır\n", 0, 50}, {"yalnız komut", "komut: x y\n", 1, 50}, {"boş", "", 0, 50},
 	}
+	// al: günlük sonucunun karşılaştırılabilir özeti (yol ve içerik normalleştirilmiş)
+	type alSum struct {
+		Code      int
+		PathEmpty bool
+		Content   string
+		FilePerm  uint32
+		DirPerm   uint32
+		FailLog   bool
+	}
+	sum := func(code int, path, stateDir string) alSum {
+		x := alSum{Code: code, PathEmpty: path == ""}
+		if path != "" {
+			b, _ := os.ReadFile(path)
+			x.Content = normDur(string(b))
+			if st, err := os.Stat(path); err == nil {
+				x.FilePerm = uint32(st.Mode().Perm())
+			}
+			if st, err := os.Stat(filepath.Dir(path)); err == nil {
+				x.DirPerm = uint32(st.Mode().Perm())
+			}
+		}
+		_, e := os.Stat(filepath.Join(stateDir, "last-fail-log"))
+		x.FailLog = e == nil
+		return x
+	}
 	for _, c := range cases {
 		shS, goS := t.TempDir(), t.TempDir()
 		for _, d := range []string{shS, goS} {
 			os.WriteFile(filepath.Join(d, "last-run.log"), []byte(c.last), 0o600)
 		}
-		sh := runShellLive(t, root, []string{fmt.Sprintf("COMP_LOG_KEEP=%d", c.keep)}, "", `tha() { comp_exec_archive_log "$@"; echo "$COMP_EXEC_LOGFILE"; }`, "tha", shS, "abc", "1.2.3", "apply", "srv", fmt.Sprint(c.rc), fmt.Sprint(t0))
+		want := goldDo(t, func() alSum {
+			sh := runShellLive(t, root, []string{fmt.Sprintf("COMP_LOG_KEEP=%d", c.keep)}, "", `tha() { comp_exec_archive_log "$@"; echo "$COMP_EXEC_LOGFILE"; }`, "tha", shS, "abc", "1.2.3", "apply", "srv", fmt.Sprint(c.rc), fmt.Sprint(t0))
+			return sum(sh.code, strings.TrimSpace(sh.stdout), shS)
+		})
 		p, err := ArchiveLog(goS, "abc", "1.2.3", "apply", "srv", c.rc, t0, time.Now().Unix(), c.keep)
-		if (sh.code == 0) != (err == nil) {
-			t.Errorf("[%s] başarı kabuk=%d go=%v", c.name, sh.code, err)
+		code := 0
+		if err != nil {
+			code = 1
+		}
+		if (want.Code == 0) != (err == nil) {
+			t.Errorf("[%s] başarı kabuk=%d go=%v", c.name, want.Code, err)
 			continue
 		}
-		shPath := strings.TrimSpace(sh.stdout)
-		if (shPath == "") != (p == "") {
-			t.Errorf("[%s] yol kabuk=%q go=%q", c.name, shPath, p)
+		if want.PathEmpty != (p == "") {
+			t.Errorf("[%s] yol boşluğu kabuk=%v go=%q", c.name, want.PathEmpty, p)
 			continue
 		}
-		if p == "" {
-			continue
+		got := sum(code, p, goS)
+		if got.Content != want.Content {
+			t.Errorf("[%s] günlük farkı\n--kabuk--\n%s\n--go--\n%s", c.name, want.Content, got.Content)
 		}
-		a, _ := os.ReadFile(shPath)
-		b, _ := os.ReadFile(p)
-		na, nb := normDur(string(a)), normDur(string(b))
-		if na != nb {
-			t.Errorf("[%s] günlük farkı\n--kabuk--\n%s\n--go--\n%s", c.name, na, nb)
+		if p != "" && (got.FilePerm != 0o600 || want.FilePerm != 0o600) {
+			t.Errorf("[%s] izin kabuk=%o go=%o", c.name, want.FilePerm, got.FilePerm)
 		}
-		for _, f := range []string{shPath, p} {
-			if st, _ := os.Stat(f); st.Mode().Perm() != 0o600 {
-				t.Errorf("[%s] izin %o", c.name, st.Mode().Perm())
-			}
-			if st, _ := os.Stat(filepath.Dir(f)); st.Mode().Perm() != 0o700 {
-				t.Errorf("[%s] dizin izni %o", c.name, st.Mode().Perm())
-			}
+		if p != "" && (got.DirPerm != 0o700 || want.DirPerm != 0o700) {
+			t.Errorf("[%s] dizin izni kabuk=%o go=%o", c.name, want.DirPerm, got.DirPerm)
 		}
-		// last-fail-log
-		_, e1 := os.Stat(filepath.Join(shS, "last-fail-log"))
-		_, e2 := os.Stat(filepath.Join(goS, "last-fail-log"))
-		if (e1 == nil) != (e2 == nil) {
-			t.Errorf("[%s] last-fail-log var mı: kabuk=%v go=%v", c.name, e1 == nil, e2 == nil)
+		if got.FailLog != want.FailLog {
+			t.Errorf("[%s] last-fail-log var mı: kabuk=%v go=%v", c.name, want.FailLog, got.FailLog)
 		}
 	}
 	// ad çakışması (-2, -3) ve temizlik (keep)
@@ -298,21 +331,26 @@ func TestArchiveLogMatchesShell(t *testing.T) {
 	for _, d := range []string{shS, goS} {
 		os.WriteFile(filepath.Join(d, "last-run.log"), []byte("x\n"), 0o600)
 	}
-	for i := 0; i < 5; i++ {
-		runShellLive(t, root, []string{"COMP_LOG_KEEP=3"}, "", "", "comp_exec_archive_log", shS, "abc", "1.2.3", "apply", "srv", "0", fmt.Sprint(t0))
-		if _, err := ArchiveLog(goS, "abc", "1.2.3", "apply", "srv", 0, t0, time.Now().Unix(), 3); err != nil {
-			t.Fatal(err)
-		}
-	}
 	ls := func(d string) []string {
 		ents, _ := os.ReadDir(filepath.Join(d, "logs"))
 		var n []string
 		for _, e := range ents {
-			n = append(n, e.Name())
+			n = append(n, reStamp.ReplaceAllString(e.Name(), "STAMP"))
 		}
 		return n
 	}
-	if a, b := ls(shS), ls(goS); !reflect.DeepEqual(a, b) {
+	shNames := goldDo(t, func() []string {
+		for i := 0; i < 5; i++ {
+			runShellLive(t, root, []string{"COMP_LOG_KEEP=3"}, "", "", "comp_exec_archive_log", shS, "abc", "1.2.3", "apply", "srv", "0", fmt.Sprint(t0))
+		}
+		return ls(shS)
+	})
+	for i := 0; i < 5; i++ {
+		if _, err := ArchiveLog(goS, "abc", "1.2.3", "apply", "srv", 0, t0, time.Now().Unix(), 3); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if a, b := shNames, ls(goS); !reflect.DeepEqual(a, b) {
 		t.Errorf("temizlik/çakışma: kabuk=%v go=%v", a, b)
 	}
 }
@@ -322,6 +360,9 @@ func normDur(s string) string {
 	for i, l := range lines {
 		if strings.HasPrefix(l, "# süre: ") {
 			lines[i] = "# süre: N"
+		}
+		if strings.HasPrefix(l, "# zaman: ") {
+			lines[i] = "# zaman: T"
 		}
 	}
 	return strings.Join(lines, "\n")
