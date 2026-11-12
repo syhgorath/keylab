@@ -1035,3 +1035,9 @@ details.na summary{cursor:pointer;color:var(--muted);padding:10px 16px;font-size
 #srv-tabs button:hover{color:var(--text)}
 #srv-tabs button[aria-selected="true"]{background:color-mix(in oklab,var(--accent-weak) 55%,transparent)}
 @media (max-width:760px){#srv-tabs{margin-inline:calc(var(--sp-4) * -1);padding-inline:var(--sp-4)}}
+
+/* ---- Gömülü terminal ---- */
+.term-modal{width:min(1040px,96vw);max-width:1040px}
+.term-host{height:min(62vh,560px);margin:0 20px 8px;padding:8px;background:#0e1116;border-radius:10px;overflow:hidden}
+.term-host .xterm{height:100%}
+#term-note{margin:0 20px 8px}
