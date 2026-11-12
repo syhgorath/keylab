@@ -22,13 +22,13 @@
       <input id="search-input" type="search" placeholder="Sunucu, paket ara…" data-i18n-placeholder="search_ph" aria-label="Ara">
       <kbd>/</kbd>
     </div>
-    <div class="spacer" style="flex:1"></div>
+    <div class="spacer sx-97445a"></div>
     <span id="pills" class="row-flex"></span>
     <button class="job-pill" id="job-pill" type="button" hidden title="Çalışan işi aç"></button>
-    <button class="icon-btn" id="lang-btn" type="button" aria-label="Dil / Language" title="Dil / Language"><span id="lang-cur" class="mono" style="font-size:11px;font-weight:700">TR</span></button>
+    <button class="icon-btn" id="lang-btn" type="button" aria-label="Dil / Language" title="Dil / Language"><span id="lang-cur" class="mono sx-15ab33">TR</span></button>
     <button class="icon-btn" id="theme-btn" aria-label="Tema: otomatik" title="Tema: otomatik (tıklayınca değişir)"><span id="theme-ico" aria-hidden="true">◐</span></button>
     <button class="icon-btn" id="lock-btn" type="button" aria-label="Ekranı gizle (L)" title="Ekranı gizle (L)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
-    <button class="icon-btn" id="shortcuts-btn" type="button" aria-label="Klavye kısayolları (?)" title="Klavye kısayolları (?)"><span class="mono" aria-hidden="true" style="font-size:13px;font-weight:700">?</span></button>
+    <button class="icon-btn" id="shortcuts-btn" type="button" aria-label="Klavye kısayolları (?)" title="Klavye kısayolları (?)"><span class="mono sx-d17f9e" aria-hidden="true">?</span></button>
   </header>
 
   <nav class="sidebar" aria-label="Ana gezinme">
@@ -73,11 +73,11 @@
         <span data-i18n="nav_settings">Ayarlar</span>
       </button>
     </div>
-    <div class="nav-group" style="margin-top:auto">
-      <div class="aside-card" style="margin:0;background:var(--surface-2);border-color:var(--border)">
+    <div class="nav-group sx-26d3d1">
+      <div class="aside-card sx-c017e7">
         <h3>İndeks</h3>
-        <div class="small mono" style="color:var(--text-2)" id="idx-serial">seri: —</div>
-        <div class="small muted" style="margin-top:6px">imza doğrulaması bu taslakta yok</div>
+        <div class="small mono sx-b3842e" id="idx-serial">seri: —</div>
+        <div class="small muted sx-fe7b49">imza doğrulaması bu taslakta yok</div>
       </div>
     </div>
   </nav>
@@ -136,7 +136,7 @@
         <div class="card-head">
           <h2>Sunucu karşılaştırma</h2>
           <span class="hint" id="compare-summary"></span>
-          <div class="spacer" style="flex:1"></div>
+          <div class="spacer sx-97445a"></div>
           <div class="compare-controls">
             <label class="toggle-switch" title="Yalnızca sunucular arasında farklı olan satırları göster">
               <input type="checkbox" id="compare-drift-only">
@@ -150,8 +150,8 @@
               <button type="button" data-cat="lynis" aria-pressed="false">Lynis</button>
               <button type="button" data-cat="vars" aria-pressed="false">Değişkenler</button>
             </div>
-            <input type="search" id="compare-search" placeholder="Matriste ara…" aria-label="Matriste ara" style="max-width:180px">
-            <div class="dropdown-wrap" style="position:relative;display:inline-block">
+            <input class="sx-532b40" type="search" id="compare-search" placeholder="Matriste ara…" aria-label="Matriste ara">
+            <div class="dropdown-wrap sx-81178e">
               <button class="btn sm" id="compare-export-btn" type="button" aria-haspopup="true">Dışa aktar ▾</button>
               <div class="dropdown-menu" id="compare-export-menu" hidden>
                 <button type="button" class="drop-item" id="compare-copy-md">📋 Markdown kopyala</button>
@@ -190,11 +190,11 @@
                 <label><input type="checkbox" id="rep-inc-vars" checked> <span>Değişken farkları (drift şablonu)</span></label>
               </div></div>
             <div class="rep-actions">
-              <button class="btn primary sm" id="rep-print-btn" type="button" style="width:100%">Yazdır / PDF olarak kaydet</button>
-              <div class="row-flex" style="gap:8px;margin-top:10px">
-                <button class="btn sm" id="rep-copy-md" type="button" style="flex:1">📋 Kopyala</button>
-                <button class="btn sm" id="rep-down-md" type="button" style="flex:1">📥 .md</button>
-                <button class="btn sm" id="rep-down-json" type="button" style="flex:1">📥 .json</button>
+              <button class="btn primary sm sx-046678" id="rep-print-btn" type="button">Yazdır / PDF olarak kaydet</button>
+              <div class="row-flex sx-d87ce2">
+                <button class="btn sm sx-97445a" id="rep-copy-md" type="button">📋 Kopyala</button>
+                <button class="btn sm sx-97445a" id="rep-down-md" type="button">📥 .md</button>
+                <button class="btn sm sx-97445a" id="rep-down-json" type="button">📥 .json</button>
               </div>
             </div>
           </div>
@@ -202,7 +202,7 @@
         <div class="card reports-preview-card">
           <div class="card-head" id="rep-preview-head">
             <h2 id="rep-preview-title">Rapor önizleme</h2>
-            <div class="spacer" style="flex:1"></div>
+            <div class="spacer sx-97445a"></div>
             <div class="segmented" role="group" aria-label="Önizleme biçimi" id="rep-format-toggle">
               <button type="button" data-fmt="html" aria-pressed="true">Görsel</button>
               <button type="button" data-fmt="md" aria-pressed="false">Markdown</button>
@@ -219,18 +219,18 @@
 
     <section class="view" id="view-add" hidden>
       <div class="card">
-        <div class="card-head"><h2>Sunucu ekle</h2><div class="spacer" style="flex:1"></div><button class="btn sm" id="imp-open" type="button">~/.ssh/config'ten içe aktar…</button></div>
+        <div class="card-head"><h2>Sunucu ekle</h2><div class="spacer sx-97445a"></div><button class="btn sm" id="imp-open" type="button">~/.ssh/config'ten içe aktar…</button></div>
         <div class="card-body">
           <div id="add-steps" hidden></div>
           <div id="add-form-wrap">
-          <div class="notice" style="margin-bottom:16px"><span class="ico" aria-hidden="true">ℹ</span><div>Alanlar uygulamanın kurallarıyla doğrulanır; <b>Sunucuyu oluştur</b> <span class="mono">servers/&lt;ad&gt;/server.env</span> dosyasını uygulamanın kendi işleviyle yazar (var olanın üzerine yazılmaz). Ardından anahtar adımları sizi adım adım yönlendirir. Sunucuya bu aşamada <b>bağlanılmaz</b>.</div></div>
+          <div class="notice sx-87c136"><span class="ico" aria-hidden="true">ℹ</span><div>Alanlar uygulamanın kurallarıyla doğrulanır; <b>Sunucuyu oluştur</b> <span class="mono">servers/&lt;ad&gt;/server.env</span> dosyasını uygulamanın kendi işleviyle yazar (var olanın üzerine yazılmaz). Ardından anahtar adımları sizi adım adım yönlendirir. Sunucuya bu aşamada <b>bağlanılmaz</b>.</div></div>
           <div class="addgrid">
             <form id="add-form" novalidate autocomplete="off">
               <div class="field"><label for="add-name">Sunucu adı</label><input id="add-name" autocapitalize="off" spellcheck="false" placeholder="ornek_sunucu" maxlength="40"><div class="hint" id="e-name">Küçük harf, rakam ve _ ; harfle başlar.</div></div>
               <div class="field"><label for="add-host">IP ya da ana makine adı</label><input id="add-host" spellcheck="false" placeholder="192.0.2.10" maxlength="253"><div class="hint" id="e-host"></div></div>
-              <div class="row-flex" style="align-items:flex-start;gap:12px">
-                <div class="field" style="flex:1"><label for="add-user">Kullanıcı</label><input id="add-user" spellcheck="false" placeholder="admin" maxlength="32"><div class="hint" id="e-user"></div></div>
-                <div class="field" style="width:110px"><label for="add-port">Port</label><input id="add-port" inputmode="numeric" placeholder="22" maxlength="5"><div class="hint" id="e-port"></div></div>
+              <div class="row-flex sx-4fb60c">
+                <div class="field sx-97445a"><label for="add-user">Kullanıcı</label><input id="add-user" spellcheck="false" placeholder="admin" maxlength="32"><div class="hint" id="e-user"></div></div>
+                <div class="field sx-607468"><label for="add-port">Port</label><input id="add-port" inputmode="numeric" placeholder="22" maxlength="5"><div class="hint" id="e-port"></div></div>
               </div>
               <div class="field"><label for="add-os">İşletim sistemi profili <span class="muted">(isteğe bağlı)</span></label><select id="add-os"><option value="">(belirtme)</option></select><div class="hint" id="e-os">Paketlerin desteklediği profiller listelenir.</div></div>
             </form>
@@ -245,29 +245,29 @@
       <div class="card">
         <div class="card-head"><h2>Görünüm</h2></div>
         <div class="card-body">
-          <div class="frow2"><span class="flabel" style="width:110px">Tema</span><div class="segmented" role="group" aria-label="Tema" id="set-theme"><button data-v="auto">Otomatik</button><button data-v="light" data-i18n="theme_light">Açık</button><button data-v="dark">Koyu</button></div></div>
-          <div class="frow2"><span class="flabel" style="width:110px">Vurgu rengi</span><div class="accent-row" id="set-accent" role="group" aria-label="Vurgu rengi"></div></div>
-          <div class="frow2"><span class="flabel" style="width:110px">Sunucular</span><div class="segmented" role="group" aria-label="Sunucu görünümü" id="set-mode"><button data-v="tiles">Simgeler</button><button data-v="list">Liste</button></div></div>
-          <div class="frow2"><span class="flabel" style="width:110px">Parola girişi</span><div class="segmented" role="group" aria-label="Parola girişi" id="set-ask"><button data-v="system">Sistem penceresi (önerilen)</button><button data-v="inline">Sayfa içi kutu</button></div></div>
+          <div class="frow2"><span class="flabel sx-607468">Tema</span><div class="segmented" role="group" aria-label="Tema" id="set-theme"><button data-v="auto">Otomatik</button><button data-v="light" data-i18n="theme_light">Açık</button><button data-v="dark">Koyu</button></div></div>
+          <div class="frow2"><span class="flabel sx-607468">Vurgu rengi</span><div class="accent-row" id="set-accent" role="group" aria-label="Vurgu rengi"></div></div>
+          <div class="frow2"><span class="flabel sx-607468">Sunucular</span><div class="segmented" role="group" aria-label="Sunucu görünümü" id="set-mode"><button data-v="tiles">Simgeler</button><button data-v="list">Liste</button></div></div>
+          <div class="frow2"><span class="flabel sx-607468">Parola girişi</span><div class="segmented" role="group" aria-label="Parola girişi" id="set-ask"><button data-v="system">Sistem penceresi (önerilen)</button><button data-v="inline">Sayfa içi kutu</button></div></div>
           <div class="hint small muted">Sistem penceresi: sudo parolası macOS'un kendi gizli girdi penceresine yazılır; tarayıcıya, eklentilere ve parola yöneticisine hiç uğramaz. Sayfa içi kutu yedek yoldur. Tercihler yalnızca bu tarayıcıda saklanır.</div>
         </div>
       </div>
       <div class="card">
         <div class="card-head"><h2>Gizlilik kilidi</h2><span class="hint">parola yok</span></div>
         <div class="card-body">
-          <div class="frow2"><span class="flabel" style="width:110px">Boşta kilidi</span><div class="segmented" role="group" aria-label="Boşta kalma süresi" id="set-idle"><button type="button" data-v="0">Kapalı</button><button type="button" data-v="5">5 dk</button><button type="button" data-v="10">10 dk</button><button type="button" data-v="30">30 dk</button></div><button class="btn sm" id="set-lock-now" type="button" style="margin-left:12px">Şimdi gizle</button></div>
+          <div class="frow2"><span class="flabel sx-607468">Boşta kilidi</span><div class="segmented" role="group" aria-label="Boşta kalma süresi" id="set-idle"><button type="button" data-v="0">Kapalı</button><button type="button" data-v="5">5 dk</button><button type="button" data-v="10">10 dk</button><button type="button" data-v="30">30 dk</button></div><button class="btn sm sx-6c2dda" id="set-lock-now" type="button">Şimdi gizle</button></div>
           <div class="hint small muted">Bu bir parola kilidi değildir: ekranı opak bir perdeyle örter, açmak için parola sorulmaz. Yalnızca yan masadakinin ekranınızı görmesini engeller. Açık pencereler ve çalışan işler olduğu gibi kalır. Kısayol: L tuşu.</div>
         </div>
       </div>
       <div class="card">
         <div class="card-head"><h2>Envanter yedeği</h2><span class="hint">sunucu adresleri + değişkenler</span></div>
         <div class="card-body">
-          <div class="frow2"><span class="flabel" style="width:110px">Dışa aktar</span><button class="btn sm" id="bk-export" type="button">Yedeği indir (.json)</button></div>
+          <div class="frow2"><span class="flabel sx-607468">Dışa aktar</span><button class="btn sm" id="bk-export" type="button">Yedeği indir (.json)</button></div>
           <div class="hint small muted">Yedek sır içermez: private key, knock dizisi ve adında parola/token/secret geçen değişkenler dışarıda kalır. Yine de sunucu adreslerini içerir; dosyayı güvenli saklayın.</div>
-          <div class="frow2" style="margin-top:14px"><span class="flabel" style="width:110px">İçe aktar</span><input type="file" id="bk-file" accept=".json,application/json" aria-label="Yedek dosyası"></div>
+          <div class="frow2 sx-d6f2af"><span class="flabel sx-607468">İçe aktar</span><input type="file" id="bk-file" accept=".json,application/json" aria-label="Yedek dosyası"></div>
           <div class="hint small muted">Önce önizleme gösterilir, hiçbir şey yazılmaz. Mevcut sunucular varsayılan olarak seçili gelmez; seçerseniz adresleri ve değişkenleri yedektekiyle değişir. Anahtarlar ve knock ayarları korunur.</div>
-          <div id="bk-result" aria-live="polite" style="margin-top:12px"></div>
-          <div class="row-flex" style="margin-top:10px;gap:12px;align-items:center"><button class="btn primary sm" id="bk-apply" type="button" hidden>Seçilenleri uygula</button><span id="bk-status" class="small muted" role="status"></span></div>
+          <div class="sx-56f435" id="bk-result" aria-live="polite"></div>
+          <div class="row-flex sx-4a5ead"><button class="btn primary sm" id="bk-apply" type="button" hidden>Seçilenleri uygula</button><span id="bk-status" class="small muted" role="status"></span></div>
         </div>
       </div>
       <div class="card">
@@ -280,7 +280,7 @@
       </div>
       <div class="card">
         <div class="card-head"><h2>Güvenlik</h2></div>
-        <div class="card-body"><ul class="small" style="margin:0;padding-left:18px;color:var(--text-2);line-height:1.8">
+        <div class="card-body"><ul class="small sx-05a3db">
           <li>Arayüz yalnızca <span class="mono">127.0.0.1</span>'de dinler; her çalıştırmada yeni oturum anahtarı üretilir.</li>
           <li><b>Sudo parolası</b> yalnızca motor sorduğunda çıkan kutuya yazılır; doğrudan Ansible'ın terminaline (pty) iletilir, saklanmaz, günlüğe yazılmaz, sayfada gösterilmez. İstemezseniz eylem penceresindeki <b>macOS Terminal'de aç</b> yolunu kullanın. SSH anahtar parolaları ve gizli anahtarlar arayüzde girilmez (ssh-agent).</li><li>Sayfa <span class="mono">Content-Security-Policy</span> ile yalnızca kendi betiğini çalıştırır ve dışarıya bağlanamaz.</li>
           <li>Arayüzden yalnızca <b>salt okunur, sudo istemeyen, onay gerektirmeyen, önkoşulsuz</b> eylemler çalıştırılır; sunucu tarafında yeniden denetlenir. Çalıştırma uygulamanın kendi motoruyla yapılır (kapılar, günlük, sonuç kaydı aynı). Eylemler arayüzdeki terminalde çalışır; sudo parolası istenince kutu açılır. Değişiklik yapan (yıkıcı olmayan) eylemler önce plan, snapshot ve ad/e-h onayından geçer; motor onayları yeniden sorabilir. Yıkıcı eylemler (kaldir, yukselt, sunucu silme) ek onay ister: sunucu adı birebir, snapshot ve "geri alınamayabilir" onayı.</li>
@@ -288,7 +288,7 @@
       </div>
       <div class="card">
         <div class="card-head"><h2>Klavye kısayolları</h2></div>
-        <div class="card-body"><div class="small" style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;color:var(--text-2)">
+        <div class="card-body"><div class="small sx-5c43ad">
           <kbd class="mono">/</kbd><span>Aramaya odaklan</span><kbd class="mono">F10</kbd><span>Seçili sunucuda bağlam menüsü</span><kbd class="mono">Enter</kbd><span>Sunucuyu aç</span><kbd class="mono">Esc</kbd><span>Menü ve pencereyi kapat</span>
         </div></div>
       </div>
@@ -309,14 +309,14 @@
     <section class="view" id="view-logs" hidden>
       <div class="card">
         <div class="card-head"><h2>Günlükler</h2><div class="spacer"></div><span class="hint" id="logs-count"></span></div>
-        <div class="card-body" id="logfilters" style="border-bottom:1px solid var(--border)"></div>
+        <div class="card-body sx-100841" id="logfilters"></div>
         <div class="card-body tight loglist" id="loglist"></div>
       </div>
       <div class="card" id="logcard" hidden>
         <div class="card-head">
-          <h2 id="logtitle" style="font-family:var(--mono);font-size:14px"></h2>
+          <h2 class="sx-f2ae6a" id="logtitle"></h2>
           <div class="spacer"></div>
-          <input id="logfind" type="search" placeholder="günlükte ara…" aria-label="Günlükte ara" style="max-width:200px">
+          <input class="sx-a82890" id="logfind" type="search" placeholder="günlükte ara…" aria-label="Günlükte ara">
           <button class="btn sm" id="logerr">Hatalara git</button>
         </div>
         <div class="card-body"><div class="log-view" id="logview" tabindex="0" role="region" aria-label="Günlük içeriği"></div></div>
@@ -329,15 +329,15 @@
     <div class="aside-card"><h3>Son eylemler</h3><ul class="tl" id="a-tl"></ul></div>
     <div class="aside-card">
       <h3>Dikkat</h3>
-      <div class="notice" style="margin:0 0 8px"><span class="ico" aria-hidden="true">⚠</span><div><b>Snapshot hatırlatması:</b> yazma eylemlerinden önce VM snapshot'ı alın.</div></div>
-      <div class="notice" style="margin:0"><span class="ico" aria-hidden="true">ℹ</span><div>Arayüzden yalnızca <b>salt okunur</b>, sudo istemeyen eylemler çalışır (utility <span class="mono">durum</span>); sudo isteyenler parola kutusuyla, yazanlar onay akışıyla. Yıkıcı eylemler ek onaydan geçer.</div></div>
+      <div class="notice sx-df6718"><span class="ico" aria-hidden="true">⚠</span><div><b>Snapshot hatırlatması:</b> yazma eylemlerinden önce VM snapshot'ı alın.</div></div>
+      <div class="notice sx-116966"><span class="ico" aria-hidden="true">ℹ</span><div>Arayüzden yalnızca <b>salt okunur</b>, sudo istemeyen eylemler çalışır (utility <span class="mono">durum</span>); sudo isteyenler parola kutusuyla, yazanlar onay akışıyla. Yıkıcı eylemler ek onaydan geçer.</div></div>
     </div>
     <div class="aside-card">
       <h3>Kısayollar</h3>
-      <div class="small" style="display:flex;flex-direction:column;gap:6px;color:var(--text-2)">
-        <div style="display:flex;justify-content:space-between"><span>Ara</span><kbd class="mono">/</kbd></div>
-        <div style="display:flex;justify-content:space-between"><span>Bağlam menüsü</span><kbd class="mono">F10</kbd></div>
-        <div style="display:flex;justify-content:space-between"><span>Kapat</span><kbd class="mono">Esc</kbd></div>
+      <div class="small sx-46884b">
+        <div class="sx-a3d12b"><span>Ara</span><kbd class="mono">/</kbd></div>
+        <div class="sx-a3d12b"><span>Bağlam menüsü</span><kbd class="mono">F10</kbd></div>
+        <div class="sx-a3d12b"><span>Kapat</span><kbd class="mono">Esc</kbd></div>
       </div>
     </div>
   </aside>
@@ -354,7 +354,7 @@
   <hr>
   <button role="menuitem" data-ctx="edit">Bağlantı bilgilerini düzenle…</button>
   <button role="menuitem" data-ctx="rename">Yeniden adlandır…</button>
-  <button role="menuitem" data-ctx="delete" style="color:var(--danger)">Sil…</button>
+  <button class="sx-497726" role="menuitem" data-ctx="delete">Sil…</button>
   <hr>
   <button role="menuitem" data-ctx="draft">Paket eylemi (taslak)…</button>
 </div>
@@ -377,12 +377,12 @@
       </div>
       <div id="step-1">
         <div class="notice"><span class="ico" aria-hidden="true">ℹ</span><div><b>Önizleme henüz bağlı değil.</b> Gerçek sürümde burada, sunucuya hiçbir şey yazmadan, değişecek öğelerin sayısı ve farkı görünür.</div></div>
-        <div class="diff" style="margin-top:12px"><div><div class="lbl">paket</div><pre id="w-pkg"></pre></div><div><div class="lbl">sunucu</div><pre id="w-srv"></pre></div></div>
-        <p style="margin:12px 0 0" class="row-flex"><span class="badge plain">snapshot hatırlatması</span></p>
+        <div class="diff sx-56f435"><div><div class="lbl">paket</div><pre id="w-pkg"></pre></div><div><div class="lbl">sunucu</div><pre id="w-srv"></pre></div></div>
+        <p class="row-flex sx-d870e8"><span class="badge plain">snapshot hatırlatması</span></p>
       </div>
       <div id="step-2" hidden>
         <div class="notice"><span class="ico" aria-hidden="true">⚠</span><div>Gerçek sürümde bu eylem <b>gerçek bir sunucuya yazar</b>. Onaylamak için sunucu adını yazın: <span class="mono" id="wiz-confirm-name"></span></div></div>
-        <div class="field" style="margin-top:12px">
+        <div class="field sx-56f435">
           <label for="confirm-input">Sunucu adı</label>
           <input id="confirm-input" type="text" autocomplete="off" spellcheck="false">
           <div class="hint">Eşleşme büyük/küçük harf duyarlıdır.</div>
@@ -411,19 +411,19 @@
       <div id="run-confirm">
         <div class="notice"><span class="ico" aria-hidden="true">ℹ</span><div id="run-confirm-text"></div></div>
         <div id="run-confirm-extra" hidden></div>
-        <div class="small muted" id="run-confirm-note" style="margin-top:10px">Çalıştırma uygulamanın kendi motoruyla yapılır; kapılar, günlük ve sonuç kaydı menüdekiyle aynıdır. Parola sorulmaz: ssh anahtarınız ssh-agent'ta yüklü olmalı.</div>
+        <div class="small muted sx-d2c171" id="run-confirm-note">Çalıştırma uygulamanın kendi motoruyla yapılır; kapılar, günlük ve sonuç kaydı menüdekiyle aynıdır. Parola sorulmaz: ssh anahtarınız ssh-agent'ta yüklü olmalı.</div>
       </div>
       <div id="run-live" hidden>
-        <div class="run-meta"><span id="run-state" role="status"></span><span style="flex:1"></span><button class="btn sm ghost" id="run-cancel">İptal</button></div>
-        <div id="run-progress" style="margin-bottom:10px"></div>
+        <div class="run-meta"><span id="run-state" role="status"></span><span class="sx-97445a"></span><button class="btn sm ghost" id="run-cancel">İptal</button></div>
+        <div class="sx-761d3a" id="run-progress"></div>
         <div class="log" id="run-log" role="log" aria-live="polite" aria-label="Canlı çıktı"></div>
-        <div id="run-input" class="row-flex" hidden style="margin-top:10px;flex-wrap:nowrap" role="group" aria-label="Motor girdi bekliyor">
-          <span id="run-prompt" class="mono small" style="max-width:48%;word-break:break-word"></span>
-          <input id="run-in" style="flex:1" autocomplete="off" spellcheck="false" aria-label="Yanıt">
+        <div id="run-input" class="row-flex sx-0b06a2" hidden role="group" aria-label="Motor girdi bekliyor">
+          <span id="run-prompt" class="mono small sx-6a5188"></span>
+          <input class="sx-97445a" id="run-in" autocomplete="off" spellcheck="false" aria-label="Yanıt">
           <button class="btn sm" id="run-yes" hidden title="e gönderir">Evet (e)</button><button class="btn sm" id="run-no" hidden title="H gönderir">Hayır (H)</button>
           <button class="btn sm primary" id="run-send">Gönder</button>
         </div>
-        <div id="run-result" style="margin-top:12px"></div>
+        <div class="sx-56f435" id="run-result"></div>
       </div>
     </div>
     <div class="modal-foot">
@@ -436,22 +436,22 @@
 </div>
 
 <div class="modal-back" id="varsmodal" role="dialog" aria-modal="true" aria-labelledby="vars-title">
-  <div class="modal" style="width:min(900px,94vw);max-width:900px">
+  <div class="modal sx-d0fc9f">
     <div class="modal-head">
       <div><h3 id="vars-title">Değişkenler</h3><div class="sub" id="vars-sub"></div></div>
       <div class="spacer"></div>
       <button class="icon-btn" id="vars-x" aria-label="Kapat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </div>
-    <div class="modal-body" style="max-height:68vh;overflow:auto">
-      <div class="row-flex" style="margin-bottom:12px"><input id="vars-q" type="search" placeholder="değişken ya da açıklama ara…" aria-label="Değişken ara" style="flex:1"><label class="small row-flex" style="gap:6px"><input type="checkbox" id="vars-set"> yalnızca ayarlı</label><span class="small muted" id="vars-count"></span></div>
+    <div class="modal-body sx-afaad9">
+      <div class="row-flex sx-da12f2"><input class="sx-97445a" id="vars-q" type="search" placeholder="değişken ya da açıklama ara…" aria-label="Değişken ara"><label class="small row-flex sx-f0abc1"><input type="checkbox" id="vars-set"> yalnızca ayarlı</label><span class="small muted" id="vars-count"></span></div>
       <div id="vars-list"></div>
     </div>
-    <div class="modal-foot"><span class="small muted" style="margin-right:auto">Doğrulama uygulamanın kendi doğrulayıcısıyla yapılır (menüdekiyle aynı). Değişiklik <span class="mono">servers/&lt;ad&gt;/&lt;paket&gt;.vars</span> dosyasına yazılır.</span><button class="btn" id="vars-close">Kapat</button></div>
+    <div class="modal-foot"><span class="small muted sx-471df9">Doğrulama uygulamanın kendi doğrulayıcısıyla yapılır (menüdekiyle aynı). Değişiklik <span class="mono">servers/&lt;ad&gt;/&lt;paket&gt;.vars</span> dosyasına yazılır.</span><button class="btn" id="vars-close">Kapat</button></div>
   </div>
 </div>
 
 <div class="modal-back" id="shortcuts-modal" role="dialog" aria-modal="true" aria-labelledby="sc-title">
-  <div class="modal" style="width:min(480px,94vw)">
+  <div class="modal sx-98b197">
     <div class="modal-head">
       <div><h3 id="sc-title">Klavye kısayolları</h3><div class="sub">Yazı alanındayken tek tuşlu kısayollar çalışmaz.</div></div>
       <div class="spacer"></div>
@@ -474,16 +474,16 @@
 </div>
 
 <div class="modal-back" id="import-modal" role="dialog" aria-modal="true" aria-labelledby="imp-title">
-  <div class="modal" style="width:min(640px,94vw)">
+  <div class="modal sx-48a649">
     <div class="modal-head">
       <div><h3 id="imp-title">ssh config'ten içe aktar</h3><div class="sub">~/.ssh/config dosyasındaki Host kayıtları. Private key kopyalanmaz; yalnızca yolu kaydedilir.</div></div>
       <div class="spacer"></div>
       <button class="icon-btn" id="imp-x" aria-label="Kapat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </div>
-    <div class="modal-body" style="max-height:60vh;overflow:auto">
+    <div class="modal-body sx-a5d903">
       <div id="imp-list" aria-live="polite"></div>
     </div>
-    <div class="modal-foot"><span id="imp-status" class="small muted" style="margin-right:auto" role="status"></span><button class="btn ghost" id="imp-cancel">Vazgeç</button><button class="btn primary" id="imp-go" disabled>İçe aktar</button></div>
+    <div class="modal-foot"><span id="imp-status" class="small muted sx-471df9" role="status"></span><button class="btn ghost" id="imp-cancel">Vazgeç</button><button class="btn primary" id="imp-go" disabled>İçe aktar</button></div>
   </div>
 </div>
 
@@ -496,14 +496,14 @@
 </div>
 
 <div class="modal-back" id="dlg" role="dialog" aria-modal="true" aria-labelledby="dlg-title">
-  <div class="modal" style="width:min(580px,94vw)">
+  <div class="modal sx-87d4fb">
     <div class="modal-head">
       <div><h3 id="dlg-title"></h3><div class="sub" id="dlg-sub"></div></div>
       <div class="spacer"></div>
       <button class="icon-btn" id="dlg-x" aria-label="Kapat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </div>
-    <div class="modal-body" id="dlg-body" style="max-height:62vh;overflow:auto"></div>
-    <div class="modal-foot"><span id="dlg-err" class="small" style="color:var(--danger);margin-right:auto" role="alert"></span><button class="btn ghost" id="dlg-cancel">Vazgeç</button><button class="btn primary" id="dlg-ok">Tamam</button></div>
+    <div class="modal-body sx-4ae17f" id="dlg-body"></div>
+    <div class="modal-foot"><span id="dlg-err" class="small sx-86aeea" role="alert"></span><button class="btn ghost" id="dlg-cancel">Vazgeç</button><button class="btn primary" id="dlg-ok">Tamam</button></div>
   </div>
 </div>
 
@@ -532,7 +532,7 @@
 </div>
 
 <div class="term-dock" id="term-dock" role="toolbar" aria-label="Açık terminal oturumları" hidden></div>
-<div id="toast" role="status" style="position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--text,#222);color:var(--surface,#fff);padding:8px 14px;border-radius:8px;display:none;font-size:13px;z-index:50"></div>
+<div class="sx-31f8f5" id="toast" role="status"></div>
 <script src="js/core/i18n-phrases-en.js"></script>
 <script src="js/core/i18n.js"></script>
 <script src="vendor/xterm/xterm.js"></script>
