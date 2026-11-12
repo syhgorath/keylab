@@ -79,7 +79,13 @@ servers/<ad>/      server.env + id_ed25519_<ad>   (kullanıcı verisi, repoya gi
 - **Port knocking (istemci):** arayüzdeki sunucu adımlarından ya da `./sshpocket servers knock <ad>`; dizi Keychain'de durur, "Terminal'de aç" bağlanmadan önce otomatik gönderir. Sunucu tarafı (knockd) bu araçta yoktur; klasik knocking şifreli değildir.
 - **Keychain parolası:** `./sshpocket servers keychain <ad>` (kaydet/güncelle/sil, kayıttan sonra anahtarı açarak doğrular).
 - **Ayarlar:** `sshpocket.conf` (`STATUS=on|off`, `STATUS_TIMEOUT=1-5`; ortam değişkeni `SSHPOCKET_STATUS` önceliklidir). `./sshpocket settings` değerleri gösterir, `settings set STATUS_TIMEOUT 3` yazar.
-- **Gömülü terminal:** sunucu sayfasında "Gömülü terminal" tarayıcıda `ssh -tt` oturumu açar (macOS ve Linux; Windows'ta henüz yok). Yerel shell açılmaz, yalnız kayıtlı sunucuya bağlanır; açma/kapama durum klasöründe `terminal-audit.log` dosyasına yazılır.
+- **Gömülü terminal:** sunucu sayfasında "Gömülü terminal" tarayıcıda `ssh -tt` oturumu açar; en çok 4 oturum, pencere küçültülünce oturumlar açık kalır ve altta bir çubukta durur (macOS ve Linux; Windows'ta henüz yok). Yerel shell açılmaz, yalnız kayıtlı sunucuya bağlanır; açma/kapama durum klasöründe `terminal-audit.log` dosyasına yazılır.
+- **Sunucu karşılaştırma ve raporlar:** "Karşılaştır" sayfası sunucuları sütun sütun yan yana koyar ve farklı olan satırları işaretler (Markdown/CSV/JSON dışa aktarma; CSV hücreleri formül enjeksiyonuna karşı korunur). "Raporlar" dört şablonlu (filo, sunucu denetimi, Lynis bulguları, drift) yazdırılabilir rapor üretir (görsel, Markdown, JSON). Adı parola/token/secret geçen değişkenlerin değerleri maskelenir.
+- **`~/.ssh/config` içe aktarma (arayüz):** "Sunucu ekle" sayfasından; tarayıcı yalnız takma adı gönderir, adres/kullanıcı/port sunucuda dosyadan yeniden okunup doğrulanır.
+- **Envanter yedeği:** Ayarlar > Envanter yedeği. Yedek sır içermez (private key yolu, knock, parola/token adlı değişkenler yok) ama sunucu adreslerini içerir. İçe aktarma önce önizleme gösterir; var olan sunucular yalnız siz seçerseniz değişir ve doğrulama uygulamanın kendi kurallarından geçer.
+- **İş izleyici:** çalışan eylem "Arka plana al" ile küçültülür; üst çubuktaki iş düğmesi süreyi/sonucu gösterir ve sayfa yenilense bile çalışan işe yeniden bağlanır. İş çalışırken başka eylem başlatılamaz.
+- **Gizlilik kilidi:** `L` tuşu ya da Ayarlar'dan boşta süresiyle ekranı gizler. Bu bir parola kilidi DEĞİLDİR, yalnızca yan masadakinin ekranı görmesini engeller; varsayılan kapalıdır.
+- **Vurgu rengi:** Ayarlar'dan 8 vurgu rengi (açık/koyu temada WCAG AA kontrastı doğrulanmış).
 - **Uygulama kataloğu:** `items` bildiren paketlerde (ör. kurulum) sunucu sayfasında uygulama kartları; öğeye özel Önizle/Kur/Yükselt/Kaldır, önkoşul kapısı öğe ve mod kapsamlıdır (docs/package-standard.md).
 - **Dil:** arayüz Türkçe ve İngilizce (üst çubuktaki TR/EN düğmesi).
 

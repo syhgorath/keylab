@@ -30,6 +30,7 @@ Sıra bağlayıcı değildir; fikir ve PR'lara açıktır.
 - ProxyJump/bastion, SSH tüneli, `scp`/`sftp` kısayolları.
 - Arayüz çevirisi: Türkçe/İngilizce var (üst çubuktaki TR/EN düğmesi; ifade tablosu `go/web/js/core/i18n-phrases-en.js`); kalanlar: sunucudan gelen iletiler, tarih biçimi ve yeni dil eklemek için `t()` anahtarlarına geçiş.
 - `~/.ssh/config`'te `Include` desteği.
+- Arayüz: pocketui aktarımı bitti (Agatha ayrı repoda, ping/shutdown/reboot şimdilik yok). Kalan küçük işler: ⌘K arama paleti, modallarda focus trap, `hashchange`, 100 sunucuyla ölçüm, satır içi stillerin sınıfa taşınması (CSP'den `unsafe-inline` çıkarma).
 
 ### Dağıtım
 - **Kilit kanalı:** paket sürümleri için sshpocket sürümü beklememek (imzalı, sayaçlı, süreli, onaylı); tasarım taslağı [docs/kilit-kanali.md](docs/kilit-kanali.md).
