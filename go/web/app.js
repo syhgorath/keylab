@@ -1758,6 +1758,7 @@
   });
 
   window.KeyLabBackup.init({ json, toast, reload: load });
+  window.KeyLabJobs.init({ json, goLogs, tabLabel: id => TAB_LABEL[id] || (home.packages.find(p => p.id === id) || {}).name || id });
   window.KeyLabBatch.init({ json, toast, reload: load, targets: () => visibleServers.slice(), tabLabel: id => TAB_LABEL[id] || (home.packages.find(p => p.id === id) || {}).name || id });
   adoptJob();
   window.KeyLabPalette.init({ getHome: () => home, showView, openServer, goLynis, goLogs, openShortcuts, reload: load });
