@@ -3,6 +3,11 @@
    (değişken/eylem adları, dosya yolları) ve kullanıcı verisi çevrilmez. Eksik ifade Türkçe kalır; tabloya eklenerek genişletilir. */
 window.KeyLabPhrasesEN = {
   exact: {
+    "Klavye kısayolları": "Keyboard shortcuts", "Klavye kısayolları (?)": "Keyboard shortcuts (?)",
+    "Yazı alanındayken tek tuşlu kısayollar çalışmaz.": "Single-key shortcuts do not work while typing in a field.",
+    "Arama çubuğuna odaklan": "Focus the search box", "Bu pencereyi aç / kapat": "Open / close this window",
+    "Odaktaki sunucuyu aç": "Open the focused server", "Odaktaki sunucunun menüsünü aç": "Open the focused server's menu",
+    "Açık menüde öğeler arasında gezin": "Move between items in an open menu", "Menüyü ve pencereleri kapat": "Close the menu and dialogs",
     "+ Ekle": "+ Add", "+ Sunucu ekle": "+ Add server", "Adresi kopyala": "Copy address", "Ana gezinme": "Main navigation",
     "Anahtar üret": "Generate key", "Anahtarı sunucuya gönder": "Send key to server", "Ara": "Search", "Aramaya odaklan": "Focus search",
     "Ayarlar": "Settings", "Ayarla…": "Set…", "Ayrıntı": "Details", "Açık": "On", "Aç": "Open", "Bağlam menüsü": "Context menu",
