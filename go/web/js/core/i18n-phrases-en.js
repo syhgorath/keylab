@@ -3,6 +3,8 @@
    (değişken/eylem adları, dosya yolları) ve kullanıcı verisi çevrilmez. Eksik ifade Türkçe kalır; tabloya eklenerek genişletilir. */
 window.KeyLabPhrasesEN = {
   exact: {
+    "Çalışan işi aç": "Open the running job", "Arka plana al": "Run in background",
+    "İş çalışmaya devam eder; üst çubuktaki iş düğmesinden geri açabilirsiniz": "The job keeps running; reopen it from the job button in the top bar",
     "Pencereyi küçült (oturum açık kalır)": "Minimize window (session stays open)", "Terminal oturumları": "Terminal sessions", "Açık terminal oturumları": "Open terminal sessions",
     "Küçültmek oturumu kapatmaz; \"Oturumu kapat\" ssh'ı sonlandırır. Terminal açma/kapama durum klasöründe terminal-audit.log dosyasına yazılır.": "Minimizing does not close the session; \"End session\" terminates ssh. Opening/closing a terminal is logged to terminal-audit.log in the state folder.",
     "Envanter yedeği": "Inventory backup", "sunucu adresleri + değişkenler": "server addresses + variables", "Dışa aktar": "Export", "İçe aktar": "Import",

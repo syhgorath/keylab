@@ -24,6 +24,7 @@
     </div>
     <div class="spacer" style="flex:1"></div>
     <span id="pills" class="row-flex"></span>
+    <button class="job-pill" id="job-pill" type="button" hidden title="Çalışan işi aç"></button>
     <button class="icon-btn" id="lang-btn" type="button" aria-label="Dil / Language" title="Dil / Language"><span id="lang-cur" class="mono" style="font-size:11px;font-weight:700">TR</span></button>
     <button class="icon-btn" id="theme-btn" aria-label="Tema: otomatik" title="Tema: otomatik (tıklayınca değişir)"><span id="theme-ico" aria-hidden="true">◐</span></button>
     <button class="icon-btn" id="lock-btn" type="button" aria-label="Ekranı gizle (L)" title="Ekranı gizle (L)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
@@ -427,6 +428,7 @@
     </div>
     <div class="modal-foot">
       <button class="btn ghost" id="run-ext" hidden title="Parolayı bu sayfaya yazmak istemezseniz">macOS Terminal'de aç</button>
+      <button class="btn ghost" id="run-min" hidden title="İş çalışmaya devam eder; üst çubuktaki iş düğmesinden geri açabilirsiniz">Arka plana al</button>
       <button class="btn ghost" id="run-close">Vazgeç</button>
       <button class="btn primary" id="run-go">Çalıştır</button>
     </div>

@@ -1178,3 +1178,11 @@ td.diff-val{box-shadow:inset 3px 0 0 var(--warn)}
 .term-chip.unread::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--warn)}
 .term-chip-x{all:unset;cursor:pointer;width:20px;height:20px;border-radius:50%;text-align:center;line-height:20px;font-size:11px;color:var(--muted)}
 .term-chip-x:hover,.term-chip-x:focus-visible{background:var(--danger-weak);color:var(--danger)}
+
+/* İş izleyici düğmesi (üst çubuk) */
+.job-pill{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius-pill);border:1px solid var(--border);background:var(--surface);font-size:12.5px;max-width:34vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.job-pill[hidden]{display:none}
+.job-pill:focus-visible{box-shadow:var(--focus)}
+.job-pill.run{border-color:var(--accent);background:var(--accent-weak);color:var(--accent-ink)}
+.job-pill.ok{border-color:var(--ok-border,var(--border));color:var(--ok,#15803d)}
+.job-pill.fail{border-color:var(--danger-border,var(--danger));background:var(--danger-weak);color:var(--danger)}
