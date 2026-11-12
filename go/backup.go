@@ -34,6 +34,17 @@ const (
 
 var reSecretVar = regexp.MustCompile(`(?i)(pass|secret|token|private|credential)`)
 
+// reBackupPkg: gerçek paket kimlikleri gibi (küçük harf/rakam/_/-, harf ya da rakamla başlar); "." ve "/" YOK → yol kaçışı mümkün değil.
+var reBackupPkg = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
+
+// clipName: kullanıcıya gösterilecek geçersiz adı kısaltır (uzun/garip girdi iletiyi şişirmesin).
+func clipName(s string) string {
+	if r := []rune(s); len(r) > 40 {
+		return string(r[:40]) + "…"
+	}
+	return s
+}
+
 type backupServer struct {
 	Name string                       `json:"name"`
 	Host string                       `json:"host"`
@@ -151,6 +162,25 @@ func (a *App) backupImport(f backupFile, apply bool, pick []string) ([]backupRow
 			if m, bad := d[k]; bad {
 				row.Action, row.Status = "invalid", "error"
 				row.Notes = append(row.Notes, m)
+			}
+		}
+		// Paket ve değişken adları dosya yollarına (<sunucu>/<paket>.vars) ve paket kataloğuna akar: yedekten gelen anahtarlar burada, HİÇBİR
+		// dosya işleminden ÖNCE doğrulanır (yol kaçışı: "../x" gibi bir paket anahtarı başka bir .vars dosyasını okutabilirdi).
+		for pkg, vs := range s.Vars {
+			if !reBackupPkg.MatchString(pkg) {
+				row.Action, row.Status = "invalid", "error"
+				row.Notes = append(row.Notes, "geçersiz paket adı: "+clipName(pkg))
+				break
+			}
+			for vn := range vs {
+				if !reVarName.MatchString(vn) {
+					row.Action, row.Status = "invalid", "error"
+					row.Notes = append(row.Notes, "geçersiz değişken adı: "+clipName(vn))
+					break
+				}
+			}
+			if row.Action == "invalid" {
+				break
 			}
 		}
 		if row.Action == "invalid" {
