@@ -355,6 +355,8 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"ok":true}`))
 	}))
+	mux.HandleFunc("/api/ssh-config-hosts", app.guard(app.sshConfigHostsHandler))
+	mux.HandleFunc("/api/ssh-config-import", app.guard(app.sshConfigImportHandler))
 	mux.HandleFunc("/api/server-task", app.guard(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "POST", http.StatusMethodNotAllowed)

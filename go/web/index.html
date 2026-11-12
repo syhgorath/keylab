@@ -123,7 +123,7 @@
 
     <section class="view" id="view-add" hidden>
       <div class="card">
-        <div class="card-head"><h2>Sunucu ekle</h2></div>
+        <div class="card-head"><h2>Sunucu ekle</h2><div class="spacer" style="flex:1"></div><button class="btn sm" id="imp-open" type="button">~/.ssh/config'ten içe aktar…</button></div>
         <div class="card-body">
           <div id="add-steps" hidden></div>
           <div id="add-form-wrap">
@@ -352,6 +352,20 @@
       </div>
     </div>
     <div class="modal-foot"><button class="btn" id="sc-close">Kapat</button></div>
+  </div>
+</div>
+
+<div class="modal-back" id="import-modal" role="dialog" aria-modal="true" aria-labelledby="imp-title">
+  <div class="modal" style="width:min(640px,94vw)">
+    <div class="modal-head">
+      <div><h3 id="imp-title">ssh config'ten içe aktar</h3><div class="sub">~/.ssh/config dosyasındaki Host kayıtları. Private key kopyalanmaz; yalnızca yolu kaydedilir.</div></div>
+      <div class="spacer"></div>
+      <button class="icon-btn" id="imp-x" aria-label="Kapat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body" style="max-height:60vh;overflow:auto">
+      <div id="imp-list" aria-live="polite"></div>
+    </div>
+    <div class="modal-foot"><span id="imp-status" class="small muted" style="margin-right:auto" role="status"></span><button class="btn ghost" id="imp-cancel">Vazgeç</button><button class="btn primary" id="imp-go" disabled>İçe aktar</button></div>
   </div>
 </div>
 
