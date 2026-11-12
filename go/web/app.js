@@ -1670,6 +1670,7 @@
     openServer, openVars, goLynis,
   });
 
+  window.KeyLabBackup.init({ json, toast, reload: load });
   window.KeyLabPrivacy.init();
   window.KeyLabReports.init({
     getHome: () => home, json, toast, stateText,
