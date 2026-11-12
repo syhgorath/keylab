@@ -1247,3 +1247,36 @@ td.diff-val{box-shadow:inset 3px 0 0 var(--warn)}
 .sx-f0abc1{gap:6px}
 .sx-f2ae6a{font-family:var(--mono);font-size:14px}
 .sx-fe7b49{margin-top:6px}
+
+/* Satır içi stillerden taşınanlar (JS şablonları). !important: satır içi stilin normal stylesheet kurallarına üstünlüğünü aynen korur. */
+.sj-0f5c58{margin-top:6px !important;display:flex !important;justify-content:space-between !important}
+.sj-116966{margin:0 !important}
+.sj-249d01{margin:0 0 12px !important}
+.sj-2a9295{cursor:default !important}
+.sj-2b583d{margin-bottom:14px !important}
+.sj-2eea7e{border-top:1px solid var(--border) !important}
+.sj-3b6a3a{cursor:pointer !important}
+.sj-45fcdd{max-width:300px !important;text-align:right !important}
+.sj-607468{width:110px !important}
+.sj-7a21c6{margin-top:2px !important}
+.sj-81fa6c{color:var(--warn) !important}
+.sj-8286c2{display:inline-flex !important;gap:8px !important;align-items:center !important;cursor:pointer !important}
+.sj-96ad60{margin-top:4px !important}
+.sj-97445a{flex:1 !important}
+.sj-9d2d06{gap:12px !important;align-items:flex-end !important;flex-wrap:wrap !important;margin-top:12px !important}
+.sj-9da19d{align-self:flex-end !important;margin-bottom:4px !important}
+.sj-aba5aa{gap:12px !important;align-items:flex-start !important;flex-wrap:wrap !important}
+.sj-bf0907{gap:8px !important;margin-top:16px !important;flex-wrap:wrap !important}
+.sj-c42b62{margin:0 0 12px !important;color:var(--text-2) !important;line-height:1.55 !important}
+.sj-ca7706{grid-template-columns:minmax(170px,1fr) minmax(140px,1fr) 2fr !important}
+.sj-cc781b{padding:12px !important}
+.sj-cfa1ec{padding:8px 10px !important}
+.sj-d870e8{margin:12px 0 0 !important}
+.sj-da12f2{margin-bottom:12px !important}
+.sj-eb6218{flex:1 !important;min-width:160px !important}
+.sj-eed0f8{font-weight:600 !important}
+.sj-f4596f{min-width:96px !important;height:36px !important}
+.sj-fe7b49{margin-top:6px !important}
+.c-ok{color:var(--ok)}
+.c-danger{color:var(--danger)}
+[hidden]{display:none !important} /* sj-sonu: !important yardımcı sınıfların display bildirimi hidden özniteliğini ezmesin; DOSYANIN SONUNDA kalmalı */
