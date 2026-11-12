@@ -1618,7 +1618,22 @@
     });
   }
   document.addEventListener("click", e => { if (!ctx.contains(e.target)) closeCtx(); });
-  document.addEventListener("keydown", e => { if (e.key === "Escape") { closeCtx(); closeWizard(); closeRun(); closeVars(); } });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") { closeCtx(); closeWizard(); closeRun(); closeVars(); closeShortcuts(); } });
+
+  /* ---------------- Klavye kısayolları penceresi ---------------- */
+  const scModal = $("#shortcuts-modal"); let scFrom = null;
+  function openShortcuts() { scFrom = document.activeElement; scModal.classList.add("open"); $("#sc-close").focus(); }
+  function closeShortcuts() { if (!scModal.classList.contains("open")) return; scModal.classList.remove("open"); if (scFrom && scFrom.focus) scFrom.focus(); scFrom = null; }
+  $("#shortcuts-btn").addEventListener("click", openShortcuts);
+  $("#sc-close").addEventListener("click", closeShortcuts);
+  $("#sc-x").addEventListener("click", closeShortcuts);
+  scModal.addEventListener("click", e => { if (e.target === scModal) closeShortcuts(); });
+  document.addEventListener("keydown", e => {
+    if (e.key !== "?" || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (/input|textarea|select/i.test(document.activeElement.tagName) || document.activeElement.isContentEditable) return;
+    if (document.querySelector(".modal-back.open:not(#shortcuts-modal)")) return; // başka pencere açıkken açma
+    e.preventDefault(); scModal.classList.contains("open") ? closeShortcuts() : openShortcuts();
+  });
   ctx.addEventListener("keydown", e => {
     const items = $$("button", ctx), i = items.indexOf(document.activeElement);
     if (e.key === "ArrowDown") { e.preventDefault(); items[(i + 1) % items.length].focus(); }

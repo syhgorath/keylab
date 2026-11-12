@@ -1041,3 +1041,8 @@ details.na summary{cursor:pointer;color:var(--muted);padding:10px 16px;font-size
 .term-host{height:min(62vh,560px);margin:0 20px 8px;padding:8px;background:#0e1116;border-radius:10px;overflow:hidden}
 .term-host .xterm{height:100%}
 #term-note{margin:0 20px 8px}
+
+/* Klavye kısayolları penceresi */
+.shortcuts-grid{display:flex;flex-direction:column;gap:8px}
+.sc-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:7px 10px;border-radius:8px;background:var(--surface-2,var(--surface));border:1px solid var(--border);font-size:13px}
+.sc-row kbd{font-family:var(--mono);font-size:11px;font-weight:700;border:1px solid var(--border);border-radius:5px;padding:2px 7px;white-space:nowrap}

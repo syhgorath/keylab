@@ -26,6 +26,7 @@
     <span id="pills" class="row-flex"></span>
     <button class="icon-btn" id="lang-btn" type="button" aria-label="Dil / Language" title="Dil / Language"><span id="lang-cur" class="mono" style="font-size:11px;font-weight:700">TR</span></button>
     <button class="icon-btn" id="theme-btn" aria-label="Tema: otomatik" title="Tema: otomatik (tıklayınca değişir)"><span id="theme-ico" aria-hidden="true">◐</span></button>
+    <button class="icon-btn" id="shortcuts-btn" type="button" aria-label="Klavye kısayolları (?)" title="Klavye kısayolları (?)"><span class="mono" aria-hidden="true" style="font-size:13px;font-weight:700">?</span></button>
   </header>
 
   <nav class="sidebar" aria-label="Ana gezinme">
@@ -330,6 +331,27 @@
       <div id="vars-list"></div>
     </div>
     <div class="modal-foot"><span class="small muted" style="margin-right:auto">Doğrulama uygulamanın kendi doğrulayıcısıyla yapılır (menüdekiyle aynı). Değişiklik <span class="mono">servers/&lt;ad&gt;/&lt;paket&gt;.vars</span> dosyasına yazılır.</span><button class="btn" id="vars-close">Kapat</button></div>
+  </div>
+</div>
+
+<div class="modal-back" id="shortcuts-modal" role="dialog" aria-modal="true" aria-labelledby="sc-title">
+  <div class="modal" style="width:min(480px,94vw)">
+    <div class="modal-head">
+      <div><h3 id="sc-title">Klavye kısayolları</h3><div class="sub">Yazı alanındayken tek tuşlu kısayollar çalışmaz.</div></div>
+      <div class="spacer"></div>
+      <button class="icon-btn" id="sc-x" aria-label="Kapat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="shortcuts-grid">
+        <div class="sc-row"><kbd>/</kbd><span>Arama çubuğuna odaklan</span></div>
+        <div class="sc-row"><kbd>?</kbd><span>Bu pencereyi aç / kapat</span></div>
+        <div class="sc-row"><kbd>Enter</kbd><span>Odaktaki sunucuyu aç</span></div>
+        <div class="sc-row"><kbd>F10</kbd><span>Odaktaki sunucunun menüsünü aç</span></div>
+        <div class="sc-row"><kbd>↑ ↓</kbd><span>Açık menüde öğeler arasında gezin</span></div>
+        <div class="sc-row"><kbd>Esc</kbd><span>Menüyü ve pencereleri kapat</span></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn" id="sc-close">Kapat</button></div>
   </div>
 </div>
 
