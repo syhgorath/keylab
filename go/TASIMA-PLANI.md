@@ -4,7 +4,7 @@
 > - Dilimler 0–6 bitti (manifest, trust, runner, servers, cli, report, findings, selfupdate, eject, doctor, settings); `main.go` temalara bölündü.
 > - Yayın biçimi: imzalı tek ikili (macOS universal). Bkz. `YAYIN.md`, `scripts/build-release.sh`.
 > - Arayüz eylemleri varsayılan olarak Go yürütücüyle çalışır (`SSHPOCKET_SHELL_RUN=1` kabuğa döner).
-> - Kabuk motoru ve Bats testleri `referans/kabuk/` altında dondurulmuştur; Go testleri onu şartname olarak kullanır (bulunamazsa atlar).
+> - Kabuk motoru ve Bats testleri depodan KALDIRILDI (2026-11-12, K3); Go testleri kabuğun kaydedilmiş çıktılarını (`testdata/*.json`) oynatır. Eski motor `kabuk-referansi` etiketinde durur.
 > - Taşınmayanlar (bilinçli): terminal menüsü (fzf dâhil), `--migrate` ve eski `sistem/Modules` düzeni.
 > - Eksikler: yok (2026-11-08 sonrası kapandı: 🔒 işareti, "ssh komutunu kopyala" knock'lu komut, `components lock` = lock-component.sh karşılığı; bkz. aşağıdaki ek).
 > - Denenmedi: arayüzdeki "Keychain parolası" ve "Port knocking" adım düğmeleri; gerçek Release ile `update`; `build-release.sh` imzalama adımı; Gatekeeper/notarization; gerçek ağda `components update/upgrade`; CI'ın yeni düzende ilk koşusu.

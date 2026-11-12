@@ -10,7 +10,8 @@ Bu çalışma sshpocket'i **kabuktan Go'ya** taşır (taslak; sürüm numarasın
 - **Ana ürün artık Go'dur** (`go/`): tek, imzalı, evrensel (arm64+amd64) macOS ikilisi; yerel web arayüzü içinde gömülüdür. Komutlar: `components list | sync | update | upgrade | check-new | prune | validate | report | run`, `doctor`, `version`, `update [--check]`, `eject`. Arayüzde paket eylemleri varsayılan olarak Go yürütücüsüyle çalışır (`SSHPOCKET_SHELL_RUN=1` kabuğa döndürür).
 - **Kabuk motoru ve Bats testleri `referans/kabuk/` altına taşındı** (dondurulmuş referans). Go portu onunla aynı girdilerle yan yana karşılaştırmalı testlerle doğrulandı (çıkış kodu, çıktı, dosya ağacı; 19.992 bozulmuş bildirim, 32 gerçek imzalı sürüm arşivi, canlı imzalı indeks).
 - `index_signers` ve `release_signers` depo köküne taşındı (`referans/kabuk/sistem/` altında sembolik bağ).
-- CI: Go işi (vet, gofmt, test, derleme; Ubuntu + macOS) eklendi; kabuk/Bats işleri `referans/kabuk` için sürüyor.
+- CI: Go işi (vet, gofmt, test, derleme; Ubuntu + macOS) eklendi.
+- **Kabuk referansı depodan kaldırıldı** (`referans/kabuk/`, 125 dosya): karşılaştırmalı testler artık kabuğun kaydedilmiş çıktılarını (`testdata/*.json` altın dosyaları, `internal/shellgold`) oynatır; CI ~2 dk. Eski motor `kabuk-referansi` etiketinde ve git geçmişinde durur.
 - **Kendini güncelleme** ikili için yeniden tasarlandı: `update` imzalı ikiliyi (`sshpocket-X.Y.Z-darwin-universal` + `.sig`) doğrular, ikilinin bildirdiği sürümü etiketle karşılaştırır, geri sürümü reddeder, atomik yerleştirir ve eskiyi `.update-backup/` altına yedekler. `go/YAYIN.md`, `go/scripts/build-release.sh`.
 
 ### Düzeltildi (kabuk referansındaki hatalar Go'da düzeltildi; kabukta düzeltilmedi)

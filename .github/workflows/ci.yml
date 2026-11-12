@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  # Ana ürün: Go. Kabuk motorunun (referans/kabuk) karşılaştırmalı testleri de burada koşar (bash, python3 ve ssh-keygen gerekir).
+  # Ana ürün: Go. Eski kabuk motoruyla karşılaştırma testleri kayıtlı altın dosyalardan (testdata/) oynatılır; kabuk/python gerekmez (ssh-keygen gerekir).
   go:
     strategy:
       fail-fast: false
@@ -56,14 +56,13 @@ jobs:
           CGO_ENABLED: "0"
           MATRIX_TARGET: ${{ matrix.target }}
         run: GOOS="${MATRIX_TARGET%/*}" GOARCH="${MATRIX_TARGET#*/}" go build -trimpath ./...
-  # Ürünün kendi kabuk betikleri (başlatıcı ve yayın derlemesi). Dondurulmuş kabuk referansının bats testleri artık CI'da koşmaz
-  # (yavaş ve kararsızdı; ürün Go). Kalan parite testleri Go işinde koşar ve K3 ile emekliye ayrılacak.
+  # Ürünün kendi kabuk betikleri (başlatıcı ve yayın derlemesi).
   shellcheck:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
       - name: ShellCheck kur (sabit sürüm, sha256 doğrulamalı)
-        run: bash referans/kabuk/scripts/ci-install-shellcheck.sh
+        run: bash .github/scripts/ci-install-shellcheck.sh
       - name: ShellCheck
         run: shellcheck -s bash go/launcher/start.command go/scripts/build-release.sh
       - name: Syntax check (bash -n)

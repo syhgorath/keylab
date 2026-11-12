@@ -1,10 +1,11 @@
 // Package shellgold: kabuk referansıyla karşılaştırmalı testler için kayıt/oynatma ("altın dosya").
 //
 // Eskiden bu testler her koşuda referans/kabuk motorunu çalıştırırdı. Artık kabuğun çıktısı bir kez KAYDEDİLİR (testdata/*.json)
-// ve testler Go sonucunu kayıtla karşılaştırır; referans/kabuk silinebilir.
+// ve testler Go sonucunu kayıtla karşılaştırır; referans/kabuk depodan silindi.
 //
 //	Oynatma (varsayılan, CI):  kayıttan okur; kayıt yoksa test başarısız olur (anahtar iletide).
-//	Kayıt: KEYLAB_KAYIT_KABUK=1 go test ./internal/<paket> — referans/kabuk gerekir; yürütmeyi çalıştırır ve dosyayı yeniden yazar.
+//	Kayıt: KEYLAB_KAYIT_KABUK=1 go test ./internal/<paket> — eski motor gerekir (depodan silindi: `git checkout kabuk-referansi -- referans/kabuk`);
+//	yürütmeyi çalıştırır ve dosyayı yeniden yazar.
 //
 // Anahtar, çağıranın ürettiği DETERMİNİSTİK metindir (girdi içeriği, argümanlar; geçici klasör yolu, rastgele değer YOK).
 package shellgold
@@ -41,7 +42,7 @@ func Open(t testing.TB, ad string) *Store {
 		}
 	} else {
 		if err != nil {
-			t.Fatalf("altın dosya okunamadı (%v); kaydetmek için KEYLAB_KAYIT_KABUK=1 ile çalıştırın (referans/kabuk gerekir)", err)
+			t.Fatalf("altın dosya okunamadı (%v); kaydetmek için KEYLAB_KAYIT_KABUK=1 ile çalıştırın (eski motor gerekir: git checkout kabuk-referansi -- referans/kabuk)", err)
 		}
 		if err := json.Unmarshal(b, &s.data); err != nil {
 			t.Fatalf("altın dosya bozuk: %v", err)

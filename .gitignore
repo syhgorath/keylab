@@ -23,9 +23,6 @@ __MACOSX/
 test/e2e/.secrets
 test/e2e/.hostkeys/
 test/e2e/lab/.state/
-referans/kabuk/test/e2e/.secrets
-referans/kabuk/test/e2e/.hostkeys/
-referans/kabuk/test/e2e/lab/.state/
 
 # Release çıktıları ve güncelleme yedekleri
 dist/

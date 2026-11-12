@@ -16,8 +16,8 @@ macOS için, USB bellekten (veya herhangi bir klasörden) çalışan **tek dosya
 Her sunucu `servers/<ad>/` altında bir klasördür; passphrase macOS Keychain'de durur.
 İmzalı **paketlerle** (şimdilik sunucu sertleştirme, saat/locale ayarı ve kurulum) sunucuyu yönetebilirsiniz.
 
-> **Sürüm 4 ile sshpocket Go'da yeniden yazıldı.** Kabuk (bash) motoru [`referans/kabuk/`](referans/kabuk) altında dondurulmuş **referans** olarak duruyor;
-> Go sürümü onunla yan yana karşılaştırmalı testlerle doğrulandı.
+> **Sürüm 4 ile sshpocket (şimdi KeyLab) Go'da yeniden yazıldı.** Eski kabuk (bash) motoru depodan kaldırıldı; son hâli git geçmişinde ve `kabuk-referansi` etiketinde duruyor.
+> Go sürümü onunla yan yana karşılaştırmalı testlerle doğrulandı; kabuğun çıktıları `testdata/` altında altın dosyalar olarak saklanır.
 
 > **Durum: ham / erken aşama.** 🛠️
 > Bu, kişisel bir HomeLab aracından çıkan bir proje. [Claude](https://claude.com/claude-code) ile
@@ -125,7 +125,6 @@ go/                          Go kaynağı (ana ürün): main + internal/{manifes
 go/web/                      gömülü web arayüzü
 go/YAYIN.md                  yayın biçimi ve sürüm çıkarma adımları
 go/scripts/build-release.sh  universal ikiliyi derler ve İMZALAR (bakımcı aracı)
-referans/kabuk/              dondurulmuş bash motoru + Bats testleri: Go portunun çalışan şartnamesi
 components.lock              paket kilit dosyası;  components/ kurulu paketler (repoya girmez)
 servers/<ad>/                server.env, id_ed25519_<ad>   (kullanıcı verisi)
 docs/                        ayrıntılı belgeler (paketler, güncelleme, test edilen ortamlar, standart)
@@ -139,8 +138,8 @@ go vet ./... && go test ./... -short       # uzun karşılaştırmalı testler i
 go build -o keylab .
 ```
 
-Karşılaştırmalı testler `referans/kabuk/` içindeki kabuk/Python motorunu aynı girdilerle çalıştırıp çıkış kodu, çıktı ve dosya ağacını Go ile karşılaştırır;
-kabuk bulunamazsa kendini atlar. Kabuk motorunun kendi testleri: `cd referans/kabuk && bats test`.
+Karşılaştırmalı testler Go sonucunu `testdata/*.json` altındaki altın dosyalarla (eski kabuk/Python motorunun kaydedilmiş çıktıları) karşılaştırır; kabuk gerekmez.
+Kayıtları yenilemek için eski motor `git checkout kabuk-referansi -- referans/kabuk` ile geri getirilir ve `KEYLAB_KAYIT_KABUK=1 go test ./internal/<paket>` çalıştırılır (bkz. `go/internal/shellgold`).
 
 Katkı için [CONTRIBUTING.md](CONTRIBUTING.md), planlananlar için [ROADMAP.md](ROADMAP.md).
 
