@@ -1670,6 +1670,7 @@
     openServer, openVars, goLynis,
   });
 
+  window.KeyLabPrivacy.init();
   window.KeyLabReports.init({
     getHome: () => home, json, toast, stateText,
     tabLabel: id => TAB_LABEL[id] || (home.packages.find(p => p.id === id) || {}).name || id,

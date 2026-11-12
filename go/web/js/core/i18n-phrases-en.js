@@ -3,6 +3,11 @@
    (değişken/eylem adları, dosya yolları) ve kullanıcı verisi çevrilmez. Eksik ifade Türkçe kalır; tabloya eklenerek genişletilir. */
 window.KeyLabPhrasesEN = {
   exact: {
+    "Ekranı gizle (L)": "Hide screen (L)", "Ekranı gizle (gizlilik kilidi)": "Hide the screen (privacy lock)", "Gizlilik kilidi": "Privacy lock", "parola yok": "no password",
+    "Boşta kilidi": "Idle lock", "Boşta kalma süresi": "Idle time", "Kapalı": "Off", "5 dk": "5 min", "10 dk": "10 min", "30 dk": "30 min", "Şimdi gizle": "Hide now",
+    "Ekran gizlendi": "Screen hidden", "Ekranı göster": "Show screen", "Bu bir gizlilik perdesidir, parola kilidi değil.": "This is a privacy screen, not a password lock.",
+    "Ekran gizlendi. Açık pencereler ve çalışan işler olduğu gibi duruyor.": "Screen hidden. Open windows and running jobs are left as they are.",
+    "Bu bir parola kilidi değildir: ekranı opak bir perdeyle örter, açmak için parola sorulmaz. Yalnızca yan masadakinin ekranınızı görmesini engeller. Açık pencereler ve çalışan işler olduğu gibi kalır. Kısayol: L tuşu.": "This is not a password lock: it covers the screen with an opaque curtain and asks for no password to open. It only stops someone next to you from seeing your screen. Open windows and running jobs stay as they are. Shortcut: L key.",
     "Rapor yapılandırıcı": "Report builder", "Rapor şablonu": "Report template", "Filo güvenlik ve envanter özeti": "Fleet security and inventory summary",
     "Sunucu güvenlik denetimi": "Server security audit", "Lynis bulguları kataloğu": "Lynis findings catalog", "Yapılandırma ve drift (fark) raporu": "Configuration and drift report",
     "Hedef sunucu": "Target server", "Dahil edilecek bölümler": "Sections to include", "Sistem ve ağ": "System and network", "Paket eylemleri": "Package actions",
@@ -175,6 +180,7 @@ window.KeyLabPhrasesEN = {
     "şimdi çalıştırılamaz": "cannot run now",
   },
   patterns: [
+    [/^(\d+) dk işlem yapılmadığı için ekran gizlendi\. Açık pencereler ve çalışan işler olduğu gibi duruyor\.$/, "Screen hidden after $1 min of inactivity. Open windows and running jobs are left as they are."],
     [/^Sunucu: (.+) · Öğe: (.+)$/, "Server: $1 · Item: $2"],
     [/^(\d+) dk( · .*)?$/, "$1 min$2"], [/^(\d+) sa( · .*)?$/, "$1 h$2"], [/^(\d+) gün( · .*)?$/, "$1 d$2"],
     [/^anahtar var: (\d+) ·$/, "key present: $1 ·"], [/^1 ölçüm$/, "1 measurement"], [/^(\d+) ölçüm$/, "$1 measurements"],

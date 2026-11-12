@@ -26,6 +26,7 @@
     <span id="pills" class="row-flex"></span>
     <button class="icon-btn" id="lang-btn" type="button" aria-label="Dil / Language" title="Dil / Language"><span id="lang-cur" class="mono" style="font-size:11px;font-weight:700">TR</span></button>
     <button class="icon-btn" id="theme-btn" aria-label="Tema: otomatik" title="Tema: otomatik (tıklayınca değişir)"><span id="theme-ico" aria-hidden="true">◐</span></button>
+    <button class="icon-btn" id="lock-btn" type="button" aria-label="Ekranı gizle (L)" title="Ekranı gizle (L)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
     <button class="icon-btn" id="shortcuts-btn" type="button" aria-label="Klavye kısayolları (?)" title="Klavye kısayolları (?)"><span class="mono" aria-hidden="true" style="font-size:13px;font-weight:700">?</span></button>
   </header>
 
@@ -250,6 +251,13 @@
         </div>
       </div>
       <div class="card">
+        <div class="card-head"><h2>Gizlilik kilidi</h2><span class="hint">parola yok</span></div>
+        <div class="card-body">
+          <div class="frow2"><span class="flabel" style="width:110px">Boşta kilidi</span><div class="segmented" role="group" aria-label="Boşta kalma süresi" id="set-idle"><button type="button" data-v="0">Kapalı</button><button type="button" data-v="5">5 dk</button><button type="button" data-v="10">10 dk</button><button type="button" data-v="30">30 dk</button></div><button class="btn sm" id="set-lock-now" type="button" style="margin-left:12px">Şimdi gizle</button></div>
+          <div class="hint small muted">Bu bir parola kilidi değildir: ekranı opak bir perdeyle örter, açmak için parola sorulmaz. Yalnızca yan masadakinin ekranınızı görmesini engeller. Açık pencereler ve çalışan işler olduğu gibi kalır. Kısayol: L tuşu.</div>
+        </div>
+      </div>
+      <div class="card">
         <div class="card-head"><h2>Kaynaklar</h2><span class="hint">salt okunur</span></div>
         <div class="card-body tight" id="set-paths"></div>
       </div>
@@ -440,6 +448,7 @@
         <div class="sc-row"><kbd>/</kbd><span>Arama çubuğuna odaklan</span></div>
         <div class="sc-row"><kbd>?</kbd><span>Bu pencereyi aç / kapat</span></div>
         <div class="sc-row"><kbd>Enter</kbd><span>Odaktaki sunucuyu aç</span></div>
+        <div class="sc-row"><kbd>L</kbd><span>Ekranı gizle (gizlilik kilidi)</span></div>
         <div class="sc-row"><kbd>F10</kbd><span>Odaktaki sunucunun menüsünü aç</span></div>
         <div class="sc-row"><kbd>↑ ↓</kbd><span>Açık menüde öğeler arasında gezin</span></div>
         <div class="sc-row"><kbd>Esc</kbd><span>Menüyü ve pencereleri kapat</span></div>
@@ -488,6 +497,16 @@
   </div>
 </div>
 
+<div class="privacy-lock" id="privacy-lock" hidden role="dialog" aria-modal="true" aria-labelledby="privacy-lock-title">
+  <div class="privacy-lock-card">
+    <div class="privacy-lock-ico" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+    <h3 id="privacy-lock-title">Ekran gizlendi</h3>
+    <p class="small muted" id="privacy-lock-sub"></p>
+    <p class="small muted">Bu bir gizlilik perdesidir, parola kilidi değil.</p>
+    <button class="btn primary" id="privacy-unlock" type="button">Ekranı göster</button>
+  </div>
+</div>
+
 <div id="toast" role="status" style="position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--text,#222);color:var(--surface,#fff);padding:8px 14px;border-radius:8px;display:none;font-size:13px;z-index:50"></div>
 <script src="js/core/i18n-phrases-en.js"></script>
 <script src="js/core/i18n.js"></script>
@@ -496,6 +515,7 @@
 <script src="js/terminal.js"></script>
 <script src="js/compare.js"></script>
 <script src="js/reports.js"></script>
+<script src="js/privacy.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
