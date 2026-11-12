@@ -87,7 +87,7 @@
     const F = S.flatMap(s => s.findings.map(f => ({ ...f, server: s.name })));
     if (inc.findings && F.length) h += sec(++n, `${L("Bulgular", "Findings")} (${F.length})`, tbl([L("Sunucu", "Server"), L("Tür", "Type"), "ID", L("Açıklama / öneri", "Description / suggestion")],
       F.map(f => `<tr><td><b>${esc(f.server)}</b></td><td>${esc(f.kind === "uyari" ? L("UYARI", "WARNING") : L("ÖNERİ", "SUGGESTION"))}</td><td class="mono">${esc(f.id)}</td><td><div>${esc(f.text)}</div>${f.suggestion ? `<div class="small muted">${esc(L("Öneri", "Suggestion"))}: ${esc(f.suggestion)}</div>` : ""}${f.value ? `<div class="small mono muted">${esc(f.value)}</div>` : ""}</td></tr>`), "—"));
-    if (data.drift) h += sec(++n, L("Yapılandırma farkları (drift)", "Configuration differences (drift)"), `<div class="small muted" style="margin-bottom:8px">${esc(L("Yalnızca sunucular arasında değeri farklı olan satırlar. Gizli görünen değişkenler maskelidir.", "Only rows whose value differs between servers. Variables that look secret are masked."))}</div>` + tbl([L("Parametre", "Parameter"), ...S.map(s => s.name)],
+    if (data.drift) h += sec(++n, L("Yapılandırma farkları (drift)", "Configuration differences (drift)"), `<div class="small muted sj-fdf33f">${esc(L("Yalnızca sunucular arasında değeri farklı olan satırlar. Gizli görünen değişkenler maskelidir.", "Only rows whose value differs between servers. Variables that look secret are masked."))}</div>` + tbl([L("Parametre", "Parameter"), ...S.map(s => s.name)],
       data.drift.map(r => `<tr><td><b>${esc(r.label)}</b></td>${S.map(s => `<td class="mono">${esc(r.values[s.name] || "—")}</td>`).join("")}</tr>`), L("Fark algılanmadı.", "No differences detected.")));
     return h + `<div class="small muted rep-foot">${esc(L("Bu rapor KeyLab tarafından bu makinedeki verilerle yerelde üretildi. Adı gizli bilgi çağrıştıran değişkenlerin değerleri maskelenir.", "This report was generated locally by KeyLab from data on this machine. Values of variables whose names suggest secrets are masked."))}</div>`;
   }
@@ -115,7 +115,7 @@
 
   async function render() {
     const my = ++gen, box = $("#rep-render-html");
-    box.innerHTML = `<div class="small muted" style="padding:24px;text-align:center">${esc(L("Rapor hazırlanıyor…", "Preparing the report…"))}</div>`;
+    box.innerHTML = `<div class="small muted sj-342cb5">${esc(L("Rapor hazırlanıyor…", "Preparing the report…"))}</div>`;
     const r = await collect(my);
     if (!r || my !== gen) return;
     $("#rep-preview-title").textContent = r.data.title;
