@@ -16,8 +16,8 @@ A **single-file** SSH server manager for macOS that you can carry on a USB drive
 Every server is a folder under `servers/<name>/`; the passphrase stays in the macOS Keychain.
 Signed **packages** (currently server hardening, time zone/locale setup and installation) can manage the server.
 
-> **Since version 4, sshpocket is rewritten in Go.** The original bash engine is frozen under [`referans/kabuk/`](referans/kabuk) as the **reference**;
-> the Go version was verified against it with side-by-side differential tests.
+> **Since version 4, sshpocket (now KeyLab) is rewritten in Go.** The original bash engine has been removed from the repository; its last state lives in git history and the `kabuk-referansi` tag.
+> The Go version was verified against it with side-by-side differential tests; the engine's recorded outputs are kept as golden files under `testdata/`.
 
 > **Status: raw / early stage.** 🛠️
 > This grew out of a personal HomeLab tool. It was reworked together with
@@ -125,7 +125,6 @@ go/                          Go source (the main product): main + internal/{mani
 go/web/                      embedded web UI
 go/YAYIN.md                  release format and release steps (Turkish)
 go/scripts/build-release.sh  builds the universal binary and SIGNS it (maintainer tool)
-referans/kabuk/              frozen bash engine + Bats tests: the working specification of the Go port
 components.lock              package lock file;  components/ installed packages (not committed)
 servers/<name>/              server.env, id_ed25519_<name>   (user data)
 docs/                        detailed docs (packages, updating, tested environments, standard)
@@ -139,8 +138,8 @@ go vet ./... && go test ./... -short       # drop -short for the long differenti
 go build -o keylab .
 ```
 
-The differential tests run the shell/Python engine in `referans/kabuk/` and Go on the same inputs and compare exit code, output and file tree;
-they skip themselves if the shell engine is not found. The shell engine's own tests: `cd referans/kabuk && bats test`.
+The differential tests compare Go's result against golden files in `testdata/*.json` (recorded outputs of the old shell/Python engine); no shell engine is needed.
+To refresh the recordings, restore the old engine with `git checkout kabuk-referansi -- referans/kabuk` and run `KEYLAB_KAYIT_KABUK=1 go test ./internal/<package>` (see `go/internal/shellgold`).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) to contribute and [ROADMAP.md](ROADMAP.md) for what is planned.
 
