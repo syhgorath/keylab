@@ -136,6 +136,7 @@ docs/                        ayrıntılı belgeler (paketler, güncelleme, test 
 cd go
 go vet ./... && go test ./... -short       # uzun karşılaştırmalı testler için -short'u kaldırın
 go build -o keylab .
+bash go/scripts/keylabtest.sh           # yerel deneme klasörünü (~/Developer/keylabtest) günceller ve KeyLab'ı oradan başlatır
 ```
 
 Karşılaştırmalı testler Go sonucunu `testdata/*.json` altındaki altın dosyalarla (eski kabuk/Python motorunun kaydedilmiş çıktıları) karşılaştırır; kabuk gerekmez.
