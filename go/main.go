@@ -158,7 +158,7 @@ func main() {
 	}
 	tb := make([]byte, 24)
 	_, _ = rand.Read(tb)
-	app := &App{serversDir: sd, compDir: cd, stateDir: st, token: hex.EncodeToString(tb), host: ln.Addr().String(), up: map[string]bool{}, jobs: map[string]*Job{}}
+	app := &App{serversDir: sd, compDir: cd, stateDir: st, token: hex.EncodeToString(tb), host: ln.Addr().String(), up: map[string]bool{}, conn: map[string]string{}, jobs: map[string]*Job{}}
 
 	sub, _ := fs.Sub(webFS, "web")
 	mux := http.NewServeMux()
@@ -169,13 +169,20 @@ func main() {
 		_ = json.NewEncoder(w).Encode(map[string]any{"servers": app.servers(false), "packages": pk, "indexSerial": serial})
 	}))
 	mux.HandleFunc("/api/status", app.guard(func(w http.ResponseWriter, r *http.Request) {
+		detail := r.URL.Query().Get("detail") == "1" // ayrıntı: {ad: {up, conn}}; varsayılan eski biçim {ad: up}
 		res := map[string]bool{}
+		det := map[string]map[string]any{}
 		for _, sv := range app.servers(true) {
 			if sv.Checked {
 				res[sv.Name] = sv.Up
+				det[sv.Name] = map[string]any{"up": sv.Up, "conn": sv.Conn}
 			}
 		}
 		w.Header().Set("Content-Type", "application/json")
+		if detail {
+			_ = json.NewEncoder(w).Encode(det)
+			return
+		}
 		_ = json.NewEncoder(w).Encode(res)
 	}))
 	mux.HandleFunc("/api/server", app.guard(func(w http.ResponseWriter, r *http.Request) {

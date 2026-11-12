@@ -5,6 +5,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"net"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"sshpocket-go/internal/findings"
@@ -61,6 +63,7 @@ type Server struct {
 	HasKey   bool     `json:"hasKey"`
 	Up       bool     `json:"up"`
 	Checked  bool     `json:"checked"` // durum en az bir kez ölçüldü mü
+	Conn     string   `json:"conn"`    // "up" | "refused" (makine yanıt veriyor, port kapalı) | "down" (yanıt yok); ölçülmediyse boş
 	Knock    bool     `json:"knock"`   // port knocking etkin (kapalı port = knock gerekir, 🔒)
 	Valid    bool     `json:"valid"`
 	Last     *Action  `json:"last"`
@@ -94,6 +97,7 @@ type App struct {
 	jobs       map[string]*Job
 	running    *Job
 	up         map[string]bool    // son ölçülen erişilebilirlik (sayfa beklemeden gösterilsin)
+	conn       map[string]string  // son ölçülen bağlantı durumu: up | refused | down
 	idxDL      trust.DownloadFunc // indeks indirme (nil: HTTPS); testte değiştirilir
 }
 
@@ -236,9 +240,28 @@ func (a *App) servers(probe bool, only ...string) []Server {
 		if up, ok := a.up[out[i].Name]; ok {
 			out[i].Up, out[i].Checked = up, true
 		}
+		if c, ok := a.conn[out[i].Name]; ok {
+			out[i].Conn = c
+		}
 	}
 	a.mu.Unlock()
 	return out
+}
+
+// dialState: "up" (bağlandı), "refused" (RST geldi: makine canlı, port kapalı) ya da "down" (yanıt yok / ulaşılamıyor).
+// Not: güvenlik duvarı paketleri sessizce düşürüyorsa (DROP) canlı makine de zaman aşımıyla "down" görünür; knock'lı
+// sunucularda beklenen durum budur ve arayüzde 🔒 olarak gösterilir. ICMP (ping) kullanılmaz: yetki ve işletim sistemine bağlı.
+func dialState(addr string, timeout time.Duration) string {
+	c, err := net.DialTimeout("tcp", addr, timeout)
+	if err == nil {
+		c.Close()
+		return "up"
+	}
+	// Windows'ta syscall.ECONNREFUSED farklı bir kodla eşleşmez; iletide "refused" geçer (aktif reddedildi).
+	if errors.Is(err, syscall.ECONNREFUSED) || strings.Contains(strings.ToLower(err.Error()), "refused") {
+		return "refused"
+	}
+	return "down"
 }
 
 // probe: sunuculara eşzamanlı TCP denemesi (en fazla 1,5 sn); sonucu önbelleğe yazar
@@ -261,13 +284,13 @@ func (a *App) probe(list []Server) {
 		wg.Add(1)
 		go func(s Server) {
 			defer wg.Done()
-			up := false
-			if c, err := net.DialTimeout("tcp", net.JoinHostPort(s.Host, s.Port), time.Duration(secs*float64(time.Second))); err == nil {
-				c.Close()
-				up = true
-			}
+			state := dialState(net.JoinHostPort(s.Host, s.Port), time.Duration(secs*float64(time.Second)))
 			a.mu.Lock()
-			a.up[s.Name] = up
+			a.up[s.Name] = state == "up"
+			if a.conn == nil { // testlerde App bu harita olmadan kurulabilir
+				a.conn = map[string]string{}
+			}
+			a.conn[s.Name] = state
 			a.mu.Unlock()
 		}(list[i])
 	}
