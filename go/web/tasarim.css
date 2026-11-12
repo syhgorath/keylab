@@ -1186,3 +1186,17 @@ td.diff-val{box-shadow:inset 3px 0 0 var(--warn)}
 .job-pill.run{border-color:var(--accent);background:var(--accent-weak);color:var(--accent-ink)}
 .job-pill.ok{border-color:var(--ok-border,var(--border));color:var(--ok,#15803d)}
 .job-pill.fail{border-color:var(--danger-border,var(--danger));background:var(--danger-weak);color:var(--danger)}
+
+/* Komut paleti */
+.palette-back{align-items:flex-start;padding-top:12vh}
+.palette-card{width:min(620px,94vw);background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-2);overflow:hidden;display:flex;flex-direction:column;max-height:70vh}
+.palette-in{all:unset;box-sizing:border-box;width:100%;padding:16px 18px;font-size:15px;border-bottom:1px solid var(--border);color:var(--text)}
+.palette-in:focus-visible{box-shadow:none;border-bottom-color:var(--accent)}
+.palette-list{list-style:none;margin:0;padding:6px;overflow:auto;flex:1}
+.palette-group{padding:8px 10px 4px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.palette-opt{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13.5px}
+.palette-opt.active{background:var(--accent-weak);color:var(--accent-ink)}
+.palette-hint{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%}
+.palette-opt.active .palette-hint{color:inherit;opacity:.8}
+.palette-empty{padding:18px;text-align:center;color:var(--muted);font-size:13px}
+.palette-foot{padding:8px 14px;border-top:1px solid var(--border)}

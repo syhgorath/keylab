@@ -1712,6 +1712,7 @@
 
   window.KeyLabBackup.init({ json, toast, reload: load });
   adoptJob();
+  window.KeyLabPalette.init({ getHome: () => home, showView, openServer, goLynis, goLogs, openShortcuts, reload: load });
   window.KeyLabPrivacy.init();
   window.KeyLabReports.init({
     getHome: () => home, json, toast, stateText,
