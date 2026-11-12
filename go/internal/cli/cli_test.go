@@ -17,14 +17,17 @@ import (
 	"testing"
 	"time"
 
+	"keylab/internal/shellgold"
 	"keylab/internal/trust"
 )
 
 func repoRoot(t *testing.T) string {
 	t.Helper()
 	r, _ := filepath.Abs("../../..")
-	if _, err := os.Stat(filepath.Join(r, "referans/kabuk/sistem/Helpers/ComponentsCLI.sh")); err != nil {
-		t.Skip("kabuk motoru yok")
+	if os.Getenv("KEYLAB_KAYIT_KABUK") == "1" { // kayıt: kabuk motoru gerekir; oynatmada gerekmez (altın dosya)
+		if _, err := os.Stat(filepath.Join(r, "referans/kabuk/sistem/Helpers/ComponentsCLI.sh")); err != nil {
+			t.Skip("kabuk motoru yok")
+		}
 	}
 	if _, err := exec.LookPath("ssh-keygen"); err != nil {
 		t.Skip("ssh-keygen yok")
@@ -87,12 +90,13 @@ type fixtures struct {
 	archives        map[string][]byte // "id-ver" → tar.gz
 	sigs            map[string][]byte
 	netDir          string // sahte ağ: URL → dosya
+	gold            *shellgold.Store
 }
 
 func netName(url string) string { return strings.NewReplacer("/", "_", ":", "_").Replace(url) }
 
 func newFixtures(t *testing.T) *fixtures {
-	f := &fixtures{dir: t.TempDir(), archives: map[string][]byte{}, sigs: map[string][]byte{}}
+	f := &fixtures{dir: t.TempDir(), archives: map[string][]byte{}, sigs: map[string][]byte{}, gold: shellgold.Open(t, "cli")}
 	f.cPriv, f.compPub = keypair(t, f.dir, "c")
 	f.iPriv, f.idxPub = keypair(t, f.dir, "i")
 	f.netDir = filepath.Join(f.dir, "net")
@@ -125,6 +129,7 @@ const idxBase = "https://idx.example/index"
 type world struct {
 	root, comp, lock, signers, servers string
 	f                                  *fixtures
+	goldTree                           *string // kabuk dünyası için: kayıttan gelen dosya ağacı (oynatmada gerçek kabuk koşmaz)
 }
 
 func (f *fixtures) world(t *testing.T, lockPkgs []string, install map[string]string, indexOn bool) *world {
@@ -188,7 +193,24 @@ type res struct {
 	out, err string
 }
 
+// gres: kabuk çalışmasının kaydedilen sonucu (çıktılar ve dosya ağacı, geçici yollar/damgalar normalleştirilmiş).
+type gres struct {
+	Code           int
+	Out, Err, Tree string
+}
+
+// shell: kabuk çalışmasının sonucu. Oynatmada altın dosyadan gelir (anahtar: test adı + çağrı sırası); w.tree() kayıtlı ağacı döndürür.
 func (w *world) shell(t *testing.T, r, stdin string, args ...string) res {
+	t.Helper()
+	g := shellgold.Do(t, w.f.gold, w.f.gold.Next(t), func() gres {
+		x := w.shellLive(t, r, stdin, args...)
+		return gres{x.code, w.norm(x.out), w.norm(x.err), w.treeLive(t)}
+	})
+	w.goldTree = &g.Tree
+	return res{g.Code, g.Out, g.Err}
+}
+
+func (w *world) shellLive(t *testing.T, r, stdin string, args ...string) res {
 	t.Helper()
 	prelude := `comp_download() { cp "$NETDIR/$(printf '%s' "$1" | tr '/:' '__')" "$2"; }
 comp_index_download() { cp "$NETDIR/$(printf '%s' "$1" | tr '/:' '__')" "$2"; }
@@ -210,9 +232,17 @@ comp_http_json() { printf '[\n  {\n    "tag_name": "v3.0.0"\n  }\n]\n'; }`
 }
 
 var rePrompt = regexp.MustCompile(`[^\n]*\[y/N\] `)
+var reValid = regexp.MustCompile(`geçerlilik: \d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ`)
 var reStamp = regexp.MustCompile(`bozuk-\d{8}-\d{6}`)
 
 func (w *world) tree(t *testing.T) string {
+	if w.goldTree != nil {
+		return *w.goldTree
+	}
+	return w.treeLive(t)
+}
+
+func (w *world) treeLive(t *testing.T) string {
 	var lines []string
 	filepath.Walk(w.comp, func(p string, info os.FileInfo, err error) error {
 		if err != nil || p == w.comp {
@@ -224,8 +254,7 @@ func (w *world) tree(t *testing.T) string {
 			if info.IsDir() {
 				return nil
 			}
-			b, _ := os.ReadFile(p)
-			lines = append(lines, fmt.Sprintf("%s %s", rel, shaHex(b)[:12]))
+			lines = append(lines, rel+" -") // içerik (süre, rastgele anahtar imzası) koşuya bağlı: yalnız varlığı karşılaştırılır
 			return nil
 		}
 		if info.IsDir() {
@@ -242,6 +271,11 @@ func (w *world) tree(t *testing.T) string {
 
 func (w *world) norm(s string) string {
 	s = strings.ReplaceAll(s, w.root, "<W>")
+	if r, err := filepath.Abs("../../.."); err == nil {
+		s = strings.ReplaceAll(s, r, "<R>") // depo kökü (kişisel yol altın dosyaya girmesin)
+	}
+	s = reStamp.ReplaceAllString(s, "bozuk-STAMP")
+	s = reValid.ReplaceAllString(s, "geçerlilik: <T>") // indeks süresi "şimdi + 30 gün": koşuya bağlı
 	return s
 }
 

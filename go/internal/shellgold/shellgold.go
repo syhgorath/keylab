@@ -11,6 +11,7 @@ package shellgold
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -25,12 +26,13 @@ type Store struct {
 	data   map[string]json.RawMessage
 	record bool
 	dirty  bool
+	seq    map[string]int
 }
 
 // Open: testdata/<ad>.json dosyasını açar. Kayıt modunda test bitince değişiklikleri yazar.
 func Open(t testing.TB, ad string) *Store {
 	t.Helper()
-	s := &Store{path: filepath.Join("testdata", ad+".json"), data: map[string]json.RawMessage{}, record: os.Getenv("KEYLAB_KAYIT_KABUK") == "1"}
+	s := &Store{path: filepath.Join("testdata", ad+".json"), data: map[string]json.RawMessage{}, seq: map[string]int{}, record: os.Getenv("KEYLAB_KAYIT_KABUK") == "1"}
 	b, err := os.ReadFile(s.path)
 	if s.record {
 		// kayıt modunda mevcut dosya yüklenir: aynı dosyayı paylaşan testler birbirini ezmez (eski kayıtları silmek için dosyayı silin)
@@ -105,4 +107,13 @@ func (s *Store) flush(t testing.TB) {
 	if err := os.WriteFile(s.path, ordered, 0o644); err != nil {
 		t.Errorf("altın dosya yazılamadı: %v", err)
 	}
+}
+
+// Next: aynı testte sırayla çağrılan kabuk çalışmaları için deterministik anahtar (test adı + sıra numarası).
+// Testin çağrı sırası değişirse kayıt yeniden alınmalıdır.
+func (s *Store) Next(t testing.TB) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.seq[t.Name()]++
+	return fmt.Sprintf("%s#%d", t.Name(), s.seq[t.Name()])
 }

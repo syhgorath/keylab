@@ -2,11 +2,15 @@ package cli
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"keylab/internal/shellgold"
 )
 
 // lock-component.sh (kabuk) ile `components lock` (Go) yan yana: aynı girdi → aynı çıkış kodu, stdout, HATA satırları ve components.lock baytları.
@@ -26,6 +30,7 @@ type lockFx struct {
 	wrongID, wrongSig string // component.json içindeki id uyuşmuyor
 	signers, otherKey string
 	relSigners        string
+	repl              []string // rastgele/ortama bağlı değerler → sabit yer tutucular (altın dosya için; çiftler halinde eski, yeni)
 }
 
 func sh(t *testing.T, dir string, name string, args ...string) {
@@ -41,8 +46,10 @@ func sh(t *testing.T, dir string, name string, args ...string) {
 func lockFixtures(t *testing.T) *lockFx {
 	t.Helper()
 	root, _ := filepath.Abs("../../..")
-	if _, err := os.Stat(filepath.Join(root, "referans/kabuk/scripts/lock-component.sh")); err != nil {
-		t.Skip("kabuk motoru yok")
+	if os.Getenv("KEYLAB_KAYIT_KABUK") == "1" { // kayıt: kabuk motoru gerekir; oynatmada gerekmez (altın dosya)
+		if _, err := os.Stat(filepath.Join(root, "referans/kabuk/scripts/lock-component.sh")); err != nil {
+			t.Skip("kabuk motoru yok")
+		}
 	}
 	for _, b := range []string{"bash", "ssh-keygen", "tar", "python3"} {
 		if _, err := exec.LookPath(b); err != nil {
@@ -91,6 +98,15 @@ func lockFixtures(t *testing.T) *lockFx {
 	f.relSigners = filepath.Join(tmp, "release_signers")
 	pub, _ := os.ReadFile(k1 + ".pub")
 	pf := strings.Fields(string(pub))
+	pub2, _ := os.ReadFile(k2 + ".pub")
+	pf2 := strings.Fields(string(pub2))
+	f.repl = []string{f.signers, "<SIGNERS>", f.otherKey, "<OTHERKEY>", pf[1], "<KEY1>", pf2[1], "<KEY2>"}
+	for ad, a := range map[string]string{"OK": f.archive, "NOMANIFEST": f.noManifest, "WRONGID": f.wrongID} {
+		b, _ := os.ReadFile(a)
+		h := sha256.Sum256(b)
+		f.repl = append(f.repl, hex.EncodeToString(h[:]), "<SHA-"+ad+">")
+	}
+	f.repl = append(f.repl, tmp, "<TMP>")
 	os.WriteFile(f.relSigners, []byte("# yorum satırı\n\nsshpocket-release namespaces=\"sshpocket-release\" "+pf[0]+" "+pf[1]+"\n"), 0o644)
 	return f
 }
@@ -112,6 +128,18 @@ type lockRes struct {
 	lock     string
 	lockSeen bool
 	isLink   bool
+}
+
+// lockGold: kabuk sonucunun kaydedilen biçimi (rastgele değerler yer tutucuya çevrilmiş).
+type lockGold struct {
+	Code               int
+	Stdout, Hata, Lock string
+	LockSeen, IsLink   bool
+}
+
+func (f *lockFx) gold(r lockRes) lockGold {
+	n := strings.NewReplacer(f.repl...).Replace
+	return lockGold{r.code, n(r.stdout), n(r.hata), n(r.lock), r.lockSeen, r.isLink}
 }
 
 func hataLines(s string) string {
@@ -200,6 +228,7 @@ func sp(s string) *string { return &s }
 
 func TestLockMatchesShell(t *testing.T) {
 	f := lockFixtures(t)
+	store := shellgold.Open(t, "lock")
 	existing := "# components.lock — elle yazılan yorum\n\n[utility]\nrepo = o/utility\nversion = 0.1.1\nsha256 = " +
 		strings.Repeat("a", 64) + "\nsigners = " + f.signers + "\n\n\n\n[demo]\nrepo = eski/demo\nversion = 0.0.9\nsha256 = " +
 		strings.Repeat("b", 64) + "\nsigners = " + f.signers + "\n\n[kurulum]\nrepo = o/kurulum\nversion = 0.1.0\nsha256 = " +
@@ -234,7 +263,10 @@ func TestLockMatchesShell(t *testing.T) {
 	for _, c := range cases {
 		c := c
 		t.Run(c.name, func(t *testing.T) {
-			s, g := f.runShell(t, c), f.runGo(t, c)
+			sg := shellgold.Do(t, store, c.name, func() lockGold { return f.gold(f.runShell(t, c)) })
+			gg := f.gold(f.runGo(t, c))
+			s := lockRes{sg.Code, sg.Stdout, sg.Hata, sg.Lock, sg.LockSeen, sg.IsLink}
+			g := lockRes{gg.Code, gg.Stdout, gg.Hata, gg.Lock, gg.LockSeen, gg.IsLink}
 			s.hata = strings.ReplaceAll(s.hata, "lock-component.sh", "components lock") // kasıtlı fark: komut adı
 			if s.code != g.code {
 				t.Errorf("çıkış kodu: kabuk=%d go=%d\nkabuk HATA: %q\ngo HATA: %q", s.code, g.code, s.hata, g.hata)
