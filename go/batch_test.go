@@ -83,7 +83,7 @@ func TestBatchRefusesWriteAndSudoAndUnknown(t *testing.T) {
 		if ok, _ := a.batchEligible("s1", "demo", act); ok {
 			t.Errorf("%s toplu çalıştırılabilir sayıldı", act)
 		}
-		if _, code, err := a.startBatch("demo", act, []string{"s1", "s2"}, false); err == nil || code != http.StatusConflict {
+		if _, code, err := a.startBatch("demo", act, []string{"s1", "s2"}, false, 1); err == nil || code != http.StatusConflict {
 			t.Errorf("%s: toplu işlem başlamamalı (kod %d, err %v)", act, code, err)
 		}
 		if a.batchActive() {
@@ -102,7 +102,7 @@ func TestBatchRunsSequentiallyAndContinuesOnFail(t *testing.T) {
 	needScript(t)
 	a := batchApp(t)
 	fakeJob(t, `echo run-$s; [ "$s" = s2 ] && exit 3; exit 0`)
-	b, _, err := a.startBatch("demo", "durum", []string{"s1", "s2", "s3", "s3"}, false) // tekrar eden ad bir kez
+	b, _, err := a.startBatch("demo", "durum", []string{"s1", "s2", "s3", "s3"}, false, 1) // tekrar eden ad bir kez
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestBatchStopOnFail(t *testing.T) {
 	needScript(t)
 	a := batchApp(t)
 	fakeJob(t, `[ "$s" = s1 ] && exit 2; exit 0`)
-	if _, _, err := a.startBatch("demo", "durum", []string{"s1", "s2", "s3"}, true); err != nil {
+	if _, _, err := a.startBatch("demo", "durum", []string{"s1", "s2", "s3"}, true, 1); err != nil {
 		t.Fatal(err)
 	}
 	got := states(waitBatch(t, a))
@@ -138,7 +138,7 @@ func TestBatchBlocksOtherJobsWhileRunningAndOnlyOneBatch(t *testing.T) {
 	needScript(t)
 	a := batchApp(t)
 	fakeJob(t, `sleep 1; exit 0`)
-	if _, _, err := a.startBatch("demo", "durum", []string{"s1", "s2"}, false); err != nil {
+	if _, _, err := a.startBatch("demo", "durum", []string{"s1", "s2"}, false, 1); err != nil {
 		t.Fatal(err)
 	}
 	// işler arasındaki boşlukta bile tek tek iş başlatılamaz
@@ -148,7 +148,7 @@ func TestBatchBlocksOtherJobsWhileRunningAndOnlyOneBatch(t *testing.T) {
 		}
 		time.Sleep(60 * time.Millisecond)
 	}
-	if _, code, err := a.startBatch("demo", "durum", []string{"s3"}, false); err == nil || code != http.StatusConflict {
+	if _, code, err := a.startBatch("demo", "durum", []string{"s3"}, false, 1); err == nil || code != http.StatusConflict {
 		t.Errorf("ikinci toplu işlem reddedilmeli: %d %v", code, err)
 	}
 	waitBatch(t, a)
@@ -159,7 +159,7 @@ func TestBatchRefusedWhenJobRunning(t *testing.T) {
 	if _, err := a.newJob("s1", "demo", "durum"); err != nil {
 		t.Fatal(err)
 	}
-	if _, code, err := a.startBatch("demo", "durum", []string{"s1"}, false); err == nil || code != http.StatusConflict {
+	if _, code, err := a.startBatch("demo", "durum", []string{"s1"}, false, 1); err == nil || code != http.StatusConflict {
 		t.Errorf("çalışan iş varken toplu işlem başlamamalı: %d %v", code, err)
 	}
 	if a.batchActive() {
@@ -171,7 +171,7 @@ func TestBatchCancel(t *testing.T) {
 	needScript(t)
 	a := batchApp(t)
 	fakeJob(t, `echo basladi; sleep 60`)
-	if _, _, err := a.startBatch("demo", "durum", []string{"s1", "s2", "s3"}, false); err != nil {
+	if _, _, err := a.startBatch("demo", "durum", []string{"s1", "s2", "s3"}, false, 1); err != nil {
 		t.Fatal(err)
 	}
 	end := time.Now().Add(5 * time.Second)
@@ -233,5 +233,128 @@ func TestBatchHandlerValidationAndAuth(t *testing.T) {
 	h(rec, req)
 	if rec.Code != http.StatusUnauthorized {
 		t.Errorf("çerezsiz: %d", rec.Code)
+	}
+}
+
+func addBatchServers(t *testing.T, a *App, names ...string) {
+	t.Helper()
+	for _, n := range names {
+		d := filepath.Join(a.serversDir, n)
+		if err := os.MkdirAll(d, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		os.WriteFile(filepath.Join(d, "server.env"), []byte("IP=10.0.0.1\nUSER=root\nPORT=22\n"), 0o600)
+	}
+}
+
+func TestBatchParallelRunsConcurrentlyAndQueues(t *testing.T) {
+	needScript(t)
+	a := batchApp(t)
+	addBatchServers(t, a, "s4")
+	fakeJob(t, `sleep 1.2; exit 0`)
+	start := time.Now()
+	b, _, err := a.startBatch("demo", "durum", []string{"s1", "s2", "s3", "s4"}, false, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.Parallel != 2 {
+		t.Fatalf("parallel 2 olmalı: %d", b.Parallel)
+	}
+	maxRun, sawQueued := 0, false
+	for {
+		sn := a.batchSnapshot()
+		run, pend := 0, 0
+		for _, it := range sn.Items {
+			switch it.State {
+			case "running":
+				run++
+			case "pending":
+				pend++
+			}
+		}
+		if run > maxRun {
+			maxRun = run
+		}
+		if run == 2 && pend > 0 {
+			sawQueued = true // fazlası sırada bekliyor
+		}
+		if sn.Done {
+			break
+		}
+		if time.Since(start) > 15*time.Second {
+			t.Fatal("zaman aşımı")
+		}
+		time.Sleep(30 * time.Millisecond)
+	}
+	if maxRun != 2 {
+		t.Errorf("aynı anda tam 2 çalışmalı, en çok görülen %d", maxRun)
+	}
+	if !sawQueued {
+		t.Error("2 çalışırken diğerleri 'pending' (kuyrukta) görünmeli")
+	}
+	if got := states(a.batchSnapshot()); got != "s1=ok s2=ok s3=ok s4=ok" {
+		t.Errorf("hepsi tamamlanmalı: %s", got)
+	}
+	// 4 iş × 1,2 sn sıralı ≥ 4,8 sn; 2'li paralel ≈ 2,4 sn
+	if el := time.Since(start); el > 4*time.Second {
+		t.Errorf("paralel çalışmadı: %v", el)
+	}
+}
+
+func TestBatchParallelClampedToMaxJobs(t *testing.T) {
+	a := batchApp(t)
+	a.maxJobsN.Store(2)
+	// salt okunur olmayan eylemle başlatma reddedilir ama parallel sınırı startBatch'te uygulanır; geçerli eylemle dene
+	fakeJob(t, `exit 0`)
+	b, _, err := a.startBatch("demo", "durum", []string{"s1", "s2", "s3"}, false, 9)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.Parallel != 2 {
+		t.Errorf("parallel Ayarlar sınırına (2) kırpılmalı: %d", b.Parallel)
+	}
+	waitBatch(t, a)
+	b2, _, err := a.startBatch("demo", "durum", []string{"s1"}, false, 0)
+	if err != nil || b2.Parallel != 1 {
+		t.Errorf("parallel<1 için 1 olmalı: %v %v", b2, err)
+	}
+	waitBatch(t, a)
+}
+
+func TestBatchParallelStopOnFail(t *testing.T) {
+	needScript(t)
+	a := batchApp(t)
+	addBatchServers(t, a, "s4")
+	fakeJob(t, `[ "$s" = s1 ] && exit 2; sleep 1; exit 0`)
+	if _, _, err := a.startBatch("demo", "durum", []string{"s1", "s2", "s3", "s4"}, true, 2); err != nil {
+		t.Fatal(err)
+	}
+	got := states(waitBatch(t, a))
+	if got != "s1=fail s2=ok s3=cancelled s4=cancelled" {
+		t.Errorf("ilk hatada kuyruktakiler iptal olmalı, çalışan biten bitmeli: %s", got)
+	}
+}
+
+func TestBatchParallelCancel(t *testing.T) {
+	needScript(t)
+	a := batchApp(t)
+	addBatchServers(t, a, "s4")
+	fakeJob(t, `echo basladi; sleep 60`)
+	if _, _, err := a.startBatch("demo", "durum", []string{"s1", "s2", "s3", "s4"}, false, 2); err != nil {
+		t.Fatal(err)
+	}
+	end := time.Now().Add(5 * time.Second)
+	for time.Now().Before(end) {
+		sn := a.batchSnapshot()
+		if sn.Items[0].State == "running" && sn.Items[1].State == "running" {
+			break
+		}
+		time.Sleep(30 * time.Millisecond)
+	}
+	rec := httptest.NewRecorder()
+	a.batchCancelHandler(rec, httptest.NewRequest(http.MethodPost, "/api/batch/cancel", nil))
+	got := states(waitBatch(t, a))
+	if got != "s1=cancelled s2=cancelled s3=cancelled s4=cancelled" {
+		t.Errorf("iptalde çalışan ve sıradakiler iptal olmalı: %s", got)
 	}
 }

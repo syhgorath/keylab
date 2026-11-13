@@ -22,16 +22,21 @@
   const picked = () => $$("#batch-targets input[data-n]:checked").map(c => c.dataset.n);
 
   /* ---- 1. adım: sunucu + eylem seçimi ---- */
-  function showChoose() {
+  async function showChoose() {
     clearInterval(poll); poll = 0;
+    let maxPar = 4;
+    try { maxPar = (await hooks.json("/api/ui-settings")).maxJobs || 4; } catch (e) { /* varsayılan 4 */ }
+    const defPar = Math.min(4, maxPar);
     const names = hooks.targets();
     $("#batch-title").textContent = L("Toplu işlem", "Bulk action");
-    $("#batch-sub").textContent = L("Seçili sunucularda aynı salt okunur eylem sırayla çalıştırılır.", "Runs the same read-only action on the selected servers, one after another.");
+    $("#batch-sub").textContent = L("Seçili sunucularda aynı salt okunur eylem çalıştırılır; fazlası sırada bekler.", "Runs the same read-only action on the selected servers; extra servers wait in the queue.");
     $("#batch-go").hidden = false; $("#batch-go").disabled = true; $("#batch-cancel").hidden = true; $("#batch-close").textContent = L("Vazgeç", "Cancel");
     if (!names.length) { $("#batch-body").innerHTML = `<p class="muted">${esc(L("Listede sunucu yok (süzgeç ya da arama hepsini eledi).", "No servers in the list (the filter or search removed them all)."))}</p>`; $("#batch-status").textContent = ""; return; }
     $("#batch-body").innerHTML = `
       <div class="field"><label for="batch-act">${esc(L("Eylem", "Action"))}</label><select id="batch-act" aria-describedby="batch-note"></select>
         <div class="hint" id="batch-note"></div></div>
+      <div class="field batch-par"><label for="batch-par">${esc(L("Aynı anda", "At the same time"))}</label><input type="number" id="batch-par" class="num-in" min="1" max="${maxPar}" step="1" inputmode="numeric" value="${defPar}" aria-describedby="batch-par-hint">
+        <div class="hint" id="batch-par-hint">${esc(L(`En çok ${maxPar} sunucu aynı anda çalışır (Ayarlar > Eylemler); fazlası sırada bekler ve biri bitince başlar.`, `Up to ${maxPar} servers run at once (Settings > Actions); the rest wait in the queue and start as others finish.`))}</div></div>
       <label class="small batch-opt"><input type="checkbox" id="batch-stop"> <span>${esc(L("İlk hatada dur (kalanlar çalıştırılmaz)", "Stop at the first failure (the rest are not run)"))}</span></label>
       <div class="row-flex batch-tools"><b>${esc(L("Hedef sunucular", "Target servers"))}</b><span class="spacer"></span>
         <button class="btn sm ghost" id="batch-all" type="button">${esc(L("Tümü", "All"))}</button><button class="btn sm ghost" id="batch-none" type="button">${esc(L("Hiçbiri", "None"))}</button></div>
@@ -64,8 +69,8 @@
     const o = opts[parseInt(($("#batch-act") || {}).value, 10)], n = picked().length;
     if (!o) { $("#batch-go").disabled = true; $("#batch-note").textContent = L("Seçili sunucularda toplu çalıştırılabilen salt okunur eylem yok.", "No read-only action can be run in bulk on the selected servers."); $("#batch-status").textContent = ""; return; }
     const skip = o.total - o.ok;
-    $("#batch-note").textContent = L(`Salt okunur: sunucularda hiçbir şey değişmez. Yazan, sudo'lu ve onay isteyen eylemler burada sunulmaz. Her sunucu tek tek, menüdekiyle aynı motor ve kapılarla çalışır; sonuçlar günlüğe yazılır.`,
-      `Read-only: nothing changes on the servers. Actions that write, need sudo or ask for confirmation are not offered here. Each server runs one by one through the same engine and gates as the menu; results are logged.`);
+    $("#batch-note").textContent = L(`Salt okunur: sunucularda hiçbir şey değişmez. Yazan, sudo'lu ve onay isteyen eylemler burada sunulmaz. Her sunucu menüdekiyle aynı motor ve kapılarla çalışır; sonuçlar günlüğe yazılır.`,
+      `Read-only: nothing changes on the servers. Actions that write, need sudo or ask for confirmation are not offered here. Each server runs through the same engine and gates as the menu; results are logged.`);
     $("#batch-status").textContent = L(`${o.ok} sunucuda çalışacak${skip ? `, ${skip} sunucu atlanacak (uygun değil)` : ""}`, `Will run on ${o.ok} server(s)${skip ? `, ${skip} will be skipped (not eligible)` : ""}`);
     $("#batch-go").disabled = o.ok === 0 || n === 0;
   }
@@ -74,7 +79,7 @@
     const o = opts[parseInt($("#batch-act").value, 10)]; if (!o) return;
     $("#batch-go").disabled = true;
     try {
-      await hooks.json("/api/batch", { package: o.package, action: o.action, servers: picked(), stopOnFail: $("#batch-stop").checked });
+      await hooks.json("/api/batch", { package: o.package, action: o.action, servers: picked(), stopOnFail: $("#batch-stop").checked, parallel: Math.max(1, parseInt($("#batch-par").value, 10) || 1) });
     } catch (e) { $("#batch-status").textContent = L("Başlatılamadı: ", "Could not start: ") + e.message; $("#batch-go").disabled = false; return; }
     showProgress();
   }
@@ -106,7 +111,7 @@
     b.items.forEach(i => { c[i.state] = (c[i.state] || 0) + 1; });
     const fin = c.ok + c.fail + c.skipped + c.cancelled;
     $("#batch-title").innerHTML = `<span class="mono">${esc(b.action)}</span> · ${esc(hooks.tabLabel(b.package))}`;
-    $("#batch-sub").textContent = L(`Toplu işlem · ${b.items.length} sunucu`, `Bulk action · ${b.items.length} server(s)`);
+    $("#batch-sub").textContent = L(`Toplu işlem · ${b.items.length} sunucu · aynı anda ${b.parallel || 1}`, `Bulk action · ${b.items.length} server(s) · ${b.parallel || 1} at a time`);
     $("#batch-sum").textContent = L(`${fin}/${b.items.length} bitti · ${c.ok} tamam · ${c.fail} hata · ${c.skipped} atlandı${c.cancelled ? ` · ${c.cancelled} iptal` : ""}`, `${fin}/${b.items.length} finished · ${c.ok} done · ${c.fail} failed · ${c.skipped} skipped${c.cancelled ? ` · ${c.cancelled} cancelled` : ""}`);
     $("#batch-status").textContent = b.done ? (b.cancelled ? L("İptal edildi", "Cancelled") : L("Bitti", "Finished")) : L("Çalışıyor…", "Running…");
     $("#batch-rows").innerHTML = b.items.map(i => {

@@ -1,6 +1,6 @@
 package main
 
-// Toplu işlem: seçilen sunucularda AYNI salt okunur eylemi SIRAYLA çalıştırır.
+// Toplu işlem: seçilen sunucularda AYNI salt okunur eylemi çalıştırır; en çok `parallel` sunucu aynı anda, fazlası sırada (pending) bekler.
 //
 // Güvenlik tasarımı:
 //   - Yalnız ai.Runnable eylemler (salt okunur, sudo'suz, onaysız, önkoşul tamam). Yazan, sudo'lu, yıkıcı ve onay isteyen eylemler
@@ -8,6 +8,7 @@ package main
 //   - Her sunucu için çalıştırma, tek sunucudaki /api/run ile AYNI yoldan (authorizeRunItem + startJob → `keylab run`) geçer;
 //     motorun kapıları, günlüğü ve sonuç kaydı değişmez.
 //   - Yetki sunucuda yeniden denetlenir: istemcinin "uygun" demesine güvenilmez; başlatırken ve her sunucuda ayrı ayrı bakılır.
+//   - Eşzamanlılık: parallel, Ayarlar'daki sınırı (a.maxJobs) aşamaz; sunucu başına tek iş kuralı geçerlidir (sunucular tekilleştirilir).
 //   - Tek iş kuralı korunur: toplu iş sürerken başka bir iş (tek eylem, görev, kurulum) başlatılamaz; aralarda boşluk yoktur.
 //   - Sınırlar: en çok maxBatchServers sunucu, sunucu başına batchJobTimeout.
 
@@ -18,6 +19,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"sync"
 	"time"
 )
 
@@ -40,9 +42,11 @@ type Batch struct {
 	Action     string       `json:"action"`
 	Started    string       `json:"started"`
 	StopOnFail bool         `json:"stopOnFail"`
+	Parallel   int          `json:"parallel"`
 	Done       bool         `json:"done"`
 	Cancelled  bool         `json:"cancelled"`
 	Items      []*BatchItem `json:"items"`
+	stopReason string       // ilk hatada dur: kalan bekleyenlerin iptal nedeni (bmu altında)
 }
 
 // batchEligible: sunucuda eylem toplu çalıştırılabilir mi? (karar HER ZAMAN sunucuda verilir)
@@ -121,7 +125,7 @@ func (a *App) batchOptions(servers []string) []batchOption {
 func (a *App) batchActive() bool { return a.batchOn.Load() }
 
 // startBatch: ön denetim (uygun olmayanlar "skipped") sonra arka plan yürütücüsünü başlatır.
-func (a *App) startBatch(pkg, action string, servers []string, stopOnFail bool) (*Batch, int, error) {
+func (a *App) startBatch(pkg, action string, servers []string, stopOnFail bool, parallel int) (*Batch, int, error) {
 	if !a.batchOn.CompareAndSwap(false, true) { // önce bayrak: bundan sonra tek tek iş başlatılamaz
 		return nil, http.StatusConflict, fmt.Errorf("başka bir toplu işlem çalışıyor")
 	}
@@ -134,7 +138,13 @@ func (a *App) startBatch(pkg, action string, servers []string, stopOnFail bool) 
 	if a.anyRunning() {
 		return nil, http.StatusConflict, fmt.Errorf("başka bir eylem çalışıyor")
 	}
-	b := &Batch{Package: pkg, Action: action, Started: time.Now().UTC().Format(time.RFC3339), StopOnFail: stopOnFail}
+	if parallel < 1 {
+		parallel = 1
+	}
+	if lim := a.maxJobs(); parallel > lim {
+		parallel = lim // Ayarlar'daki eşzamanlı eylem sınırını aşamaz
+	}
+	b := &Batch{Package: pkg, Action: action, Started: time.Now().UTC().Format(time.RFC3339), StopOnFail: stopOnFail, Parallel: parallel}
 	id := make([]byte, 8)
 	_, _ = rand.Read(id)
 	b.ID = hex.EncodeToString(id)
@@ -178,60 +188,86 @@ func (a *App) runBatch(b *Batch) {
 		a.bmu.Unlock()
 		a.batchOn.Store(false)
 	}()
-	stopped := ""
+	// iş havuzu: en çok b.Parallel sunucu aynı anda; kuyruk (bekleyenler) sırayla beslenir, bir iş bitince sıradaki başlar
+	queue := make(chan *BatchItem)
+	var wg sync.WaitGroup
+	for w := 0; w < b.Parallel; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for it := range queue {
+				a.runBatchItem(b, it)
+			}
+		}()
+	}
 	for _, it := range b.Items {
 		a.bmu.Lock()
 		st := it.State
 		a.bmu.Unlock()
-		if st != "pending" {
-			continue
+		if st == "pending" {
+			queue <- it
 		}
-		if a.batchCancelled(b) {
-			a.batchSet(b, it, "cancelled", "iptal edildi", "", 0)
-			continue
-		}
-		if stopped != "" {
-			a.batchSet(b, it, "cancelled", stopped, "", 0)
-			continue
-		}
-		j, _, err := a.startJobX(true, it.Server, b.Package, b.Action, "", false, "", false)
-		if err != nil { // durum arada değişmiş olabilir (kapı kapandı): bu sunucuyu atla, toplu işi bozma
-			a.batchSet(b, it, "skipped", err.Error(), "", 0)
-			continue
-		}
-		a.batchSet(b, it, "running", "", j.ID, 0)
-		deadline := time.Now().Add(batchJobTimeout)
-		canceled, timedOut := false, false
-		for {
-			a.jmu.Lock()
-			done, exit := j.Done, j.Exit
-			a.jmu.Unlock()
-			if done {
-				if exit == 0 {
-					a.batchSet(b, it, "ok", "", j.ID, 0)
-				} else if timedOut {
-					a.batchSet(b, it, "fail", "zaman aşımı (10 dk)", j.ID, exit)
-					if b.StopOnFail {
-						stopped = "önceki sunucuda hata: durduruldu"
-					}
-				} else if canceled {
-					a.batchSet(b, it, "cancelled", "iptal edildi", j.ID, exit)
-				} else {
-					a.batchSet(b, it, "fail", fmt.Sprintf("çıkış kodu %d", exit), j.ID, exit)
-					if b.StopOnFail {
-						stopped = "önceki sunucuda hata: durduruldu"
-					}
-				}
-				break
+	}
+	close(queue)
+	wg.Wait()
+}
+
+// runBatchItem: tek sunucu. İptal ya da "ilk hatada dur" işaretliyse hiç başlatmadan iptal eder.
+func (a *App) runBatchItem(b *Batch, it *BatchItem) {
+	a.bmu.Lock()
+	cancelled, reason := b.Cancelled, b.stopReason
+	a.bmu.Unlock()
+	if cancelled {
+		a.batchSet(b, it, "cancelled", "iptal edildi", "", 0)
+		return
+	}
+	if reason != "" {
+		a.batchSet(b, it, "cancelled", reason, "", 0)
+		return
+	}
+	failed := func() {
+		if b.StopOnFail {
+			a.bmu.Lock()
+			if b.stopReason == "" {
+				b.stopReason = "önceki sunucuda hata: durduruldu"
 			}
-			if !canceled && (a.batchCancelled(b) || time.Now().After(deadline)) {
-				canceled, timedOut = true, !a.batchCancelled(b)
-				if j.cancel != nil {
-					j.cancel()
-				}
-			}
-			time.Sleep(200 * time.Millisecond)
+			a.bmu.Unlock()
 		}
+	}
+	j, _, err := a.startJobX(true, it.Server, b.Package, b.Action, "", false, "", false)
+	if err != nil { // durum arada değişmiş olabilir (kapı kapandı): bu sunucuyu atla, toplu işi bozma
+		a.batchSet(b, it, "skipped", err.Error(), "", 0)
+		return
+	}
+	a.batchSet(b, it, "running", "", j.ID, 0)
+	deadline := time.Now().Add(batchJobTimeout)
+	canceled, timedOut := false, false
+	for {
+		a.jmu.Lock()
+		done, exit := j.Done, j.Exit
+		a.jmu.Unlock()
+		if done {
+			switch {
+			case exit == 0:
+				a.batchSet(b, it, "ok", "", j.ID, 0)
+			case timedOut:
+				a.batchSet(b, it, "fail", "zaman aşımı (10 dk)", j.ID, exit)
+				failed()
+			case canceled:
+				a.batchSet(b, it, "cancelled", "iptal edildi", j.ID, exit)
+			default:
+				a.batchSet(b, it, "fail", fmt.Sprintf("çıkış kodu %d", exit), j.ID, exit)
+				failed()
+			}
+			return
+		}
+		if !canceled && (a.batchCancelled(b) || time.Now().After(deadline)) {
+			canceled, timedOut = true, !a.batchCancelled(b)
+			if j.cancel != nil {
+				j.cancel()
+			}
+		}
+		time.Sleep(200 * time.Millisecond)
 	}
 }
 
@@ -268,6 +304,7 @@ func (a *App) batchHandler(w http.ResponseWriter, r *http.Request) {
 		Package, Action string
 		Servers         []string
 		StopOnFail      bool
+		Parallel        int
 	}
 	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 16384)).Decode(&req) != nil ||
 		!reName.MatchString(req.Package) || !reAction.MatchString(req.Action) {
@@ -279,7 +316,7 @@ func (a *App) batchHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	b, code, err := a.startBatch(req.Package, req.Action, servers, req.StopOnFail)
+	b, code, err := a.startBatch(req.Package, req.Action, servers, req.StopOnFail, req.Parallel)
 	if err != nil {
 		http.Error(w, err.Error(), code)
 		return
