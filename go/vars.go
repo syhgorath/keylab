@@ -156,11 +156,8 @@ func (a *App) saveVar(server, pkg, name, value, action string, ack bool) (warn s
 	if !reName.MatchString(server) || !reName.MatchString(pkg) {
 		return "", http.StatusBadRequest, fmt.Errorf("geçersiz sunucu ya da paket adı")
 	}
-	a.jmu.Lock()
-	busy := a.running != nil && !a.running.Done
-	a.jmu.Unlock()
-	if busy {
-		return "", http.StatusConflict, fmt.Errorf("çalışan bir eylem varken değişken düzenlenemez")
+	if a.serverBusy(server) {
+		return "", http.StatusConflict, fmt.Errorf("bu sunucuda çalışan bir eylem varken değişken düzenlenemez")
 	}
 	a.vmu.Lock()
 	defer a.vmu.Unlock()

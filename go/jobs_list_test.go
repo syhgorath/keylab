@@ -12,10 +12,12 @@ func TestJobSummariesNewestFirstAndNoOutput(t *testing.T) {
 	j1 := &Job{ID: "a1", Server: "s1", Package: "p", Action: "preview", Started: "2026-01-01T10:00:00Z", Done: true, Exit: 0, buf: []byte("GIZLI-CIKTI")}
 	j2 := &Job{ID: "b2", Server: "s2", Package: "p", Action: "kur", Started: "2026-01-01T11:00:00Z", buf: []byte("devam ediyor")}
 	a.jobs["a1"], a.jobs["b2"] = j1, j2
-	a.running = j2
-	list, running := a.jobSummaries()
+	list, running, ids := a.jobSummaries()
 	if len(list) != 2 || list[0].ID != "b2" || list[1].ID != "a1" {
 		t.Fatalf("yeni→eski sıralı olmalı: %+v", list)
+	}
+	if len(ids) != 1 || ids[0] != "b2" {
+		t.Fatalf("runningIds [b2] olmalı: %v", ids)
 	}
 	if running != "b2" {
 		t.Fatalf("çalışan iş b2 olmalı: %q", running)
@@ -33,7 +35,7 @@ func TestJobSummariesNewestFirstAndNoOutput(t *testing.T) {
 	}
 	// iş bitince running boş
 	j2.Done = true
-	if _, running := a.jobSummaries(); running != "" {
+	if _, running, ids := a.jobSummaries(); running != "" || len(ids) != 0 {
 		t.Errorf("biten iş running sayılmamalı: %q", running)
 	}
 }

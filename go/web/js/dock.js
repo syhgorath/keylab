@@ -9,7 +9,7 @@
   const isEn = () => window.KeyLabI18n && window.KeyLabI18n.getLang() === "en";
   const L = (tr, en) => (isEn() ? en : tr);
   const MAX_ROWS = 100;
-  let hooks = null, open = false, running = null, timer = 0;
+  let hooks = null, open = false, running = [], timer = 0; // running: çalışan işlerin listesi (en yeni başta)
 
   try { open = localStorage.getItem("keylab.dock") === "open"; } catch (e) { /* depolama kapalı olabilir */ }
 
@@ -31,30 +31,30 @@
     $("#dock-tab").setAttribute("aria-expanded", String(open));
     $("#dock-toggle").textContent = open ? "▾" : "▴";
     $("#dock-body").hidden = !open;
-    $("#dock-count").textContent = String(list.length + (running ? 1 : 0));
+    $("#dock-count").textContent = String(list.length + running.length);
     $("#dock-hint").textContent = open ? "" : L("Son işlemleri görmek için açın", "Open to see recent actions");
 
-    setHtml($("#dock-jobs"), html`${running && html`<button class="dock-job" id="dock-job" type="button" title="${L("Çalışan işin penceresini aç", "Open the running job's window")}"><span class="spinner" aria-hidden="true"></span> ${running.server}: ${running.action}</button>`}`);
-    const jb = $("#dock-job"); if (jb) jb.addEventListener("click", () => hooks.openRunning());
+    setHtml($("#dock-jobs"), html`${running.map(r => html`<button class="dock-job" data-job="${r.id}" type="button" title="${L("Çalışan işin penceresini aç", "Open the running job's window")}"><span class="spinner" aria-hidden="true"></span> ${r.server}: ${r.action}</button>`)}`);
 
     if (!open) return;
-    const live = running ? [html`<tr class="dock-row running" data-live="1"><td>${L("şimdi", "now")}</td><td class="mono"><b>${running.server}</b></td><td class="mono">${hooks.tabLabel(running.package)}</td><td class="mono">${running.action}</td><td><span class="badge info">⏳ ${L("çalışıyor", "running")}</span></td><td class="dock-act"><button class="btn sm ghost" data-live>${L("Aç", "Open")}</button></td></tr>`] : [];
+    const live = running.map(r => html`<tr class="dock-row running"><td>${L("şimdi", "now")}</td><td class="mono"><b>${r.server}</b></td><td class="mono">${hooks.tabLabel(r.package)}</td><td class="mono">${r.action}</td><td><span class="badge info">⏳ ${L("çalışıyor", "running")}</span></td><td class="dock-act"><button class="btn sm ghost" data-job="${r.id}">${L("Aç", "Open")}</button></td></tr>`);
     const body = list.map(a => html`<tr class="dock-row${ok(a.result) ? "" : " is-fail"}">
         <td title="${hooks.localTime(a.time)}">${agoTxt(a.time)}</td>
         <td class="mono"><b>${a.server}</b></td><td class="mono">${a.package} ${a.version}</td><td class="mono">${a.action}</td>
         <td><span class="badge ${ok(a.result) ? "ok" : "danger"}">${ok(a.result) ? "✔ " + L("başarılı", "ok") : "✖ " + L("başarısız", "failed")}</span></td>
         <td class="dock-act">${a.newest ? html`<button class="btn sm ghost" data-log="${a.package}" data-srv="${a.server}" title="${L("Bu paketin bu sunucudaki son çalıştırma günlüğü", "This package's last run log on this server")}">${L("Günlük", "Log")}</button>` : raw("")}</td></tr>`);
     setHtml($("#dock-rows"), html`${live}${body}`);
-    $("#dock-empty").hidden = list.length > 0 || !!running;
+    $("#dock-empty").hidden = list.length > 0 || running.length > 0;
   }
 
   async function poll() {
     try {
       const r = await hooks.json("/api/jobs");
-      const j = (r.jobs || []).find(x => x.id === r.running && !x.done);
-      const was = running && running.id, now = j ? { id: j.id, server: j.server, package: j.package, action: j.action } : null;
+      const ids = r.runningIds || (r.running ? [r.running] : []);
+      const now = ids.map(id => (r.jobs || []).find(x => x.id === id)).filter(j => j && !j.done).map(j => ({ id: j.id, server: j.server, package: j.package, action: j.action }));
+      const finished = running.some(o => !now.some(n => n.id === o.id)); // bir iş bitti: yeni kayıt tabloya girsin
       running = now;
-      if (was && !now) await hooks.reload(); // iş bitti: yeni kayıt tabloya girsin
+      if (finished) await hooks.reload();
       paint();
     } catch (e) { /* sonraki turda */ }
   }
@@ -71,8 +71,9 @@
     $("#dock-body").addEventListener("click", e => {
       const b = e.target.closest("[data-log]");
       if (b) { hooks.openLastLog(b.dataset.log, b.dataset.srv); return; }
-      if (e.target.closest("[data-live]")) hooks.openRunning();
+      const j = e.target.closest("[data-job]"); if (j) hooks.openJob(j.dataset.job);
     });
+    $("#dock-jobs").addEventListener("click", e => { const j = e.target.closest("[data-job]"); if (j) hooks.openJob(j.dataset.job); });
     window.addEventListener("keylab:langchange", paint);
     poll(); timer = setInterval(poll, 3000);
     paint();

@@ -288,10 +288,16 @@ func TestVarsEndToEnd(t *testing.T) {
 		t.Errorf("sıfırlama bozuk: %q", b)
 	}
 	// çalışan iş varken düzenleme yok
-	a.running = &Job{}
+	a.jobs["busy"] = &Job{ID: "busy", Server: "vm1"}
 	if _, code, err := a.saveVar("vm1", "utility", "utility_locale", "en_US.UTF-8", "set", false); err == nil || code != 409 {
 		t.Errorf("çalışan iş varken reddedilmeli (kod %d)", code)
 	}
+	// başka sunucudaki iş bu sunucunun değişken düzenlemesini engellemez
+	a.jobs["busy"].Server = "baska"
+	if _, code, err := a.saveVar("vm1", "utility", "utility_locale", "en_US.UTF-8", "set", false); code == 409 {
+		t.Errorf("başka sunucudaki iş düzenlemeyi engellememeli: %v", err)
+	}
+	delete(a.jobs, "busy")
 }
 
 func TestVarsWarnNeedsAck(t *testing.T) {
@@ -467,7 +473,9 @@ func TestKeygenTask(t *testing.T) {
 		t.Error("genel anahtar yok")
 	}
 	before, _ := os.ReadFile(key)
-	a.running = nil // ilk iş bitti
+	for _, j := range a.jobs { // ilk iş bitti
+		j.Done = true
+	}
 	if _, code, err := a.startServerTask("keygen", "kvm"); err == nil || code != 409 {
 		t.Errorf("var olan anahtarın üzerine yazılmamalı (kod %d)", code)
 	}
@@ -529,14 +537,14 @@ func TestRenameAndRemoveServer(t *testing.T) {
 		t.Error("eski durum klasörü duruyor")
 	}
 	// çalışan iş varken yeniden adlandırma ve silme yok
-	a.running = &Job{}
+	a.jobs["busy"] = &Job{ID: "busy", Server: "baska"}
 	if code, err := a.renameServer("yeni_ad", "x_ad"); err == nil || code != 409 {
 		t.Errorf("çalışan iş varken reddedilmeli (kod %d)", code)
 	}
 	if _, code, err := a.removeServer("yeni_ad", "yeni_ad", true); err == nil || code != 409 {
 		t.Errorf("çalışan iş varken silme reddedilmeli (kod %d)", code)
 	}
-	a.running = nil
+	delete(a.jobs, "busy")
 
 	// silme: onay şartları
 	files, state, err := a.serverFiles("yeni_ad")

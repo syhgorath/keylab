@@ -125,10 +125,12 @@ type Job struct {
 	Started string `json:"started"`
 	Done    bool   `json:"done"`
 	Exit    int    `json:"exit"`
-	buf     []byte
-	env     []string // spawn öncesi eklenecek ortam değişkenleri
-	stdin   io.WriteCloser
-	cancel  context.CancelFunc
+	// exclusive: genel durumu/dizini değiştiren iş (paket kurulumu, sunucu silme): çalışırken başka iş olamaz, başkaları çalışırken başlamaz
+	exclusive bool
+	buf       []byte
+	env       []string // spawn öncesi eklenecek ortam değişkenleri
+	stdin     io.WriteCloser
+	cancel    context.CancelFunc
 }
 
 const (
@@ -313,7 +315,41 @@ func (a *App) spawn(job *Job, dir string, argv []string) error {
 	return nil
 }
 
-// newJob: tek seferde yalnızca bir iş çalışır; işi kaydeder
+// Eşzamanlılık kuralı: FARKLI sunucularda eylemler paralel çalışır (en çok maxParallelJobs); aynı sunucuda aynı anda tek iş.
+// Genel işler (paket kurulumu: sunucu yok; sunucu silme) yalnız başka hiçbir iş yokken başlar ve çalışırken başkası başlayamaz.
+const maxParallelJobs = 4
+
+// runningLocked: çalışan (bitmemiş) işler. a.jmu tutulurken çağrılır.
+func (a *App) runningLocked() []*Job {
+	var out []*Job
+	for _, j := range a.jobs {
+		if !j.Done {
+			out = append(out, j)
+		}
+	}
+	return out
+}
+
+// anyRunning: herhangi bir iş çalışıyor mu? (genel işlemlerin ve yeniden adlandırmanın kapısı)
+func (a *App) anyRunning() bool {
+	a.jmu.Lock()
+	defer a.jmu.Unlock()
+	return len(a.runningLocked()) > 0
+}
+
+// serverBusy: bu sunucuda bir iş ya da genel bir iş çalışıyor mu? (değişken düzenleme kapısı)
+func (a *App) serverBusy(server string) bool {
+	a.jmu.Lock()
+	defer a.jmu.Unlock()
+	for _, j := range a.runningLocked() {
+		if j.exclusive || j.Server == server {
+			return true
+		}
+	}
+	return false
+}
+
+// newJob: işi kaydeder; eşzamanlılık kuralını uygular
 func (a *App) newJob(server, pkg, action string) (*Job, error) {
 	return a.newJobX(false, server, pkg, action)
 }
@@ -325,13 +361,25 @@ func (a *App) newJobX(batch bool, server, pkg, action string) (*Job, error) {
 	if !batch && a.batchActive() {
 		return nil, fmt.Errorf("toplu işlem çalışıyor; bitmesini bekleyin ya da iptal edin")
 	}
-	if a.running != nil && !a.running.Done {
-		return nil, fmt.Errorf("başka bir eylem çalışıyor")
+	excl := server == "" || action == "upgrade" || action == "remove"
+	run := a.runningLocked()
+	if excl && len(run) > 0 {
+		return nil, fmt.Errorf("başka eylemler çalışırken bu işlem başlatılamaz; bitmelerini bekleyin")
+	}
+	for _, j := range run {
+		if j.exclusive {
+			return nil, fmt.Errorf("genel bir işlem (paket kurulumu/silme) çalışıyor; bitmesini bekleyin")
+		}
+		if j.Server == server {
+			return nil, fmt.Errorf("bu sunucuda başka bir eylem çalışıyor")
+		}
+	}
+	if len(run) >= maxParallelJobs {
+		return nil, fmt.Errorf("en çok %d eylem aynı anda çalışabilir; birinin bitmesini bekleyin", maxParallelJobs)
 	}
 	b := make([]byte, 8)
 	_, _ = rand.Read(b)
-	job := &Job{ID: hex.EncodeToString(b), Server: server, Package: pkg, Action: action, Started: time.Now().UTC().Format(time.RFC3339)}
-	a.running = job
+	job := &Job{ID: hex.EncodeToString(b), Server: server, Package: pkg, Action: action, Started: time.Now().UTC().Format(time.RFC3339), exclusive: excl}
 	a.jobs[job.ID] = job
 	if len(a.jobs) > 20 { // eski bitmiş işleri at
 		for id, j := range a.jobs {

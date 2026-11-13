@@ -116,11 +116,7 @@ func (a *App) startServerTask(kind, server string) (*Job, int, error) {
 
 /* ---------- sunucu silme ve yeniden adlandırma: sshpocket'in kendi ModuleManager.sh betiğiyle ---------- */
 
-func (a *App) busy() bool {
-	a.jmu.Lock()
-	defer a.jmu.Unlock()
-	return a.running != nil && !a.running.Done
-}
+func (a *App) busy() bool { return a.anyRunning() }
 
 // renameServer: Go (servers.Rename; klasörü ve anahtar dosyalarını taşır, hata olursa geri alır);
 // ek olarak kontrolcüdeki durum/günlük klasörleri (~/.local/share/sshpocket/<paket>/<ad>) yeni ada taşınır, hayalet sunucu kalmasın.

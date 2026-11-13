@@ -131,10 +131,7 @@ func (a *App) startBatch(pkg, action string, servers []string, stopOnFail bool) 
 			a.batchOn.Store(false)
 		}
 	}()
-	a.jmu.Lock()
-	busy := a.running != nil && !a.running.Done
-	a.jmu.Unlock()
-	if busy {
+	if a.anyRunning() {
 		return nil, http.StatusConflict, fmt.Errorf("başka bir eylem çalışıyor")
 	}
 	b := &Batch{Package: pkg, Action: action, Started: time.Now().UTC().Format(time.RFC3339), StopOnFail: stopOnFail}
