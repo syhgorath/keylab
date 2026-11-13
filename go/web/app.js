@@ -5,6 +5,9 @@ import { initSshImport } from "./js/ui/ssh-import.js";
 import { initWizard } from "./js/ui/wizard.js";
 import { initKnock } from "./js/ui/knock.js";
 import { initJobs } from "./js/ui/jobs.js";
+import { initLynis, chart } from "./js/ui/lynis.js";
+import { initLogs } from "./js/ui/logs.js";
+import { OS_LABEL, osIcon } from "./js/lib/icons.js";
 import { TAB_LABEL } from "./js/lib/labels.js";
 import { appState } from "./js/state.js";
 
@@ -43,8 +46,8 @@ import { appState } from "./js/state.js";
     app.classList.toggle("v-wide", name !== "dash");
     app.classList.toggle("v-server", name === "server");
     $("#srvtree").hidden = name !== "server";
-    if (name === "logs") loadLogs();
-    if (name === "lynis") loadLynis();
+    if (name === "logs") logs.load();
+    if (name === "lynis") lynis.load();
     if (name === "packages") loadPackages();
     if (name === "add") initAdd();
     if (name === "settings") loadSettings();
@@ -71,17 +74,6 @@ import { appState } from "./js/state.js";
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button></div>
     </li>`;
   }
-  /* İşletim sistemi simgeleri: kendi çizdiğimiz sade işaretler (resmi logo değil), 48x48 karo.
-     Resmi logoları kullanmak istersek burada aynı anahtarlarla değiştirilir. */
-  const OS_LABEL = { ubuntu: "Ubuntu", debian: "Debian", proxmox: "Proxmox VE", linux: "Linux" };
-  const OS_ICON = {
-    ubuntu: '<rect width="48" height="48" rx="11" fill="#E95420"/><circle cx="24" cy="24" r="10.5" fill="none" stroke="#fff" stroke-width="2.6"/><circle cx="13.5" cy="24" r="4" fill="#fff"/><circle cx="29.2" cy="14.9" r="4" fill="#fff"/><circle cx="29.2" cy="33.1" r="4" fill="#fff"/><circle cx="13.5" cy="24" r="1.6" fill="#E95420"/><circle cx="29.2" cy="14.9" r="1.6" fill="#E95420"/><circle cx="29.2" cy="33.1" r="1.6" fill="#E95420"/>',
-    debian: '<rect width="48" height="48" rx="11" fill="#A80030"/><path d="M29.5 12.5c-9-3.2-18 2.3-17.5 12 .4 7.6 7 12 13.4 10.6 5-1.1 8-5.4 6.6-9.6-1.1-3.3-4.8-4.6-7.6-3.2-2.6 1.3-3 4.8-.8 6.4" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>',
-    proxmox: '<rect width="48" height="48" rx="11" fill="#2b2f36"/><path d="M13 13l22 22M35 13L13 35" stroke="#E57000" stroke-width="5.5" stroke-linecap="round"/><path d="M13 13l22 22M35 13L13 35" stroke="#fff" stroke-opacity=".0" stroke-width="1"/>',
-    linux: '<rect width="48" height="48" rx="11" fill="var(--surface-3)"/><rect x="12" y="13" width="24" height="9" rx="2.5" fill="none" stroke="var(--muted)" stroke-width="2.4"/><rect x="12" y="26" width="24" height="9" rx="2.5" fill="none" stroke="var(--muted)" stroke-width="2.4"/><circle cx="17" cy="17.5" r="1.4" fill="var(--muted)"/><circle cx="17" cy="30.5" r="1.4" fill="var(--muted)"/>',
-  };
-  const osIcon = (os, size = 44) => `<svg class="osico" width="${size}" height="${size}" viewBox="0 0 48 48" role="img" aria-label="${esc(OS_LABEL[os] || "Linux")}">${OS_ICON[os] || OS_ICON.linux}</svg>`;
-
   try { appState.mode = localStorage.getItem("sshpocket.mode") === "list" ? "list" : "tiles"; } catch (e) { /* tarayıcı depolaması kapalı olabilir */ }
 
   function tile(s) {
@@ -344,16 +336,9 @@ import { appState } from "./js/state.js";
   $("#vars-x").addEventListener("click", closeVars); $("#vars-close").addEventListener("click", closeVars);
 
   /* ---------------- İş izleyici + çalıştırma penceresi (js/ui/jobs.js) ---------------- */
-  // paketin bu sunucudaki son çalıştırma günlüğünü Günlükler sayfasında aç
-  async function openLastLog(pkg, server) {
-    showView("logs"); logSrv = server; logPkg = pkg; logKind = "last"; logQ = "";
-    await loadLogs();
-    const l = logAll.find(x => x.package === pkg && x.server === server && x.file === "last-run.log");
-    if (l) { const i = $$("#loglist button[data-i]").findIndex(b => b.textContent.includes("last-run.log")); await openLog(l, $$("#loglist button[data-i]")[i]); }
-  }
   const jobs = initJobs({
     load: () => load(), renderServer: () => renderServer(), showView: n => showView(n), loadPackages: () => loadPackages(), checkUpdatesUI: () => checkUpdatesUI(),
-    renderAddSteps: () => renderAddSteps(), markTaskDone: k => addDone.add(k), getRemoval: () => ({ name: delName, purge: delPurge }), openLastLog: (p, sv) => openLastLog(p, sv),
+    renderAddSteps: () => renderAddSteps(), markTaskDone: k => addDone.add(k), getRemoval: () => ({ name: delName, purge: delPurge }), openLastLog: (p, sv) => logs.openLast(p, sv),
   });
   const { openRun, openWrite, openTerm, jobBusy, watchJob, closeRun, openJob, adoptJob } = jobs;
 
@@ -744,154 +729,9 @@ import { appState } from "./js/state.js";
     $("#u-ack").addEventListener("change", e => { $("#run-go").disabled = !e.target.checked; });
   }
 
-  /* ---------------- Lynis sayfası ---------------- */
-  let lynSel = "", lynData = null, lynKind = "all", lynQ = "", lynPre = ""; // lynPre: sayfa açılırken seçilecek tür süzgeci
-
-  function chart(l) {
-    const h = l.history || [], d = l.dates || [], W = Math.max(300, Math.min(1000, (($(".main") || {}).clientWidth || 700) - 70)), H = 190, L = 30, R = 10, T = 10, B = 22;
-    if (h.length < 1) return "";
-    const x = i => (h.length === 1 ? (L + W - R) / 2 : L + (i / (h.length - 1)) * (W - L - R));
-    const y = v => T + (1 - Math.max(0, Math.min(100, v)) / 100) * (H - T - B);
-    const pts = h.map((v, i) => [Math.round(x(i)), Math.round(y(v))]);
-    const grid = [0, 25, 50, 75, 100].map(g => `<line class="gl" x1="${L}" x2="${W - R}" y1="${y(g)}" y2="${y(g)}"/><text class="axis" x="${L - 6}" y="${y(g) + 3}" text-anchor="end">${g}</text>`).join("");
-    const line = pts.map(p => p.join(",")).join(" ");
-    const area = h.length > 1 ? `<path class="ar" d="M${pts.map(p => p.join(",")).join(" L")} L${pts[pts.length - 1][0]},${H - B} L${pts[0][0]},${H - B} Z"/>` : "";
-    const dots = pts.map((p, i) => `<circle class="pt${i === pts.length - 1 ? " last" : ""}" cx="${p[0]}" cy="${p[1]}" r="${i === pts.length - 1 ? 4 : 3}"><title>${esc((d[i] || "").slice(0, 16).replace("T", " "))} · skor ${h[i]}</title></circle>`).join("");
-    const lab = (i, anchor) => `<text class="axis" x="${pts[i][0]}" y="${H - 6}" text-anchor="${anchor}">${esc((d[i] || "").slice(5, 10))}</text>`;
-    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Lynis skoru geçmişi: ${h.join(", ")}">${grid}${area}${h.length > 1 ? `<polyline class="ln" points="${line}"/>` : ""}${dots}${lab(0, "start")}${h.length > 1 ? lab(h.length - 1, "end") : ""}</svg>`;
-  }
-
-  function findingRow(f) {
-    const kind = f.kind === "uyari" ? '<span class="badge warn">uyarı</span>' : '<span class="badge info">öneri</span>';
-    const fix = f.value
-      ? `<div class="fchips"><span class="chip">${esc(f.value)}</span>${f.closesByDefault === "evet" ? '<span class="badge ok">paket uygulayınca kapanır</span>' : f.closesByDefault === "hayir" ? '<span class="badge plain">isteğe bağlı (varsayılan kapalı)</span>' : ""}${f.area ? `<span class="badge plain">alan: ${esc(f.area)}</span>` : ""}</div>`
-      : "";
-    const sub = [f.detail, f.suggestion].filter(Boolean).map(esc).join(" · ");
-    return `<div class="frow"><div class="fid">${esc(f.id)}</div><div>${kind}</div><div><div class="ftext">${esc(f.text)}</div>${sub ? `<div class="fsub">${sub}</div>` : ""}${fix}</div></div>`;
-  }
-
-  function paintFindings() {
-    if (!lynData) return;
-    const q = lynQ.toLowerCase();
-    const list = lynData.findings.filter(f => (lynKind === "all" || f.kind === lynKind) && (!q || `${f.id} ${f.text} ${f.value} ${f.area}`.toLowerCase().includes(q)));
-    $("#lyn-count").textContent = `${list.length} / ${lynData.findings.length} bulgu`;
-    $("#lyn-rows").innerHTML = list.map(findingRow).join("") || '<div class="frow"><div></div><div></div><div class="muted">Eşleşen bulgu yok.</div></div>';
-  }
-
-  function paintLynis() {
-    const d = lynData, l = d && d.lynis;
-    if (!l) { $("#lynis-detail").innerHTML = `<div class="card"><div class="card-body small muted">Bu sunucu için ölçüm yok. Menüden linux-hardening <span class="mono">audit</span> çalıştırın.</div></div>`; return; }
-    const first = l.history[0], delta = l.score - first;
-    $("#lynis-detail").innerHTML = `
-      <div class="card"><div class="card-head"><h2>Skor geçmişi — ${esc(d.server)}</h2><div class="spacer"></div><span class="hint">${l.history.length} ölçüm · rapor ${esc(d.report)}</span></div>
-        <div class="card-body"><div class="lynis-head"><div class="lynis-score">${l.score}</div><div class="small muted sj-9da19d">/100</div>
-          ${l.history.length > 1 ? `<div class="lynis-delta">${delta >= 0 ? "▲ +" : "▼ "}${delta}</div>` : ""}</div>
-          <div class="lynis-meta"><span class="badge warn">uyarı ${l.warnings}</span><span class="badge info">öneri ${l.suggestions}</span>${l.history.length > 1 ? `<span class="badge plain">${first} → ${l.score}</span>` : ""}</div>
-          <div class="chartbox">${chart(l)}</div>
-          <div class="small muted sj-fe7b49">Geçmiş, bu kontrolcüde kayıtlı tüm ölçümleri içerir; VM snapshot dönüşlerinden önceki ölçümler de dahildir.</div></div></div>
-      <div class="card"><div class="card-head"><h2>Bulgular</h2><div class="spacer"></div>
-        <div class="segmented" role="group" aria-label="Tür"><button data-k="all" aria-pressed="${lynKind === "all"}">Tümü</button><button data-k="uyari" aria-pressed="${lynKind === "uyari"}">Uyarı</button><button data-k="oneri" aria-pressed="${lynKind === "oneri"}">Öneri</button></div>
-        <input class="sj-ab2990" id="lyn-q" type="search" value="${esc(lynQ)}" placeholder="ara…" aria-label="Bulgularda ara"><span class="hint sj-5dd2a6" id="lyn-count"></span></div>
-        <div class="card-body tight"><div class="fgrid" id="lyn-rows"></div></div></div>`;
-    $$("#lynis-detail .segmented button").forEach(b => b.addEventListener("click", () => { lynKind = b.dataset.k; $$("#lynis-detail .segmented button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); paintFindings(); }));
-    $("#lyn-q").addEventListener("input", e => { lynQ = e.target.value.trim(); paintFindings(); });
-    paintFindings();
-  }
-
-  async function loadLynis(name) {
-    if (!appState.home.servers.length) { $("#lynis-pick").innerHTML = ""; $("#lynis-detail").innerHTML = '<div class="card"><div class="card-body"><div class="empty-state"><h3>Sunucu yok</h3><p>Lynis ölçümü için önce bir sunucu eklenmeli.</p></div></div></div>'; return; }
-    const have = appState.home.servers.filter(s => s.lynis).sort((a, b) => (b.lynis.date || "").localeCompare(a.lynis.date || ""));
-    if (name) lynSel = name;
-    if (!lynSel || !appState.home.servers.some(s => s.name === lynSel)) lynSel = (have[0] || appState.home.servers[0] || {}).name || appState.selected || "";
-    $("#lynis-pick").innerHTML = appState.home.servers.map(s => `<button class="pickbtn" role="tab" aria-selected="${s.name === lynSel}" data-n="${esc(s.name)}">${osIcon(s.os, 26)}<span>${esc(s.name)}${s.lynis ? ` <b>${s.lynis.score}</b>` : ' <span class="muted">ölçüm yok</span>'}</span></button>`).join("");
-    $$("#lynis-pick .pickbtn").forEach(b => b.addEventListener("click", () => loadLynis(b.dataset.n)));
-    if (!lynSel) { $("#lynis-detail").innerHTML = ""; return; }
-    lynKind = lynPre || "all"; lynPre = ""; lynQ = "";
-    try { lynData = await json("/api/lynis?server=" + encodeURIComponent(lynSel)); lynData.findings = lynData.findings || []; } // sunucu bulgu dosyası yoksa null gönderir
-    catch (e) { $("#lynis-detail").innerHTML = `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div>Yüklenemedi: ${esc(e.message)}</div></div>`; return; }
-    paintLynis();
-  }
-
-  /* ---------------- Günlükler ---------------- */
-  let curLog = null;
-  let logAll = [], logSrv = "", logPkg = "", logKind = "all", logQ = "", logKey = "";
-  const logId = l => `${l.package}/${l.server}/${l.file}`;
-  const isLast = l => l.file === "last-run.log";
-
-  async function loadLogs() {
-    try { logAll = (await json("/api/logs")) || []; }
-    catch (e) { toast("Günlükler alınamadı: " + e.message); return; }
-    paintLogs();
-  }
-
-  function paintLogs() {
-    if (!logAll.length) { $("#logfilters").innerHTML = ""; $("#logs-count").textContent = "0 dosya"; $("#loglist").innerHTML = '<div class="empty-state"><h3>Henüz günlük yok</h3><p>Bir paket eylemi çalıştırılınca günlükleri <span class="mono">~/.local/share/sshpocket/&lt;paket&gt;/&lt;sunucu&gt;/</span> altında burada görünür.</p></div>'; return; }
-    // süzgeç düğmeleri: değerler ve sayıları günlüklerden çıkar
-    const count = (key) => logAll.reduce((m, l) => (m[l[key]] = (m[l[key]] || 0) + 1, m), {});
-    const srvs = count("server"), pkgs = count("package");
-    const chip = (val, label, cur, attr, n) => `<button class="fchip" data-${attr}="${esc(val)}" aria-pressed="${cur === val}">${label}${n !== undefined ? ` <span class="muted">${n}</span>` : ""}</button>`;
-    const byServer = Object.keys(srvs).sort().map(k => chip(k, esc(k), logSrv, "srv", srvs[k])).join("");
-    const byPkg = Object.keys(pkgs).sort().map(k => chip(k, esc(TAB_LABEL[k] || k), logPkg, "pkg", pkgs[k])).join("");
-    const filtered = logAll.filter(l =>
-      (!logSrv || l.server === logSrv) && (!logPkg || l.package === logPkg) &&
-      (logKind === "all" || (logKind === "last" ? isLast(l) : !isLast(l))) &&
-      (!logQ || `${l.server} ${l.package} ${l.file}`.toLowerCase().includes(logQ)));
-    $("#logfilters").innerHTML = `
-      <div class="frow2"><span class="flabel">Sunucu</span><div class="fchips2">${chip("", "Tümü", logSrv, "srv")}${byServer}</div></div>
-      <div class="frow2"><span class="flabel">Paket</span><div class="fchips2">${chip("", "Tümü", logPkg, "pkg")}${byPkg}</div></div>
-      <div class="frow2"><span class="flabel">Tür</span><div class="fchips2">
-        <button class="fchip" data-kind="all" aria-pressed="${logKind === "all"}">Tümü</button>
-        <button class="fchip" data-kind="last" aria-pressed="${logKind === "last"}">Son çalıştırma</button>
-        <button class="fchip" data-kind="arch" aria-pressed="${logKind === "arch"}">Arşiv / kopya</button>
-        <input class="sj-361285" id="logq" type="search" placeholder="dosya adında ara…" aria-label="Günlük dosyalarında ara" value="${esc(logQ)}">
-        ${(logSrv || logPkg || logKind !== "all" || logQ) ? '<button class="btn sm ghost" id="logclear">Süzgeçleri temizle</button>' : ""}</div></div>`;
-    $("#logs-count").textContent = `${filtered.length} / ${logAll.length} dosya`;
-    $("#loglist").innerHTML = filtered.map((l, i) => `<button data-i="${i}" aria-current="${logId(l) === logKey}"><span class="mono">${osIconSmall(l.server)}${esc(l.server)} · ${esc(l.package)} · ${esc(l.file)}</span>
-      <span class="muted small" title="${esc(localTime(l.mtime))}">${esc(ago(l.mtime))} · ${Math.max(1, Math.round(l.size / 1024))} KB</span></button>`).join("") || '<div class="small muted sj-cc781b">Süzgece uyan günlük yok.</div>';
-    $$("#loglist button[data-i]").forEach(b => b.addEventListener("click", () => openLog(filtered[+b.dataset.i], b)));
-    $$("#logfilters [data-srv]").forEach(b => b.addEventListener("click", () => { logSrv = b.dataset.srv; paintLogs(); }));
-    $$("#logfilters [data-pkg]").forEach(b => b.addEventListener("click", () => { logPkg = b.dataset.pkg; paintLogs(); }));
-    $$("#logfilters [data-kind]").forEach(b => b.addEventListener("click", () => { logKind = b.dataset.kind; paintLogs(); }));
-    const q = $("#logq"); q.addEventListener("input", () => { logQ = q.value.trim().toLowerCase(); const pos = q.selectionStart; paintLogs(); const n = $("#logq"); n.focus(); n.setSelectionRange(pos, pos); });
-    const c = $("#logclear"); if (c) c.addEventListener("click", () => { logSrv = logPkg = logQ = ""; logKind = "all"; paintLogs(); });
-  }
-  // sunucu adına göre küçük simge (liste satırı için)
-  const osIconSmall = name => { const s = appState.home.servers.find(x => x.name === name); return s ? osIcon(s.os, 16) + " " : ""; };
-
-  async function openLog(l, btn) {
-    logKey = logId(l);
-    $$("#loglist button").forEach(b => b.removeAttribute("aria-current"));
-    if (btn) btn.setAttribute("aria-current", "true");
-    try {
-      const q = new URLSearchParams({ package: l.package, server: l.server, file: l.file });
-      curLog = await (await api("/api/log?" + q)).text();
-    } catch (e) { toast("Açılamadı: " + e.message); return; }
-    $("#logcard").hidden = false;
-    $("#logtitle").textContent = `${l.server} · ${l.package} · ${l.file}`;
-    $("#logfind").value = "";
-    paintLog();
-    $("#logcard").scrollIntoView({ block: "nearest" });
-  }
-  function paintLog(term) {
-    const el = $("#logview"); el.textContent = "";
-    const lines = (curLog || "").split("\n");
-    const re = term ? new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi") : null;
-    const frag = document.createDocumentFragment();
-    lines.forEach((ln, i) => {
-      const d = document.createElement("div"); d.dataset.n = i;
-      if (/fatal:|FAILED|failed=[1-9]|ERROR|HATA/.test(ln)) d.className = "err";
-      if (re && re.test(ln)) {
-        re.lastIndex = 0; d.textContent = "";
-        let last = 0, m;
-        while ((m = re.exec(ln))) { d.append(ln.slice(last, m.index)); const k = document.createElement("mark"); k.textContent = m[0]; d.append(k); last = m.index + m[0].length; if (!m[0]) break; }
-        d.append(ln.slice(last));
-      } else d.textContent = ln || " ";
-      frag.appendChild(d);
-    });
-    el.appendChild(frag);
-  }
-  $("#logfind").addEventListener("input", e => { paintLog(e.target.value); const m = $("#logview mark"); if (m) m.scrollIntoView({ block: "center" }); });
-  $("#logerr").addEventListener("click", () => { const e = $("#logview .err"); if (e) { e.scrollIntoView({ block: "center" }); e.classList.add("search-hit"); setTimeout(() => e.classList.remove("search-hit"), 1500); } else toast("Hata satırı yok"); });
+  /* ---------------- Lynis ve Günlükler sayfaları (js/ui/lynis.js, js/ui/logs.js) ---------------- */
+  const lynis = initLynis({ showView: n => showView(n) });
+  const logs = initLogs({ showView: n => showView(n) });
 
   /* ---------------- Sunucu sayfası ---------------- */
   const TAB_ORDER = ["linux-hardening", "utility", "kurulum"];
@@ -1008,9 +848,9 @@ import { appState } from "./js/state.js";
 
   /* ---------------- Süzgeçli geçişler ve bağlantı bilgisi ---------------- */
   // Günlükler sayfasını yalnızca bu sunucunun günlükleri süzülmüş olarak aç.
-  function goLogs(server) { logSrv = server; logPkg = ""; logKind = "all"; logQ = ""; showView("logs"); }
+  const goLogs = server => logs.go(server);
   // Lynis sayfasını bu sunucu seçili ve (verilmişse) bulgu türü süzülmüş olarak aç.
-  function goLynis(server, kind) { lynSel = server; lynPre = kind || ""; showView("lynis"); }
+  const goLynis = (server, kind) => lynis.go(server, kind);
 
   async function openEditAddr(name) {
     let cur;
@@ -1369,7 +1209,7 @@ import { appState } from "./js/state.js";
     goSettings: () => showView("settings"),
   });
   window.KeyLabDock.init({
-    getHome: () => appState.home, json, reload: load, ago, localTime, openLastLog,
+    getHome: () => appState.home, json, reload: load, ago, localTime, openLastLog: (p, sv) => logs.openLast(p, sv),
     tabLabel: id => TAB_LABEL[id] || (appState.home.packages.find(p => p.id === id) || {}).name || id,
     // çalışan işin penceresini aç; toplu işlem sürüyorsa onun penceresini
     openJob: async id => {
@@ -1394,7 +1234,7 @@ import { appState } from "./js/state.js";
   let rz = 0;
   window.addEventListener("resize", () => {
     clearTimeout(rz);
-    rz = setTimeout(() => { if (appState.view === "lynis" && lynData) paintLynis(); else if (appState.view === "server" && appState.srv) renderServer(); }, 250);
+    rz = setTimeout(() => { if (appState.view === "lynis" && lynis.repaint()); else if (appState.view === "server" && appState.srv) renderServer(); }, 250);
   });
 
   /* ---------------- Başlangıç ---------------- */
@@ -1404,7 +1244,7 @@ import { appState } from "./js/state.js";
   load().then(() => {
     if (startHash.get("s")) { appState.routing = true; openServer(startHash.get("s"), startHash.get("p") || ""); appState.routing = false; }
     // Lynis sayfası sunucu listesine (home) bağlıdır: adresle/yenilemeyle doğrudan açıldıysa liste YÜKLENMEDEN çizilmişti ("Sunucu yok"); şimdi yeniden çiz
-    else if (appState.view === "lynis") loadLynis();
+    else if (appState.view === "lynis") lynis.load();
   });
   setInterval(() => {
     if (document.hidden || isWizardOpen()) return;
