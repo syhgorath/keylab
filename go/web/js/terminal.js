@@ -65,7 +65,7 @@
     s.built = true;
     s.host = document.createElement("div"); s.host.className = "term-pane"; s.host.hidden = true;
     $("#term-host").appendChild(s.host);
-    s.term = new Terminal({ cursorBlink: true, fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: 13, scrollback: 5000,
+    s.term = new Terminal({ cursorBlink: true, fontFamily: '"MesloLGS NF", "FiraCode Nerd Font", "JetBrains Mono Nerd Font", ui-monospace, Menlo, Consolas, monospace', fontSize: 13, scrollback: 5000,
       theme: { background: "#0e1116", foreground: "#d6dbe4" }, allowProposedApi: false });
     s.fit = new FitAddon.FitAddon();
     s.term.loadAddon(s.fit);

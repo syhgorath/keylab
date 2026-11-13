@@ -254,6 +254,7 @@
     $("#n-servers").textContent = home.servers.length;
     $("#n-packages").textContent = home.packages.length;
     if (window.KeyLabDock) window.KeyLabDock.paint();
+    if (window.KeyLabOnboarding) window.KeyLabOnboarding.render(home.servers.length === 0);
     $("#idx-serial").textContent = "seri: " + (home.indexSerial || "—");
     if (!selected || !home.servers.some(s => s.name === selected)) {
       const measured = home.servers.filter(s => s.lynis).sort((a, b) => (b.lynis.date || "").localeCompare(a.lynis.date || ""));
@@ -1827,6 +1828,11 @@
   });
 
   window.KeyLabBackup.init({ json, toast, reload: load });
+  window.KeyLabOnboarding.init({
+    goAdd: () => showView("add"),
+    openImport: () => { showView("add"); impOpen(); },
+    goSettings: () => showView("settings"),
+  });
   window.KeyLabDock.init({
     getHome: () => home, json, reload: load, ago, localTime, openLastLog,
     tabLabel: id => TAB_LABEL[id] || (home.packages.find(p => p.id === id) || {}).name || id,
