@@ -12,4 +12,6 @@ export const appState = {
   srv: null,          // /api/server yanıtı (açık sunucu sayfası)
   srvName: "",        // açık sunucunun adı
   srvTab: "",         // açık sunucu sayfasındaki sekme
+  askMode: "system",  // parola girişi: "system" = işletim sisteminin penceresi, "inline" = sayfa içi kutu (Ayarlar + çalıştırma penceresi)
+  askAvail: false,    // sistem parola penceresi bu platformda var mı (/api/about)
 };

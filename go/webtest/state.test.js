@@ -18,9 +18,9 @@ const tick = ms => new Promise(r => setTimeout(r, ms));   // gerçek (Node) zama
 
 test("appState: belgelenmiş dokuz alan ve varsayılanları", async () => {
   const { appState } = await import(pathToFileURL(path.join(__dirname, "..", "web", "js", "state.js")).href);
-  assert.deepEqual(Object.keys(appState).sort(), ["home", "mode", "query", "routing", "selected", "srv", "srvName", "srvTab", "view"]);
+  assert.deepEqual(Object.keys(appState).sort(), ["askAvail", "askMode", "home", "mode", "query", "routing", "selected", "srv", "srvName", "srvTab", "view"]);
   assert.deepEqual(appState.home, { servers: [], packages: [], indexSerial: "" });
-  assert.deepEqual([appState.view, appState.mode, appState.query, appState.selected, appState.srvName, appState.srvTab, appState.srv, appState.routing], ["dash", "tiles", "", "", "", "", null, false]);
+  assert.deepEqual([appState.view, appState.mode, appState.query, appState.selected, appState.srvName, appState.srvTab, appState.srv, appState.routing, appState.askMode, appState.askAvail], ["dash", "tiles", "", "", "", "", null, false, "system", false]);
 });
 
 test("arama: sorgu sunucu listesini süzer, boş sonuç iletisi gösterir, temizlenince geri gelir; / tuşu kutuya odaklanır", async () => {
