@@ -80,7 +80,7 @@ test("sunucu sayfası: bilinmeyen sekme özet'e düşer; Özet'teki 'git' bağla
 });
 
 test("gezinme geçmişi: yeni sayfa geçmişe EKLENİR, geri/ileri (popstate) YENİ KAYIT AÇMAZ ve sayfayı geri yükler", async () => {
-  const h = await boot({ overrides: ov({ "/api/lynis": u => { const d = fixture("lynis-" + u.searchParams.get("server")); return { ...d, findings: d.findings || [] }; } }) });
+  const h = await boot({ overrides: ov() });
   const L0 = h.win.history.length;
   await h.click('[data-nav="servers"]'); assert.equal(h.win.history.length, L0 + 1); assert.equal(h.win.location.hash, "#v=servers");
   await h.click('[data-nav="servers"]'); assert.equal(h.win.history.length, L0 + 1, "aynı sayfayı yeniden seçmek kayıt eklemez");
@@ -153,11 +153,8 @@ test("eski yanıt: kullanıcı sayfadan ayrıldıysa gelen sunucu yanıtı çizi
   assert.deepEqual(h.errors, []); h.close();
 });
 
-// /api/lynis: bulgu listesi her zaman dizi (bilinen eski hata için aşağıdaki todo testlere bakın)
-const lynisOv = { "/api/lynis": u => { const d = fixture("lynis-" + u.searchParams.get("server")); return { ...d, findings: d.findings || [] }; } };
-
 test("Lynis: Pano kartında en yeni ölçümlü sunucu seçilir; Lynis sayfasında seçici sunucuyu değiştirir", async () => {
-  const h = await boot({ overrides: ov(lynisOv) });
+  const h = await boot({ overrides: ov() });
   assert.match(h.$("#a-lynis").textContent, /web1/); assert.match(h.$("#a-lynis").textContent, /74/);
   await h.click('[data-nav="lynis"]'); assert.equal(view(h), "view-lynis");
   assert.equal(h.$('#lynis-pick [aria-selected="true"]').dataset.n, "web1", "en yeni ölçümlü sunucu seçili gelir");
@@ -168,15 +165,30 @@ test("Lynis: Pano kartında en yeni ölçümlü sunucu seçilir; Lynis sayfasın
   assert.deepEqual(h.errors, []); h.close();
 });
 
-// ---- BİLİNEN ESKİ HATALAR (refaktörden bağımsız; ayrı düzeltme PR'ında giderilecek, orada `todo` kalkar) ----
-test("Lynis: bulgu dosyası yokken (/api/lynis findings: null) sayfa çökmez", { todo: "eski hata: lynData.findings.filter null'da TypeError, bulgu listesi çizilmez" }, async () => {
-  const h = await boot({ overrides: ov() });   // fixture gerçek sunucudan: findings null
+// ---- Düzeltilen eski hatalar (refaktör 3b'de test ile bulunmuş, main'de doğrulanmıştı) ----
+test("Lynis: eski sunucu/ikili bulgu listesini null gönderirse (findings: null) sayfa çökmez, '0 / 0 bulgu' gösterir", async () => {
+  const nullFindings = u => ({ ...fixture("lynis-" + u.searchParams.get("server")), findings: null });
+  const h = await boot({ overrides: ov({ "/api/lynis": nullFindings }) });
   await h.click('[data-nav="lynis"]');
-  assert.deepEqual(h.errors, []); assert.equal(h.$("#lyn-count").textContent, "0 / 0 bulgu"); h.close();
+  assert.deepEqual(h.errors, []); assert.equal(h.$("#lyn-count").textContent, "0 / 0 bulgu"); assert.match(h.$("#lynis-detail").textContent, /74\/100/);
+  h.close();
 });
 
-test("Lynis: #v=lynis adresiyle açılışta (sayfa yenileme) sunucu seçici dolu gelir", { todo: "eski hata: sayfa, sunucu listesi yüklenmeden çizilir ve yeniden çizilmez ('Sunucu yok')" }, async () => {
-  const h = await boot({ hash: "#v=lynis", overrides: ov(lynisOv) });
+test("Lynis: #v=lynis adresiyle açılışta (sayfa yenileme) sunucu seçici dolu gelir, 'Sunucu yok' yazmaz", async () => {
+  const h = await boot({ hash: "#v=lynis", overrides: ov() });
   assert.equal(h.$$("#lynis-pick [data-n]").length, 3); assert.doesNotMatch(h.$("#lynis-detail").textContent, /Sunucu yok/);
+  assert.equal(h.$('#lynis-pick [aria-selected="true"]').dataset.n, "web1"); assert.match(h.$("#lynis-detail").textContent, /74\/100/);
+  assert.deepEqual(h.errors, []); h.close();
+});
+
+test("Lynis: gerçekten sunucu yoksa 'Sunucu yok' gösterilir (açılışta yeniden çizim bunu bozmaz)", async () => {
+  const h = await boot({ hash: "#v=lynis", overrides: ov({ "/api/home": () => ({ ...fixture("home"), servers: [] }) }) });
+  assert.match(h.$("#lynis-detail").textContent, /Sunucu yok/); assert.equal(h.$$("#lynis-pick [data-n]").length, 0);
+  assert.deepEqual(h.errors, []); h.close();
+});
+
+test("açılışta #s=sunucu ve #v=lynis birlikte değil: sunucu adresi Lynis yeniden çizimini tetiklemez", async () => {
+  const h = await boot({ hash: "#s=web1", overrides: ov() });
+  assert.equal(view(h), "view-server"); assert.equal(h.calls.filter(c => c.path.startsWith("/api/lynis")).length, 0, "sunucu sayfası açılırken Lynis sayfası yüklenmez");
   assert.deepEqual(h.errors, []); h.close();
 });

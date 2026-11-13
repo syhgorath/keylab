@@ -384,7 +384,7 @@ type Finding struct {
 func (a *App) findings(server string) (string, []Finding) {
 	res, err := findings.Load(a.stateDir, "linux-hardening", server, "bulgular.tsv")
 	if err != nil || res == nil {
-		return "", nil
+		return "", []Finding{} // nil DEĞİL: JSON'da null olur ve arayüz findings.filter(...) ile çöker
 	}
 	out := make([]Finding, 0, len(res.Rows))
 	for _, r := range res.Rows {

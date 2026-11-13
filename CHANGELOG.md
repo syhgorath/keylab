@@ -36,6 +36,7 @@ Bu çalışma sshpocket'i **kabuktan Go'ya** taşır (taslak; sürüm numarasın
 - Yerel çalışma yüzeyleri: gizlilik kilidi (parola kilidi DEĞİL, yalnız ekran perdesi), sır içermeyen envanter yedeği (önizlemeli, seçmeli içe aktarma; ham `server.env` yazılmaz).
 
 ### Düzeltildi (kabuk referansındaki hatalar Go'da düzeltildi; kabukta düzeltilmedi)
+- **Lynis sayfası, iki eski hata** (arayüz testlerinin refaktör sırasında bulduğu, `main`'de gerçek tarayıcıda doğrulanan): (1) Lynis ölçümü olup bulgu dosyası olmayan sunucuda `/api/lynis` `findings: null` döndürüyor, arayüz `findings.filter` ile çöküyor ve bulgu listesi hiç çizilmiyordu; sunucu artık hep `[]` döndürür (Go testi), istemci eski ikili/sunucuya karşı `null`'ı da karşılar. (2) Lynis sayfası adresle (`#v=lynis`) ya da yenilemeyle açılınca sunucu varken "Sunucu yok" yazıyordu (sayfa sunucu listesi yüklenmeden çizilip yeniden çizilmiyordu); liste yüklenince yeniden çizilir.
 - `comp_vars_set`: var olan dosyada `awk -v` ters bölüyü yorumlayıp dosyaya fazladan satır sızdırıyordu.
 - `comp_report_pkg`: satır sınırı hiç uygulanmıyor ve değişiklik varken bile "Değişken ve kural farkı yok." yazılıyordu.
 - Taşan port numarası (`ssh_validate_target`) doğrulamayı geçiyordu.
