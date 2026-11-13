@@ -1,41 +1,13 @@
+import { $, $$, t, esc, api, json, toast, ago, localTime, isOk, resHtml } from "./js/lib/util.js";
+
 (function () {
   "use strict";
-  const $ = (s, r = document) => r.querySelector(s);
-  const t = (k, d) => (window.KeyLabI18n ? window.KeyLabI18n.t(k, d) : d);
-  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
-  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   let home = { servers: [], packages: [], indexSerial: "" };
   let selected = "";          // Lynis panelinde gösterilen sunucu
   let query = "";
   let view = "dash";
 
-  /* ---------------- API ---------------- */
-  async function api(path, body) {
-    const r = await fetch(path, { method: body ? "POST" : "GET", headers: { "X-Requested-With": "sshpocket" }, body: body ? JSON.stringify(body) : undefined });
-    if (r.status === 401) throw new Error("oturum yok: terminalde yazılan adresi açın");
-    if (!r.ok) throw new Error((await r.text()).trim() || r.status);
-    return r;
-  }
-  const json = async (p, b) => (await api(p, b)).json();
-  function toast(t) {
-    const e = $("#toast"); e.textContent = t; e.style.display = "block";
-    clearTimeout(toast.h); toast.h = setTimeout(() => (e.style.display = "none"), 2400);
-  }
-
-  /* ---------------- Biçim yardımcıları ---------------- */
-  function ago(iso) {
-    const t = Date.parse(iso); if (!t) return "";
-    const s = Math.max(0, (Date.now() - t) / 1000);
-    if (s < 90) return "şimdi";
-    if (s < 3600) return Math.round(s / 60) + " dk";
-    if (s < 86400) return Math.round(s / 3600) + " sa";
-    return Math.round(s / 86400) + " gün";
-  }
-  const localTime = iso => { const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleString("tr-TR"); };
-  const isOk = r => r === "ok";
-  const resHtml = a => !a ? '<span class="res none">— kayıt yok</span>'
-    : isOk(a.result) ? '<span class="res ok">✔ başarılı</span>' : '<span class="res fail">✖ başarısız</span>';
   const matches = (...parts) => !query || parts.join(" ").toLowerCase().includes(query);
 
   /* ---------------- Gezinme ---------------- */
