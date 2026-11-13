@@ -9,6 +9,10 @@ import { initLogs } from "./js/ui/logs.js";
 import { initPackages } from "./js/ui/packages.js";
 import { initVars } from "./js/ui/vars.js";
 import { initServer } from "./js/ui/server.js";
+import { initSettings } from "./js/ui/settings.js";
+import { initDialog } from "./js/ui/dialog.js";
+import { initServerOps } from "./js/ui/serverops.js";
+import { initAddServer } from "./js/ui/add.js";
 import { OS_LABEL, osIcon } from "./js/lib/icons.js";
 import { TAB_LABEL } from "./js/lib/labels.js";
 import { appState } from "./js/state.js";
@@ -51,7 +55,7 @@ import { appState } from "./js/state.js";
     if (name === "logs") logs.load();
     if (name === "lynis") lynis.load();
     if (name === "packages") packages.load();
-    if (name === "add") initAdd();
+    if (name === "add") initAddPage();
     if (name === "settings") loadSettings();
     if (name === "compare") window.KeyLabCompare.load(false);
     if (name === "reports") window.KeyLabReports.load();
@@ -265,212 +269,22 @@ import { appState } from "./js/state.js";
   /* ---------------- İş izleyici + çalıştırma penceresi (js/ui/jobs.js) ---------------- */
   const jobs = initJobs({
     load: () => load(), renderServer: () => renderServer(), showView: n => showView(n), loadPackages: () => packages.load(), checkUpdatesUI: () => packages.checkUpdates(),
-    renderAddSteps: () => renderAddSteps(), markTaskDone: k => addDone.add(k), getRemoval: () => ({ name: delName, purge: delPurge }), openLastLog: (p, sv) => logs.openLast(p, sv),
+    renderAddSteps: () => renderAddSteps(), markTaskDone: k => add.markTaskDone(k), getRemoval: () => ops.getRemoval(), openLastLog: (p, sv) => logs.openLast(p, sv),
   });
   const { openRun, openWrite, openTerm, jobBusy, watchJob, closeRun, openJob, adoptJob } = jobs;
 
-  /* ---------------- Tema ve Ayarlar ---------------- */
-  const THEMES = ["auto", "light", "dark"], THEME_TXT = { auto: "otomatik", light: "açık", dark: "koyu" }, THEME_ICO = { auto: "◐", light: "☀", dark: "☾" };
-  let theme = "auto";
-  try { theme = THEMES.includes(localStorage.getItem("sshpocket.theme")) ? localStorage.getItem("sshpocket.theme") : "auto"; } catch (e) { /* depolama kapalı olabilir */ }
-  function applyTheme() {
-    if (theme === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", theme);
-    const b = $("#theme-btn"); b.setAttribute("aria-label", "Tema: " + THEME_TXT[theme]); b.title = "Tema: " + THEME_TXT[theme] + " (tıklayınca değişir)";
-    $("#theme-ico").textContent = THEME_ICO[theme];
-    $$("#set-theme button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.v === theme)));
-  }
-  function setTheme(v) { theme = v; try { localStorage.setItem("sshpocket.theme", v); } catch (e) { /* önemli değil */ } applyTheme(); }
-  $("#theme-btn").addEventListener("click", () => setTheme(THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]));
-  $$("#set-theme button").forEach(b => b.addEventListener("click", () => setTheme(b.dataset.v)));
-  $$("#set-mode button").forEach(b => b.addEventListener("click", () => { appState.mode = b.dataset.v; try { localStorage.setItem("sshpocket.mode", appState.mode); } catch (e) { /* önemli değil */ } render(); paintMode(); }));
-  const paintMode = () => $$("#set-mode button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.v === appState.mode)));
-  applyTheme();
-  const paintAsk = () => $$("#set-ask button").forEach(x => { x.setAttribute("aria-pressed", String(x.dataset.v === appState.askMode)); if (x.dataset.v === "system") { x.disabled = !appState.askAvail; x.title = appState.askAvail ? "" : "Bu platformda sistem penceresi yok"; } });
-  /* Eylemler > aynı anda en çok (sunucu tarafı ayar: /api/ui-settings) */
-  const maxEl = $("#set-maxjobs"), maxSt = $("#set-maxjobs-st");
-  let maxShown = 4;
-  async function loadMaxJobs() { try { const r = await json("/api/ui-settings"); maxShown = r.maxJobs; maxEl.value = r.maxJobs; maxEl.min = r.min; maxEl.max = r.max; } catch (e) { maxSt.textContent = "okunamadı: " + e.message; } }
-  maxEl.addEventListener("change", async () => {
-    const n = parseInt(maxEl.value, 10), lo = parseInt(maxEl.min, 10), hi = parseInt(maxEl.max, 10);
-    if (!(n >= lo && n <= hi)) { maxEl.value = maxShown; maxSt.textContent = `${lo} ile ${hi} arasında olmalı`; return; }
-    try { const r = await json("/api/ui-settings", { maxJobs: n }); maxShown = r.maxJobs; maxEl.value = r.maxJobs; maxSt.textContent = "kaydedildi"; }
-    catch (e) { maxEl.value = maxShown; maxSt.textContent = "kaydedilemedi: " + e.message; }
-  });
-  loadMaxJobs();
-  $$("#set-ask button").forEach(b => b.addEventListener("click", () => { appState.askMode = b.dataset.v; try { localStorage.setItem("sshpocket.askpass", appState.askMode); } catch (e) { /* önemli değil */ } paintAsk(); }));
+  /* ---------------- Tema ve Ayarlar (js/ui/settings.js) ---------------- */
+  const settings = initSettings({ render: () => render() });
+  const { load: loadSettings, paintAsk } = settings;
 
-  async function loadSettings() {
-    paintMode(); applyTheme(); paintAsk();
-    let a;
-    try { a = await json("/api/about"); appState.askAvail = !!a.askpass; paintAsk(); } catch (e) { $("#set-paths").innerHTML = `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div>Yüklenemedi: ${esc(e.message)}</div></div>`; return; }
-    const row = (k, v) => `<div class="urow sj-8657c7"><div class="muted">${esc(k)}</div><div class="mono small sj-752397">${esc(v) || "—"}</div></div>`;
-    $("#set-paths").innerHTML = [["KeyLab sürümü", a.version], ["Kök klasör (USB)", a.root], ["Sunucular", a.serversDir], ["Paketler", a.componentsDir], ["Durum ve günlükler", a.stateDir], ["Platform", a.platform], ["Go", a.go]].map(([k, v]) => row(k, v)).join("");
-    const conf = Object.entries(a.conf || {});
-    $("#set-conf").innerHTML = conf.length ? conf.map(([k, v]) => row(k, v)).join("") : '<div class="small muted sj-fdf20b">sshpocket.conf bulunamadı ya da boş.</div>';
-  }
+  /* ---------------- Ortak iletişim penceresi (js/ui/dialog.js) + yeniden adlandırma/silme (js/ui/serverops.js) ---------------- */
+  const { dlg, openDlg, closeDlg } = initDialog();
+  const ops = initServerOps({ openDlg, closeDlg, jobs, load: () => load(), openServer: n => openServer(n) });
+  const { openRename, openDelete } = ops;
 
-  /* ---------------- Sunucu yeniden adlandırma ve silme ---------------- */
-  const dlg = $("#dlg");
-  let dlgOk = null, delName = "", delPurge = false;
-  function openDlg({ title, sub, body, ok, okClass, onOk, wide, noOk }) {
-    $("#dlg-title").textContent = title; $("#dlg-sub").textContent = sub || ""; $("#dlg-body").innerHTML = body; $("#dlg-err").textContent = "";
-    const b = $("#dlg-ok"); b.textContent = ok; b.className = "btn " + (okClass || "primary"); b.disabled = false; dlgOk = onOk;
-    b.hidden = !!noOk; $("#dlg-cancel").textContent = noOk ? "Kapat" : "Vazgeç"; { const m = $(".modal", dlg); m.style.width = wide ? "min(860px,94vw)" : "min(580px,94vw)"; m.style.maxWidth = wide ? "860px" : ""; }
-    dlg.classList.add("open");
-  }
-  const closeDlg = () => dlg.classList.remove("open");
-  $("#dlg-x").addEventListener("click", closeDlg); $("#dlg-cancel").addEventListener("click", closeDlg);
-  $("#dlg-ok").addEventListener("click", () => dlgOk && dlgOk());
-  document.addEventListener("keydown", e => { if (e.key === "Escape") closeDlg(); });
-
-  function openRename(name) {
-    openDlg({
-      title: "Sunucuyu yeniden adlandır", sub: name,
-      body: `<div class="field"><label for="rn-new">Yeni ad</label><input id="rn-new" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="40" value="${esc(name)}"><div class="hint" id="rn-hint">Küçük harfle başlar; yalnızca küçük harf, rakam ve _ .</div></div>
-        <ul class="small muted sj-dc5781"><li>Klasör ve anahtar dosyaları (<span class="mono">id_ed25519_${esc(name)}</span>) yeni ada taşınır; değişkenler ve sunucudaki kayıt geçmişi korunur.</li><li>Günlük ve sonuç geçmişi de yeni ada taşınır.</li><li><b>macOS Keychain</b>'deki passphrase ve Knock kaydı otomatik taşınmaz; passphrase kullanıyorsanız yeniden eklemeniz gerekir.</li></ul>`,
-      ok: "Yeniden adlandır",
-      onOk: async () => {
-        const nn = $("#rn-new").value.trim();
-        if (!/^[a-z][a-z0-9_]*$/.test(nn) || nn.length > 40) { $("#dlg-err").textContent = "Geçersiz ad."; return; }
-        if (nn === name) { $("#dlg-err").textContent = "Yeni ad eskisiyle aynı."; return; }
-        $("#dlg-ok").disabled = true;
-        try { await json("/api/server-rename", { old: name, new: nn }); }
-        catch (e) { $("#dlg-ok").disabled = false; $("#dlg-err").textContent = "✖ " + e.message; return; }
-        closeDlg(); toast(`${name} → ${nn}`); await load(); openServer(nn);
-      },
-    });
-    setTimeout(() => { const i = $("#rn-new"); i.focus(); i.select(); i.addEventListener("keydown", e => { if (e.key === "Enter") $("#dlg-ok").click(); }); }, 50);
-  }
-
-  async function openDelete(name) {
-    if (jobBusy()) return;
-    let info;
-    try { info = await json("/api/server-files?name=" + encodeURIComponent(name)); }
-    catch (e) { toast("Okunamadı: " + e.message); return; }
-    const files = info.files || [], hasKey = files.some(f => f.isKey), state = info.state || [];
-    openDlg({
-      title: "Sunucuyu sil", sub: name,
-      body: `<div class="notice danger"><span class="ico" aria-hidden="true">⚠</span><div><b>Bu işlem geri alınamaz.</b> <span class="mono">servers/${esc(name)}/</span> klasörü ve içindeki her şey silinir${hasKey ? "; <b>özel SSH anahtarı dahil</b>" : ""}. Sunucunun kendisine dokunulmaz.</div></div>
-        <div class="small muted sj-2173cd">Silinecek dosyalar</div>
-        <div class="chips">${files.map(f => `<span class="chip${f.isKey ? " chip-key" : ""}">${esc(f.name)}</span>`).join("") || '<span class="small muted">boş klasör</span>'}</div>
-        ${hasKey ? '<label class="small sj-6693ed"><input type="checkbox" id="dl-key"> <span><b>Özel anahtarın silineceğini anlıyorum</b>; sunucuya giriş için tek yol buysa erişimi kaybedebilirim.</span></label>' : ""}
-        ${state.length ? `<label class="small sj-6abd0a"><input type="checkbox" id="dl-logs"> <span>Bu bilgisayardaki günlük ve sonuç geçmişini de sil (${state.map(esc).join(", ")}). İşaretlemezseniz günlükler kalır.</span></label>` : ""}
-        <div class="field sj-d6f2af"><label for="dl-name">Onay için sunucu adını yazın: <span class="mono">${esc(name)}</span></label><input id="dl-name" autocomplete="off" spellcheck="false" placeholder="${esc(name)}"><div class="hint">Büyük/küçük harf duyarlıdır. Motor Keychain kaydını silmek isteyip istemediğinizi ayrıca sorabilir.</div></div>`,
-      ok: "Sil", okClass: "dangerbtn",
-      onOk: async () => {
-        $("#dlg-ok").disabled = true;
-        let r;
-        try { r = await json("/api/server-remove", { name, confirm: $("#dl-name").value, ack: !!($("#dl-key") && $("#dl-key").checked) }); }
-        catch (e) { $("#dlg-ok").disabled = false; $("#dlg-err").textContent = "✖ " + e.message; return; }
-        delName = name; delPurge = !!($("#dl-logs") && $("#dl-logs").checked);
-        closeDlg();
-        openRun("", "", "remove"); jobs.setMode("remove");
-        $("#run-title").innerHTML = `Sunucu siliniyor <span class="draft-tag sj-0996f7">${esc(name)}</span>`;
-        $("#run-sub").textContent = "KeyLab motoru (ModuleManager.sh remove)";
-        watchJob(r.id);
-      },
-    });
-    const check = () => { const okc = $("#dl-name").value === name && (!$("#dl-key") || $("#dl-key").checked); $("#dlg-ok").disabled = !okc; };
-    $("#dlg-ok").disabled = true;
-    ["#dl-name", "#dl-key"].forEach(id => { const e = $(id); if (e) { e.addEventListener("input", check); e.addEventListener("change", check); } });
-    setTimeout(() => $("#dl-name").focus(), 50);
-  }
-
-  /* ---------------- Sunucu ekle ---------------- */
-  let addServer = "";
-  const addDone = new Set();
-  const TASKS = {
-    keygen: ["Yeni anahtar üret", "Anahtar oluştur", "ed25519 anahtarı <span class=\"mono\">servers/&lt;ad&gt;/id_ed25519_&lt;ad&gt;</span> olarak oluşturulacak (var olan anahtarın üzerine yazılmaz). Passphrase belirlemeniz istenecek (<b>boş bırakmanız önerilmez</b>): parola penceresi iki kez açılır."],
-    keycopy: ["Anahtarı sunucuya gönder", "Anahtarı sunucuya gönder", "Genel anahtar sunucuya eklenecek (<span class=\"mono\">ssh-copy-id</span>). Motor parmak izini gösterip onay ister; sunucunun <b>ilk bağlantı sorusunu</b> (host anahtarı) dikkatle okuyun. Sunucudaki kullanıcının parolası istenirse parola penceresine yazın."],
-    keychain: ["Keychain parolası", "Passphrase'i Keychain'e kaydet / güncelle / sil", "Anahtarın passphrase'i macOS Keychain'e (<span class=\"mono\">USBMonitor_&lt;ÖNEK&gt;_Passphrase</span>) kaydedilir; eylemler anahtarı parola sormadan ajana ekleyebilir. Motor önce ne yapacağınızı sorar (1 kaydet · 2 sil · 0 geri); kayıttan sonra anahtar açılarak doğrulanır."],
-    knock: ["Port knocking", "Port knocking ayarları", "SSH portu kapalıyken önceden kararlaştırılmış bir port sırasına 'vurarak' açtırma yöntemi (istemci tarafı). Protokol, bekleme ve dizi sorulur; dizi Keychain'e kaydedilir. Sunucuda knock kurulumu yönetici tarafından yapılmış olmalıdır. Bağlanırken ve Terminal'de açarken knock otomatik gönderilir."],
-    sshadd: ["ssh-agent'a ekle", "Anahtarı ssh-agent'a ekle", "Anahtar ssh-agent'a eklenecek (macOS'ta Keychain'e kaydedilerek); eylemler parola sormadan bağlanabilsin. Anahtarın passphrase'i istenecek."],
-  };
-  function openTask(server, task) {
-    if (jobBusy(server)) return;
-    openRun(server, "", task);
-    jobs.setMode("task");
-    const [, title, text] = TASKS[task];
-    $("#run-title").innerHTML = `${esc(title)} <span class=\"draft-tag sj-c8ceca\">${esc(server)}</span>`;
-    $("#run-sub").textContent = "Bağlantı hazırlığı";
-    $("#run-confirm-text").innerHTML = text;
-    $("#run-confirm-note").textContent = "Motorun soruları çıktıda belirir: Evet/Hayır düğmeleriyle ya da kutuya yazarak yanıtlayın. Parolalar sistem parola penceresine yazılır.";
-    $("#run-go").textContent = "Başlat";
-  }
-  function renderAddSteps() {
-    const wrap = $("#add-steps");
-    if (!addServer) { wrap.hidden = true; $("#add-form-wrap").hidden = false; return; }
-    const sv = appState.home.servers.find(x => x.name === addServer);
-    $("#add-form-wrap").hidden = true; wrap.hidden = false;
-    const hasKey = !!(sv && sv.hasKey);
-    const done = t => addDone.has(addServer + ":" + t);
-    const step = (n, title, desc, st, btn) => `<div class="act sj-b4411e"><div class="badge ${st === "ok" ? "ok" : st === "todo" ? "warn" : "plain"} sj-03c4bb">${st === "ok" ? "✔" : n}</div><div><div class="sj-eed0f8">${title}</div><div class="small muted">${desc}</div></div><div>${btn || ""}</div></div>`;
-    wrap.innerHTML = `<div class="notice ok sj-da12f2"><span class="ico" aria-hidden="true">✔</span><div><b>${esc(addServer)}</b> oluşturuldu. Sunucuyu kullanıma hazırlamak için adımları sırayla izleyin; her adım isteğe bağlıdır ve yeniden yapılabilir.</div></div>
-      <div class="card"><div class="card-body tight">
-        ${step(1, "Sunucu kaydı", `<span class="mono">servers/${esc(addServer)}/server.env</span> yazıldı`, "ok")}
-        ${step(2, "SSH anahtarı", hasKey ? "Anahtar var" : "Yeni bir ed25519 anahtarı üretin (ya da mevcut anahtarı <span class=\"mono\">servers/" + esc(addServer) + "/</span> içine koyun)", hasKey ? "ok" : "todo", hasKey ? "" : '<button class="btn sm primary" data-task="keygen">Yeni anahtar üret</button>')}
-        ${step(3, "Anahtarı sunucuya gönder", "Genel anahtarı sunucudaki ~/.ssh/authorized_keys dosyasına ekler (ssh-copy-id)", done("keycopy") ? "ok" : hasKey ? "todo" : "idle", hasKey ? '<button class="btn sm" data-task="keycopy">Gönder…</button>' : "")}
-        ${step(4, "ssh-agent'a ekle", "Eylemlerin parola sormadan bağlanması için (macOS Keychain)", done("sshadd") ? "ok" : hasKey ? "todo" : "idle", hasKey ? '<button class="btn sm" data-task="sshadd">Ekle…</button>' : "")}
-        ${step(5, "Keychain parolası", "Passphrase'i Keychain'e kaydeder (parolalı anahtar kullanıyorsanız)", done("keychain") ? "ok" : hasKey ? "todo" : "idle", hasKey ? '<button class="btn sm" data-task="keychain">Ayarla…</button>' : "")}
-        ${step(6, "Port knocking (isteğe bağlı)", "Sunucu SSH portunu knock dizisiyle açıyorsa", done("knock") ? "ok" : "idle", '<button class="btn sm" data-task="knock">Ayarla…</button>')}
-        ${step(7, "Bağlantıyı dene", "Salt okunur <span class=\"mono\">utility durum</span> çalıştırır: ssh bağlantısı, platform ve saat denetlenir", "idle", hasKey ? '<button class="btn sm" id="add-test">Dene</button>' : "")}
-        ${step(8, "Değişkenler", "linux-hardening için <span class=\"mono\">hardening_ssh_allow_from</span> gibi zorunlu değerleri ayarlayın", "idle", '<button class="btn sm" id="add-vars">Değişkenleri ayarla</button>')}
-      </div></div>
-      <div class="row-flex sj-d6f2af"><button class="btn primary" id="add-open">Sunucu sayfasına git</button><button class="btn ghost" id="add-another">Yeni bir sunucu daha ekle</button></div>`;
-    $$("#add-steps [data-task]").forEach(b => b.addEventListener("click", () => openTask(addServer, b.dataset.task)));
-    $("#add-test")?.addEventListener("click", () => openRun(addServer, "utility", "durum"));
-    $("#add-vars").addEventListener("click", async () => { await openServer(addServer, "linux-hardening"); openVars(addServer, "linux-hardening"); });
-    $("#add-open").addEventListener("click", () => openServer(addServer));
-    $("#add-another").addEventListener("click", () => { addServer = ""; $("#add-name").value = $("#add-host").value = $("#add-user").value = $("#add-port").value = ""; renderAddSteps(); schedule(); });
-  }
-  let addReady = false, addTimer = 0;
-  const addTouched = new Set();
-  async function initAdd() {
-    if (addReady) return;
-    addReady = true;
-    try {
-      const pr = (await json("/api/profiles")) || [];
-      $("#add-os").insertAdjacentHTML("beforeend", pr.map(p => `<option value="${esc(p.id)}">${esc(p.id)} — ${esc(Object.entries(p.support).map(([k, v]) => `${TAB_LABEL[k] || k}: ${v === "supported" ? "destekli" : v === "planned" ? "planlı" : v}`).join(", "))}</option>`).join(""));
-    } catch (e) { $("#e-os").textContent = "Profiller alınamadı: " + e.message; }
-    ["name", "host", "user", "port", "os"].forEach(f => {
-      const el = $("#add-" + f);
-      el.addEventListener("input", () => { addTouched.add(f); schedule(); });
-      el.addEventListener("change", () => { addTouched.add(f); schedule(); });
-      el.addEventListener("blur", () => { addTouched.add(f); schedule(); });
-    });
-    schedule();
-  }
-  function schedule() { clearTimeout(addTimer); addTimer = setTimeout(checkAdd, 150); }
-  async function checkAdd() {
-    const body = { name: $("#add-name").value, host: $("#add-host").value, user: $("#add-user").value, port: $("#add-port").value, os: $("#add-os").value };
-    let d;
-    try { d = await json("/api/server-draft", body); } catch (e) { $("#add-preview").innerHTML = `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div>Doğrulanamadı: ${esc(e.message)}</div></div>`; return; }
-    ["name", "host", "user", "port", "os"].forEach(f => {
-      const msg = d.errors && d.errors[f], show = !!msg && addTouched.has(f);
-      const hint = $("#e-" + f);
-      hint.closest(".field").classList.toggle("bad", show);
-      hint.classList.toggle("err", show);
-      hint.textContent = show ? msg : f === "name" ? "Küçük harf, rakam ve _ ; harfle başlar." : f === "os" ? "Paketlerin desteklediği profiller listelenir." : "";
-    });
-    if (!d.ok) { $("#add-preview").innerHTML = '<div class="empty-state sj-5417cf"><h3>Önizleme</h3><p>Alanlar geçerli olunca oluşturulacak dosya ve sonraki adımlar burada görünür.</p></div>'; return; }
-    $("#add-preview").innerHTML = `
-      <div class="small muted">Oluşturulacak dosya <span class="draft-tag">yazılmayacak</span></div>
-      <div class="mono small sj-fe7b49">${esc(d.envPath)}</div>
-      <div class="codeblock">${esc(d.envText)}</div>
-      <div class="small muted">Anahtar</div>
-      <div class="mono small sj-6926eb">${esc(d.keyPath)}</div>
-      <div class="small muted">Sonraki adımlar (terminalde, parolayı ve passphrase'i orada siz girersiniz)</div>
-      ${d.commands.map((c, i) => `<div class="codeblock" data-i="${i}">${esc(c)}</div>`).join("")}
-      <div class="row-flex"><button class="btn sm" id="add-copy">Komutları kopyala</button><button class="btn sm primary" id="add-create">Sunucuyu oluştur</button></div>
-      <div id="add-err" class="small sj-d64673" role="alert"></div>`;
-    $("#add-create").addEventListener("click", async () => {
-      $("#add-create").disabled = true; $("#add-err").textContent = "";
-      try { await json("/api/server-create", { name: $("#add-name").value, host: $("#add-host").value, user: $("#add-user").value, port: $("#add-port").value, os: $("#add-os").value }); }
-      catch (e) { $("#add-create").disabled = false; $("#add-err").textContent = "✖ " + e.message; return; }
-      addServer = $("#add-name").value.trim(); toast("Sunucu oluşturuldu"); await load(); renderAddSteps();
-    });
-    $("#add-copy").addEventListener("click", async () => { try { await navigator.clipboard.writeText(d.commands.join("\n")); toast("Komutlar kopyalandı"); } catch { prompt("Kopyalayın:", d.commands.join("\n")); } });
-  }
+  /* ---------------- Sunucu ekle (js/ui/add.js) ---------------- */
+  const add = initAddServer({ load: () => load(), openServer: (n, t) => openServer(n, t), openVars: (n, p) => openVars(n, p), jobs });
+  const { init: initAddPage, renderSteps: renderAddSteps, openTask } = add;
 
   /* ---------------- Paketler sayfası (js/ui/packages.js) ---------------- */
   const packages = initPackages({ openDlg, closeDlg, isDlgOpen: () => dlg.classList.contains("open"), jobs });
