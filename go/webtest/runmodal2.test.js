@@ -96,6 +96,23 @@ test("bitiş: başarı — süre, 'Sonuç:' çipleri, düğmeler; sunucu verisi 
   assert.deepEqual(h.errors, []); h.close();
 });
 
+test("bitiş: sunucu sayfası YENİ veriyle yeniden çizilir (eylemin son sonucu ekrana yansır); arka plandaki iş bitince de", async () => {
+  let phase = 0;
+  const fresh = u => { const d = fixture("server-" + u.searchParams.get("name")); if (phase && u.searchParams.get("name") === "web1") { const a = d.packages.find(p => p.id === "utility").actions.find(x => x.id === "durum"); a.lastTime = "2026-11-14T09:59:00Z"; a.lastResult = "ok"; } return d; };
+  const f = fakeJobs(); const h = await boot({ hash: "#s=web1&p=utility", overrides: ov({ ...f.overrides, "/api/server": fresh }) });
+  const okCount = () => h.$$("#srv-body .res.ok").length, before = okCount();
+  await h.click(runBtn(h)); await h.click("#run-go"); phase = 1; f.finish("j1", 0); await tickPoll(h, 1);
+  assert.ok(okCount() > before, "iş bitince sunucu sayfası yeni sonucu gösterir (✔ başarılı)");
+  // arka planda biten iş: başka sunucuda iken bitince ve o sunucu sayfası açıkken yeniden çizilir
+  phase = 0; await h.click("#run-close");
+  await h.click(runBtn(h)); await h.click("#run-go"); await h.click("#run-min");
+  await h.click('[data-tsrv="db1"]'); await h.click('#srv-tabs button[data-p="utility"]'); await h.click(runBtn(h));   // web1 işi arka plana geçer
+  await h.click('[data-tsrv="web1"]'); await h.click('#srv-tabs button[data-p="utility"]'); const b2 = okCount();
+  phase = 1; f.finish("j2", 0); h.timers.run(1500); await h.settle();
+  assert.equal(h.$("#srv-head h1").textContent, "web1"); assert.ok(okCount() > b2, "arka plan işi bitince açık sunucu sayfası yenilenir");
+  assert.deepEqual(h.errors, []); h.close();
+});
+
 test("bitiş: hata — çıkış kodu, uyarı kutusu; pill kırmızı; pencere kapalıyken bildirim", async () => {
   const { f, h } = await startJob();
   await h.click("#run-min"); f.finish("j1", 3); await tickPoll(h, 1);
@@ -256,6 +273,26 @@ test("terminal + yazan eylem: sonuç gelince ilerleme günlüğü yoklaması DUR
   const n = logCalls(); h.timers.run(10000); await h.settle();
   assert.equal(logCalls(), n, "sonuç geldikten sonra günlük yoklaması sürmemeli");
   assert.deepEqual(h.errors, []); h.close();
+});
+
+test("görev modu + Sunucu ekle sihirbazı: bitince adım ✔ olur (markTaskDone + renderAddSteps bağlantısı); başarısızsa olmaz", async () => {
+  for (const [exit, expectDone] of [[0, true], [1, false]]) {
+    const f = fakeJobs(); let created = false;
+    const home = () => { const d = mixedHome(); if (created) d.servers.push({ name: "yeni1", host: "10.9.9.9", user: "root", port: "22", platform: "linux", os: "linux", hasKey: true, up: false, checked: true, conn: "down", valid: true, knock: false, last: null, recent: [], lynis: null }); return d; };
+    const h = await boot({ hash: "#v=add", overrides: ov({ ...f.overrides, "/api/home": home,
+      "/api/server-draft": { ok: true, envPath: "servers/yeni1/server.env", envText: "IP=10.9.9.9", keyPath: "servers/yeni1/id_ed25519_yeni1", commands: ["ssh-copy-id x"] },
+      "/api/server-create": () => { created = true; return { ok: true }; }, "/api/server-task": () => ({ id: f.start("yeni1", "keycopy", "") }) }) });
+    for (const [id, v] of [["#add-name", "yeni1"], ["#add-host", "10.9.9.9"], ["#add-user", "root"], ["#add-port", "22"]]) await h.type(id, v);
+    h.timers.run(600); await h.settle();   // alan değişince taslak (önizleme) kısa bir gecikmeyle istenir
+    await h.click("#add-create"); assert.equal(h.$("#add-steps").hidden, false, "oluşturulunca adımlar gösterilir");
+    const step3 = () => h.$$("#add-steps .act")[2];
+    assert.equal(step3().querySelector(".badge").textContent.trim(), "3", "anahtar var, anahtarı gönder adımı henüz yapılmadı"); assert.ok(step3().querySelector('[data-task="keycopy"]'));
+    await h.click('#add-steps [data-task="keycopy"]'); assert.equal(text(h, "#run-title"), "Anahtarı sunucuya gönder yeni1"); await h.click("#run-go");
+    assert.deepEqual(h.calls.find(c => c.path === "/api/server-task").body, { server: "yeni1", task: "keycopy" });
+    f.finish("j1", exit); await tickPoll(h, 1);
+    assert.equal(step3().querySelector(".badge").textContent.trim(), expectDone ? "✔" : "3", expectDone ? "başarıyla biten görev adımı ✔ yapar" : "başarısız görev adımı ✔ yapmaz");
+    assert.deepEqual(h.errors, []); h.close();
+  }
 });
 
 // ---------------- Ayarlar: parola girişi tercihi ----------------
