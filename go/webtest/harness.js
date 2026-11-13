@@ -15,9 +15,31 @@ const NOW = Date.UTC(2026, 10, 14, 10, 0, 0); // 2026-11-14T10:00:00Z
 
 const fixture = n => JSON.parse(fs.readFileSync(path.join(FIX, n + ".json"), "utf8"));
 
-// index.html'deki <script src> sırası (vendor/xterm gerçek değil, sahtesi kullanılır)
-function scriptList(html) {
-  return [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]).filter(s => !s.startsWith("vendor/"));
+// index.html'deki <script src> etiketleri. Tarayıcı anlamı: klasik betikler sırayla hemen, type="module" betikler AYRIK (sayfa ayrıştırılınca,
+// sırayla) çalışır; kasa aynı sırayı uygular. vendor/ (xterm) gerçek değil, sahtesi kullanılır.
+// (HTML düzenlemek için regex KULLANILMAZ: DOM sorgulanır. jsdom runScripts "outside-only" ile sayfadaki betikleri çalıştırmaz/yüklemez.)
+function scriptList(doc) {
+  return [...doc.querySelectorAll("script[src]")].map(el => ({ src: el.getAttribute("src"), module: el.getAttribute("type") === "module" })).filter(x => !x.src.startsWith("vendor/"));
+}
+
+// ES modülü: jsdom'un VM bağlamında vm.SourceTextModule ile çalıştırır (jsdom kendisi modül desteklemez). Her boot için TAZE örnek
+// (modül durumu testler arasında sızmaz). Yalnız göreli içe aktarma; dosya yolları web/ altında çözülür.
+async function runModule(dom, file) {
+  const vm = require("vm");
+  if (typeof vm.SourceTextModule !== "function") throw new Error("ES modülleri için node --experimental-vm-modules gerekir (npm test bunu verir)");
+  const ctx = dom.getInternalVMContext(), cache = new Map();
+  const load = abs => {
+    if (!cache.has(abs)) cache.set(abs, new vm.SourceTextModule(fs.readFileSync(abs, "utf8"), { context: ctx, identifier: abs }));
+    return cache.get(abs);
+  };
+  const root = load(file);
+  await root.link((spec, ref) => {
+    if (!spec.startsWith(".")) throw new Error("yalnız göreli içe aktarma desteklenir: " + spec);
+    const abs = path.resolve(path.dirname(ref.identifier), spec);
+    if (!abs.startsWith(WEB + path.sep)) throw new Error("web/ dışına içe aktarma: " + spec);
+    return load(abs);
+  });
+  await root.evaluate();
 }
 
 // varsayılan sahte API. overrides: { "/api/yol": veri | (url, opts) => veri | {status, body} }
@@ -82,7 +104,7 @@ async function boot(opts = {}) {
   const errors = [], calls = [], vc = new VirtualConsole();
   vc.on("jsdomError", e => errors.push("jsdom: " + (e.detail?.stack || e.message)));
   vc.on("error", (...a) => errors.push("console.error: " + a.join(" ")));
-  const dom = new JSDOM(html.replace(/<script src="[^"]+"><\/script>/g, ""), {
+  const dom = new JSDOM(html, {
     url: "http://127.0.0.1:7777/" + (opts.hash || ""), runScripts: "outside-only", pretendToBeVisual: true, virtualConsole: vc,
   });
   const win = dom.window, doc = win.document;
@@ -115,9 +137,13 @@ async function boot(opts = {}) {
   fakeXterm(win);
   win.addEventListener("error", e => errors.push("window.error: " + e.message));
 
-  for (const src of scriptList(html)) {
+  const scripts = scriptList(doc);
+  for (const { src } of scripts.filter(x => !x.module)) {
     const code = fs.readFileSync(path.join(WEB, src), "utf8");
     try { win.eval(code + "\n//# sourceURL=" + src); } catch (e) { errors.push(`betik ${src}: ${e.stack || e}`); }
+  }
+  for (const { src } of scripts.filter(x => x.module)) {
+    try { await runModule(dom, path.join(WEB, src)); } catch (e) { errors.push(`modül ${src}: ${e.stack || e}`); }
   }
   const h = { dom, win, doc, calls, errors, timers };
   h.settle = async (n = 30) => { for (let i = 0; i < n; i++) { await new Promise(r => setImmediate(r)); if (!inflight && !zero && i > 3) { await new Promise(r => setImmediate(r)); if (!inflight && !zero) return; } } };
