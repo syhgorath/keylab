@@ -98,10 +98,16 @@ function fakeXterm(win) {
   win.WebLinksAddon = { WebLinksAddon: class {} };
 }
 
+// Yakalanmayan söz (promise) reddi: uygulama kodu async işlevlerde sessizce çökebilir (listener'dan çağrılan async işlev). Bu kasa onları
+// test HATASI yapar: canlı her kasanın errors dizisine yazılır (kapanınca çıkar). Aksi hâlde "hatasız" görünen sayfa aslında yarım çizilmiş olabilir.
+const liveErrors = new Set();
+process.on("unhandledRejection", reason => { const m = "unhandledRejection: " + (reason && reason.stack || reason); for (const e of liveErrors) e.push(m); });
+
 // opts: { hash, overrides, storage, lang }
 async function boot(opts = {}) {
   const html = fs.readFileSync(path.join(WEB, "index.html"), "utf8");
   const errors = [], calls = [], vc = new VirtualConsole();
+  liveErrors.add(errors);
   vc.on("jsdomError", e => errors.push("jsdom: " + (e.detail?.stack || e.message)));
   vc.on("error", (...a) => errors.push("console.error: " + a.join(" ")));
   const dom = new JSDOM(html, {
@@ -150,7 +156,7 @@ async function boot(opts = {}) {
   h.$ = s => doc.querySelector(s); h.$$ = s => [...doc.querySelectorAll(s)];
   h.click = async s => { const el = typeof s === "string" ? doc.querySelector(s) : s; if (!el) throw new Error("öğe yok: " + s); el.dispatchEvent(new win.MouseEvent("click", { bubbles: true, cancelable: true })); await h.settle(); };
   h.type = async (s, v) => { const el = h.$(s); el.value = v; el.dispatchEvent(new win.Event("input", { bubbles: true })); await h.settle(); };
-  h.close = () => win.close();
+  h.close = () => { liveErrors.delete(errors); win.close(); };
   await h.settle();
   return h;
 }

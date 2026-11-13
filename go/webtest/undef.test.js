@@ -110,7 +110,7 @@ test("undef: gerçek app.js üzerinde mutasyon — bir tanımı silmek yakalanı
   const app = fs.readFileSync(path.join(WEB, "app.js"), "utf8");
   for (const [from, to, name] of [
     ["const matches = (...parts)", "const matchesX = (...parts)", "matches"],
-    ["let query = \"\";", "let queryX = \"\";", "query"],
+    ['import { appState } from "./js/state.js";', 'import { appStateX } from "./js/state.js";', "appState"],
     ["async function load()", "async function loadX()", "load"],
   ]) {
     assert.ok(app.includes(from), `${from} app.js'te bulunamadı`);
