@@ -96,7 +96,6 @@ type App struct {
 	jmu        sync.Mutex // eylem işleri
 	vmu        sync.Mutex // değişken dosyası yazımı
 	jobs       map[string]*Job
-	running    *Job
 	bmu        sync.Mutex         // toplu işlem durumu
 	batch      *Batch             // son/çalışan toplu işlem
 	batchOn    atomic.Bool        // toplu işlem sürerken tek tek iş başlatılamaz

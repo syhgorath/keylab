@@ -36,10 +36,7 @@ type UpdateReport struct {
 // Doğrulama sırası: indir → imza (index_signers) → şema/süre → seri (geri alma yok) → durumu ilerlet.
 func (a *App) checkUpdates() (UpdateReport, error) {
 	root := a.engineRoot()
-	a.jmu.Lock()
-	busy := a.running != nil && !a.running.Done
-	a.jmu.Unlock()
-	if busy {
+	if a.anyRunning() {
 		return UpdateReport{}, fmt.Errorf("çalışan bir eylem varken güncelleme denetlenemez")
 	}
 	lock, err := trust.LoadLock(filepath.Join(root, "components.lock"))

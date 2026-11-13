@@ -383,26 +383,80 @@
   const showRunModal = () => { runm.classList.add("open"); renderPill(); setTimeout(() => ($("#run-cancel").hidden ? $("#run-close") : $("#run-cancel")).focus(), 40); };
   const minimizeRun = () => { runm.classList.remove("open"); renderPill(); };
   // başka eylem başlatmayı engelle: tek pencere durumu çalışan işe ait (sunucu da ikinci işi reddeder)
-  function jobBusy() { if (!runBusy()) return false; toast("Bir eylem çalışıyor; bitmesini bekleyin ya da üst çubuktaki iş düğmesinden açın."); showRunModal(); return true; }
+  // Farklı sunucularda işler paralel çalışır: pencereye bağlı iş (exec/write) başka sunucuda yeni iş başlatılırken arka plana alınır ve
+  // alt çubuktan geri açılır. Aynı sunucuda (ve genel işlerde: kurulum, silme) tek iş; sunucu da aynı kuralı uygular.
+  function jobBusy(server) {
+    if (!runBusy()) return false;
+    if (server && server !== runSrv && (runMode === "exec" || runMode === "write")) { detachCurrent(); return false; }
+    toast(server && server === runSrv ? "Bu sunucuda bir eylem çalışıyor; bitmesini bekleyin ya da alt çubuktan açın." : "Bir eylem çalışıyor; bitmesini bekleyin ya da alt çubuktan açın.");
+    showRunModal(); return true;
+  }
   $("#job-pill").addEventListener("click", showRunModal);
   $("#run-min").addEventListener("click", minimizeRun);
   // sayfa yenilenmiş olabilir: sunucuda çalışan iş varsa yeniden bağlan (çıktı baştan okunur), pencere kapalı kalır
+  const attachUi = w => {
+    runMode = w.mode; runSrv = w.server; runPkg = w.pkg; runAct = w.act; runItem = w.item || "";
+    $("#run-title").innerHTML = `<span class="mono">${esc(w.act)}</span> · ${esc(TAB_LABEL[w.pkg] || w.pkg)}${runItem ? ` · <b>${esc(runItem)}</b>` : ""}`;
+    $("#run-sub").textContent = `Sunucu: ${w.server}${runItem ? ` · Öğe: ${runItem}` : ""}`;
+    watchJob(w.id, w.started, { raw: w.raw, from: w.from });
+  };
+  const recFromSummary = j => ({ id: j.id, server: j.server, pkg: j.package, act: j.action, item: "", mode: "exec", started: Date.parse(j.started) || Date.now(), raw: "", from: 0 });
+  // sayfa yenilenmiş olabilir: sunucuda çalışan işler varsa yeniden bağlan (çıktı baştan okunur). En yeni iş pencereye bağlanır (pencere
+  // kapalı kalır), diğerleri arka planda izlenir; hepsi alt çubukta görünür.
   async function adoptJob() {
     try {
       const r = await json("/api/jobs");
-      const j = (r.jobs || []).find(x => x.id === r.running && !x.done);
-      if (!j || runBusy()) return;
-      runMode = "exec"; runSrv = j.server; runPkg = j.package; runAct = j.action; runItem = "";
-      $("#run-title").innerHTML = `<span class="mono">${esc(j.action)}</span> · ${esc(TAB_LABEL[j.package] || j.package)}`;
-      $("#run-sub").textContent = `Sunucu: ${j.server}`;
-      watchJob(j.id, Date.parse(j.started) || Date.now());
-      pill = { label: runLabel(), state: "run" }; renderPill();
+      const live = (r.runningIds || (r.running ? [r.running] : [])).map(id => (r.jobs || []).find(x => x.id === id)).filter(j => j && !j.done);
+      if (!live.length) return;
+      live.forEach((j, i) => { const w = recFromSummary(j); if (i === 0 && !runBusy()) { attachUi(w); pill = { label: runLabel(), state: "run" }; renderPill(); } else if (!bg.has(w.id) && !(curWatch && curWatch.id === w.id)) { bg.set(w.id, w); startBg(); } });
     } catch (e) { /* iş yok ya da liste alınamadı */ }
+  }
+
+  /* ---- arka plan işleri: pencereye bağlı olmayan çalışan işler (farklı sunucularda paralel çalışanlar) ---- */
+  const bg = new Map(); // id -> { id, server, pkg, act, item, mode, started, raw, from, idle, warned }
+  let curWatch = null, bgTimer = 0;
+  function detachCurrent() {
+    if (!curWatch) return;
+    const w = curWatch; curWatch = null;
+    clearInterval(runTick); clearTimeout(runPoll); runJob = ""; pill = null; renderPill();
+    $("#run-min").hidden = true; $("#run-input").hidden = true;
+    bg.set(w.id, w); startBg();
+    toast(`⏳ ${w.server}: ${w.act} arka planda sürüyor (alt çubuktan açın)`);
+  }
+  function startBg() { if (!bgTimer) bgTimer = setInterval(bgTick, 1500); }
+  async function bgTick() {
+    for (const w of Array.from(bg.values())) {
+      try {
+        const d = await json(`/api/run?id=${encodeURIComponent(w.id)}&from=${w.from}`);
+        if (!bg.has(w.id)) continue; // bu arada pencereye bağlandı
+        if (d.text) { w.raw += d.text; w.idle = 0; } else w.idle = (w.idle || 0) + 1;
+        w.from = d.next;
+        if (d.done) {
+          bg.delete(w.id);
+          toast((d.exit === 0 ? "✔ " : "✖ ") + `${w.server}: ${w.act}`);
+          load(); if (view === "server" && srvName === w.server) { try { srv = await json("/api/server?name=" + encodeURIComponent(w.server)); renderServer(); } catch (e) { /* sonraki turda */ } }
+        } else if (w.idle >= 2 && !w.warned && w.raw && !/\n$/.test(w.raw.replace(/\r/g, ""))) {
+          w.warned = true; toast(`⏳ ${w.server}: ${w.act} sizden yanıt bekliyor; alt çubuktan açın.`);
+        }
+      } catch (e) { /* sonraki turda */ }
+    }
+    if (!bg.size) { clearInterval(bgTimer); bgTimer = 0; }
+  }
+  // alt çubuktan: çalışan işi pencerede aç (başka iş bağlıysa o arka plana geçer)
+  async function openJob(id) {
+    if (curWatch && curWatch.id === id) { showRunModal(); return; }
+    let w = bg.get(id);
+    if (!w) {
+      try { const r = await json("/api/jobs"); const j = (r.jobs || []).find(x => x.id === id && !x.done); if (!j) { toast("İş bitmiş; sonuç alt çubuktaki tabloda."); return; } w = recFromSummary(j); }
+      catch (e) { toast("İş açılamadı: " + e.message); return; }
+    }
+    if (runBusy()) detachCurrent();
+    bg.delete(id); attachUi(w); showRunModal();
   }
 
   let runMode = "exec", termTimer = 0;
   function openRun(server, pkg, action, item) {
-    if (jobBusy()) return;
+    if (jobBusy(server)) return;
     runMode = "exec"; $("#run-log").hidden = false; $("#run-cancel").hidden = false;
     $("#run-yes").hidden = $("#run-no").hidden = true;
     $("#run-confirm-extra").hidden = true; $("#run-confirm-extra").innerHTML = ""; $("#run-go").classList.remove("warnbtn", "dangerbtn"); $("#run-ext").hidden = true; $("#run-ext").disabled = false; $("#run-input").hidden = true;
@@ -431,7 +485,7 @@
   const EFFECT_TXT = { "installs-package": "paket kurar", "changes-config": "yapılandırmayı değiştirir", destructive: "yıkıcı" };
   let wAct = null, logSince = 0;
   function openWrite(server, pkg, action, item) {
-    if (jobBusy()) return;
+    if (jobBusy(server)) return;
     openRun(server, pkg, action, item);
     runMode = "write";
     const p = srv.packages.find(x => x.id === pkg), a = actionOf(pkg, action); wAct = a;
@@ -497,7 +551,7 @@
     return p.actions.find(x => x.id === action);
   }
   function openTerm(server, pkg, action, item) {
-    if (jobBusy()) return;
+    if (jobBusy(server)) return;
     openRun(server, pkg, action, item);
     runMode = "term";
     $("#run-confirm-text").innerHTML = `<b>${esc(server)}</b> sunucusunda <span class="mono">${esc(action)}</span> (<b>salt okunur</b>) çalışacak. Motor <b>sudo parolası</b> isteyecek: bu pencerede çıkan parola kutusuna yazarsınız; doğrudan Ansible'a iletilir, arayüz onu saklamaz ya da günlüğe yazmaz.`;
@@ -572,35 +626,38 @@
     watchJob(r.id);
   }
 
-  function watchJob(id, startedAt) {
+  function watchJob(id, startedAt, resume) {
     runJob = id; runStart = startedAt || Date.now(); pill = { label: runLabel(), state: "run" }; $("#run-min").hidden = false;
+    const w = curWatch = { id, server: runSrv, pkg: runPkg, act: runAct, item: runItem, mode: runMode, started: runStart, raw: (resume && resume.raw) || "", from: (resume && resume.from) || 0, idle: 0 };
     $("#run-confirm").hidden = true; $("#run-live").hidden = false; $("#run-go").hidden = true; $("#run-ext").hidden = true; $("#run-close").hidden = true;
     $("#run-log").innerHTML = ""; $("#run-log").hidden = false; $("#run-progress").innerHTML = ""; $("#run-result").innerHTML = ""; $("#run-input").hidden = true;
     $("#run-cancel").hidden = false; $("#run-cancel").disabled = false;
-    let from = 0, raw = "", idle = 0;
     const logEl = $("#run-log");
+    const paintLog = () => {
+      const stick = logEl.scrollTop + logEl.clientHeight >= logEl.scrollHeight - 30;
+      const txt = cleanTerm(w.raw);
+      logEl.innerHTML = txt.split("\n").map(lineHtml).join("");
+      if (stick) logEl.scrollTop = logEl.scrollHeight;
+      $("#run-progress").innerHTML = progressHtml(txt); applyBars($("#run-progress"));
+    };
     const tick = () => { $("#run-state").innerHTML = `<span class="spinner" aria-hidden="true"></span> çalışıyor… ${Math.round((Date.now() - runStart) / 1000)} sn`; renderPill(); };
     tick(); runTick = setInterval(tick, 1000);
+    if (w.raw) paintLog(); // arka plandan geri açıldı: o ana kadarki çıktı hemen görünsün
     const poll = async () => {
+      if (curWatch !== w) return; // arka plana alındı
       try {
-        const d = await json(`/api/run?id=${encodeURIComponent(runJob)}&from=${from}`);
-        if (d.text) {
-          raw += d.text; idle = 0;
-          const stick = logEl.scrollTop + logEl.clientHeight >= logEl.scrollHeight - 30;
-          const txt = cleanTerm(raw);
-          logEl.innerHTML = txt.split("\n").map(lineHtml).join("");
-          if (stick) logEl.scrollTop = logEl.scrollHeight;
-          $("#run-progress").innerHTML = progressHtml(txt); applyBars($("#run-progress"));
-        } else idle++;
-        from = d.next;
-        if (d.done) { $("#run-input").hidden = true; finishRun(d, cleanTerm(raw)); return; }
+        const d = await json(`/api/run?id=${encodeURIComponent(w.id)}&from=${w.from}`);
+        if (curWatch !== w) return;
+        if (d.text) { w.raw += d.text; w.idle = 0; paintLog(); } else w.idle++;
+        w.from = d.next;
+        if (d.done) { $("#run-input").hidden = true; curWatch = null; finishRun(d, cleanTerm(w.raw)); return; }
         // istem: çıktı satır sonuyla bitmiyor ve bir süredir yeni bayt gelmedi → girdi kutusunu göster
-        const txt = cleanTerm(raw);
-        if (idle >= 2 && raw && !/\n$/.test(raw.replace(/\r/g, ""))) {
+        const txt = cleanTerm(w.raw);
+        if (w.idle >= 2 && w.raw && !/\n$/.test(w.raw.replace(/\r/g, ""))) {
           const prompt = txt.slice(txt.lastIndexOf("\n") + 1).trim();
-          if (prompt) showInput(prompt, raw.length);
-        } else if (idle < 2) $("#run-input").hidden = true;
-      } catch (e) { clearInterval(runTick); runJob = ""; pill = null; $("#run-min").hidden = true; renderPill(); showRunModal(); $("#run-state").textContent = "Bağlantı koptu: " + e.message; $("#run-close").hidden = false; $("#run-close").textContent = "Kapat"; return; }
+          if (prompt) showInput(prompt, w.raw.length);
+        } else if (w.idle < 2) $("#run-input").hidden = true;
+      } catch (e) { if (curWatch !== w) return; clearInterval(runTick); runJob = ""; curWatch = null; pill = null; $("#run-min").hidden = true; renderPill(); showRunModal(); $("#run-state").textContent = "Bağlantı koptu: " + e.message; $("#run-close").hidden = false; $("#run-close").textContent = "Kapat"; return; }
       runPoll = setTimeout(poll, 600);
     };
     poll();
@@ -787,7 +844,7 @@
     sshadd: ["ssh-agent'a ekle", "Anahtarı ssh-agent'a ekle", "Anahtar ssh-agent'a eklenecek (macOS'ta Keychain'e kaydedilerek); eylemler parola sormadan bağlanabilsin. Anahtarın passphrase'i istenecek."],
   };
   function openTask(server, task) {
-    if (jobBusy()) return;
+    if (jobBusy(server)) return;
     openRun(server, "", task);
     runMode = "task";
     const [, title, text] = TASKS[task];
@@ -1762,11 +1819,10 @@
   window.KeyLabDock.init({
     getHome: () => home, json, reload: load, ago, localTime, openLastLog,
     tabLabel: id => TAB_LABEL[id] || (home.packages.find(p => p.id === id) || {}).name || id,
-    // toplu işlem sürüyorsa onun penceresini, değilse tek işin penceresini aç
-    openRunning: async () => {
+    // çalışan işin penceresini aç; toplu işlem sürüyorsa onun penceresini
+    openJob: async id => {
       if (($("#batch-open").textContent || "").startsWith("⏳")) { $("#batch-open").click(); return; }
-      if (!runBusy()) await adoptJob();
-      showRunModal();
+      await openJob(id);
     },
   });
   window.KeyLabBatch.init({ json, toast, reload: load, targets: () => visibleServers.slice(), tabLabel: id => TAB_LABEL[id] || (home.packages.find(p => p.id === id) || {}).name || id });
