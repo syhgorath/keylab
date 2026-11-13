@@ -2,6 +2,9 @@
 /* KeyLab arayüz test kasası (jsdom). Gerçek index.html'i ve web/ altındaki betikleri, gerçek Go sunucusundan KAYDEDİLMİŞ API yanıtlarıyla
    (fixtures/) çalıştırır. Sabit saat, kontrollü zamanlayıcılar, sahte fetch/EventSource/xterm: sonuç her koşuda aynıdır.
    Bu bir DAVRANIŞ KİLİDİDİR: refaktör sırasında DOM çıktısı (anlık görüntü) değişmemelidir. Tarayıcıyı ve CSS'i test ETMEZ (yerleşim yok). */
+// Saat dilimi SABİT: uygulama saatleri yerel saatle biçimler; anlık görüntüler makineden bağımsız olsun (CI UTC, geliştirici makinesi değil).
+// jsdom/Date kullanılmadan ÖNCE atanmalıdır.
+process.env.TZ = "UTC";
 const fs = require("fs");
 const path = require("path");
 const { JSDOM, VirtualConsole } = require("jsdom");
