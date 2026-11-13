@@ -68,9 +68,9 @@ function makeRouter(overrides, calls) {
     if (h === undefined) throw new Error(`fixture yok: ${method} ${u.pathname}${u.search}`);
     let res = typeof h === "function" ? await h(u, { method, body }) : h;
     let status = 200, text, json;
-    if (res && typeof res === "object" && "status" in res && "body" in res) { status = res.status; res = res.body; }
+    let hdrs = {}; if (res && typeof res === "object" && "status" in res && "body" in res) { status = res.status; hdrs = res.headers || {}; res = res.body; }
     if (typeof res === "string") text = res; else { json = res; text = JSON.stringify(res); }
-    return { ok: status >= 200 && status < 300, status, json: async () => (json !== undefined ? json : JSON.parse(text)), text: async () => text, headers: { get: () => null } };
+    return { ok: status >= 200 && status < 300, status, json: async () => (json !== undefined ? json : JSON.parse(text)), text: async () => text, headers: { get: k => (k in hdrs ? hdrs[k] : null) } };
   };
 }
 
