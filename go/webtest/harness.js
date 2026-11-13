@@ -17,9 +17,9 @@ const fixture = n => JSON.parse(fs.readFileSync(path.join(FIX, n + ".json"), "ut
 
 // index.html'deki <script src> etiketleri. Tarayıcı anlamı: klasik betikler sırayla hemen, type="module" betikler AYRIK (sayfa ayrıştırılınca,
 // sırayla) çalışır; kasa aynı sırayı uygular. vendor/ (xterm) gerçek değil, sahtesi kullanılır.
-const SCRIPT_RE = /<script\b([^>]*)\bsrc="([^"]+)"([^>]*)><\/script>/g;
-function scriptList(html) {
-  return [...html.matchAll(SCRIPT_RE)].map(m => ({ src: m[2], module: /\btype="module"/.test(m[1] + m[3]) })).filter(x => !x.src.startsWith("vendor/"));
+// (HTML düzenlemek için regex KULLANILMAZ: DOM sorgulanır. jsdom runScripts "outside-only" ile sayfadaki betikleri çalıştırmaz/yüklemez.)
+function scriptList(doc) {
+  return [...doc.querySelectorAll("script[src]")].map(el => ({ src: el.getAttribute("src"), module: el.getAttribute("type") === "module" })).filter(x => !x.src.startsWith("vendor/"));
 }
 
 // ES modülü: jsdom'un VM bağlamında vm.SourceTextModule ile çalıştırır (jsdom kendisi modül desteklemez). Her boot için TAZE örnek
@@ -104,7 +104,7 @@ async function boot(opts = {}) {
   const errors = [], calls = [], vc = new VirtualConsole();
   vc.on("jsdomError", e => errors.push("jsdom: " + (e.detail?.stack || e.message)));
   vc.on("error", (...a) => errors.push("console.error: " + a.join(" ")));
-  const dom = new JSDOM(html.replace(SCRIPT_RE, ""), {
+  const dom = new JSDOM(html, {
     url: "http://127.0.0.1:7777/" + (opts.hash || ""), runScripts: "outside-only", pretendToBeVisual: true, virtualConsole: vc,
   });
   const win = dom.window, doc = win.document;
@@ -137,7 +137,7 @@ async function boot(opts = {}) {
   fakeXterm(win);
   win.addEventListener("error", e => errors.push("window.error: " + e.message));
 
-  const scripts = scriptList(html);
+  const scripts = scriptList(doc);
   for (const { src } of scripts.filter(x => !x.module)) {
     const code = fs.readFileSync(path.join(WEB, src), "utf8");
     try { win.eval(code + "\n//# sourceURL=" + src); } catch (e) { errors.push(`betik ${src}: ${e.stack || e}`); }
