@@ -139,17 +139,22 @@
     const ly = sv.filter(s => s.lynis);
     const avg = ly.length ? Math.round(ly.reduce((t, s) => t + s.lynis.score, 0) / ly.length) : null;
     const gain = ly.reduce((t, s) => t + (s.lynis.score - s.lynis.history[0]), 0);
+    // renk tonu (sol şerit + değer rengi): durumun yalnız rengi taşımaması için nokta ve alt metin de kalır
+    const tOn = !sv.length || !chk ? "" : up === sv.length ? "ok" : up === 0 ? "danger" : "warn";
+    const tFail = sv.length ? (fails.length ? "danger" : "ok") : "";
+    const tLy = avg === null ? "" : avg >= 80 ? "ok" : avg >= 60 ? "warn" : "danger";
+    const tn = t => (t ? ` data-tone="${t}"` : "");
     return `
-      <div class="kpi"><div class="kpi-label"><span class="dot ${chk && up === sv.length ? "ok" : "warn"}" aria-hidden="true"></span>Çevrimiçi</div>
+      <div class="kpi"${tn(tOn)}><div class="kpi-label"><span class="dot ${chk && up === sv.length ? "ok" : "warn"}" aria-hidden="true"></span>Çevrimiçi</div>
         <div class="kpi-value">${sv.some(s => s.valid) && !chk ? "…" : up}<small>/${sv.length}</small></div>
         <div class="kpi-sub"><span class="ok">✔</span> anahtar var: ${keys} · <span class="muted">yok: ${sv.length - keys}</span></div></div>
       <div class="kpi"><div class="kpi-label"><span class="dot ok" aria-hidden="true"></span>Kurulu paket</div>
         <div class="kpi-value">${home.packages.length}</div>
         <div class="kpi-sub">${esc(home.packages.map(p => p.id).join(" · ")) || "—"}</div></div>
-      <div class="kpi"><div class="kpi-label"><span class="dot ${fails.length ? "danger" : "ok"}" aria-hidden="true"></span>Son 24 sa başarısız</div>
+      <div class="kpi"${tn(tFail)}><div class="kpi-label"><span class="dot ${fails.length ? "danger" : "ok"}" aria-hidden="true"></span>Son 24 sa başarısız</div>
         <div class="kpi-value">${fails.length}</div>
         <div class="kpi-sub">${fails.length ? `<span class="danger">${esc(fails[0].server)}</span> · ${esc(fails[0].package)} ${esc(fails[0].action)}` : "başarısız eylem yok"}</div></div>
-      <div class="kpi"><div class="kpi-label"><span class="dot ${avg === null ? "warn" : "ok"}" aria-hidden="true"></span>Ortalama Lynis</div>
+      <div class="kpi"${tn(tLy)}><div class="kpi-label"><span class="dot ${avg === null ? "warn" : "ok"}" aria-hidden="true"></span>Ortalama Lynis</div>
         <div class="kpi-value">${avg === null ? "—" : avg}<small>${avg === null ? "" : "/100"}</small></div>
         <div class="kpi-sub">${avg === null ? "ölçüm yok" : `${ly.length} sunucu · ${gain >= 0 ? "+" : ""}${gain} toplam değişim`}</div></div>`;
   }

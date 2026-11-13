@@ -1374,4 +1374,12 @@ body.dock-open{padding-bottom:276px}
 .term-search input[type="search"]{flex:1;min-width:0;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font:inherit}
 .term-search input[type="search"]:focus-visible{box-shadow:var(--focus);outline:none}
 .term-find-case{display:inline-flex;gap:4px;align-items:center;cursor:pointer;white-space:nowrap}
+/* KPI renk tonları: sol şerit + değer rengi (büyük metin, WCAG AA 3:1 üstü; durum yalnız renkle verilmez: nokta + alt metin var) */
+.kpi-accented .kpi{border-left:3.5px solid var(--border)}
+.kpi-accented .kpi[data-tone="ok"]{border-left-color:var(--ok)}
+.kpi-accented .kpi[data-tone="warn"]{border-left-color:var(--warn)}
+.kpi-accented .kpi[data-tone="danger"]{border-left-color:var(--danger)}
+.kpi-accented .kpi[data-tone="ok"] .kpi-value{color:var(--ok)}
+.kpi-accented .kpi[data-tone="warn"] .kpi-value{color:var(--warn)}
+.kpi-accented .kpi[data-tone="danger"] .kpi-value{color:var(--danger)}
 [hidden]{display:none !important} /* sj-sonu: !important yardımcı sınıfların display bildirimi hidden özniteliğini ezmesin; DOSYANIN SONUNDA kalmalı */
