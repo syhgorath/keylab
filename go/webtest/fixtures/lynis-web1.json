@@ -1,0 +1,21 @@
+{
+ "findings": null,
+ "lynis": {
+  "date": "2026-11-10",
+  "dates": [
+   "2026-11-01",
+   "2026-11-05",
+   "2026-11-10"
+  ],
+  "history": [
+   61,
+   68,
+   74
+  ],
+  "score": 74,
+  "suggestions": 12,
+  "warnings": 1
+ },
+ "report": "",
+ "server": "web1"
+}

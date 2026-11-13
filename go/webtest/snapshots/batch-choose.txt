@@ -1,0 +1,64 @@
+<div aria-labelledby="batch-title" aria-modal="true" class="modal-back open" id="batch-modal" role="dialog">
+  <div class="modal sx-48a649">
+    <div class="modal-head">
+      <div>
+        <h3 id="batch-title">
+          "Toplu işlem"
+        <div class="sub" id="batch-sub">
+          "Seçili sunucularda aynı salt okunur eylem çalıştırılır; fazlası sırada bekler."
+      <div class="spacer">
+      <button aria-label="Kapat" class="icon-btn" id="batch-x">
+        <svg fill="none" height="16" stroke-width="2" stroke="currentColor" viewBox="0 0 24 24" width="16">
+          <path d="M18 6 6 18M6 6l12 12">
+    <div aria-live="polite" class="modal-body sx-a5d903" id="batch-body">
+      <div class="field">
+        <label for="batch-act">
+          "Eylem"
+        <select aria-describedby="batch-note" id="batch-act">
+          <option value="0">
+            "Utility · durum (2/3)"
+        <div class="hint" id="batch-note">
+          "Salt okunur: sunucularda hiçbir şey değişmez. Yazan, sudo'lu ve onay isteyen eylemler burada sunulmaz. Her sunucu menüdekiyle aynı motor ve kapılarla çalışır; sonuçlar günlüğe yazılır."
+      <div class="field batch-par">
+        <label for="batch-par">
+          "Aynı anda"
+        <input aria-describedby="batch-par-hint" class="num-in" id="batch-par" inputmode="numeric" max="4" min="1" step="1" type="number" value="4">
+        <div class="hint" id="batch-par-hint">
+          "En çok 4 sunucu aynı anda çalışır (Ayarlar > Eylemler); fazlası sırada bekler ve biri bitince başlar."
+      <label class="small batch-opt">
+        <input id="batch-stop" type="checkbox">
+        <span>
+          "İlk hatada dur (kalanlar çalıştırılmaz)"
+      <div class="row-flex batch-tools">
+        <b>
+          "Hedef sunucular"
+        <span class="spacer">
+        <button class="btn sm ghost" id="batch-all" type="button">
+          "Tümü"
+        <button class="btn sm ghost" id="batch-none" type="button">
+          "Hiçbiri"
+      <div class="imp-rows" id="batch-targets">
+        <label class="imp-row">
+          <input checked="" data-n="db1" type="checkbox">
+          <span class="imp-main">
+            <b>
+              "db1"
+        <label class="imp-row">
+          <input checked="" data-n="vm1" type="checkbox">
+          <span class="imp-main">
+            <b>
+              "vm1"
+        <label class="imp-row">
+          <input checked="" data-n="web1" type="checkbox">
+          <span class="imp-main">
+            <b>
+              "web1"
+    <div class="modal-foot">
+      <span class="small muted sx-471df9" id="batch-status" role="status">
+        "2 sunucuda çalışacak, 1 sunucu atlanacak (uygun değil)"
+      <button class="btn ghost" id="batch-close">
+        "Vazgeç"
+      <button class="btn dangerbtn" hidden="" id="batch-cancel">
+        "İptal et"
+      <button class="btn primary" id="batch-go">
+        "Çalıştır"

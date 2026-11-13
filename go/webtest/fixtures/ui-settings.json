@@ -1,0 +1,6 @@
+{
+ "default": 4,
+ "max": 16,
+ "maxJobs": 4,
+ "min": 1
+}

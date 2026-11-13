@@ -1,0 +1,30 @@
+[
+ {
+  "id": "debian-13",
+  "support": {
+   "kurulum": "planned",
+   "linux-hardening": "supported",
+   "utility": "supported"
+  }
+ },
+ {
+  "id": "proxmox",
+  "support": {
+   "linux-hardening": "planned"
+  }
+ },
+ {
+  "id": "rpi",
+  "support": {
+   "linux-hardening": "planned"
+  }
+ },
+ {
+  "id": "ubuntu-26.04",
+  "support": {
+   "kurulum": "supported",
+   "linux-hardening": "supported",
+   "utility": "supported"
+  }
+ }
+]

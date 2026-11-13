@@ -1,0 +1,603 @@
+{
+ "knock": {
+  "delay": "300",
+  "enabled": false,
+  "hasSeq": false,
+  "proto": "tcp"
+ },
+ "packages": [
+  {
+   "actions": [
+    {
+     "applicable": true,
+     "confirm": "none",
+     "destructive": false,
+     "effects": [],
+     "id": "durum",
+     "platforms": null,
+     "prereqsOk": true,
+     "reason": "sudo parolası gerekir: parola arayüzde girilmez, Terminal'de girersiniz",
+     "requires": null,
+     "requiresSudo": true,
+     "runnable": false,
+     "terminal": true,
+     "warnings": [
+      "Salt okunur: ana klasör işaretini, Docker durumunu, kurulu yazılımları ve portları okur; hiçbir şeyi değiştirmez. İşaret dosyası root'a ait olduğundan sudo ister.",
+      "Ana klasör sunucuda X, yerelde Y ise ana_durum=uyusmuyor görünür; değiştiren eylemler bu durumda durur."
+     ],
+     "write": false
+    },
+    {
+     "applicable": true,
+     "confirm": "none",
+     "destructive": false,
+     "effects": [],
+     "id": "preview",
+     "platforms": null,
+     "prereqsOk": true,
+     "reason": "sudo parolası gerekir: parola arayüzde girilmez, Terminal'de girersiniz",
+     "requires": null,
+     "requiresSudo": true,
+     "runnable": false,
+     "terminal": true,
+     "warnings": [
+      "Önizleme dosya farkını ve plan sonucunu gösterir; paket kurulumu, imaj çekme, konteyner başlatma, servis ve parola üretimi --check'te ÇALIŞMAZ, gösterilmez.",
+      "kurulum_yazilim ve kurulum_mod seçilen yazılımı belirler; kurulu sürüm istenenden farklıysa yukseltme=evet görünür (kur sürümü sessizce değiştirmez, yukselt gerekir).",
+      "ufw'ye YAZILMAZ (tek sahibi linux-hardening). Varsayılan yayın 127.0.0.1; kurulum_dis_erisim=true ise gereken ufw kuralı önerisi çıktıda gösterilir, hardening_ufw_extra_allow_host listesine siz eklersiniz. Docker yayınlanan portu ufw'yi atlayarak açar."
+     ],
+     "write": false
+    },
+    {
+     "applicable": true,
+     "confirm": "yes-no",
+     "destructive": false,
+     "effects": [
+      "installs-package",
+      "changes-config"
+     ],
+     "id": "kur",
+     "platforms": null,
+     "prereqs": [
+      {
+       "action": "preview",
+       "ageSec": 0,
+       "ok": false
+      }
+     ],
+     "prereqsOk": false,
+     "reason": "önkoşul tamam değil: preview son 30 dk içinde başarıyla çalışmış olmalı",
+     "requires": [
+      "preview"
+     ],
+     "requiresSudo": true,
+     "runnable": false,
+     "terminal": false,
+     "warnings": [
+      "Seçilen yazılımı kurar (native: apt paketi; docker: <ana>/<yazılım>/compose.yml, sabit imaj etiketi, veri <ana>/<yazılım>/data). Docker kurulu değilse docker modu durur: önce kurulum_yazilim=docker.",
+      "Kurulu Docker'a (apt) dokunulmaz; snap/farklı Docker uyarılır. Kullanıcı docker grubuna EKLENMEZ.",
+      "Gizli değerler (parola) sunucuda üretilir, <ana>/<yazılım>/.env içinde 0600 durur; ekrana, günlüğe, bu bilgisayara yazılmaz.",
+      "Bir yazılım için tek mod vardır; zaten kurulu ve yönetilmeyen paketlere (kayıtsız) dokunulmaz, koşu durur.",
+      "nginx/mariadb/redis native kurulumunda paketin kurulum betiği servisi dağıtım varsayılanıyla kısaca başlatır; varsayılan port doluysa koşu başlamadan durur.",
+      "İkinci kur değişiklik yapmaz (idempotent). Aynı sunucuda eşzamanlı iki koşu sunucudaki kilitle engellenir.",
+      "ufw'ye YAZILMAZ (tek sahibi linux-hardening). Varsayılan yayın 127.0.0.1; kurulum_dis_erisim=true ise gereken ufw kuralı önerisi çıktıda gösterilir, hardening_ufw_extra_allow_host listesine siz eklersiniz. Docker yayınlanan portu ufw'yi atlayarak açar."
+     ],
+     "write": false
+    },
+    {
+     "applicable": true,
+     "confirm": "type-server-name",
+     "destructive": true,
+     "effects": [
+      "installs-package",
+      "changes-config",
+      "destructive"
+     ],
+     "id": "yukselt",
+     "platforms": null,
+     "prereqs": [
+      {
+       "action": "preview",
+       "ageSec": 0,
+       "ok": false
+      }
+     ],
+     "prereqsOk": false,
+     "reason": "önkoşul tamam değil: preview son 30 dk içinde başarıyla çalışmış olmalı",
+     "requires": [
+      "preview"
+     ],
+     "requiresSudo": true,
+     "runnable": false,
+     "terminal": false,
+     "warnings": [
+      "Yalnızca docker modunda kurulu uygulama, daha YENİ bir küratörlü sürüme yükseltilir. Önce döküm/yedek alınır (<ana>/<yazılım>/yedek/<tarih>/, 0700), sonra yeni imaj çekilir ve compose güncellenir.",
+      "GERİ DÜŞÜRME YOKTUR: eski sürüme dönmek için yedeği kendiniz geri yüklersiniz. Native sürüm yükseltme v0.1'de yok (apt'i kendiniz yönetin).",
+      "Yükseltme sırasında servis yeniden başlar (kısa kesinti)."
+     ],
+     "write": false
+    },
+    {
+     "applicable": true,
+     "confirm": "yes-no",
+     "destructive": false,
+     "effects": [
+      "changes-config"
+     ],
+     "id": "kaldir",
+     "platforms": null,
+     "prereqs": [
+      {
+       "action": "preview",
+       "ageSec": 0,
+       "ok": false
+      }
+     ],
+     "prereqsOk": false,
+     "reason": "önkoşul tamam değil: preview son 30 dk içinde başarıyla çalışmış olmalı",
+     "requires": [
+      "preview"
+     ],
+     "requiresSudo": true,
+     "runnable": false,
+     "terminal": false,
+     "warnings": [
+      "Servisi durdurur ve kaldırır; VERİYE DOKUNMAZ (veri klasörü, .env ve compose.yml kalır; 'compose down -v' ve 'apt purge' kullanılmaz). Veriyi silmek sizin elinizdedir.",
+      "Docker taban kaldırma v0.1'de yok. Kaldırılan yazılım işaret dosyasında 'kaldirilan' altında kayıtlı kalır."
+     ],
+     "write": false
+    }
+   ],
+   "description": "Sunucuya Docker taban kurulumu, nginx, MariaDB ve Redis kurar (her biri native ya da Docker modunda); önizler, sürümü sabitler, veriyi silmez. Ubuntu 26.04 ve Debian 13; Proxmox VE kapsam dışı.",
+   "id": "kurulum",
+   "name": "Kurulum merkezi: Docker, nginx, MariaDB, Redis",
+   "vars": [],
+   "version": "0.1.0"
+  },
+  {
+   "actions": [
+    {
+     "applicable": true,
+     "confirm": "yes-no",
+     "destructive": false,
+     "effects": [
+      "installs-package"
+     ],
+     "id": "audit",
+     "platforms": null,
+     "prereqsOk": true,
+     "reason": "değişiklik yapar: sudo parolasını Terminal'de girersiniz",
+     "requires": null,
+     "requiresSudo": true,
+     "runnable": false,
+     "terminal": false,
+     "warnings": [
+      "Hedefe lynis paketini kurar; yapılandırmayı değiştirmez.",
+      "Rapor, summary.json ve bulgular.tsv hassas veri içerir (hardening_scan_dir; dizin 0700, dosyalar 0600)."
+     ],
+     "write": true
+    },
+    {
+     "applicable": true,
+     "confirm": "none",
+     "destructive": false,
+     "effects": [],
+     "id": "preview",
+     "missingVars": [
+      "hardening_ssh_allow_from"
+     ],
+     "platforms": null,
+     "prereqsOk": true,
+     "reason": "gerekli değişken eksik: hardening_ssh_allow_from (Değişkenler kartındaki Düzenle… ile ayarlayın)",
+     "requires": null,
+     "requiresSudo": true,
+     "requiresVars": [
+      "hardening_ssh_allow_from"
+     ],
+     "runnable": false,
+     "terminal": false,
+     "warnings": [
+      "hardening_ssh_allow_from eksikse bunu önizlemede göremezsin (ufw komutları --check'te çalışmaz): sunucuya bağlanabileceğin TÜM ağları (VPN + LAN + ...) yaz; yalnızca VPN yazarsan ufw LAN'dan SSH'ı keser.",
+      "Önizleme ufw (firewall) değişikliğini göstermez: ufw komutları --check modunda çalışmaz.",
+      "Önizleme servis durumunu (auditd, fail2ban başlatma) göstermez.",
+      "Önizlemede dma gerçekten kurulmadığı için apt simülasyonu AIDE'nin posta bağımlılığı olarak postfix'i (ve bsd-mailx, libnsl2 vb.) 'yeni paket' gösterebilir. Gerçek uygulamada dma önce kurulur ve postfix gelmez.",
+      "Erişim kaybı korumaları (hardening_ssh_allow_from, kaynak IP, root kontrolü) önizlemede de çalışır ve durdurabilir."
+     ],
+     "write": false
+    },
+    {
+     "applicable": true,
+     "confirm": "type-server-name",
+     "destructive": false,
+     "effects": [
+      "installs-package",
+      "changes-config"
+     ],
+     "id": "apply",
+     "missingVars": [
+      "hardening_ssh_allow_from"
+     ],
+     "platforms": null,
+     "prereqs": [
+      {
+       "action": "preview",
+       "ageSec": 0,
+       "ok": false
+      }
+     ],
+     "prereqsOk": false,
+     "reason": "gerekli değişken eksik: hardening_ssh_allow_from (Değişkenler kartındaki Düzenle… ile ayarlayın)",
+     "requires": [
+      "preview"
+     ],
+     "requiresSudo": true,
+     "requiresVars": [
+      "hardening_ssh_allow_from"
+     ],
+     "runnable": false,
+     "terminal": false,
+     "warnings": [
+      "hardening_ssh_allow_from'a sunucuya BAĞLANABİLECEĞİN TÜM ağları yaz (VPN + LAN + ...). ufw yalnızca bunlardan SSH'a izin verir; yalnızca VPN yazarsan LAN'dan SSH kesilir (ping/ARP çalışır, ssh zaman aşar) ve geri alma güvenlik ağı bunu yakalamaz.",
+      "SSH ve ufw kurallarını değiştirir; bağlantınız kopabilir. Çalıştırmadan önce anahtarın ssh-agent'ta olduğunu doğrulayın (ssh-add -l).",
+      "Geri alma güvenlik ağı SSH drop-in, ufw ve (hardening_pam_faillock açıksa) PAM'i geri alır; paketler, sysctl, auditd, fail2ban ve AIDE geri alınmaz.",
+      "Doğrulama başarısız olursa ya da bağlantı kaybolursa sunucu hardening_rollback_timeout sn sonra kendini önceki duruma döndürür; o sürede erişim olmayabilir.",
+      "hardening_rollback_enabled=false güvenlik ağını kapatır."
+     ],
+     "write": false
+    },
+    {
+     "applicable": true,
+     "confirm": "none",
+     "destructive": false,
+     "effects": [],
+     "id": "rollback_status",
+     "platforms": null,
+     "prereqsOk": true,
+     "reason": "sudo parolası gerekir: parola arayüzde girilmez, Terminal'de girersiniz",
+     "requires": null,
+     "requiresSudo": true,
+     "runnable": false,
+     "terminal": true,
+     "warnings": [
+      "Salt okunur: yalnızca geri alma güvenlik ağının durumunu gösterir. Betik kurulu değilse installed=no döner."
+     ],
+     "write": false
+    },
+    {
+     "applicable": true,
+     "confirm": "type-server-name",
+     "destructive": false,
+     "effects": [
+      "changes-config"
+     ],
+     "id": "rollback_disarm",
+     "platforms": null,
+     "prereqsOk": true,
+     "reason": "değişiklik yapar: sudo parolasını Terminal'de girersiniz",
+     "requires": null,
+     "requiresSudo": true,
+     "runnable": false,
+     "terminal": false,
+     "warnings": [
+      "Geri almayı İPTAL eder: zamanlayıcı ve önceki durum yedeği silinir; sonrasında sunucu kendini geri almaz.",
+      "Yalnızca değişikliğin iyi olduğundan ve erişiminizin sağlam olduğundan eminseniz kullanın."
+     ],
+     "write": true
+    },
+    {
+     "applicable": true,
+     "confirm": "type-server-name",
+     "destructive": false,
+     "effects": [
+      "changes-config"
+     ],
+     "id": "rollback_now",
+     "platforms": null,
+     "prereqsOk": true,
+     "reason": "değişiklik yapar: sudo parolasını Terminal'de girersiniz",
+     "requires": null,
+     "requiresSudo": true,
+     "runnable": false,
+     "terminal": false,
+     "warnings": [
+      "SSH drop-in, ufw kuralları ve PAM dosyalarını (faillock açıksa) değişiklikten ÖNCEKİ duruma döndürür; diğer roller (sysctl, auditd, fail2ban, AIDE, paketler) geri alınmaz.",
+      "Geri alma güvenlik ağı kurulu ve armed değilse hiçbir şey yapmaz."
+     ],
+     "write": true
+    },
+    {
+     "applicable": false,
+     "confirm": "none",
+     "destructive": false,
+     "effects": [],
+     "id": "pve_firewall_preview",
+     "missingVars": [
+      "hardening_ssh_allow_from"
+     ],
+     "platforms": [
+      "proxmox-host"
+     ],
+     "prereqsOk": true,
+     "reason": "bu sunucunun platformuna uygulanmaz",
+     "requires": null,
+     "requiresSudo": true,
+     "requiresVars": [
+      "hardening_ssh_allow_from"
+     ],
+     "runnable": false,
+     "terminal": false,
+     "warnings": [
+      "Yalnızca Proxmox VE hostları içindir; başka sunucuda 'yalnızca Proxmox VE hostları içindir' diyerek hiçbir şey yapmadan durur.",
+      "Salt okunur: yazılacak cluster.fw içeriğini gösterir, hiçbir şey yazmaz (hardening_pve_apply=true olsa bile; yazma yalnızca pve_firewall_apply ile). Küme, boş/geçersiz hardening_ssh_allow_from, kontrol makinesini kapsamayan liste ve kullanıcının kendi cluster.fw dosyası varsa nedenini söyleyerek durur.",
+      "hardening_ssh_allow_from'a sunucuya BAĞLANABİLECEĞİN TÜM ağları yaz (VPN + LAN + ofis). Kural yalnızca bu ağlardan SSH, web arayüzü (8006) ve ping'e izin verir; VPN NAT'lıysa sunucunun GÖRDÜĞÜ adres değişebilir, hepsini yaz."
+     ],
+     "write": false
+    },
+    {
+     "applicable": false,
+     "confirm": "type-server-name",
+     "destructive": false,
+     "effects": [
+      "changes-config"
+     ],
+     "id": "pve_firewall_apply",
+     "missingVars": [
+      "hardening_ssh_allow_from"
+     ],
+     "platforms": [
+      "proxmox-host"
+     ],
+     "prereqs": [
+      {
+       "action": "pve_firewall_preview",
+       "ageSec": 0,
+       "ok": false
+      }
+     ],
+     "prereqsOk": false,
+     "reason": "bu sunucunun platformuna uygulanmaz",
+     "requires": [
+      "pve_firewall_preview"
+     ],
+     "requiresSudo": true,
+     "requiresVars": [
+      "hardening_ssh_allow_from"
+     ],
+     "runnable": false,
+     "terminal": false,
+     "warnings": [
+      "Proxmox VE güvenlik duvarını (datacenter cluster.fw) GERÇEKTEN yazar ve etkinleştirir: gelen trafik varsayılan DROP, SSH/8006/ping yalnızca hardening_ssh_allow_from ağlarından. YANLIŞ AĞ LİSTESİ web arayüzünü ve SSH'ı keser; önce VM/host snapshot'ı alın.",
+      "hardening_ssh_allow_from'a sunucuya BAĞLANABİLECEĞİN TÜM ağları yaz (VPN + LAN + ofis); yalnızca VPN yazarsan LAN'dan, yalnızca LAN yazarsan VPN'den girişin kesilir. Kontrol makinesinin adresi listede değilse rol hiçbir şey yazmadan durur.",
+      "Önce enable: 0 yazılır, pve-firewall compile ile doğrulanır, sonra enable: 1. Zamanlı geri alma ağı arm edilir; yeni SSH bağlantısı ve 8006 doğrulanamazsa cluster.fw önceki hâline döner (yoksa silinir).",
+      "Yalnızca TEK düğümde çalışır (küme reddedilir); kullanıcının kendi kuralları olan cluster.fw dosyasına dokunulmaz. VM/CT güvenlik duvarlarına dokunulmaz."
+     ],
+     "write": false
+    },
+    {
+     "applicable": true,
+     "confirm": "none",
+     "destructive": false,
+     "effects": [],
+     "id": "kaldir_onizle",
+     "platforms": null,
+     "prereqsOk": true,
+     "reason": "sudo parolası gerekir: parola arayüzde girilmez, Terminal'de girersiniz",
+     "requires": null,
+     "requiresSudo": true,
+     "runnable": false,
+     "terminal": true,
+     "warnings": [
+      "Salt okunur: hardening_remove_items'taki dosyalardan hangilerinin silineceğini 'SİLİNECEK: <yol>' satırlarıyla gösterir, hiçbir şey yazmaz ve silmez.",
+      "İçeriği bu paketin yazdığı gibi olmayan dosya 'ATLANDI' olarak gösterilir ve silinmez."
+     ],
+     "write": false
+    },
+    {
+     "applicable": true,
+     "confirm": "type-server-name",
+     "destructive": true,
+     "effects": [
+      "changes-config",
+      "destructive"
+     ],
+     "id": "kaldir",
+     "platforms": null,
+     "prereqs": [
+      {
+       "action": "kaldir_onizle",
+       "ageSec": 0,
+       "ok": false
+      }
+     ],
+     "prereqsOk": false,
+     "reason": "önkoşul tamam değil: kaldir_onizle son 30 dk içinde başarıyla çalışmış olmalı",
+     "requires": [
+      "kaldir_onizle"
+     ],
+     "requiresSudo": true,
+     "runnable": false,
+     "terminal": false,
+     "warnings": [
+      "hardening_remove_items'taki dosyaları SİLER (paket kaldırılmaz). Silmeden önce içerik sunucuda /var/backups/linux-hardening/kaldir-<tarih>/ altına (root, 0700) kopyalanır; kaldir_geri_yukle ile geri yüklenir.",
+      "Silmek çalışan sistemi geri almaz: çalışan sysctl değerleri ve yüklü modüller yeniden başlatmaya kadar sürer (modprobe engeli ise dosya silinince hemen kalkar). unattended_upgrades için 20auto-upgrades kalkınca otomatik güvenlik güncellemeleri kapanır.",
+      "Geri alma güvenlik ağı (hardening_rollback) bu eylemi KAPSAMAZ; geri dönüş yedekten kaldir_geri_yukle iledir."
+     ],
+     "write": false
+    },
+    {
+     "applicable": true,
+     "confirm": "type-server-name",
+     "destructive": false,
+     "effects": [
+      "changes-config"
+     ],
+     "id": "kaldir_geri_yukle",
+     "platforms": null,
+     "prereqsOk": true,
+     "reason": "değişiklik yapar: sudo parolasını Terminal'de girersiniz",
+     "requires": null,
+     "requiresSudo": true,
+     "runnable": false,
+     "terminal": false,
+     "warnings": [
+      "kaldir eyleminin yedeğinden dosyaları geri yazar (hardening_remove_restore_from boşsa en son yedek). Aynı yolda sonradan yazılmış dosyanın üzerine yazar.",
+      "Yalnızca kataloğdaki yollar geri yüklenir; yedekteki başka yol yok sayılır."
+     ],
+     "write": true
+    }
+   ],
+   "description": "Ubuntu sunucuları Ansible ile sertleştirir (SSH, ufw, kernel, auditd, fail2ban, AIDE); Lynis denetimi ve geri alma güvenlik ağı içerir",
+   "id": "linux-hardening",
+   "name": "Linux sertleştirme",
+   "vars": [
+    {
+     "default": "",
+     "description": "ZORUNLU (ufw ya da ssh alanı açıkken; varsayılan yok, boşken harden.yml durur). SSH'a izin verilen yönetim ağları (CIDR listesi). Sunucuya BAĞLANABİLECEĞİN TÜM ağları yaz (VPN + LAN + ...): ufw yalnızca bunlardan SSH'a izin verir, yalnızca VPN yazarsan LAN'dan SSH kesilir. Kontrol makinesinin sunucudan görünen adresi de listede olmalı",
+     "group": "SSH",
+     "name": "hardening_ssh_allow_from",
+     "needed": true,
+     "set": false,
+     "type": "list[cidr]",
+     "value": ""
+    }
+   ],
+   "version": "0.13.0"
+  },
+  {
+   "actions": [
+    {
+     "applicable": true,
+     "confirm": "none",
+     "destructive": false,
+     "effects": [],
+     "id": "durum",
+     "platforms": null,
+     "prereqsOk": true,
+     "requires": null,
+     "requiresSudo": false,
+     "runnable": true,
+     "terminal": false,
+     "warnings": [
+      "Salt okunur: saat dilimi, LANG, chrony durumu ve ofsetini okur; hiçbir şeyi değiştirmez. chrony kurulu değilse ntp_servis=inactive/unknown, ofset unknown görünür."
+     ],
+     "write": false
+    },
+    {
+     "applicable": true,
+     "confirm": "none",
+     "destructive": false,
+     "effects": [],
+     "id": "preview",
+     "platforms": null,
+     "prereqsOk": true,
+     "reason": "sudo parolası gerekir: parola arayüzde girilmez, Terminal'de girersiniz",
+     "requires": null,
+     "requiresSudo": true,
+     "runnable": false,
+     "terminal": true,
+     "warnings": [
+      "Önizleme yalnızca dosya farkını ve plan adlarını gösterir: timedatectl, locale-gen, paket kurulumu ve chrony yeniden başlatması --check'te çalışmaz, gösterilmez.",
+      "Boş bırakılan utility_timezone / utility_locale / utility_ntp_servers o alana hiç dokunulmayacağı anlamına gelir."
+     ],
+     "write": false
+    },
+    {
+     "applicable": true,
+     "confirm": "yes-no",
+     "destructive": false,
+     "effects": [
+      "installs-package",
+      "changes-config"
+     ],
+     "id": "apply",
+     "platforms": null,
+     "prereqs": [
+      {
+       "action": "preview",
+       "ageSec": 0,
+       "ok": false
+      }
+     ],
+     "prereqsOk": false,
+     "reason": "önkoşul tamam değil: preview son 30 dk içinde başarıyla çalışmış olmalı",
+     "requires": [
+      "preview"
+     ],
+     "requiresSudo": true,
+     "runnable": false,
+     "terminal": false,
+     "warnings": [
+      "Değişmeden önce /var/backups/utility/<tarih>/ altına yedek alır (dizin 0700, dosyalar 0600); zamanlayıcılı geri alma güvenlik ağı YOKTUR (ssh/ufw/PAM'a dokunulmaz, erişimi kesmez). Geri dönüş: geri_yukle eylemi.",
+      "NTP kaynakları, dağıtımın varsayılan kaynaklarının YERİNE değil yanına eklenir (sources.d/utility.sources); chrony.conf'a dokunulmaz. Değişince chrony yeniden başlatılır.",
+      "Yanlış NTP kaynağının en kötü sonucu saat senkronunun kaybıdır (ssh sertifikaları, TOTP, apt 'Not live until' etkilenebilir); erişim kaybı değil.",
+      "auditd açıksa saat dilimi değişimi 'time-change' kaydı üretir (beklenen). ufw giden trafiği reddediyorsa (hardening_ufw_outgoing_deny) NTP için 123/udp çıkışı gerekir.",
+      "locale-gen ve chrony kurulumu gerekirse apt ile paket kurar (locales, chrony); geri_yukle paketleri kaldırmaz."
+     ],
+     "write": false
+    },
+    {
+     "applicable": true,
+     "confirm": "yes-no",
+     "destructive": false,
+     "effects": [
+      "changes-config"
+     ],
+     "id": "geri_yukle",
+     "platforms": null,
+     "prereqsOk": true,
+     "reason": "değişiklik yapar: sudo parolasını Terminal'de girersiniz",
+     "requires": null,
+     "requiresSudo": true,
+     "runnable": false,
+     "terminal": false,
+     "warnings": [
+      "Yalnızca DOSYALARI geri yazar (/etc/localtime, /etc/timezone, /etc/default/locale, /etc/locale.gen, chrony conf.d ve sources.d); yedek yokken var olmayan dosyayı siler. utility_restore_from boşsa EN SON yedek kullanılır.",
+      "Kurulan paketleri (chrony, locales), üretilmiş locale'leri, servis durumunu ve geçmiş log zaman damgalarını geri ALMAZ. chrony drop-in'i değiştiyse chrony yeniden başlatılır.",
+      "Yedekten sonra elle yapılan değişikliklerin üzerine yazar."
+     ],
+     "write": true
+    }
+   ],
+   "description": "Saat dilimini, sistem dilini (LANG) ve NTP kaynaklarını (chrony drop-in) önizleyerek, yedekleyerek ve onayla yönetir. Ubuntu 26.04 ve Debian 13; Proxmox VE kapsam dışı.",
+   "id": "utility",
+   "name": "Sunucu araçları: saat dilimi, locale, NTP",
+   "vars": [],
+   "version": "0.1.0"
+  }
+ ],
+ "prep": {
+  "agent": false,
+  "key": false,
+  "passphrase": false
+ },
+ "server": {
+  "checked": true,
+  "conn": "down",
+  "hasKey": false,
+  "host": "10.255.0.11",
+  "knock": false,
+  "last": {
+   "action": "durum",
+   "package": "utility",
+   "result": "fail",
+   "time": "2026-11-10T10:00:00Z",
+   "version": "0.1.0"
+  },
+  "lynis": null,
+  "name": "db1",
+  "os": "linux",
+  "platform": "",
+  "port": "22",
+  "recent": [
+   {
+    "action": "durum",
+    "package": "utility",
+    "result": "fail",
+    "time": "2026-11-10T10:00:00Z",
+    "version": "0.1.0"
+   }
+  ],
+  "up": false,
+  "user": "root",
+  "valid": true
+ }
+}

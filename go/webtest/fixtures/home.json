@@ -1,0 +1,120 @@
+{
+ "indexSerial": "2",
+ "packages": [
+  {
+   "id": "kurulum",
+   "version": "0.1.0"
+  },
+  {
+   "id": "linux-hardening",
+   "version": "0.13.0"
+  },
+  {
+   "id": "utility",
+   "version": "0.1.0"
+  }
+ ],
+ "servers": [
+  {
+   "checked": false,
+   "conn": "",
+   "hasKey": false,
+   "host": "10.255.0.11",
+   "knock": false,
+   "last": {
+    "action": "durum",
+    "package": "utility",
+    "result": "fail",
+    "time": "2026-11-10T10:00:00Z",
+    "version": "0.1.0"
+   },
+   "lynis": null,
+   "name": "db1",
+   "os": "linux",
+   "platform": "",
+   "port": "22",
+   "recent": [
+    {
+     "action": "durum",
+     "package": "utility",
+     "result": "fail",
+     "time": "2026-11-10T10:00:00Z",
+     "version": "0.1.0"
+    }
+   ],
+   "up": false,
+   "user": "root",
+   "valid": true
+  },
+  {
+   "checked": false,
+   "conn": "",
+   "hasKey": false,
+   "host": "10.255.0.30",
+   "knock": false,
+   "last": null,
+   "lynis": null,
+   "name": "vm1",
+   "os": "linux",
+   "platform": "",
+   "port": "22",
+   "recent": null,
+   "up": false,
+   "user": "root",
+   "valid": true
+  },
+  {
+   "checked": false,
+   "conn": "",
+   "hasKey": false,
+   "host": "10.255.0.10",
+   "knock": false,
+   "last": {
+    "action": "audit",
+    "package": "linux-hardening",
+    "result": "ok",
+    "time": "2026-11-10T09:00:00Z",
+    "version": "0.13.0"
+   },
+   "lynis": {
+    "date": "2026-11-10",
+    "dates": [
+     "2026-11-01",
+     "2026-11-05",
+     "2026-11-10"
+    ],
+    "history": [
+     61,
+     68,
+     74
+    ],
+    "score": 74,
+    "suggestions": 12,
+    "warnings": 1
+   },
+   "name": "web1",
+   "os": "linux",
+   "platform": "",
+   "port": "22",
+   "recent": [
+    {
+     "action": "audit",
+     "package": "linux-hardening",
+     "result": "ok",
+     "time": "2026-11-10T09:00:00Z",
+     "version": "0.13.0"
+    },
+    {
+     "action": "preview",
+     "package": "linux-hardening",
+     "result": "ok",
+     "time": "2026-11-10T08:00:00Z",
+     "version": "0.13.0"
+    }
+   ],
+   "up": false,
+   "user": "root",
+   "valid": true
+  }
+ ]
+}

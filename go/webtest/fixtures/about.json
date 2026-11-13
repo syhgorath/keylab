@@ -1,0 +1,14 @@
+{
+ "askpass": true,
+ "componentsDir": "/fixture/path",
+ "conf": {
+  "STATUS": "on",
+  "STATUS_TIMEOUT": "2"
+ },
+ "go": "go-test",
+ "platform": "test/test",
+ "root": "/fixture/path",
+ "serversDir": "/fixture/srv",
+ "stateDir": "/fixture/state",
+ "version": "0.0.0-test"
+}
