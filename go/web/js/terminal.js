@@ -118,6 +118,27 @@
     const ok = forward ? active.search.findNext(q, { ...findOpts(), incremental: !again }) : active.search.findPrevious(q, findOpts());
     st.textContent = ok ? "" : tr("term_find_none", "Bulunamadı");
   }
+  /* ---- hızlı komutlar: SABİT, salt okunur liste (koda gömülü; sunucudan/yapılandırmadan/DOM'dan gelmez). Tıklayınca komut Enter ile
+     birlikte AÇIK oturumun girdisine gider. UYARI: komut o an terminalde çalışan programa yazılır (editör, parola istemi vb. olabilir);
+     kabuk isteminde olduğunuzdan emin olun. sudo'lu olanlar parolayı terminalde sorar. */
+  const QUICK = [
+    ["uptime", "uptime"], ["df -h", "df -h"], ["ip addr", "ip addr"], ["ufw", "sudo ufw status verbose"],
+    ["ssh", "systemctl status ssh"], ["fail2ban", "sudo fail2ban-client status"], ["timedatectl", "timedatectl"],
+  ];
+  function sendQuick(cmd) {
+    if (!active || active.closed || !active.id) return;
+    active.queue += cmd + "\n"; flushInput(active); active.term.focus();
+  }
+  function initQuick() {
+    const box = $("#term-quick");
+    QUICK.forEach(([label, cmd]) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "term-quick-chip"; b.textContent = label;
+      b.title = cmd + (cmd.startsWith("sudo ") ? " (" + tr("term_quick_sudo", "sudo parolası sorabilir") + ")" : "");
+      b.addEventListener("click", () => sendQuick(cmd));
+      box.appendChild(b);
+    });
+  }
+
   function initSearchUi() {
     $("#term-find").addEventListener("input", () => doFind(true));
     $("#term-find").addEventListener("keydown", e => {
@@ -227,6 +248,7 @@
   });
   window.addEventListener("keylab:langchange", () => renderBars());
   initSearchUi();
+  initQuick();
   adopt();
 
   window.KeyLabTerminal = { open, close: () => active && closeSession(active), minimize };

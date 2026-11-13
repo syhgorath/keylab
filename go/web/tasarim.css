@@ -1382,4 +1382,8 @@ body.dock-open{padding-bottom:276px}
 .kpi-accented .kpi[data-tone="ok"] .kpi-value{color:var(--ok)}
 .kpi-accented .kpi[data-tone="warn"] .kpi-value{color:var(--warn)}
 .kpi-accented .kpi[data-tone="danger"] .kpi-value{color:var(--danger)}
+.term-quick{display:flex;gap:6px;flex-wrap:wrap;margin:0 20px 8px}
+.term-quick-chip{padding:3px 10px;border:1px solid var(--border);border-radius:99px;background:var(--surface);color:var(--text-2);font:12px var(--mono);cursor:pointer}
+.term-quick-chip:hover{border-color:var(--accent);color:var(--accent-ink)}
+.term-quick-chip:focus-visible{box-shadow:var(--focus);outline:none}
 [hidden]{display:none !important} /* sj-sonu: !important yardımcı sınıfların display bildirimi hidden özniteliğini ezmesin; DOSYANIN SONUNDA kalmalı */
