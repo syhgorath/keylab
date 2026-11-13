@@ -25,7 +25,6 @@
     <div class="spacer sx-97445a"></div>
     <span id="pills" class="row-flex"></span>
     <button class="job-pill" id="job-pill" type="button" hidden title="Çalışan işi aç"></button>
-    <button class="icon-btn" id="jobs-btn" type="button" aria-label="Son işler" title="Son işler"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
     <button class="icon-btn" id="lang-btn" type="button" aria-label="Dil / Language" title="Dil / Language"><span id="lang-cur" class="mono sx-15ab33">TR</span></button>
     <button class="icon-btn" id="theme-btn" aria-label="Tema: otomatik" title="Tema: otomatik (tıklayınca değişir)"><span id="theme-ico" aria-hidden="true">◐</span></button>
     <button class="icon-btn" id="lock-btn" type="button" aria-label="Ekranı gizle (L)" title="Ekranı gizle (L)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
@@ -500,18 +499,6 @@
   </div>
 </div>
 
-<div class="modal-back" id="jobs-modal" role="dialog" aria-modal="true" aria-labelledby="jobs-title">
-  <div class="modal sx-48a649">
-    <div class="modal-head">
-      <div><h3 id="jobs-title">Son işler</h3><div class="sub">Bu oturumda çalışan işler (en çok 20); satıra tıklayınca çıktısı açılır.</div></div>
-      <div class="spacer"></div>
-      <button class="icon-btn" id="jobs-x" aria-label="Kapat"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
-    </div>
-    <div class="modal-body sx-a5d903"><div id="jobs-list" aria-live="polite"></div></div>
-    <div class="modal-foot"><span id="jobs-status" class="small muted sx-471df9" role="status"></span><button class="btn ghost" id="jobs-logs">Kalıcı günlükler</button><button class="btn" id="jobs-close">Kapat</button></div>
-  </div>
-</div>
-
 <div class="modal-back palette-back" id="palette" role="dialog" aria-modal="true" aria-label="Komut paleti">
   <div class="palette-card">
     <input id="palette-in" class="palette-in" role="combobox" aria-expanded="false" aria-controls="palette-list" aria-autocomplete="list" autocomplete="off" spellcheck="false" placeholder="Sayfa, sunucu ya da komut ara…" aria-label="Komut paleti">
@@ -556,7 +543,26 @@
   </div>
 </div>
 
-<div class="term-dock" id="term-dock" role="toolbar" aria-label="Açık terminal oturumları" hidden></div>
+<footer class="wb-dock collapsed" id="wb-dock" aria-label="Görevler ve açık terminaller">
+  <div class="dock-bar">
+    <button class="dock-tab" id="dock-tab" type="button" aria-expanded="false" aria-controls="dock-body" title="Son işlemleri göster/gizle">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>Görevler &amp; Son İşlemler</span><span class="count" id="dock-count">0</span>
+    </button>
+    <div class="term-dock" id="term-dock" role="toolbar" aria-label="Açık terminal oturumları" hidden></div>
+    <div class="dock-jobs" id="dock-jobs"></div>
+    <div class="spacer"></div>
+    <span class="small muted" id="dock-hint"></span>
+    <button class="btn sm ghost" id="dock-toggle" type="button" aria-label="Görev panelini aç/kapat">▴</button>
+  </div>
+  <div class="dock-body" id="dock-body" hidden>
+    <table class="dock-table">
+      <thead><tr><th>Başlangıç</th><th>Sunucu</th><th>Paket / Sürüm</th><th>Eylem</th><th>Durum</th><th class="dock-act">Günlük</th></tr></thead>
+      <tbody id="dock-rows"></tbody>
+    </table>
+    <p class="small muted dock-empty" id="dock-empty" hidden>Henüz işlem kaydı yok.</p>
+  </div>
+</footer>
 <div class="sx-31f8f5" id="toast" role="status"></div>
 <script src="js/core/html.js"></script>
 <script src="js/core/i18n-phrases-en.js"></script>
@@ -571,7 +577,7 @@
 <script src="js/modal-trap.js"></script>
 <script src="js/backup.js"></script>
 <script src="js/batch.js"></script>
-<script src="js/jobs-history.js"></script>
+<script src="js/dock.js"></script>
 <script src="js/accent.js"></script>
 <script src="app.js"></script>
 </body>

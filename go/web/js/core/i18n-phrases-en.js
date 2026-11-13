@@ -5,6 +5,7 @@ window.KeyLabPhrasesEN = {
   exact: {
     "Toplu işlem…": "Bulk action…", "Toplu işlem": "Bulk action", "İptal et": "Cancel run", "Sunucu süzgeci": "Server filter",
     "Listedeki sunucularda aynı salt okunur eylemi sırayla çalıştır": "Run the same read-only action on the listed servers, one after another",
+    "Görevler & Son İşlemler": "Tasks & Recent actions", "Son işlemleri göster/gizle": "Show/hide recent actions", "Görev panelini aç/kapat": "Toggle the tasks panel", "Başlangıç": "Started", "Paket / Sürüm": "Package / Version", "Eylem": "Action", "Günlük": "Log", "Henüz işlem kaydı yok.": "No action recorded yet.",
     "Son işler": "Recent jobs", "Kalıcı günlükler": "Persistent logs", "Bu oturumda çalışan işler (en çok 20); satıra tıklayınca çıktısı açılır.": "Jobs run in this session (up to 20); click a row to see its output.",
     "Komut paleti": "Command palette", "Sayfa, sunucu ya da komut ara…": "Search pages, servers or commands…", "Sonuçlar": "Results",
     "↑↓ gezin · Enter seç · Esc kapat": "↑↓ navigate · Enter select · Esc close", "Komut paleti: sayfa, sunucu, komut ara": "Command palette: search pages, servers, commands",
