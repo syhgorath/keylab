@@ -6,6 +6,7 @@ sırasında) **davranışı değişmeden** düzenleyebilmek.
 
 - `views.test.js`: sayfa ve pencerelerin DOM **anlık görüntüleri** (`snapshots/`). Refaktörde değişmemeli.
 - `jobs.test.js`: iş akışı davranışı (tek/paralel iş, arka plana alma, dock, toplu işlem, eşzamanlılık ayarı) için açık beklentiler.
+- `undef.test.js` + `lib/undef.js`: **statik tanımsız-başvuru denetimi** (acorn): `web/` altındaki her betikte hiçbir kapsamda tanımlı olmayan ad arar. Refaktörde bir tanımlayıcı taşınıp başka bir yerdeki kullanımı açıkta kalırsa (ör. `wiz`) çalıştırmadan yakalar. Meşru yeni bir tarayıcı global'i gerekirse `lib/undef.js` içindeki `BUILTINS`'e eklenir (gözle incelenir); dosya başına istisna `undef.test.js` içindeki `ALLOW`.
 - `harness.js`: jsdom kurulumu, sahte fetch/xterm, anlık görüntü yardımcıları.
 
 ```bash
