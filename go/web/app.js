@@ -754,6 +754,17 @@
   const paintMode = () => $$("#set-mode button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.v === mode)));
   applyTheme();
   const paintAsk = () => $$("#set-ask button").forEach(x => { x.setAttribute("aria-pressed", String(x.dataset.v === askMode)); if (x.dataset.v === "system") { x.disabled = !askAvail; x.title = askAvail ? "" : "Bu platformda sistem penceresi yok"; } });
+  /* Eylemler > aynı anda en çok (sunucu tarafı ayar: /api/ui-settings) */
+  const maxEl = $("#set-maxjobs"), maxSt = $("#set-maxjobs-st");
+  let maxShown = 4;
+  async function loadMaxJobs() { try { const r = await json("/api/ui-settings"); maxShown = r.maxJobs; maxEl.value = r.maxJobs; maxEl.min = r.min; maxEl.max = r.max; } catch (e) { maxSt.textContent = "okunamadı: " + e.message; } }
+  maxEl.addEventListener("change", async () => {
+    const n = parseInt(maxEl.value, 10), lo = parseInt(maxEl.min, 10), hi = parseInt(maxEl.max, 10);
+    if (!(n >= lo && n <= hi)) { maxEl.value = maxShown; maxSt.textContent = `${lo} ile ${hi} arasında olmalı`; return; }
+    try { const r = await json("/api/ui-settings", { maxJobs: n }); maxShown = r.maxJobs; maxEl.value = r.maxJobs; maxSt.textContent = "kaydedildi"; }
+    catch (e) { maxEl.value = maxShown; maxSt.textContent = "kaydedilemedi: " + e.message; }
+  });
+  loadMaxJobs();
   $$("#set-ask button").forEach(b => b.addEventListener("click", () => { askMode = b.dataset.v; try { localStorage.setItem("sshpocket.askpass", askMode); } catch (e) { /* önemli değil */ } paintAsk(); }));
 
   async function loadSettings() {

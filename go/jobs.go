@@ -317,7 +317,8 @@ func (a *App) spawn(job *Job, dir string, argv []string) error {
 
 // Eşzamanlılık kuralı: FARKLI sunucularda eylemler paralel çalışır (en çok maxParallelJobs); aynı sunucuda aynı anda tek iş.
 // Genel işler (paket kurulumu: sunucu yok; sunucu silme) yalnız başka hiçbir iş yokken başlar ve çalışırken başkası başlayamaz.
-const maxParallelJobs = 4
+// (Üst sınır Ayarlar'dan değişir: bkz. uisettings.go; burası varsayılan.)
+const maxParallelJobs = defaultMaxJobs
 
 // runningLocked: çalışan (bitmemiş) işler. a.jmu tutulurken çağrılır.
 func (a *App) runningLocked() []*Job {
@@ -374,8 +375,8 @@ func (a *App) newJobX(batch bool, server, pkg, action string) (*Job, error) {
 			return nil, fmt.Errorf("bu sunucuda başka bir eylem çalışıyor")
 		}
 	}
-	if len(run) >= maxParallelJobs {
-		return nil, fmt.Errorf("en çok %d eylem aynı anda çalışabilir; birinin bitmesini bekleyin", maxParallelJobs)
+	if lim := a.maxJobs(); len(run) >= lim {
+		return nil, fmt.Errorf("en çok %d eylem aynı anda çalışabilir (Ayarlar > Eylemler); birinin bitmesini bekleyin", lim)
 	}
 	b := make([]byte, 8)
 	_, _ = rand.Read(b)

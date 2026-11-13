@@ -184,6 +184,7 @@ func main() {
 	tb := make([]byte, 24)
 	_, _ = rand.Read(tb)
 	app := &App{serversDir: sd, compDir: cd, stateDir: st, token: hex.EncodeToString(tb), host: ln.Addr().String(), up: map[string]bool{}, conn: map[string]string{}, jobs: map[string]*Job{}}
+	app.loadUISettings()
 
 	sub, _ := fs.Sub(webFS, "web")
 	mux := http.NewServeMux()
@@ -373,6 +374,7 @@ func main() {
 		_, _ = w.Write([]byte(`{"ok":true}`))
 	}))
 	mux.HandleFunc("/api/jobs", app.guard(app.jobsHandler))
+	mux.HandleFunc("/api/ui-settings", app.guard(app.uiSettingsHandler))
 	mux.HandleFunc("/api/batch", app.guard(app.batchHandler))
 	mux.HandleFunc("/api/batch/options", app.guard(app.batchOptionsHandler))
 	mux.HandleFunc("/api/batch/cancel", app.guard(app.batchCancelHandler))
