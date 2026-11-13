@@ -23,7 +23,7 @@ const BUILTINS = new Set(`
 `.split(/\s+/).filter(Boolean));
 
 class Scope {
-  constructor(parent) { this.parent = parent; this.names = new Set(); }
+  constructor(parent, node) { this.parent = parent; this.node = node; this.names = new Set(); }
   has(n) { for (let s = this; s; s = s.parent) if (s.names.has(n)) return true; return false; }
 }
 
@@ -66,15 +66,21 @@ function blockNames(stmts, out) {
   }
 }
 
-function findUndefined(code, { globals = [], file = "<kod>" } = {}) {
+// analyze: findUndefined'ın ayrıntılı hâli. Her başvuru için TANIMLANDIĞI kapsamı da döndürür (refs[].scope; yerleşik/genel ise null).
+// Kod dönüşümleri (ör. refaktör 3b: modül düzeyi `let` değişkenlerini paylaşılan nesneye taşımak) bunu kullanır.
+function findUndefined(code, opts = {}) { return analyze(code, opts).found; }
+
+function analyze(code, { globals = [], file = "<kod>" } = {}) {
   const opts = { ecmaVersion: "latest", locations: true, allowHashBang: true };
   let ast;
   try { ast = acorn.parse(code, { ...opts, sourceType: "module" }); } catch (e) { ast = acorn.parse(code, { ...opts, sourceType: "script" }); }
-  const extra = new Set(globals), found = [];
+  const extra = new Set(globals), found = [], refs = [], scopes = [];
+  const mk = (parent, node) => { const sc = new Scope(parent, node); scopes.push(sc); return sc; };
 
   const ref = (id, scope) => {
     const n = id.name;
-    if (scope.has(n) || BUILTINS.has(n) || extra.has(n)) return;
+    for (let sc = scope; sc; sc = sc.parent) if (sc.names.has(n)) { refs.push({ id, name: n, scope: sc }); return; }
+    if (BUILTINS.has(n) || extra.has(n)) { refs.push({ id, name: n, scope: null }); return; }
     found.push({ file, line: id.loc.start.line, col: id.loc.start.column + 1, name: n });
   };
 
@@ -104,7 +110,7 @@ function findUndefined(code, { globals = [], file = "<kod>" } = {}) {
   }
 
   function visitFunction(fn, scope) {
-    const fs = new Scope(scope);
+    const fs = mk(scope, fn);
     if (fn.type === "FunctionExpression" && fn.id) fs.names.add(fn.id.name);
     if (fn.type !== "ArrowFunctionExpression") fs.names.add("arguments");
     fn.params.forEach(p => patternNames(p, fs.names));
@@ -121,28 +127,28 @@ function findUndefined(code, { globals = [], file = "<kod>" } = {}) {
       case "Identifier": ref(node, scope); return;
       case "FunctionDeclaration": case "FunctionExpression": case "ArrowFunctionExpression": visitFunction(node, scope); return;
       case "ClassDeclaration": case "ClassExpression": {
-        const cs = new Scope(scope); if (node.id) cs.names.add(node.id.name);
+        const cs = mk(scope, node); if (node.id) cs.names.add(node.id.name);
         visit(node.superClass, scope);
         node.body.body.forEach(m => {
-          if (m.type === "StaticBlock") { const bs = new Scope(cs); varNames({ type: "BlockStatement", body: m.body }, bs.names); blockNames(m.body, bs.names); m.body.forEach(s => visit(s, bs)); return; }
+          if (m.type === "StaticBlock") { const bs = mk(cs, m); varNames({ type: "BlockStatement", body: m.body }, bs.names); blockNames(m.body, bs.names); m.body.forEach(s => visit(s, bs)); return; }
           if (m.computed) visit(m.key, cs);
           if (m.value) visit(m.value, cs);
         });
         return;
       }
-      case "BlockStatement": { const bs = new Scope(scope); blockNames(node.body, bs.names); node.body.forEach(s => visit(s, bs)); return; }
-      case "ForStatement": { const fs = new Scope(scope); if (node.init && node.init.type === "VariableDeclaration" && node.init.kind !== "var") node.init.declarations.forEach(d => patternNames(d.id, fs.names)); visit(node.init, fs); visit(node.test, fs); visit(node.update, fs); visit(node.body, fs); return; }
+      case "BlockStatement": { const bs = mk(scope, node); blockNames(node.body, bs.names); node.body.forEach(s => visit(s, bs)); return; }
+      case "ForStatement": { const fs = mk(scope, node); if (node.init && node.init.type === "VariableDeclaration" && node.init.kind !== "var") node.init.declarations.forEach(d => patternNames(d.id, fs.names)); visit(node.init, fs); visit(node.test, fs); visit(node.update, fs); visit(node.body, fs); return; }
       case "ForInStatement": case "ForOfStatement": {
-        const fs = new Scope(scope);
+        const fs = mk(scope, node);
         if (node.left.type === "VariableDeclaration") { if (node.left.kind !== "var") node.left.declarations.forEach(d => patternNames(d.id, fs.names)); node.left.declarations.forEach(d => visitPattern(d.id, fs)); }
         else visitTarget(node.left, fs);
         visit(node.right, fs); visit(node.body, fs); return;
       }
-      case "SwitchStatement": { visit(node.discriminant, scope); const ss = new Scope(scope); node.cases.forEach(c => blockNames(c.consequent, ss.names)); node.cases.forEach(c => { visit(c.test, ss); c.consequent.forEach(s => visit(s, ss)); }); return; }
-      case "CatchClause": { const cs = new Scope(scope); patternNames(node.param, cs.names); visitPattern(node.param, cs); visit(node.body, cs); return; }
+      case "SwitchStatement": { visit(node.discriminant, scope); const ss = mk(scope, node); node.cases.forEach(c => blockNames(c.consequent, ss.names)); node.cases.forEach(c => { visit(c.test, ss); c.consequent.forEach(s => visit(s, ss)); }); return; }
+      case "CatchClause": { const cs = mk(scope, node); patternNames(node.param, cs.names); visitPattern(node.param, cs); visit(node.body, cs); return; }
       case "VariableDeclaration": node.declarations.forEach(d => { visitPattern(d.id, scope); visit(d.init, scope); }); return;
       case "MemberExpression": visit(node.object, scope); if (node.computed) visit(node.property, scope); return;
-      case "Property": if (node.computed) visit(node.key, scope); visit(node.value, scope); return;
+      case "Property": if (node.computed) visit(node.key, scope); if (node.shorthand && node.value.type === "Identifier") node.value.shorthand = true; visit(node.value, scope); return;
       case "AssignmentExpression": visitTarget(node.left, scope); visit(node.right, scope); return;
       case "UnaryExpression": if (node.operator === "typeof" && node.argument.type === "Identifier") return; visit(node.argument, scope); return;
       case "LabeledStatement": visit(node.body, scope); return;
@@ -158,10 +164,10 @@ function findUndefined(code, { globals = [], file = "<kod>" } = {}) {
     }
   }
 
-  const top = new Scope(null);
+  const top = mk(null, ast);
   varNames(ast, top.names); blockNames(ast.body, top.names);
   ast.body.forEach(s => visit(s, top));
-  return found;
+  return { found, refs, scopes, ast };
 }
 
-module.exports = { findUndefined, BUILTINS };
+module.exports = { findUndefined, analyze, BUILTINS };

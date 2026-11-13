@@ -4,38 +4,34 @@ import { initContextMenu } from "./js/ui/context-menu.js";
 import { initSshImport } from "./js/ui/ssh-import.js";
 import { initWizard } from "./js/ui/wizard.js";
 import { initKnock } from "./js/ui/knock.js";
+import { appState } from "./js/state.js";
 
 (function () {
   "use strict";
 
-  let home = { servers: [], packages: [], indexSerial: "" };
-  let selected = "";          // Lynis panelinde gösterilen sunucu
-  let query = "";
-  let view = "dash";
 
-  const matches = (...parts) => !query || parts.join(" ").toLowerCase().includes(query);
+  const matches = (...parts) => !appState.query || parts.join(" ").toLowerCase().includes(appState.query);
 
   /* ---------------- Gezinme ---------------- */
   // Adres çubuğu = konum: "" (pano) · #v=<sayfa> · #s=<sunucu>&p=<sekme>. Yeni sayfa/sunucu geçmişe EKLENİR (geri/ileri çalışır);
   // aynı sunucudaki sekme değişimi ve geçmişten uygulanan gezinme geçmişi ÇOĞALTMAZ (replace).
   const VIEWS = ["dash", "servers", "packages", "compare", "reports", "lynis", "logs", "settings", "add"];
-  let routing = false; // geçmişten (geri/ileri/elle hash) ya da açılışta uygulanıyor: yeni geçmiş kaydı açma
   function setHash(h, replace) {
     if (location.hash === h || (h === "" && location.hash === "")) return;
-    try { (replace || routing ? history.replaceState : history.pushState).call(history, null, "", h || location.pathname); } catch (e) { /* adres çubuğu güncellenemezse sayfa yine çalışır */ }
+    try { (replace || appState.routing ? history.replaceState : history.pushState).call(history, null, "", h || location.pathname); } catch (e) { /* adres çubuğu güncellenemezse sayfa yine çalışır */ }
   }
   function applyHash() {
     const q = new URLSearchParams(location.hash.slice(1));
-    routing = true;
+    appState.routing = true;
     try {
-      if (q.get("s")) { if (!(view === "server" && srvName === q.get("s"))) openServer(q.get("s"), q.get("p") || ""); else if (q.get("p") && q.get("p") !== srvTab) { srvTab = q.get("p"); renderServer(); } }
+      if (q.get("s")) { if (!(appState.view === "server" && appState.srvName === q.get("s"))) openServer(q.get("s"), q.get("p") || ""); else if (q.get("p") && q.get("p") !== appState.srvTab) { appState.srvTab = q.get("p"); renderServer(); } }
       else showView(VIEWS.includes(q.get("v")) ? q.get("v") : "dash");
-    } finally { routing = false; }
+    } finally { appState.routing = false; }
   }
   window.addEventListener("popstate", applyHash); // geri/ileri ve elle yazılan #… (hashchange ile aynı olay zinciri)
 
   function showView(name) {
-    view = name;
+    appState.view = name;
     $$(".view").forEach(v => (v.hidden = v.id !== "view-" + name));
     const navName = name === "server" || name === "add" ? "servers" : name;
     $$(".nav-item[data-nav]").forEach(b => b.setAttribute("aria-current", b.dataset.nav === navName ? "page" : "false"));
@@ -84,8 +80,7 @@ import { initKnock } from "./js/ui/knock.js";
   };
   const osIcon = (os, size = 44) => `<svg class="osico" width="${size}" height="${size}" viewBox="0 0 48 48" role="img" aria-label="${esc(OS_LABEL[os] || "Linux")}">${OS_ICON[os] || OS_ICON.linux}</svg>`;
 
-  let mode = "tiles";   // tiles | list
-  try { mode = localStorage.getItem("sshpocket.mode") === "list" ? "list" : "tiles"; } catch (e) { /* tarayıcı depolaması kapalı olabilir */ }
+  try { appState.mode = localStorage.getItem("sshpocket.mode") === "list" ? "list" : "tiles"; } catch (e) { /* tarayıcı depolaması kapalı olabilir */ }
 
   function tile(s) {
     const st = dotState(s);
@@ -110,7 +105,7 @@ import { initKnock } from "./js/ui/knock.js";
   }
 
   function kpis() {
-    const sv = home.servers, up = sv.filter(s => s.checked && s.up).length, chk = sv.filter(s => s.checked).length, keys = sv.filter(s => s.hasKey).length;
+    const sv = appState.home.servers, up = sv.filter(s => s.checked && s.up).length, chk = sv.filter(s => s.checked).length, keys = sv.filter(s => s.hasKey).length;
     const day = Date.now() - 864e5;
     const fails = sv.flatMap(s => (s.recent || []).filter(a => !isOk(a.result) && Date.parse(a.time) > day).map(a => ({ ...a, server: s.name })));
     const ly = sv.filter(s => s.lynis);
@@ -126,8 +121,8 @@ import { initKnock } from "./js/ui/knock.js";
         <div class="kpi-value">${sv.some(s => s.valid) && !chk ? "…" : up}<small>/${sv.length}</small></div>
         <div class="kpi-sub"><span class="ok">✔</span> anahtar var: ${keys} · <span class="muted">yok: ${sv.length - keys}</span></div></div>
       <div class="kpi"><div class="kpi-label"><span class="dot ok" aria-hidden="true"></span>Kurulu paket</div>
-        <div class="kpi-value">${home.packages.length}</div>
-        <div class="kpi-sub">${esc(home.packages.map(p => p.id).join(" · ")) || "—"}</div></div>
+        <div class="kpi-value">${appState.home.packages.length}</div>
+        <div class="kpi-sub">${esc(appState.home.packages.map(p => p.id).join(" · ")) || "—"}</div></div>
       <div class="kpi"${tn(tFail)}><div class="kpi-label"><span class="dot ${fails.length ? "danger" : "ok"}" aria-hidden="true"></span>Son 24 sa başarısız</div>
         <div class="kpi-value">${fails.length}</div>
         <div class="kpi-sub">${fails.length ? `<span class="danger">${esc(fails[0].server)}</span> · ${esc(fails[0].package)} ${esc(fails[0].action)}` : "başarısız eylem yok"}</div></div>
@@ -137,7 +132,7 @@ import { initKnock } from "./js/ui/knock.js";
   }
 
   function pills() {
-    const sv = home.servers, up = sv.filter(s => s.checked && s.up).length, off = sv.filter(s => s.checked && !s.up).length;
+    const sv = appState.home.servers, up = sv.filter(s => s.checked && s.up).length, off = sv.filter(s => s.checked && !s.up).length;
     const day = Date.now() - 864e5;
     const f = sv.reduce((t, s) => t + (s.recent || []).filter(a => !isOk(a.result) && Date.parse(a.time) > day).length, 0);
     return `${sv.some(s => s.valid && !s.checked) ? '<span class="pill"><span class="dot" aria-hidden="true"></span>denetleniyor…</span>' : ""}
@@ -173,7 +168,7 @@ import { initKnock } from "./js/ui/knock.js";
   }
 
   function timeline() {
-    const all = home.servers.flatMap(s => (s.recent || []).map(a => ({ ...a, server: s.name })))
+    const all = appState.home.servers.flatMap(s => (s.recent || []).map(a => ({ ...a, server: s.name })))
       .sort((a, b) => Date.parse(b.time) - Date.parse(a.time)).slice(0, 7);
     if (!all.length) return '<li class="small muted">Henüz kayıt yok.</li>';
     return all.map(a => `<li class="${isOk(a.result) ? "ok" : "fail"}"><div class="tl-time" title="${esc(localTime(a.time))}">${esc(ago(a.time))} önce</div>
@@ -184,16 +179,16 @@ import { initKnock } from "./js/ui/knock.js";
   let treeQ = "";
   function renderSrvTree() {
     const el = $("#srvtree-list"); if (!el) return;
-    const sv = home.servers.filter(s => !treeQ || `${s.name} ${s.host || ""}`.toLowerCase().includes(treeQ));
-    $("#srvtree-title").textContent = `${t("tree_title", "Sunucular")} (${home.servers.length})`;
-    el.innerHTML = sv.map(s => `<li><button class="tree-item${s.name === srvName ? " on" : ""}" data-tsrv="${esc(s.name)}" aria-current="${s.name === srvName ? "page" : "false"}"><span class="status-dot ${dotState(s)}" aria-label="durum: ${stateText(s)}"></span><span class="tree-txt"><span class="tree-name">${esc(s.name)}</span><span class="tree-addr mono">${esc(s.host || "")}</span></span></button></li>`).join("") || '<li class="small muted sj-cfa1ec">${t("tree_none", "Eşleşen sunucu yok.")}</li>';
+    const sv = appState.home.servers.filter(s => !treeQ || `${s.name} ${s.host || ""}`.toLowerCase().includes(treeQ));
+    $("#srvtree-title").textContent = `${t("tree_title", "Sunucular")} (${appState.home.servers.length})`;
+    el.innerHTML = sv.map(s => `<li><button class="tree-item${s.name === appState.srvName ? " on" : ""}" data-tsrv="${esc(s.name)}" aria-current="${s.name === appState.srvName ? "page" : "false"}"><span class="status-dot ${dotState(s)}" aria-label="durum: ${stateText(s)}"></span><span class="tree-txt"><span class="tree-name">${esc(s.name)}</span><span class="tree-addr mono">${esc(s.host || "")}</span></span></button></li>`).join("") || '<li class="small muted sj-cfa1ec">${t("tree_none", "Eşleşen sunucu yok.")}</li>';
   }
-  $("#srvtree-list").addEventListener("click", e => { const b = e.target.closest("[data-tsrv]"); if (b && b.dataset.tsrv !== srvName) openServer(b.dataset.tsrv, srvTab); });
+  $("#srvtree-list").addEventListener("click", e => { const b = e.target.closest("[data-tsrv]"); if (b && b.dataset.tsrv !== appState.srvName) openServer(b.dataset.tsrv, appState.srvTab); });
   $("#srvtree-q").addEventListener("input", e => { treeQ = e.target.value.trim().toLowerCase(); renderSrvTree(); });
   $("#srvtree-add").addEventListener("click", () => showView("add"));
   /* Dil: düğme TR/EN arasında geçer; dinamik çizimler yeniden yapılır */
   $("#lang-btn").addEventListener("click", () => { const L = window.KeyLabI18n; L.setLang(L.getLang() === "tr" ? "en" : "tr"); });
-  window.addEventListener("keylab:langchange", () => { render(); renderSrvTree(); if (view === "server" && srv) renderServer(); });
+  window.addEventListener("keylab:langchange", () => { render(); renderSrvTree(); if (appState.view === "server" && appState.srv) renderServer(); });
 
   /* Sunucu süzgeci (Tümü / Çevrimiçi / Kapalı / Uyarılı / Anahtarsız / Knock): home.servers değişmez, yalnız görünüm süzülür */
   let fleetFilter = "all";
@@ -210,10 +205,10 @@ import { initKnock } from "./js/ui/knock.js";
   function renderFleetFilter() {
     const defs = [["all", t("ff_all", "Tümü"), true], ["up", t("ff_up", "Çevrimiçi"), true], ["down", t("ff_down", "Kapalı"), true], ["warn", "⚠ " + t("ff_warn", "Uyarılı"), true], ["nokey", t("ff_nokey", "Anahtarsız"), false], ["knock", "🔒 knock", false]];
     const html = defs.map(([k, label, always]) => {
-      const n = home.servers.filter(FLEET_TESTS[k]).length;
+      const n = appState.home.servers.filter(FLEET_TESTS[k]).length;
       return always || n || fleetFilter === k ? `<button class="fchip" data-ff="${k}" aria-pressed="${fleetFilter === k}">${label} <span class="muted">${n}</span></button>` : "";
     }).join("");
-    $$(".fleet-filter").forEach(el => { el.innerHTML = home.servers.length ? html : ""; });
+    $$(".fleet-filter").forEach(el => { el.innerHTML = appState.home.servers.length ? html : ""; });
   }
   document.addEventListener("click", e => {
     const b = e.target.closest(".fleet-filter [data-ff]"); if (!b) return;
@@ -221,37 +216,37 @@ import { initKnock } from "./js/ui/knock.js";
   });
   function render() {
     renderSrvTree();
-    const sv = home.servers.filter(s => matches(s.name, s.platform, s.last && s.last.package)).filter(FLEET_TESTS[fleetFilter] || FLEET_TESTS.all);
+    const sv = appState.home.servers.filter(s => matches(s.name, s.platform, s.last && s.last.package)).filter(FLEET_TESTS[fleetFilter] || FLEET_TESTS.all);
     visibleServers = sv.filter(s => s.valid).map(s => s.name);
     renderFleetFilter();
-    const pk = home.packages.filter(p => matches(p.id));
+    const pk = appState.home.packages.filter(p => matches(p.id));
     const addTile = '<li class="stile add" tabindex="0" data-add="1" aria-label="Sunucu ekle"><div class="plus" aria-hidden="true">+</div><div>Sunucu ekle</div></li>';
-    const rows = (sv.map(mode === "tiles" ? tile : serverRow).join("") || emptyServers) + (mode === "tiles" && !query && fleetFilter === "all" ? addTile : "");
-    for (const id of ["#servers", "#servers-all"]) { $(id).innerHTML = rows; $(id).classList.toggle("tiles", mode === "tiles"); }
-    $$(".mode-toggle button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
-    $("#servers-count").textContent = home.servers.length + " kayıt";
+    const rows = (sv.map(appState.mode === "tiles" ? tile : serverRow).join("") || emptyServers) + (appState.mode === "tiles" && !appState.query && fleetFilter === "all" ? addTile : "");
+    for (const id of ["#servers", "#servers-all"]) { $(id).innerHTML = rows; $(id).classList.toggle("tiles", appState.mode === "tiles"); }
+    $$(".mode-toggle button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === appState.mode)));
+    $("#servers-count").textContent = appState.home.servers.length + " kayıt";
     $("#pkgs-dash").innerHTML = pk.map(pkgRow).join("") || '<div class="small muted sj-cc781b">Paket bulunamadı.</div>';
     $("#kpis").innerHTML = kpis();
     $("#pills").innerHTML = pills();
-    $("#n-servers").textContent = home.servers.length;
-    $("#n-packages").textContent = home.packages.length;
+    $("#n-servers").textContent = appState.home.servers.length;
+    $("#n-packages").textContent = appState.home.packages.length;
     if (window.KeyLabDock) window.KeyLabDock.paint();
-    if (window.KeyLabOnboarding) window.KeyLabOnboarding.render(home.servers.length === 0);
-    $("#idx-serial").textContent = "seri: " + (home.indexSerial || "—");
-    if (!selected || !home.servers.some(s => s.name === selected)) {
-      const measured = home.servers.filter(s => s.lynis).sort((a, b) => (b.lynis.date || "").localeCompare(a.lynis.date || ""));
-      const first = measured[0] || home.servers[0];
-      selected = first ? first.name : "";
+    if (window.KeyLabOnboarding) window.KeyLabOnboarding.render(appState.home.servers.length === 0);
+    $("#idx-serial").textContent = "seri: " + (appState.home.indexSerial || "—");
+    if (!appState.selected || !appState.home.servers.some(s => s.name === appState.selected)) {
+      const measured = appState.home.servers.filter(s => s.lynis).sort((a, b) => (b.lynis.date || "").localeCompare(a.lynis.date || ""));
+      const first = measured[0] || appState.home.servers[0];
+      appState.selected = first ? first.name : "";
     }
-    $("#a-lynis").innerHTML = lynisCard(home.servers.find(s => s.name === selected));
+    $("#a-lynis").innerHTML = lynisCard(appState.home.servers.find(s => s.name === appState.selected));
     $("#a-tl").innerHTML = timeline();
     bindServers();
     $("#brand-sub").textContent = "yerel · taslak";
-    if (view === "compare") window.KeyLabCompare.load(false); // durum noktaları ve yeni sunucular
+    if (appState.view === "compare") window.KeyLabCompare.load(false); // durum noktaları ve yeni sunucular
   }
 
   async function load() {
-    try { home = await json("/api/home"); home.servers = home.servers || []; home.packages = home.packages || []; render(); }
+    try { appState.home = await json("/api/home"); appState.home.servers = appState.home.servers || []; appState.home.packages = appState.home.packages || []; render(); }
     catch (e) { $("#brand-sub").textContent = "hata: " + e.message; return; }
     refreshStatus();
   }
@@ -262,7 +257,7 @@ import { initKnock } from "./js/ui/knock.js";
     statusBusy = true;
     try {
       const st = await json("/api/status?detail=1");
-      home.servers.forEach(s => { if (s.name in st) { s.up = st[s.name].up; s.conn = st[s.name].conn; s.checked = true; } });
+      appState.home.servers.forEach(s => { if (s.name in st) { s.up = st[s.name].up; s.conn = st[s.name].conn; s.checked = true; } });
       render();
     } catch (e) { /* bir sonraki turda yeniden denenir */ }
     statusBusy = false;
@@ -327,8 +322,8 @@ import { initKnock } from "./js/ui/knock.js";
     };
     const done = async text => {
       toast(text); catSrv = ""; // katalog kartlarındaki değerler yeniden okunsun
-      window.KeyLabCompare.invalidate(); if (view === "compare") window.KeyLabCompare.load(false);
-      try { srv = await json("/api/server?name=" + encodeURIComponent(vSrv)); if (view === "server") renderServer(); } catch (e) { /* bir sonraki turda */ }
+      window.KeyLabCompare.invalidate(); if (appState.view === "compare") window.KeyLabCompare.load(false);
+      try { appState.srv = await json("/api/server?name=" + encodeURIComponent(vSrv)); if (appState.view === "server") renderServer(); } catch (e) { /* bir sonraki turda */ }
       const top = $("#vars-list").parentElement.scrollTop; await loadVars(); $("#vars-list").parentElement.scrollTop = top;
     };
     save.addEventListener("click", async () => {
@@ -417,7 +412,7 @@ import { initKnock } from "./js/ui/knock.js";
         if (d.done) {
           bg.delete(w.id);
           toast((d.exit === 0 ? "✔ " : "✖ ") + `${w.server}: ${w.act}`);
-          load(); if (view === "server" && srvName === w.server) { try { srv = await json("/api/server?name=" + encodeURIComponent(w.server)); renderServer(); } catch (e) { /* sonraki turda */ } }
+          load(); if (appState.view === "server" && appState.srvName === w.server) { try { appState.srv = await json("/api/server?name=" + encodeURIComponent(w.server)); renderServer(); } catch (e) { /* sonraki turda */ } }
         } else if (w.idle >= 2 && !w.warned && w.raw && !/\n$/.test(w.raw.replace(/\r/g, ""))) {
           w.warned = true; toast(`⏳ ${w.server}: ${w.act} sizden yanıt bekliyor; alt çubuktan açın.`);
         }
@@ -471,7 +466,7 @@ import { initKnock } from "./js/ui/knock.js";
     if (jobBusy(server)) return;
     openRun(server, pkg, action, item);
     runMode = "write";
-    const p = srv.packages.find(x => x.id === pkg), a = actionOf(pkg, action); wAct = a;
+    const p = appState.srv.packages.find(x => x.id === pkg), a = actionOf(pkg, action); wAct = a;
     const pv = (p.vars || []).filter(v => v.set);
     const prereq = (a.prereqs || []).map(q => {
       const act = p.actions.find(x => x.id === q.action);
@@ -529,7 +524,7 @@ import { initKnock } from "./js/ui/knock.js";
   /* sudo gerektiren salt okunur eylem: macOS Terminal'de sshpocket motoru; parolayı kullanıcı orada girer, arayüz görmez */
   // runItem doluysa eylem durumu O ÖĞENİN kapsamında hesaplanmış olandır (önkoşul, son sonuç); yoksa paketin şimdiki seçimine göre.
   function actionOf(pkg, action) {
-    const p = srv && srv.packages.find(x => x.id === pkg); if (!p) return undefined;
+    const p = appState.srv && appState.srv.packages.find(x => x.id === pkg); if (!p) return undefined;
     if (runItem) { const it = (p.items || []).find(x => x.id === runItem); return it && it.states && it.states[action]; }
     return p.actions.find(x => x.id === action);
   }
@@ -539,7 +534,7 @@ import { initKnock } from "./js/ui/knock.js";
     runMode = "term";
     $("#run-confirm-text").innerHTML = `<b>${esc(server)}</b> sunucusunda <span class="mono">${esc(action)}</span> (<b>salt okunur</b>) çalışacak. Motor <b>sudo parolası</b> isteyecek: bu pencerede çıkan parola kutusuna yazarsınız; doğrudan Ansible'a iletilir, arayüz onu saklamaz ya da günlüğe yazmaz.`;
     $("#run-go").textContent = "Çalıştır"; $("#run-ext").hidden = !!runItem;
-    const pv = (actionOf(pkg, action) && srv && srv.packages.find(x => x.id === pkg).vars || []).filter(v => v.set);
+    const pv = (actionOf(pkg, action) && appState.srv && appState.srv.packages.find(x => x.id === pkg).vars || []).filter(v => v.set);
     if (pv.length) $("#run-confirm-text").insertAdjacentHTML("beforeend", `<div class="chips sj-8a77e5"><span class="small muted sj-9162a2">Bu değişkenlerle:</span>${pv.map(v => `<span class="chip">${esc(v.name)}=${esc(v.value.length > 48 ? v.value.slice(0, 48) + "…" : v.value)}</span>`).join("")}</div>`);
     $("#run-confirm-note").textContent = "Parola istemi çıktıda belirince burada bir kutu açılır. Sonuç menüdekiyle aynı şekilde kaydedilir. ssh anahtarınızın ssh-agent'ta yüklü olması gerekir. Parolayı bir web sayfasına yazmak istemezseniz \"macOS Terminal'de aç\" düğmesini kullanın.";
   }
@@ -567,7 +562,7 @@ import { initKnock } from "./js/ui/knock.js";
         const r = await json("/api/server?name=" + encodeURIComponent(runSrv));
         const a1 = r.packages.find(x => x.id === runPkg)?.actions.find(x => x.id === runAct);
         if (a1 && (a1.lastTime || "") !== base) {
-          clearInterval(termTimer); termTimer = 0; clearInterval(prgTimer); srv = r; if (view === "server") renderServer(); load();
+          clearInterval(termTimer); termTimer = 0; clearInterval(prgTimer); appState.srv = r; if (appState.view === "server") renderServer(); load();
           $("#run-state").innerHTML = a1.lastResult === "ok" ? '<span class="res ok">✔ tamamlandı</span> · sonuç kartta güncellendi' : '<span class="res fail">✖ başarısız</span> · ayrıntı için Terminal penceresine ve Günlükler sayfasına bakın';
           $("#run-result").innerHTML = (a1.keys ? `<div class="chips">${Object.entries(a1.keys).map(([k, v]) => `<span class="chip">${esc(k)}=${esc(v)}</span>`).join("")}</div>` : "") +
             `<div class="sj-d2c171"><button class="btn sm" id="run-open-log">Çıktıyı aç (son çalıştırma günlüğü)</button></div>`;
@@ -706,14 +701,14 @@ import { initKnock } from "./js/ui/knock.js";
     if (!ok) $("#run-result").insertAdjacentHTML("beforeend", `<div class="notice danger sj-d2c171"><span class="ico" aria-hidden="true">✕</span><div>Eylem başarısız oldu. Ayrıntı için yukarıdaki çıktıya bakın; tam günlük <b>Günlükler</b> sayfasında.</div></div>`);
     $("#run-close").hidden = false; $("#run-close").textContent = "Kapat";
     // kartları yenile (sonuç dosyaları motor tarafından yazıldı)
-    if (runMode === "upgrade") { if (view === "packages") { await loadPackages(); checkUpdatesUI(); } load(); return; }
-    if (runMode === "task") { if (ok) addDone.add(runSrv + ":" + runAct); await load(); renderAddSteps(); if (view === "server" && srvName) { try { srv = await json("/api/server?name=" + encodeURIComponent(srvName)); renderServer(); } catch (e) { /* sonraki otomatik yenileme alır */ } } return; }
+    if (runMode === "upgrade") { if (appState.view === "packages") { await loadPackages(); checkUpdatesUI(); } load(); return; }
+    if (runMode === "task") { if (ok) addDone.add(runSrv + ":" + runAct); await load(); renderAddSteps(); if (appState.view === "server" && appState.srvName) { try { appState.srv = await json("/api/server?name=" + encodeURIComponent(appState.srvName)); renderServer(); } catch (e) { /* sonraki otomatik yenileme alır */ } } return; }
     if (runMode === "remove") {
       if (ok && delPurge) { try { await json("/api/server-purge", { name: delName }); } catch (e) { toast("Günlükler silinemedi: " + e.message); } }
-      await load(); if (ok) { srvName = ""; srv = null; showView("servers"); toast(`${delName} silindi`); }
+      await load(); if (ok) { appState.srvName = ""; appState.srv = null; showView("servers"); toast(`${delName} silindi`); }
       return;
     }
-    try { srv = await json("/api/server?name=" + encodeURIComponent(runSrv)); if (view === "server") renderServer(); load(); } catch (e) { /* bir sonraki turda yenilenir */ }
+    try { appState.srv = await json("/api/server?name=" + encodeURIComponent(runSrv)); if (appState.view === "server") renderServer(); load(); } catch (e) { /* bir sonraki turda yenilenir */ }
   }
   $("#run-go").addEventListener("click", startRun);
   $("#run-ext").addEventListener("click", startTerm);
@@ -733,8 +728,8 @@ import { initKnock } from "./js/ui/knock.js";
   function setTheme(v) { theme = v; try { localStorage.setItem("sshpocket.theme", v); } catch (e) { /* önemli değil */ } applyTheme(); }
   $("#theme-btn").addEventListener("click", () => setTheme(THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]));
   $$("#set-theme button").forEach(b => b.addEventListener("click", () => setTheme(b.dataset.v)));
-  $$("#set-mode button").forEach(b => b.addEventListener("click", () => { mode = b.dataset.v; try { localStorage.setItem("sshpocket.mode", mode); } catch (e) { /* önemli değil */ } render(); paintMode(); }));
-  const paintMode = () => $$("#set-mode button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.v === mode)));
+  $$("#set-mode button").forEach(b => b.addEventListener("click", () => { appState.mode = b.dataset.v; try { localStorage.setItem("sshpocket.mode", appState.mode); } catch (e) { /* önemli değil */ } render(); paintMode(); }));
+  const paintMode = () => $$("#set-mode button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.v === appState.mode)));
   applyTheme();
   const paintAsk = () => $$("#set-ask button").forEach(x => { x.setAttribute("aria-pressed", String(x.dataset.v === askMode)); if (x.dataset.v === "system") { x.disabled = !askAvail; x.title = askAvail ? "" : "Bu platformda sistem penceresi yok"; } });
   /* Eylemler > aynı anda en çok (sunucu tarafı ayar: /api/ui-settings) */
@@ -851,7 +846,7 @@ import { initKnock } from "./js/ui/knock.js";
   function renderAddSteps() {
     const wrap = $("#add-steps");
     if (!addServer) { wrap.hidden = true; $("#add-form-wrap").hidden = false; return; }
-    const sv = home.servers.find(x => x.name === addServer);
+    const sv = appState.home.servers.find(x => x.name === addServer);
     $("#add-form-wrap").hidden = true; wrap.hidden = false;
     const hasKey = !!(sv && sv.hasKey);
     const done = t => addDone.has(addServer + ":" + t);
@@ -935,7 +930,7 @@ import { initKnock } from "./js/ui/knock.js";
     const order = ["linux-hardening", "utility", "kurulum"];
     d.packages.sort((a, b) => (order.indexOf(a.id) + 1 || 99) - (order.indexOf(b.id) + 1 || 99));
     $("#pkg-page").innerHTML = `<div id="upd-card"></div><div class="notice sj-87c136"><span class="ico" aria-hidden="true">ℹ</span><div>Bir pakete tıklayın: sürümler, kilit tabanı ve sunuculardaki son kullanım açılır. "Kullanıldı", paketin o sunucuda en son çalıştırıldığı anlamına gelir; paketler sunucuya kurulmaz, kontrolcüden çalıştırılır.</div></div>` +
-      `<div class="card pk-list">` + (d.packages.filter(p => !query || `${p.id} ${p.name} ${p.repo || ""}`.toLowerCase().includes(query)).map(p => {
+      `<div class="card pk-list">` + (d.packages.filter(p => !appState.query || `${p.id} ${p.name} ${p.repo || ""}`.toLowerCase().includes(appState.query)).map(p => {
         const sm = pkgSummary(p, d.servers, cmp);
         const floorBad = p.floor && cmp(p.current, p.floor) < 0;
         return `<button class="pk-li" data-pk="${esc(p.id)}" aria-label="${esc(p.name || p.id)} ayrıntıları">
@@ -1163,11 +1158,11 @@ import { initKnock } from "./js/ui/knock.js";
   }
 
   async function loadLynis(name) {
-    if (!home.servers.length) { $("#lynis-pick").innerHTML = ""; $("#lynis-detail").innerHTML = '<div class="card"><div class="card-body"><div class="empty-state"><h3>Sunucu yok</h3><p>Lynis ölçümü için önce bir sunucu eklenmeli.</p></div></div></div>'; return; }
-    const have = home.servers.filter(s => s.lynis).sort((a, b) => (b.lynis.date || "").localeCompare(a.lynis.date || ""));
+    if (!appState.home.servers.length) { $("#lynis-pick").innerHTML = ""; $("#lynis-detail").innerHTML = '<div class="card"><div class="card-body"><div class="empty-state"><h3>Sunucu yok</h3><p>Lynis ölçümü için önce bir sunucu eklenmeli.</p></div></div></div>'; return; }
+    const have = appState.home.servers.filter(s => s.lynis).sort((a, b) => (b.lynis.date || "").localeCompare(a.lynis.date || ""));
     if (name) lynSel = name;
-    if (!lynSel || !home.servers.some(s => s.name === lynSel)) lynSel = (have[0] || home.servers[0] || {}).name || selected || "";
-    $("#lynis-pick").innerHTML = home.servers.map(s => `<button class="pickbtn" role="tab" aria-selected="${s.name === lynSel}" data-n="${esc(s.name)}">${osIcon(s.os, 26)}<span>${esc(s.name)}${s.lynis ? ` <b>${s.lynis.score}</b>` : ' <span class="muted">ölçüm yok</span>'}</span></button>`).join("");
+    if (!lynSel || !appState.home.servers.some(s => s.name === lynSel)) lynSel = (have[0] || appState.home.servers[0] || {}).name || appState.selected || "";
+    $("#lynis-pick").innerHTML = appState.home.servers.map(s => `<button class="pickbtn" role="tab" aria-selected="${s.name === lynSel}" data-n="${esc(s.name)}">${osIcon(s.os, 26)}<span>${esc(s.name)}${s.lynis ? ` <b>${s.lynis.score}</b>` : ' <span class="muted">ölçüm yok</span>'}</span></button>`).join("");
     $$("#lynis-pick .pickbtn").forEach(b => b.addEventListener("click", () => loadLynis(b.dataset.n)));
     if (!lynSel) { $("#lynis-detail").innerHTML = ""; return; }
     lynKind = lynPre || "all"; lynPre = ""; lynQ = "";
@@ -1220,7 +1215,7 @@ import { initKnock } from "./js/ui/knock.js";
     const c = $("#logclear"); if (c) c.addEventListener("click", () => { logSrv = logPkg = logQ = ""; logKind = "all"; paintLogs(); });
   }
   // sunucu adına göre küçük simge (liste satırı için)
-  const osIconSmall = name => { const s = home.servers.find(x => x.name === name); return s ? osIcon(s.os, 16) + " " : ""; };
+  const osIconSmall = name => { const s = appState.home.servers.find(x => x.name === name); return s ? osIcon(s.os, 16) + " " : ""; };
 
   async function openLog(l, btn) {
     logKey = logId(l);
@@ -1260,8 +1255,6 @@ import { initKnock } from "./js/ui/knock.js";
   /* ---------------- Sunucu sayfası ---------------- */
   const TAB_LABEL = { "linux-hardening": "Hardening", utility: "Utility", kurulum: "Kurulum" };
   const TAB_ORDER = ["linux-hardening", "utility", "kurulum"];
-  let srv = null;      // /api/server yanıtı
-  let srvName = "", srvTab = "";
 
   const effectBadges = a => {
     const e = a.effects || [], out = [];
@@ -1326,7 +1319,7 @@ import { initKnock } from "./js/ui/knock.js";
   const prepRow = (n, st, title, badge, desc, btn) => `<div class="prep-row"><div class="prep-dot ${st}" aria-hidden="true">${st === "ok" ? "✓" : st === "warn" ? "!" : n}</div><div class="prep-txt"><div class="prep-title">${title}${badge ? ` <span class="prep-badge ${st}">${badge}</span>` : ""}</div><div class="small muted">${desc}</div></div>${btn || ""}</div>`;
 
   function renderOzet(s, pk) {
-    const k = (srv && srv.knock) || {}, pr = (srv && srv.prep) || {};
+    const k = (appState.srv && appState.srv.knock) || {}, pr = (appState.srv && appState.srv.prep) || {};
     const knockOn = !!k.enabled;
     // adım durumları (yalnızca bu bilgisayarda bilinenler; "sunucuya gönderildi mi" bağlanmadan bilinemez)
     const steps = [
@@ -1366,11 +1359,11 @@ import { initKnock } from "./js/ui/knock.js";
     <div class="card prep-card"><div class="prep-head"><div><h2>Bağlantı hazırlığı</h2><div class="small muted">Her adım isteğe bağlıdır ve yeniden yapılabilir.</div></div><span class="prep-count" title="Anahtar, ajan, Keychain parolası${knockOn ? " ve knock" : ""} sayılır; ssh-copy-id sayılmaz">${done}/${steps.length} adım hazır</span></div>
       <div class="prep-list">${prep}${test}</div></div>`;
 
-    $$("#srv-body [data-goto]").forEach(b => b.addEventListener("click", () => { srvTab = b.dataset.goto; history.replaceState(null, "", `#s=${encodeURIComponent(srvName)}&p=${encodeURIComponent(srvTab)}`); renderServer(); }));
-    $("#srv-body [data-go-logs]")?.addEventListener("click", () => goLogs(srvName));
-    $("#srv-body [data-go-lynis]")?.addEventListener("click", () => goLynis(srvName, s.lynis && s.lynis.warnings > 0 ? "uyari" : "all"));
-    $$("#srv-body [data-task]").forEach(b => b.addEventListener("click", () => (b.dataset.task === "knock" ? openKnock(srvName) : openTask(srvName, b.dataset.task))));
-    $("#srv-body [data-test]")?.addEventListener("click", () => openRun(srvName, "utility", "durum"));
+    $$("#srv-body [data-goto]").forEach(b => b.addEventListener("click", () => { appState.srvTab = b.dataset.goto; history.replaceState(null, "", `#s=${encodeURIComponent(appState.srvName)}&p=${encodeURIComponent(appState.srvTab)}`); renderServer(); }));
+    $("#srv-body [data-go-logs]")?.addEventListener("click", () => goLogs(appState.srvName));
+    $("#srv-body [data-go-lynis]")?.addEventListener("click", () => goLynis(appState.srvName, s.lynis && s.lynis.warnings > 0 ? "uyari" : "all"));
+    $$("#srv-body [data-task]").forEach(b => b.addEventListener("click", () => (b.dataset.task === "knock" ? openKnock(appState.srvName) : openTask(appState.srvName, b.dataset.task))));
+    $("#srv-body [data-test]")?.addEventListener("click", () => openRun(appState.srvName, "utility", "durum"));
   }
 
   /* ---------------- Süzgeçli geçişler ve bağlantı bilgisi ---------------- */
@@ -1406,8 +1399,8 @@ import { initKnock } from "./js/ui/knock.js";
 
   /* ---------------- Port knocking formu (js/ui/knock.js) ---------------- */
   async function reloadServer() {
-    if (!srvName) return;
-    try { srv = await json("/api/server?name=" + encodeURIComponent(srvName)); if (view === "server") renderServer(); } catch (e) { /* sonraki otomatik yenileme alır */ }
+    if (!appState.srvName) return;
+    try { appState.srv = await json("/api/server?name=" + encodeURIComponent(appState.srvName)); if (appState.view === "server") renderServer(); } catch (e) { /* sonraki otomatik yenileme alır */ }
   }
   const knock = initKnock({ openDlg, closeDlg, reloadServer });
   const openKnock = knock.open;
@@ -1519,9 +1512,9 @@ import { initKnock } from "./js/ui/knock.js";
   }
 
   async function loadCatVars(pkg) {
-    catSrv = srvName; catPkg = pkg; // başarısız olsa da yeniden denemeyi bir sonraki tazelemeye bırak (döngü olmasın)
-    try { catVars = (await json(`/api/vars?server=${encodeURIComponent(srvName)}&package=${encodeURIComponent(pkg)}`)).vars || []; } catch (e) { return; }
-    if (view === "server" && srvTab === pkg && srv) renderServer();
+    catSrv = appState.srvName; catPkg = pkg; // başarısız olsa da yeniden denemeyi bir sonraki tazelemeye bırak (döngü olmasın)
+    try { catVars = (await json(`/api/vars?server=${encodeURIComponent(appState.srvName)}&package=${encodeURIComponent(pkg)}`)).vars || []; } catch (e) { return; }
+    if (appState.view === "server" && appState.srvTab === pkg && appState.srv) renderServer();
   }
 
   function catalogStore(s, p, ok, na, items) {
@@ -1530,7 +1523,7 @@ import { initKnock } from "./js/ui/knock.js";
     const inst = Object.fromEntries(splitPlus(k.kurulu)), ports = Object.fromEntries(splitPlus(k.portlar));
     const dattr = d ? actBtnAttr(d, p) : "";
     const onN = items.filter(it => it.id in inst).length;
-    const loaded = catSrv === srvName && catPkg === p.id;
+    const loaded = catSrv === appState.srvName && catPkg === p.id;
     const varsOf = it => (it.params && it.params.length) ? catVars.filter(v => it.params.includes(v.name)) : catVars.filter(v => it.group && v.group === it.group);
     const short = (v, it) => { let n = v.name; if (n.startsWith(p.id + "_")) n = n.slice(p.id.length + 1); if (n.startsWith(it.id + "_")) n = n.slice(it.id.length + 1); return n; };
     const claimed = new Set();
@@ -1588,19 +1581,19 @@ import { initKnock } from "./js/ui/knock.js";
 
   function bindCatalog(pkg) {
     $$("#srv-body [data-sf]").forEach(b => b.addEventListener("click", () => { storeFilter = b.dataset.sf; applyStoreFilter(); }));
-    $$("#srv-body [data-kvars]").forEach(b => b.addEventListener("click", () => openVars(srvName, pkg, b.dataset.kvars || undefined)));
-    const itemRun = (attr, fn) => $$(`#srv-body [data-${attr}]`).forEach(b => b.addEventListener("click", () => { const [pid, aid, iid] = b.dataset[attr].split("|"); fn(srvName, pid, aid, iid); }));
+    $$("#srv-body [data-kvars]").forEach(b => b.addEventListener("click", () => openVars(appState.srvName, pkg, b.dataset.kvars || undefined)));
+    const itemRun = (attr, fn) => $$(`#srv-body [data-${attr}]`).forEach(b => b.addEventListener("click", () => { const [pid, aid, iid] = b.dataset[attr].split("|"); fn(appState.srvName, pid, aid, iid); }));
     itemRun("irun", openRun); itemRun("iwrite", openWrite); itemRun("iterm", openTerm);
-    $("#srv-body [data-kvars-all]")?.addEventListener("click", () => openVars(srvName, pkg));
+    $("#srv-body [data-kvars-all]")?.addEventListener("click", () => openVars(appState.srvName, pkg));
     $$("#srv-body [data-actcat]").forEach(b => b.addEventListener("click", () => { actFilter = b.dataset.actcat; applyActFilter(); }));
     if (!$$("#srv-body [data-sf]").some(b => b.dataset.sf === storeFilter)) storeFilter = "all";
     applyStoreFilter(); applyActFilter();
-    if (catSrv !== srvName || catPkg !== pkg) loadCatVars(pkg);
+    if (catSrv !== appState.srvName || catPkg !== pkg) loadCatVars(pkg);
   }
 
   function renderServer() {
-    if (!srv) return;
-    const s = srv.server;
+    if (!appState.srv) return;
+    const s = appState.srv.server;
     const stCls = !s.valid ? "warn" : !s.checked ? "plain" : s.up ? "ok" : s.knock || s.conn === "refused" ? "warn" : "danger";
     const addr = s.valid ? `${s.user}@${s.host}:${s.port}` : "";
     $("#srv-head").innerHTML = `<nav class="sv-crumb" aria-label="Konum"><a href="#" id="srv-back">Sunucular</a><span aria-hidden="true">/</span><span>${esc(s.name)}</span></nav>
@@ -1626,25 +1619,25 @@ import { initKnock } from "./js/ui/knock.js";
     $("#srv-more").addEventListener("click", e => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); openCtx(r.right - 230, r.bottom + 6, s.name); });
 
     const ti = id => { const i = TAB_ORDER.indexOf(id); return i < 0 ? 99 : i; };
-    const pk = [...srv.packages].sort((a, b) => ti(a.id) - ti(b.id));
+    const pk = [...appState.srv.packages].sort((a, b) => ti(a.id) - ti(b.id));
     const tabs = [{ id: "ozet" }, ...pk];
-    if (!tabs.some(p => p.id === srvTab)) srvTab = "ozet";
-    $("#srv-tabs").innerHTML = tabs.map(p => `<button role="tab" id="tab-${esc(p.id)}" aria-selected="${p.id === srvTab}" data-p="${esc(p.id)}">${esc(p.id === "ozet" ? "Özet" : TAB_LABEL[p.id] || p.name || p.id)}</button>`).join("");
-    $$("#srv-tabs button").forEach(b => b.addEventListener("click", () => { srvTab = b.dataset.p; history.replaceState(null, "", `#s=${encodeURIComponent(srvName)}&p=${encodeURIComponent(srvTab)}`); renderServer(); }));
+    if (!tabs.some(p => p.id === appState.srvTab)) appState.srvTab = "ozet";
+    $("#srv-tabs").innerHTML = tabs.map(p => `<button role="tab" id="tab-${esc(p.id)}" aria-selected="${p.id === appState.srvTab}" data-p="${esc(p.id)}">${esc(p.id === "ozet" ? "Özet" : TAB_LABEL[p.id] || p.name || p.id)}</button>`).join("");
+    $$("#srv-tabs button").forEach(b => b.addEventListener("click", () => { appState.srvTab = b.dataset.p; history.replaceState(null, "", `#s=${encodeURIComponent(appState.srvName)}&p=${encodeURIComponent(appState.srvTab)}`); renderServer(); }));
 
-    const p = pk.find(x => x.id === srvTab);
-    if (srvTab === "ozet") { renderOzet(s, pk); return; }
-    setTimeout(() => $$("#srv-body [data-vars]").forEach(b => b.addEventListener("click", () => openVars(srvName, b.dataset.vars))), 0);
-    setTimeout(() => $$("#srv-body [data-write]").forEach(b => b.addEventListener("click", () => { const [pid, aid] = b.dataset.write.split("|"); openWrite(srvName, pid, aid); })), 0);
-    setTimeout(() => $$("#srv-body [data-term]").forEach(b => b.addEventListener("click", () => { const [pid, aid] = b.dataset.term.split("|"); openTerm(srvName, pid, aid); })), 0);
-    setTimeout(() => $$("#srv-body [data-run]").forEach(b => b.addEventListener("click", () => { const [pid, aid] = b.dataset.run.split("|"); openRun(srvName, pid, aid); })), 0);
+    const p = pk.find(x => x.id === appState.srvTab);
+    if (appState.srvTab === "ozet") { renderOzet(s, pk); return; }
+    setTimeout(() => $$("#srv-body [data-vars]").forEach(b => b.addEventListener("click", () => openVars(appState.srvName, b.dataset.vars))), 0);
+    setTimeout(() => $$("#srv-body [data-write]").forEach(b => b.addEventListener("click", () => { const [pid, aid] = b.dataset.write.split("|"); openWrite(appState.srvName, pid, aid); })), 0);
+    setTimeout(() => $$("#srv-body [data-term]").forEach(b => b.addEventListener("click", () => { const [pid, aid] = b.dataset.term.split("|"); openTerm(appState.srvName, pid, aid); })), 0);
+    setTimeout(() => $$("#srv-body [data-run]").forEach(b => b.addEventListener("click", () => { const [pid, aid] = b.dataset.run.split("|"); openRun(appState.srvName, pid, aid); })), 0);
     if (!p) { $("#srv-body").innerHTML = '<div class="card"><div class="card-body small muted">Bu sunucu için paket bulunamadı.</div></div>'; return; }
     const ok = p.actions.filter(a => a.applicable), na = p.actions.filter(a => !a.applicable);
     const cat = catalogItems(p);
     if (cat) { $("#srv-body").innerHTML = catalogStore(s, p, ok, na, cat); bindCatalog(p.id); return; }
     $("#srv-body").innerHTML = `${p.id === "linux-hardening" ? lynisHero(s, p) : ""}<div class="pk-top">${pkgInfoCard(p, ok)}${varsCard(p)}</div>${statusCard(p)}${actionsSection(ok, na, p)}`;
     $$("#srv-body [data-actcat]").forEach(b => b.addEventListener("click", () => { actFilter = b.dataset.actcat; applyActFilter(); }));
-    $("#srv-body [data-go-lynis-p]")?.addEventListener("click", () => goLynis(srvName, s.lynis && s.lynis.warnings > 0 ? "uyari" : "all"));
+    $("#srv-body [data-go-lynis-p]")?.addEventListener("click", () => goLynis(appState.srvName, s.lynis && s.lynis.warnings > 0 ? "uyari" : "all"));
     applyActFilter();
   }
 
@@ -1654,31 +1647,31 @@ import { initKnock } from "./js/ui/knock.js";
   }
 
   async function openServer(name, tab) {
-    srvName = name; srvTab = tab || "ozet";
-    srv = null;
+    appState.srvName = name; appState.srvTab = tab || "ozet";
+    appState.srv = null;
     showView("server"); renderSrvTree();
-    setHash(`#s=${encodeURIComponent(name)}&p=${encodeURIComponent(srvTab || "")}`, new URLSearchParams(location.hash.slice(1)).get("s") === name);
+    setHash(`#s=${encodeURIComponent(name)}&p=${encodeURIComponent(appState.srvTab || "")}`, new URLSearchParams(location.hash.slice(1)).get("s") === name);
     $("#srv-head").innerHTML = `<button class="back" id="srv-back">← Sunucular</button><div class="srv-title"><h1>${esc(name)}</h1></div>`;
     $("#srv-back").addEventListener("click", () => showView("servers"));
     $("#srv-tabs").innerHTML = ""; $("#srv-body").innerHTML = '<div class="small muted">yükleniyor…</div>';
     // Yanıt gelene kadar kullanıcı başka sunucuya/sayfaya geçmiş olabilir: eski yanıt yenisini ezmesin.
     let data;
     try { data = await json("/api/server?name=" + encodeURIComponent(name)); }
-    catch (e) { if (srvName === name && view === "server") $("#srv-body").innerHTML = `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div>Sunucu açılamadı: ${esc(e.message)}</div></div>`; return; }
-    if (srvName !== name || view !== "server") return;
-    srv = data;
+    catch (e) { if (appState.srvName === name && appState.view === "server") $("#srv-body").innerHTML = `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div>Sunucu açılamadı: ${esc(e.message)}</div></div>`; return; }
+    if (appState.srvName !== name || appState.view !== "server") return;
+    appState.srv = data;
     renderServer();
   }
 
   $$(".mode-toggle button").forEach(b => b.addEventListener("click", () => {
-    mode = b.dataset.mode;
-    try { localStorage.setItem("sshpocket.mode", mode); } catch (e) { /* önemli değil */ }
+    appState.mode = b.dataset.mode;
+    try { localStorage.setItem("sshpocket.mode", appState.mode); } catch (e) { /* önemli değil */ }
     render();
   }));
 
   /* ---------------- Arama ---------------- */
   const search = $("#search-input");
-  search.addEventListener("input", () => { query = search.value.trim().toLowerCase(); render(); });
+  search.addEventListener("input", () => { appState.query = search.value.trim().toLowerCase(); render(); });
   document.addEventListener("keydown", e => {
     if (e.key === "/" && document.activeElement !== search && !/input|textarea/i.test(document.activeElement.tagName)) { e.preventDefault(); search.focus(); }
   });
@@ -1723,8 +1716,8 @@ import { initKnock } from "./js/ui/knock.js";
 
   /* ---------------- Sunucu karşılaştırma (js/compare.js) ---------------- */
   window.KeyLabCompare.init({
-    getHome: () => home, json, toast, ago, osIcon, dotState, stateText,
-    tabLabel: id => TAB_LABEL[id] || (home.packages.find(p => p.id === id) || {}).name || id,
+    getHome: () => appState.home, json, toast, ago, osIcon, dotState, stateText,
+    tabLabel: id => TAB_LABEL[id] || (appState.home.packages.find(p => p.id === id) || {}).name || id,
     openServer, openVars, goLynis,
   });
 
@@ -1736,44 +1729,44 @@ import { initKnock } from "./js/ui/knock.js";
     goSettings: () => showView("settings"),
   });
   window.KeyLabDock.init({
-    getHome: () => home, json, reload: load, ago, localTime, openLastLog,
-    tabLabel: id => TAB_LABEL[id] || (home.packages.find(p => p.id === id) || {}).name || id,
+    getHome: () => appState.home, json, reload: load, ago, localTime, openLastLog,
+    tabLabel: id => TAB_LABEL[id] || (appState.home.packages.find(p => p.id === id) || {}).name || id,
     // çalışan işin penceresini aç; toplu işlem sürüyorsa onun penceresini
     openJob: async id => {
       if (($("#batch-open").textContent || "").startsWith("⏳")) { $("#batch-open").click(); return; }
       await openJob(id);
     },
   });
-  window.KeyLabBatch.init({ json, toast, reload: load, targets: () => visibleServers.slice(), tabLabel: id => TAB_LABEL[id] || (home.packages.find(p => p.id === id) || {}).name || id });
+  window.KeyLabBatch.init({ json, toast, reload: load, targets: () => visibleServers.slice(), tabLabel: id => TAB_LABEL[id] || (appState.home.packages.find(p => p.id === id) || {}).name || id });
   adoptJob();
-  window.KeyLabPalette.init({ getHome: () => home, showView, openServer, goLynis, goLogs, openShortcuts, reload: load });
+  window.KeyLabPalette.init({ getHome: () => appState.home, showView, openServer, goLynis, goLogs, openShortcuts, reload: load });
   window.KeyLabPrivacy.init();
   window.KeyLabReports.init({
-    getHome: () => home, json, toast, stateText,
-    tabLabel: id => TAB_LABEL[id] || (home.packages.find(p => p.id === id) || {}).name || id,
+    getHome: () => appState.home, json, toast, stateText,
+    tabLabel: id => TAB_LABEL[id] || (appState.home.packages.find(p => p.id === id) || {}).name || id,
   });
 
   $("#refresh-all").addEventListener("click", async () => { const b = $("#refresh-all"); b.disabled = true; await load(); b.disabled = false; toast("Yenilendi"); });
 
   /* ---------------- Sihirbaz (js/ui/wizard.js) ---------------- */
-  const { open: openWizard, close: closeWizard, isOpen: isWizardOpen } = initWizard({ getHome: () => home });
+  const { open: openWizard, close: closeWizard, isOpen: isWizardOpen } = initWizard({ getHome: () => appState.home });
 
   let rz = 0;
   window.addEventListener("resize", () => {
     clearTimeout(rz);
-    rz = setTimeout(() => { if (view === "lynis" && lynData) paintLynis(); else if (view === "server" && srv) renderServer(); }, 250);
+    rz = setTimeout(() => { if (appState.view === "lynis" && lynData) paintLynis(); else if (appState.view === "server" && appState.srv) renderServer(); }, 250);
   });
 
   /* ---------------- Başlangıç ---------------- */
   json("/api/about").then(a => { askAvail = !!a.askpass; paintAsk(); }).catch(() => {});
   const startHash = new URLSearchParams(location.hash.slice(1)); // showView adres çubuğundaki #s=… kısmını siler: ÖNCE oku
-  routing = true; showView(VIEWS.includes(startHash.get("v")) ? startHash.get("v") : "dash"); routing = false;
+  appState.routing = true; showView(VIEWS.includes(startHash.get("v")) ? startHash.get("v") : "dash"); appState.routing = false;
   load().then(() => {
-    if (startHash.get("s")) { routing = true; openServer(startHash.get("s"), startHash.get("p") || ""); routing = false; }
+    if (startHash.get("s")) { appState.routing = true; openServer(startHash.get("s"), startHash.get("p") || ""); appState.routing = false; }
   });
   setInterval(() => {
     if (document.hidden || isWizardOpen()) return;
     load();
-    if (view === "server" && srvName) json("/api/server?name=" + encodeURIComponent(srvName)).then(r => { srv = r; renderServer(); }).catch(() => {});
+    if (appState.view === "server" && appState.srvName) json("/api/server?name=" + encodeURIComponent(appState.srvName)).then(r => { appState.srv = r; renderServer(); }).catch(() => {});
   }, 10000);
 })();
