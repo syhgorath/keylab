@@ -5,6 +5,7 @@ window.KeyLabPhrasesEN = {
   exact: {
     "Toplu işlem…": "Bulk action…", "Toplu işlem": "Bulk action", "İptal et": "Cancel run", "Sunucu süzgeci": "Server filter",
     "Listedeki sunucularda aynı salt okunur eylemi çalıştır": "Run the same read-only action on the listed servers",
+    "Hızlı komutlar (salt okunur; tıklayınca hemen çalışır)": "Quick commands (read-only; run immediately on click)",
     "Terminalde ara…": "Search in terminal…", "Terminalde ara": "Search in terminal", "Önceki eşleşme": "Previous match", "Sonraki eşleşme": "Next match", "Önceki (Shift+Enter)": "Previous (Shift+Enter)", "Sonraki (Enter)": "Next (Enter)", "Aramayı kapat": "Close search", "Kapat (Esc)": "Close (Esc)",
     "Eylemler": "Actions", "sunucu tarafı ayar": "server-side setting", "Aynı anda en çok": "Max at the same time",
     "Farklı sunucularda aynı anda çalışabilecek eylem sayısı (1-16, varsayılan 4). Aynı sunucuda her zaman tek eylem çalışır; paket kurulumu, sunucu silme ve toplu işlem tek başına çalışır. Her eylem bir ssh/ansible süreci ve bir parola penceresi demektir: yazan eylemlerde düşük tutmanız önerilir. Düşürmek çalışan işleri durdurmaz, yalnız yenilerinin başlamasını sınırlar.": "How many actions may run at the same time on different servers (1-16, default 4). One action at a time per server, always; package installs, server removal and bulk actions run alone. Each action is an ssh/ansible process and a password prompt: keep it low for write actions. Lowering it does not stop running jobs, it only limits new ones.",
