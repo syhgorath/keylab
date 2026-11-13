@@ -1827,6 +1827,7 @@
     openServer, openVars, goLynis,
   });
 
+  window.addEventListener("keylab:toast", e => toast(String(e.detail || "")));
   window.KeyLabBackup.init({ json, toast, reload: load });
   window.KeyLabOnboarding.init({
     goAdd: () => showView("add"),

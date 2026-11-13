@@ -536,6 +536,14 @@
     </div>
     <div class="term-tabs" id="term-tabs" role="tablist" aria-label="Terminal oturumları"></div>
     <div id="term-note" class="notice danger" role="alert" hidden></div>
+    <div class="term-search" id="term-search" role="search" hidden>
+      <input id="term-find" type="search" autocomplete="off" spellcheck="false" placeholder="Terminalde ara…" aria-label="Terminalde ara">
+      <button class="btn sm" id="term-find-prev" type="button" aria-label="Önceki eşleşme" title="Önceki (Shift+Enter)">↑</button>
+      <button class="btn sm" id="term-find-next" type="button" aria-label="Sonraki eşleşme" title="Sonraki (Enter)">↓</button>
+      <label class="small term-find-case"><input type="checkbox" id="term-find-case"> Aa</label>
+      <span class="small muted" id="term-find-status" role="status"></span>
+      <button class="icon-btn" id="term-find-close" type="button" aria-label="Aramayı kapat" title="Kapat (Esc)">✕</button>
+    </div>
     <div class="term-host" id="term-host"></div>
     <div class="modal-foot"><span class="small muted" data-i18n="term_foot">Küçültmek oturumu kapatmaz; "Oturumu kapat" ssh'ı sonlandırır. Terminal açma/kapama durum klasöründe terminal-audit.log dosyasına yazılır.</span><div class="spacer"></div><button class="btn" data-term-close data-i18n="term_end">Oturumu kapat</button></div>
   </div>
@@ -577,6 +585,8 @@
 <script src="js/core/i18n.js"></script>
 <script src="vendor/xterm/xterm.js"></script>
 <script src="vendor/xterm/addon-fit.js"></script>
+<script src="vendor/xterm/addon-search.js"></script>
+<script src="vendor/xterm/addon-web-links.js"></script>
 <script src="js/terminal.js"></script>
 <script src="js/compare.js"></script>
 <script src="js/reports.js"></script>

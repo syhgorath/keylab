@@ -69,6 +69,65 @@
       theme: { background: "#0e1116", foreground: "#d6dbe4" }, allowProposedApi: false });
     s.fit = new FitAddon.FitAddon();
     s.term.loadAddon(s.fit);
+    // arama (Cmd+F, Windows/Linux'ta Ctrl+Shift+F): Ctrl+F kabukta "bir karakter ileri" olduğu için ele alınmaz
+    if (typeof SearchAddon !== "undefined") { s.search = new SearchAddon.SearchAddon(); s.term.loadAddon(s.search); }
+    s.term.attachCustomKeyEventHandler(e => {
+      if (s.search && (e.metaKey || (e.ctrlKey && e.shiftKey)) && (e.key === "f" || e.key === "F")) { if (e.type === "keydown") { e.preventDefault(); openSearch(); } return false; }
+      return true;
+    });
+    // bağlantılar: YALNIZ Cmd/Ctrl+tıklamayla açılır (sunucu çıktısındaki bağlantıya yanlışlıkla tıklanmasın); yalnız http(s), noopener.
+    if (typeof WebLinksAddon !== "undefined") {
+      s.term.loadAddon(new WebLinksAddon.WebLinksAddon((ev, uri) => { if ((ev.metaKey || ev.ctrlKey) && /^https?:\/\//i.test(uri)) window.open(uri, "_blank", "noopener,noreferrer"); }));
+    }
+    // IPv4 adresleri: Cmd/Ctrl+tıklamayla panoya kopyalanır (tarayıcıda açılacak bir şey yok; ssh/ping için yapıştırılır)
+    s.term.registerLinkProvider({
+      provideLinks(y, cb) {
+        const line = s.term.buffer.active.getLine(y - 1); if (!line) return cb(undefined);
+        const text = line.translateToString(true), out = [], re = /(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?![\d.])/g;
+        for (let m; (m = re.exec(text));) {
+          const ip = m[0];
+          out.push({ text: ip, range: { start: { x: m.index + 1, y }, end: { x: m.index + ip.length, y } },
+            activate(ev) { if (!(ev.metaKey || ev.ctrlKey)) return; try { navigator.clipboard.writeText(ip).then(() => toast(tr("term_ip_copied", "IP panoya kopyalandı: ") + ip)); } catch { /* pano yok */ } } });
+        }
+        cb(out.length ? out : undefined);
+      },
+    });
+  }
+
+  /* ---- terminal içi arama ---- */
+  const toast = m => window.dispatchEvent(new CustomEvent("keylab:toast", { detail: m }));
+  const findOpts = () => ({ caseSensitive: $("#term-find-case").checked });
+  function openSearch() {
+    if (!active || !active.search) return;
+    const bar = $("#term-search"), inp = $("#term-find");
+    bar.hidden = false;
+    const sel = active.term.getSelection();
+    if (sel && sel.length < 80 && !/\n/.test(sel)) inp.value = sel;
+    inp.focus(); inp.select();
+    if (inp.value) doFind(true);
+  }
+  function closeSearch() {
+    const bar = $("#term-search"); if (bar.hidden) return;
+    bar.hidden = true; $("#term-find-status").textContent = "";
+    if (active && active.term) { try { active.term.clearSelection(); } catch {} active.term.focus(); }
+  }
+  function doFind(forward, again) {
+    if (!active || !active.search) return;
+    const q = $("#term-find").value, st = $("#term-find-status");
+    if (!q) { st.textContent = ""; try { active.term.clearSelection(); } catch {} return; }
+    const ok = forward ? active.search.findNext(q, { ...findOpts(), incremental: !again }) : active.search.findPrevious(q, findOpts());
+    st.textContent = ok ? "" : tr("term_find_none", "Bulunamadı");
+  }
+  function initSearchUi() {
+    $("#term-find").addEventListener("input", () => doFind(true));
+    $("#term-find").addEventListener("keydown", e => {
+      if (e.key === "Enter") { e.preventDefault(); doFind(!e.shiftKey, true); }
+      else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeSearch(); }
+    });
+    $("#term-find-next").addEventListener("click", () => doFind(true, true));
+    $("#term-find-prev").addEventListener("click", () => doFind(false, true));
+    $("#term-find-case").addEventListener("change", () => doFind(true));
+    $("#term-find-close").addEventListener("click", closeSearch);
   }
 
   function connect(s) { // oturum kimliği biliniyor: girdi + akış
@@ -97,6 +156,7 @@
     buildView(s);
     s.host.hidden = false;
     if (!s.opened) { s.term.open(s.host); s.opened = true; }
+    closeSearch();
     $("#term-title").textContent = ">_ " + label(s);
     setNote(s.note || "");
     try { s.fit.fit(); } catch {}
@@ -166,6 +226,7 @@
     else if (e.target.closest("[data-term-close]") && active) closeSession(active);
   });
   window.addEventListener("keylab:langchange", () => renderBars());
+  initSearchUi();
   adopt();
 
   window.KeyLabTerminal = { open, close: () => active && closeSession(active), minimize };
