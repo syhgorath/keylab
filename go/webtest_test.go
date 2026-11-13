@@ -16,7 +16,7 @@ func TestWebUI(t *testing.T) {
 	if _, err := os.Stat("webtest/node_modules/jsdom"); err != nil {
 		t.Skip("webtest/node_modules yok (cd webtest && npm ci --ignore-scripts)")
 	}
-	cmd := exec.Command(node, "--test")
+	cmd := exec.Command(node, "--experimental-vm-modules", "--disable-warning=ExperimentalWarning", "--test")
 	cmd.Dir = "webtest"
 	out, err := cmd.CombinedOutput()
 	if err != nil {
