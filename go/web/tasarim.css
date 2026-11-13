@@ -1357,4 +1357,6 @@ body.dock-open{padding-bottom:276px}
 .dock-empty{padding:14px 18px;margin:0}
 @media (max-width:760px){#dock-hint{display:none}}
 @media print{.wb-dock{display:none !important}body,body.dock-open{padding-bottom:0}}
+.num-in{width:84px;padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font:inherit}
+.num-in:focus-visible{box-shadow:var(--focus);outline:none}
 [hidden]{display:none !important} /* sj-sonu: !important yardımcı sınıfların display bildirimi hidden özniteliğini ezmesin; DOSYANIN SONUNDA kalmalı */

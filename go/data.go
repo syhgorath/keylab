@@ -98,6 +98,7 @@ type App struct {
 	jobs       map[string]*Job
 	bmu        sync.Mutex         // toplu işlem durumu
 	batch      *Batch             // son/çalışan toplu işlem
+	maxJobsN   atomic.Int32       // aynı anda çalışabilecek eylem sayısı (0: varsayılan); bkz. uisettings.go
 	batchOn    atomic.Bool        // toplu işlem sürerken tek tek iş başlatılamaz
 	up         map[string]bool    // son ölçülen erişilebilirlik (sayfa beklemeden gösterilsin)
 	conn       map[string]string  // son ölçülen bağlantı durumu: up | refused | down
