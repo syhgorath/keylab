@@ -6,6 +6,7 @@
     "test": "node --experimental-vm-modules --disable-warning=ExperimentalWarning --test"
   },
   "devDependencies": {
+    "acorn": "8.19.0",
     "jsdom": "26.1.0"
   }
 }
