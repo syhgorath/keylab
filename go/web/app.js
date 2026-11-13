@@ -253,6 +253,7 @@
     $("#pills").innerHTML = pills();
     $("#n-servers").textContent = home.servers.length;
     $("#n-packages").textContent = home.packages.length;
+    if (window.KeyLabDock) window.KeyLabDock.paint();
     $("#idx-serial").textContent = "seri: " + (home.indexSerial || "—");
     if (!selected || !home.servers.some(s => s.name === selected)) {
       const measured = home.servers.filter(s => s.lynis).sort((a, b) => (b.lynis.date || "").localeCompare(a.lynis.date || ""));
@@ -1758,7 +1759,16 @@
   });
 
   window.KeyLabBackup.init({ json, toast, reload: load });
-  window.KeyLabJobs.init({ json, goLogs, tabLabel: id => TAB_LABEL[id] || (home.packages.find(p => p.id === id) || {}).name || id });
+  window.KeyLabDock.init({
+    getHome: () => home, json, reload: load, ago, localTime, openLastLog,
+    tabLabel: id => TAB_LABEL[id] || (home.packages.find(p => p.id === id) || {}).name || id,
+    // toplu işlem sürüyorsa onun penceresini, değilse tek işin penceresini aç
+    openRunning: async () => {
+      if (($("#batch-open").textContent || "").startsWith("⏳")) { $("#batch-open").click(); return; }
+      if (!runBusy()) await adoptJob();
+      showRunModal();
+    },
+  });
   window.KeyLabBatch.init({ json, toast, reload: load, targets: () => visibleServers.slice(), tabLabel: id => TAB_LABEL[id] || (home.packages.find(p => p.id === id) || {}).name || id });
   adoptJob();
   window.KeyLabPalette.init({ getHome: () => home, showView, openServer, goLynis, goLogs, openShortcuts, reload: load });

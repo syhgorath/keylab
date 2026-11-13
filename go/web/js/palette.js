@@ -36,7 +36,7 @@
     add(G.cmd, L("Temayı değiştir", "Change theme"), "", "tema koyu acik dark light", () => $("#theme-btn").click());
     add(G.cmd, L("Ekranı gizle", "Hide the screen"), "L", "gizlilik kilit privacy lock", () => window.KeyLabPrivacy.lock("manual"));
     add(G.cmd, L("Klavye kısayolları", "Keyboard shortcuts"), "?", "kisayol", () => hooks.openShortcuts());
-    add(G.cmd, L("Son işler", "Recent jobs"), "", "is gorev gecmis jobs history", () => window.KeyLabJobs.open());
+    add(G.cmd, L("Görevler panelini aç/kapat", "Toggle the tasks panel"), "", "is gorev gecmis son islemler jobs history dock alt", () => window.KeyLabDock.toggle());
     add(G.cmd, L("Listeyi yenile", "Refresh the list"), "", "yenile reload", () => hooks.reload());
     return out;
   }

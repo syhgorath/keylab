@@ -57,7 +57,7 @@
     const tabs = $("#term-tabs"), dock = $("#term-dock");
     tabs.replaceChildren(...sessions.map(s => chip(s, "tab")));
     dock.replaceChildren(...sessions.map(s => chip(s, "dock")));
-    dock.hidden = !sessions.length || modalOpen();
+    dock.hidden = !sessions.length;
   }
 
   function buildView(s) {
