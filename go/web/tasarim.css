@@ -1360,4 +1360,14 @@ body.dock-open{padding-bottom:276px}
 .num-in{width:84px;padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font:inherit}
 .num-in:focus-visible{box-shadow:var(--focus);outline:none}
 .batch-par{margin:8px 0}
+/* Karşılama kartı (sunucu yokken) */
+.onboarding-card{display:grid;grid-template-columns:64px 1fr auto;gap:18px;align-items:center;padding:20px 24px;border-radius:var(--radius);background:linear-gradient(135deg,color-mix(in oklab,var(--accent-weak) 60%,transparent),color-mix(in oklab,var(--info-weak) 40%,transparent));border:1px solid color-mix(in oklab,var(--accent) 32%,var(--border));box-shadow:var(--shadow-1)}
+.ob-ico{width:60px;height:60px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;font-size:26px;box-shadow:var(--shadow-1)}
+.ob-body h2{margin:0 0 4px;font-size:16px;color:var(--heading)}
+.ob-body p{margin:0 0 10px}
+.ob-steps{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.ob-steps li{display:flex;flex-direction:column;gap:2px;padding:8px 10px;background:color-mix(in oklab,var(--surface) 80%,transparent);border:1px solid var(--border);border-radius:var(--radius-md);font-size:12px}
+.ob-steps li b{color:var(--text);font-weight:650}
+.ob-actions{display:flex;flex-direction:column;gap:8px;align-items:stretch}
+@media (max-width:760px){.onboarding-card{grid-template-columns:1fr;text-align:center}.ob-steps{grid-template-columns:1fr}.ob-actions{align-items:center}}
 [hidden]{display:none !important} /* sj-sonu: !important yardımcı sınıfların display bildirimi hidden özniteliğini ezmesin; DOSYANIN SONUNDA kalmalı */
