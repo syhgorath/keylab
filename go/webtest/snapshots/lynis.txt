@@ -660,14 +660,118 @@
           "sunucu seçin"
       <div class="card-body">
         <div aria-label="Sunucu" class="row-flex" id="lynis-pick" role="tablist">
+          <button aria-selected="false" class="pickbtn" data-n="db1" role="tab">
+            <svg aria-label="Linux" class="osico" height="26" role="img" viewBox="0 0 48 48" width="26">
+              <rect fill="var(--surface-3)" height="48" rx="11" width="48">
+              <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="13">
+              <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="26">
+              <circle cx="17" cy="17.5" fill="var(--muted)" r="1.4">
+              <circle cx="17" cy="30.5" fill="var(--muted)" r="1.4">
+            <span>
+              "db1"
+              <span class="muted">
+                "ölçüm yok"
+          <button aria-selected="false" class="pickbtn" data-n="vm1" role="tab">
+            <svg aria-label="Linux" class="osico" height="26" role="img" viewBox="0 0 48 48" width="26">
+              <rect fill="var(--surface-3)" height="48" rx="11" width="48">
+              <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="13">
+              <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="26">
+              <circle cx="17" cy="17.5" fill="var(--muted)" r="1.4">
+              <circle cx="17" cy="30.5" fill="var(--muted)" r="1.4">
+            <span>
+              "vm1"
+              <span class="muted">
+                "ölçüm yok"
+          <button aria-selected="true" class="pickbtn" data-n="web1" role="tab">
+            <svg aria-label="Linux" class="osico" height="26" role="img" viewBox="0 0 48 48" width="26">
+              <rect fill="var(--surface-3)" height="48" rx="11" width="48">
+              <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="13">
+              <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="26">
+              <circle cx="17" cy="17.5" fill="var(--muted)" r="1.4">
+              <circle cx="17" cy="30.5" fill="var(--muted)" r="1.4">
+            <span>
+              "web1"
+              <b>
+                "74"
     <div id="lynis-detail">
       <div class="card">
+        <div class="card-head">
+          <h2>
+            "Skor geçmişi — web1"
+          <div class="spacer">
+          <span class="hint">
+            "3 ölçüm · rapor"
         <div class="card-body">
-          <div class="empty-state">
-            <h3>
-              "Sunucu yok"
-            <p>
-              "Lynis ölçümü için önce bir sunucu eklenmeli."
+          <div class="lynis-head">
+            <div class="lynis-score">
+              "74"
+            <div class="small muted sj-9da19d">
+              "/100"
+            <div class="lynis-delta">
+              "▲ +13"
+          <div class="lynis-meta">
+            <span class="badge warn">
+              "uyarı 1"
+            <span class="badge info">
+              "öneri 12"
+            <span class="badge plain">
+              "61 → 74"
+          <div class="chartbox">
+            <svg aria-label="Lynis skoru geçmişi: 61, 68, 74" role="img" viewBox="0 0 630 190">
+              <line class="gl" x1="30" x2="620" y1="168" y2="168">
+              <text class="axis" text-anchor="end" x="24" y="171">
+                "0"
+              <line class="gl" x1="30" x2="620" y1="128.5" y2="128.5">
+              <text class="axis" text-anchor="end" x="24" y="131.5">
+                "25"
+              <line class="gl" x1="30" x2="620" y1="89" y2="89">
+              <text class="axis" text-anchor="end" x="24" y="92">
+                "50"
+              <line class="gl" x1="30" x2="620" y1="49.5" y2="49.5">
+              <text class="axis" text-anchor="end" x="24" y="52.5">
+                "75"
+              <line class="gl" x1="30" x2="620" y1="10" y2="10">
+              <text class="axis" text-anchor="end" x="24" y="13">
+                "100"
+              <path class="ar" d="M30,72 L325,61 L620,51 L620,168 L30,168 Z">
+              <polyline class="ln" points="30,72 325,61 620,51">
+              <circle class="pt" cx="30" cy="72" r="3">
+                <title>
+                  "2026-11-01 · skor 61"
+              <circle class="pt" cx="325" cy="61" r="3">
+                <title>
+                  "2026-11-05 · skor 68"
+              <circle class="pt last" cx="620" cy="51" r="4">
+                <title>
+                  "2026-11-10 · skor 74"
+              <text class="axis" text-anchor="start" x="30" y="184">
+                "11-01"
+              <text class="axis" text-anchor="end" x="620" y="184">
+                "11-10"
+          <div class="small muted sj-fe7b49">
+            "Geçmiş, bu kontrolcüde kayıtlı tüm ölçümleri içerir; VM snapshot dönüşlerinden önceki ölçümler de dahildir."
+      <div class="card">
+        <div class="card-head">
+          <h2>
+            "Bulgular"
+          <div class="spacer">
+          <div aria-label="Tür" class="segmented" role="group">
+            <button aria-pressed="true" data-k="all">
+              "Tümü"
+            <button aria-pressed="false" data-k="uyari">
+              "Uyarı"
+            <button aria-pressed="false" data-k="oneri">
+              "Öneri"
+          <input aria-label="Bulgularda ara" class="sj-ab2990" id="lyn-q" placeholder="ara…" type="search" value="">
+          <span class="hint sj-5dd2a6" id="lyn-count">
+            "0 / 0 bulgu"
+        <div class="card-body tight">
+          <div class="fgrid" id="lyn-rows">
+            <div class="frow">
+              <div>
+              <div>
+              <div class="muted">
+                "Eşleşen bulgu yok."
   <section class="view" hidden="" id="view-logs">
     <div class="card">
       <div class="card-head">

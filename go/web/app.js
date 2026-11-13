@@ -1166,7 +1166,7 @@ import { appState } from "./js/state.js";
     $$("#lynis-pick .pickbtn").forEach(b => b.addEventListener("click", () => loadLynis(b.dataset.n)));
     if (!lynSel) { $("#lynis-detail").innerHTML = ""; return; }
     lynKind = lynPre || "all"; lynPre = ""; lynQ = "";
-    try { lynData = await json("/api/lynis?server=" + encodeURIComponent(lynSel)); }
+    try { lynData = await json("/api/lynis?server=" + encodeURIComponent(lynSel)); lynData.findings = lynData.findings || []; } // sunucu bulgu dosyası yoksa null gönderir
     catch (e) { $("#lynis-detail").innerHTML = `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div>Yüklenemedi: ${esc(e.message)}</div></div>`; return; }
     paintLynis();
   }
@@ -1763,6 +1763,8 @@ import { appState } from "./js/state.js";
   appState.routing = true; showView(VIEWS.includes(startHash.get("v")) ? startHash.get("v") : "dash"); appState.routing = false;
   load().then(() => {
     if (startHash.get("s")) { appState.routing = true; openServer(startHash.get("s"), startHash.get("p") || ""); appState.routing = false; }
+    // Lynis sayfası sunucu listesine (home) bağlıdır: adresle/yenilemeyle doğrudan açıldıysa liste YÜKLENMEDEN çizilmişti ("Sunucu yok"); şimdi yeniden çiz
+    else if (appState.view === "lynis") loadLynis();
   });
   setInterval(() => {
     if (document.hidden || isWizardOpen()) return;
