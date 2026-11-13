@@ -98,7 +98,7 @@
             <div class="srv-last">
               <span class="res fail">
                 "✖ başarısız"
-              <span class="muted mono" title="10.11.2026 13:00:00">
+              <span class="muted mono" title="10.11.2026 10:00:00">
                 "4 gün"
             <div class="srv-actions">
               <button aria-label="Daha fazla eylem" class="btn-icon" data-act="menu">
@@ -138,7 +138,7 @@
             <div class="srv-last">
               <span class="res ok">
                 "✔ başarılı"
-              <span class="muted mono" title="10.11.2026 12:00:00">
+              <span class="muted mono" title="10.11.2026 09:00:00">
                 "4 gün"
             <div class="srv-actions">
               <button aria-label="Daha fazla eylem" class="btn-icon" data-act="menu">
@@ -250,7 +250,7 @@
             <div class="srv-last">
               <span class="res fail">
                 "✖ başarısız"
-              <span class="muted mono" title="10.11.2026 13:00:00">
+              <span class="muted mono" title="10.11.2026 10:00:00">
                 "4 gün"
             <div class="srv-actions">
               <button aria-label="Daha fazla eylem" class="btn-icon" data-act="menu">
@@ -290,7 +290,7 @@
             <div class="srv-last">
               <span class="res ok">
                 "✔ başarılı"
-              <span class="muted mono" title="10.11.2026 12:00:00">
+              <span class="muted mono" title="10.11.2026 09:00:00">
                 "4 gün"
             <div class="srv-actions">
               <button aria-label="Daha fazla eylem" class="btn-icon" data-act="menu">
