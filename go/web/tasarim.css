@@ -1370,4 +1370,8 @@ body.dock-open{padding-bottom:276px}
 .ob-steps li b{color:var(--text);font-weight:650}
 .ob-actions{display:flex;flex-direction:column;gap:8px;align-items:stretch}
 @media (max-width:760px){.onboarding-card{grid-template-columns:1fr;text-align:center}.ob-steps{grid-template-columns:1fr}.ob-actions{align-items:center}}
+.term-search{display:flex;gap:6px;align-items:center;margin:0 20px 8px}
+.term-search input[type="search"]{flex:1;min-width:0;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font:inherit}
+.term-search input[type="search"]:focus-visible{box-shadow:var(--focus);outline:none}
+.term-find-case{display:inline-flex;gap:4px;align-items:center;cursor:pointer;white-space:nowrap}
 [hidden]{display:none !important} /* sj-sonu: !important yardımcı sınıfların display bildirimi hidden özniteliğini ezmesin; DOSYANIN SONUNDA kalmalı */
