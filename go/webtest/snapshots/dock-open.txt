@@ -1,0 +1,80 @@
+<footer aria-label="Görevler ve açık terminaller" class="wb-dock" id="wb-dock">
+  <div class="dock-bar">
+    <button aria-controls="dock-body" aria-expanded="true" class="dock-tab" id="dock-tab" title="Son işlemleri göster/gizle" type="button">
+      <svg aria-hidden="true" fill="none" height="13" stroke-width="2" stroke="currentColor" viewBox="0 0 24 24" width="13">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12">
+      <span>
+        "Görevler & Son İşlemler"
+      <span class="count" id="dock-count">
+        "3"
+    <div aria-label="Açık terminal oturumları" class="term-dock" hidden="" id="term-dock" role="toolbar">
+    <div class="dock-jobs" id="dock-jobs">
+    <div class="spacer">
+    <span class="small muted" id="dock-hint">
+    <button aria-label="Görev panelini aç/kapat" class="btn sm ghost" id="dock-toggle" type="button">
+      "▾"
+  <div class="dock-body" id="dock-body">
+    <table class="dock-table">
+      <thead>
+        <tr>
+          <th>
+            "Başlangıç"
+          <th>
+            "Sunucu"
+          <th>
+            "Paket / Sürüm"
+          <th>
+            "Eylem"
+          <th>
+            "Durum"
+          <th class="dock-act">
+            "Günlük"
+      <tbody id="dock-rows">
+        <tr class="dock-row is-fail">
+          <td title="10.11.2026 13:00:00">
+            "4 gün önce"
+          <td class="mono">
+            <b>
+              "db1"
+          <td class="mono">
+            "utility 0.1.0"
+          <td class="mono">
+            "durum"
+          <td>
+            <span class="badge danger">
+              "✖ başarısız"
+          <td class="dock-act">
+            <button class="btn sm ghost" data-log="utility" data-srv="db1" title="Bu paketin bu sunucudaki son çalıştırma günlüğü">
+              "Günlük"
+        <tr class="dock-row">
+          <td title="10.11.2026 12:00:00">
+            "4 gün önce"
+          <td class="mono">
+            <b>
+              "web1"
+          <td class="mono">
+            "linux-hardening 0.13.0"
+          <td class="mono">
+            "audit"
+          <td>
+            <span class="badge ok">
+              "✔ başarılı"
+          <td class="dock-act">
+            <button class="btn sm ghost" data-log="linux-hardening" data-srv="web1" title="Bu paketin bu sunucudaki son çalıştırma günlüğü">
+              "Günlük"
+        <tr class="dock-row">
+          <td title="10.11.2026 11:00:00">
+            "4 gün önce"
+          <td class="mono">
+            <b>
+              "web1"
+          <td class="mono">
+            "linux-hardening 0.13.0"
+          <td class="mono">
+            "preview"
+          <td>
+            <span class="badge ok">
+              "✔ başarılı"
+          <td class="dock-act">
+    <p class="small muted dock-empty" hidden="" id="dock-empty">
+      "Henüz işlem kaydı yok."

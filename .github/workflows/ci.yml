@@ -37,6 +37,20 @@ jobs:
       - name: Derleme (tek ikili)
         working-directory: go
         run: CGO_ENABLED=0 go build -trimpath -o /tmp/sshpocket . && /tmp/sshpocket version
+  # Arayüz testleri: gerçek arayüz jsdom'da, kaydedilmiş API yanıtlarıyla (bkz. go/webtest/README.md). Yalnız geliştirme aracı; ikiliye girmez.
+  web:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Bağımlılıklar (kilit dosyasıyla, kurulum betiği çalıştırmadan)
+        working-directory: go/webtest
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Arayüz testleri
+        working-directory: go/webtest
+        run: npm test
   # Çok platformlu derleme denetimi: yalnız derlenir. Çalışma zamanı (Keychain, terminal, ssh-agent) şimdilik macOS'a özgüdür.
   cross:
     runs-on: ubuntu-26.04

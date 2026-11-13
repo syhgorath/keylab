@@ -1,0 +1,56 @@
+{
+ "package": "utility",
+ "server": "web1",
+ "vars": [
+  {
+   "default": "",
+   "description": "Saat dilimi (örn. Europe/Istanbul). Boş = saat dilimine dokunma. /usr/share/zoneinfo altında var olmalı.",
+   "group": "Zaman",
+   "name": "utility_timezone",
+   "required": false,
+   "set": false,
+   "type": "string",
+   "value": ""
+  },
+  {
+   "default": "",
+   "description": "Sistem dili: yalnızca LANG (örn. en_US.UTF-8). Boş = dokunma. LC_* yönetilmez. Gerekirse locales kurulur ve locale üretilir.",
+   "group": "Dil",
+   "name": "utility_locale",
+   "required": false,
+   "set": false,
+   "type": "string",
+   "value": ""
+  },
+  {
+   "default": "",
+   "description": "NTP kaynakları (en çok 8): 'host', 'server host' ya da 'pool host'; iburst otomatik eklenir. Boş = dağıtım varsayılanı (dosya yazılmaz, chrony kurulmaz). Dağıtımın varsayılan kaynakları kalır.",
+   "group": "NTP",
+   "name": "utility_ntp_servers",
+   "required": false,
+   "set": false,
+   "type": "list[string]",
+   "value": ""
+  },
+  {
+   "default": "true",
+   "description": "Değiştirmeden önce /var/backups/utility/<tarih>/ altına yedek al. false = yedek alınmaz ve geri_yukle yeni değişikliği geri alamaz.",
+   "group": "Yedek",
+   "name": "utility_backup",
+   "required": false,
+   "set": false,
+   "type": "bool",
+   "value": ""
+  },
+  {
+   "default": "",
+   "description": "geri_yukle için yedek adı (örn. 20261105T101500Z). Boş = en son yedek.",
+   "group": "Yedek",
+   "name": "utility_restore_from",
+   "required": false,
+   "set": false,
+   "type": "string",
+   "value": ""
+  }
+ ]
+}

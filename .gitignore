@@ -38,3 +38,6 @@ components/
 
 # Kişisel ayarlar (USB'yle taşınır, repoya girmez)
 sshpocket.conf
+
+# arayüz testleri: yalnız geliştirme aracı
+go/webtest/node_modules/

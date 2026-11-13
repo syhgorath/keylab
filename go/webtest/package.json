@@ -1,0 +1,7 @@
+{
+  "name": "keylab-webtest",
+  "private": true,
+  "description": "KeyLab arayüz testleri (jsdom). Yalnız geliştirme/CI aracı: ikiliye girmez, web/ altında değildir.",
+  "scripts": { "test": "node --test" },
+  "devDependencies": { "jsdom": "26.1.0" }
+}

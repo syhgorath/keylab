@@ -1,0 +1,14 @@
+{
+ "db1": {
+  "conn": "down",
+  "up": false
+ },
+ "vm1": {
+  "conn": "down",
+  "up": false
+ },
+ "web1": {
+  "conn": "down",
+  "up": false
+ }
+}

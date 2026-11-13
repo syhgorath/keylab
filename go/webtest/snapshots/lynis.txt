@@ -1,0 +1,688 @@
+<main class="main">
+  <section class="view" hidden="" id="view-dash">
+    <div class="onboarding-card" hidden="" id="onboarding">
+    <div class="kpis kpi-accented" id="kpis">
+      <div class="kpi" data-tone="warn">
+        <div class="kpi-label">
+          <span aria-hidden="true" class="dot warn">
+          "Çevrimiçi"
+        <div class="kpi-value">
+          "2"
+          <small>
+            "/3"
+        <div class="kpi-sub">
+          <span class="ok">
+            "✔"
+          "anahtar var: 0 ·"
+          <span class="muted">
+            "yok: 3"
+      <div class="kpi">
+        <div class="kpi-label">
+          <span aria-hidden="true" class="dot ok">
+          "Kurulu paket"
+        <div class="kpi-value">
+          "3"
+        <div class="kpi-sub">
+          "kurulum · linux-hardening · utility"
+      <div class="kpi" data-tone="ok">
+        <div class="kpi-label">
+          <span aria-hidden="true" class="dot ok">
+          "Son 24 sa başarısız"
+        <div class="kpi-value">
+          "0"
+        <div class="kpi-sub">
+          "başarısız eylem yok"
+      <div class="kpi" data-tone="warn">
+        <div class="kpi-label">
+          <span aria-hidden="true" class="dot ok">
+          "Ortalama Lynis"
+        <div class="kpi-value">
+          "74"
+          <small>
+            "/100"
+        <div class="kpi-sub">
+          "1 sunucu · +13 toplam değişim"
+    <div class="card">
+      <div class="card-head">
+        <h2>
+          "Sunucular"
+        <span class="hint">
+          "sağ tık ya da F10: bağlam menüsü"
+        <div class="spacer">
+        <button class="btn sm" data-nav-target="add">
+          "+ Sunucu ekle"
+        <div aria-label="Görünüm" class="mode-toggle" role="group">
+          <button aria-pressed="true" data-mode="tiles">
+            "Simgeler"
+          <button aria-pressed="false" data-mode="list">
+            "Liste"
+        <button class="btn sm ghost" id="refresh-all" title="Tümünü yenile">
+          <svg fill="none" height="14" stroke-width="2" stroke="currentColor" viewBox="0 0 24 24" width="14">
+            <path d="M21 12a9 9 0 1 1-3-6.7L21 8">
+            <path d="M21 3v5h-5">
+          "Yenile"
+      <div class="card-body tight">
+        <div aria-label="Sunucu süzgeci" class="fchips2 fleet-filter" role="group">
+          <button aria-pressed="true" class="fchip" data-ff="all">
+            "Tümü"
+            <span class="muted">
+              "3"
+          <button aria-pressed="false" class="fchip" data-ff="up">
+            "Çevrimiçi"
+            <span class="muted">
+              "2"
+          <button aria-pressed="false" class="fchip" data-ff="down">
+            "Kapalı"
+            <span class="muted">
+              "1"
+          <button aria-pressed="false" class="fchip" data-ff="warn">
+            "⚠ Uyarılı"
+            <span class="muted">
+              "2"
+          <button aria-pressed="false" class="fchip" data-ff="nokey">
+            "Anahtarsız"
+            <span class="muted">
+              "3"
+        <ul class="server-list tiles" id="servers">
+          <li aria-label="db1, çevrimiçi" class="stile " data-name="db1" data-state="on" tabindex="0">
+            <div class="stile-top">
+              <svg aria-label="Linux" class="osico" height="44" role="img" viewBox="0 0 48 48" width="44">
+                <rect fill="var(--surface-3)" height="48" rx="11" width="48">
+                <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="13">
+                <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="26">
+                <circle cx="17" cy="17.5" fill="var(--muted)" r="1.4">
+                <circle cx="17" cy="30.5" fill="var(--muted)" r="1.4">
+              <span aria-label="çevrimiçi" class="status-dot on">
+              <button aria-label="Daha fazla eylem" class="btn-icon" data-act="menu">
+                <svg fill="currentColor" height="16" viewBox="0 0 24 24" width="16">
+                  <circle cx="5" cy="12" r="1.8">
+                  <circle cx="12" cy="12" r="1.8">
+                  <circle cx="19" cy="12" r="1.8">
+            <div class="stile-name">
+              "db1"
+            <div class="stile-os">
+              "Linux · anahtar yok"
+            <div class="stile-last bad">
+              "✖ utility · durum · 4 gün"
+          <li aria-label="vm1, bağlantı yok" class="stile is-off" data-name="vm1" data-state="off" tabindex="0">
+            <div class="stile-top">
+              <svg aria-label="Linux" class="osico" height="44" role="img" viewBox="0 0 48 48" width="44">
+                <rect fill="var(--surface-3)" height="48" rx="11" width="48">
+                <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="13">
+                <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="26">
+                <circle cx="17" cy="17.5" fill="var(--muted)" r="1.4">
+                <circle cx="17" cy="30.5" fill="var(--muted)" r="1.4">
+              <span aria-label="bağlantı yok" class="status-dot off">
+              <button aria-label="Daha fazla eylem" class="btn-icon" data-act="menu">
+                <svg fill="currentColor" height="16" viewBox="0 0 24 24" width="16">
+                  <circle cx="5" cy="12" r="1.8">
+                  <circle cx="12" cy="12" r="1.8">
+                  <circle cx="19" cy="12" r="1.8">
+            <div class="stile-name">
+              "vm1"
+            <div class="stile-os">
+              "Linux · anahtar yok"
+            <div class="stile-last ">
+              "kayıt yok"
+          <li aria-label="web1, çevrimiçi" class="stile " data-name="web1" data-state="on" tabindex="0">
+            <div class="stile-top">
+              <svg aria-label="Linux" class="osico" height="44" role="img" viewBox="0 0 48 48" width="44">
+                <rect fill="var(--surface-3)" height="48" rx="11" width="48">
+                <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="13">
+                <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="26">
+                <circle cx="17" cy="17.5" fill="var(--muted)" r="1.4">
+                <circle cx="17" cy="30.5" fill="var(--muted)" r="1.4">
+              <span aria-label="çevrimiçi" class="status-dot on">
+              <button aria-label="Daha fazla eylem" class="btn-icon" data-act="menu">
+                <svg fill="currentColor" height="16" viewBox="0 0 24 24" width="16">
+                  <circle cx="5" cy="12" r="1.8">
+                  <circle cx="12" cy="12" r="1.8">
+                  <circle cx="19" cy="12" r="1.8">
+            <div class="stile-name">
+              "web1"
+            <div class="stile-os">
+              "Linux · anahtar yok"
+            <div class="stile-last ">
+              "✔ linux-hardening · audit · 4 gün"
+          <li aria-label="Sunucu ekle" class="stile add" data-add="1" tabindex="0">
+            <div aria-hidden="true" class="plus">
+              "+"
+            <div>
+              "Sunucu ekle"
+    <div class="card">
+      <div class="card-head">
+        <h2>
+          "Paketler"
+        <span class="hint">
+          "USB'deki kurulu sürümler"
+        <div class="spacer">
+        <button class="btn sm ghost" data-nav-target="packages">
+          "Tümünü gör"
+      <div class="card-body tight" id="pkgs-dash">
+        <div class="pkg-row">
+          <div>
+            <div class="pkg-name">
+              "kurulum"
+            <div class="pkg-meta">
+              <span class="ver">
+                "0.1.0"
+              <span class="muted">
+                "· USB'de kurulu sürüm"
+          <div class="pkg-actions">
+            <button class="btn sm ghost" disabled="" title="Güncelleme denetimi bu taslakta yok">
+              "güncelleme denetimi yok"
+        <div class="pkg-row">
+          <div>
+            <div class="pkg-name">
+              "linux-hardening"
+            <div class="pkg-meta">
+              <span class="ver">
+                "0.13.0"
+              <span class="muted">
+                "· USB'de kurulu sürüm"
+          <div class="pkg-actions">
+            <button class="btn sm ghost" disabled="" title="Güncelleme denetimi bu taslakta yok">
+              "güncelleme denetimi yok"
+        <div class="pkg-row">
+          <div>
+            <div class="pkg-name">
+              "utility"
+            <div class="pkg-meta">
+              <span class="ver">
+                "0.1.0"
+              <span class="muted">
+                "· USB'de kurulu sürüm"
+          <div class="pkg-actions">
+            <button class="btn sm ghost" disabled="" title="Güncelleme denetimi bu taslakta yok">
+              "güncelleme denetimi yok"
+  <section class="view" hidden="" id="view-server">
+    <div id="srv-head">
+    <div aria-label="Paketler" class="tabs" id="srv-tabs" role="tablist">
+    <div id="srv-body" role="tabpanel">
+  <section class="view" hidden="" id="view-servers">
+    <div class="card">
+      <div class="card-head">
+        <h2>
+          "Tüm sunucular"
+        <div class="spacer">
+        <button class="btn sm" data-nav-target="add">
+          "+ Sunucu ekle"
+        <button class="btn sm" id="batch-open" title="Listedeki sunucularda aynı salt okunur eylemi çalıştır">
+          "Toplu işlem…"
+        <div aria-label="Görünüm" class="mode-toggle" role="group">
+          <button aria-pressed="true" data-mode="tiles">
+            "Simgeler"
+          <button aria-pressed="false" data-mode="list">
+            "Liste"
+        <span class="hint" id="servers-count">
+          "3 kayıt"
+      <div class="card-body tight">
+        <div aria-label="Sunucu süzgeci" class="fchips2 fleet-filter" role="group">
+          <button aria-pressed="true" class="fchip" data-ff="all">
+            "Tümü"
+            <span class="muted">
+              "3"
+          <button aria-pressed="false" class="fchip" data-ff="up">
+            "Çevrimiçi"
+            <span class="muted">
+              "2"
+          <button aria-pressed="false" class="fchip" data-ff="down">
+            "Kapalı"
+            <span class="muted">
+              "1"
+          <button aria-pressed="false" class="fchip" data-ff="warn">
+            "⚠ Uyarılı"
+            <span class="muted">
+              "2"
+          <button aria-pressed="false" class="fchip" data-ff="nokey">
+            "Anahtarsız"
+            <span class="muted">
+              "3"
+        <ul class="server-list tiles" id="servers-all">
+          <li aria-label="db1, çevrimiçi" class="stile " data-name="db1" data-state="on" tabindex="0">
+            <div class="stile-top">
+              <svg aria-label="Linux" class="osico" height="44" role="img" viewBox="0 0 48 48" width="44">
+                <rect fill="var(--surface-3)" height="48" rx="11" width="48">
+                <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="13">
+                <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="26">
+                <circle cx="17" cy="17.5" fill="var(--muted)" r="1.4">
+                <circle cx="17" cy="30.5" fill="var(--muted)" r="1.4">
+              <span aria-label="çevrimiçi" class="status-dot on">
+              <button aria-label="Daha fazla eylem" class="btn-icon" data-act="menu">
+                <svg fill="currentColor" height="16" viewBox="0 0 24 24" width="16">
+                  <circle cx="5" cy="12" r="1.8">
+                  <circle cx="12" cy="12" r="1.8">
+                  <circle cx="19" cy="12" r="1.8">
+            <div class="stile-name">
+              "db1"
+            <div class="stile-os">
+              "Linux · anahtar yok"
+            <div class="stile-last bad">
+              "✖ utility · durum · 4 gün"
+          <li aria-label="vm1, bağlantı yok" class="stile is-off" data-name="vm1" data-state="off" tabindex="0">
+            <div class="stile-top">
+              <svg aria-label="Linux" class="osico" height="44" role="img" viewBox="0 0 48 48" width="44">
+                <rect fill="var(--surface-3)" height="48" rx="11" width="48">
+                <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="13">
+                <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="26">
+                <circle cx="17" cy="17.5" fill="var(--muted)" r="1.4">
+                <circle cx="17" cy="30.5" fill="var(--muted)" r="1.4">
+              <span aria-label="bağlantı yok" class="status-dot off">
+              <button aria-label="Daha fazla eylem" class="btn-icon" data-act="menu">
+                <svg fill="currentColor" height="16" viewBox="0 0 24 24" width="16">
+                  <circle cx="5" cy="12" r="1.8">
+                  <circle cx="12" cy="12" r="1.8">
+                  <circle cx="19" cy="12" r="1.8">
+            <div class="stile-name">
+              "vm1"
+            <div class="stile-os">
+              "Linux · anahtar yok"
+            <div class="stile-last ">
+              "kayıt yok"
+          <li aria-label="web1, çevrimiçi" class="stile " data-name="web1" data-state="on" tabindex="0">
+            <div class="stile-top">
+              <svg aria-label="Linux" class="osico" height="44" role="img" viewBox="0 0 48 48" width="44">
+                <rect fill="var(--surface-3)" height="48" rx="11" width="48">
+                <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="13">
+                <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="26">
+                <circle cx="17" cy="17.5" fill="var(--muted)" r="1.4">
+                <circle cx="17" cy="30.5" fill="var(--muted)" r="1.4">
+              <span aria-label="çevrimiçi" class="status-dot on">
+              <button aria-label="Daha fazla eylem" class="btn-icon" data-act="menu">
+                <svg fill="currentColor" height="16" viewBox="0 0 24 24" width="16">
+                  <circle cx="5" cy="12" r="1.8">
+                  <circle cx="12" cy="12" r="1.8">
+                  <circle cx="19" cy="12" r="1.8">
+            <div class="stile-name">
+              "web1"
+            <div class="stile-os">
+              "Linux · anahtar yok"
+            <div class="stile-last ">
+              "✔ linux-hardening · audit · 4 gün"
+          <li aria-label="Sunucu ekle" class="stile add" data-add="1" tabindex="0">
+            <div aria-hidden="true" class="plus">
+              "+"
+            <div>
+              "Sunucu ekle"
+  <section class="view" hidden="" id="view-compare">
+    <div class="card">
+      <div class="card-head">
+        <h2>
+          "Sunucu karşılaştırma"
+        <span class="hint" id="compare-summary">
+        <div class="spacer sx-97445a">
+        <div class="compare-controls">
+          <label class="toggle-switch" title="Yalnızca sunucular arasında farklı olan satırları göster">
+            <input id="compare-drift-only" type="checkbox">
+            <span class="toggle-slider">
+            <span class="toggle-label">
+              "⚡ Yalnızca fark"
+          <div aria-label="Kapsam" class="segmented" id="compare-cat-group" role="group">
+            <button aria-pressed="true" data-cat="all" type="button">
+              "Tümü"
+            <button aria-pressed="false" data-cat="sys" type="button">
+              "Sistem ve ağ"
+            <button aria-pressed="false" data-cat="pkg" type="button">
+              "Paketler"
+            <button aria-pressed="false" data-cat="lynis" type="button">
+              "Lynis"
+            <button aria-pressed="false" data-cat="vars" type="button">
+              "Değişkenler"
+          <input aria-label="Matriste ara" class="sx-532b40" id="compare-search" placeholder="Matriste ara…" type="search">
+          <div class="dropdown-wrap sx-81178e">
+            <button aria-haspopup="true" class="btn sm" id="compare-export-btn" type="button">
+              "Dışa aktar ▾"
+            <div class="dropdown-menu" hidden="" id="compare-export-menu">
+              <button class="drop-item" id="compare-copy-md" type="button">
+                "📋 Markdown kopyala"
+              <button class="drop-item" id="compare-down-csv" type="button">
+                "💾 CSV indir"
+              <button class="drop-item" id="compare-down-json" type="button">
+                "💾 JSON indir"
+          <button class="btn sm" id="compare-refresh-btn" type="button">
+            "Yenile"
+      <div class="card-body tight" id="compare-table-wrap">
+        <div id="compare-matrix-view">
+  <section class="view" hidden="" id="view-reports">
+    <div class="reports-layout">
+      <div class="card reports-sidebar">
+        <div class="card-head">
+          <h2>
+            "Rapor yapılandırıcı"
+        <div class="card-body">
+          <div class="field">
+            <label for="rep-template">
+              "Rapor şablonu"
+            <select id="rep-template">
+              <option value="fleet-sec">
+                "Filo güvenlik ve envanter özeti"
+              <option value="srv-audit">
+                "Sunucu güvenlik denetimi"
+              <option value="lynis-catalog">
+                "Lynis bulguları kataloğu"
+              <option value="drift-report">
+                "Yapılandırma ve drift (fark) raporu"
+          <div class="field">
+            <label for="rep-server">
+              "Hedef sunucu"
+            <select id="rep-server">
+          <div class="field">
+            <label>
+              "Dahil edilecek bölümler"
+            <div class="rep-checkbox-group">
+              <label>
+                <input checked="" id="rep-inc-sys" type="checkbox">
+                <span>
+                  "Sistem ve ağ"
+              <label>
+                <input checked="" id="rep-inc-pkgs" type="checkbox">
+                <span>
+                  "Paket eylemleri"
+              <label>
+                <input checked="" id="rep-inc-lynis" type="checkbox">
+                <span>
+                  "Lynis skorları"
+              <label>
+                <input checked="" id="rep-inc-findings" type="checkbox">
+                <span>
+                  "Bulgular ve uyarılar"
+              <label>
+                <input checked="" id="rep-inc-vars" type="checkbox">
+                <span>
+                  "Değişken farkları (drift şablonu)"
+          <div class="rep-actions">
+            <button class="btn primary sm sx-046678" id="rep-print-btn" type="button">
+              "Yazdır / PDF olarak kaydet"
+            <div class="row-flex sx-d87ce2">
+              <button class="btn sm sx-97445a" id="rep-copy-md" type="button">
+                "📋 Kopyala"
+              <button class="btn sm sx-97445a" id="rep-down-md" type="button">
+                "📥 .md"
+              <button class="btn sm sx-97445a" id="rep-down-json" type="button">
+                "📥 .json"
+      <div class="card reports-preview-card">
+        <div class="card-head" id="rep-preview-head">
+          <h2 id="rep-preview-title">
+            "Rapor önizleme"
+          <div class="spacer sx-97445a">
+          <div aria-label="Önizleme biçimi" class="segmented" id="rep-format-toggle" role="group">
+            <button aria-pressed="true" data-fmt="html" type="button">
+              "Görsel"
+            <button aria-pressed="false" data-fmt="md" type="button">
+              "Markdown"
+            <button aria-pressed="false" data-fmt="json" type="button">
+              "JSON"
+        <div class="card-body" id="rep-preview-body">
+          <div class="report-document" id="rep-render-html">
+          <pre class="report-raw mono small" hidden="" id="rep-render-raw">
+  <section class="view" hidden="" id="view-add">
+    <div class="card">
+      <div class="card-head">
+        <h2>
+          "Sunucu ekle"
+        <div class="spacer sx-97445a">
+        <button class="btn sm" id="imp-open" type="button">
+          "~/.ssh/config'ten içe aktar…"
+      <div class="card-body">
+        <div hidden="" id="add-steps">
+        <div id="add-form-wrap">
+          <div class="notice sx-87c136">
+            <span aria-hidden="true" class="ico">
+              "ℹ"
+            <div>
+              "Alanlar uygulamanın kurallarıyla doğrulanır;"
+              <b>
+                "Sunucuyu oluştur"
+              <span class="mono">
+                "servers/<ad>/server.env"
+              "dosyasını uygulamanın kendi işleviyle yazar (var olanın üzerine yazılmaz). Ardından anahtar adımları sizi adım adım yönlendirir. Sunucuya bu aşamada"
+              <b>
+                "bağlanılmaz"
+              "."
+          <div class="addgrid">
+            <form autocomplete="off" id="add-form" novalidate="">
+              <div class="field">
+                <label for="add-name">
+                  "Sunucu adı"
+                <input autocapitalize="off" id="add-name" maxlength="40" placeholder="ornek_sunucu" spellcheck="false">
+                <div class="hint" id="e-name">
+                  "Küçük harf, rakam ve _ ; harfle başlar."
+              <div class="field">
+                <label for="add-host">
+                  "IP ya da ana makine adı"
+                <input id="add-host" maxlength="253" placeholder="192.0.2.10" spellcheck="false">
+                <div class="hint" id="e-host">
+              <div class="row-flex sx-4fb60c">
+                <div class="field sx-97445a">
+                  <label for="add-user">
+                    "Kullanıcı"
+                  <input id="add-user" maxlength="32" placeholder="admin" spellcheck="false">
+                  <div class="hint" id="e-user">
+                <div class="field sx-607468">
+                  <label for="add-port">
+                    "Port"
+                  <input id="add-port" inputmode="numeric" maxlength="5" placeholder="22">
+                  <div class="hint" id="e-port">
+              <div class="field">
+                <label for="add-os">
+                  "İşletim sistemi profili"
+                  <span class="muted">
+                    "(isteğe bağlı)"
+                <select id="add-os">
+                  <option value="">
+                    "(belirtme)"
+                <div class="hint" id="e-os">
+                  "Paketlerin desteklediği profiller listelenir."
+            <div aria-live="polite" id="add-preview">
+  <section class="view" hidden="" id="view-settings">
+    <div class="card">
+      <div class="card-head">
+        <h2>
+          "Görünüm"
+      <div class="card-body">
+        <div class="frow2">
+          <span class="flabel sx-607468">
+            "Tema"
+          <div aria-label="Tema" class="segmented" id="set-theme" role="group">
+            <button aria-pressed="true" data-v="auto">
+              "Otomatik"
+            <button aria-pressed="false" data-i18n="theme_light" data-v="light">
+              "Açık"
+            <button aria-pressed="false" data-v="dark">
+              "Koyu"
+        <div class="frow2">
+          <span class="flabel sx-607468">
+            "Vurgu rengi"
+          <div aria-label="Vurgu rengi" class="accent-row" id="set-accent" role="group">
+            <button aria-label="İndigo" aria-pressed="true" class="accent-sw" data-a="default" style="background: rgb(79, 70, 229);" title="İndigo" type="button">
+            <button aria-label="Mavi" aria-pressed="false" class="accent-sw" data-a="blue" style="background: rgb(29, 78, 216);" title="Mavi" type="button">
+            <button aria-label="Turkuaz" aria-pressed="false" class="accent-sw" data-a="teal" style="background: rgb(15, 118, 110);" title="Turkuaz" type="button">
+            <button aria-label="Zümrüt" aria-pressed="false" class="accent-sw" data-a="emerald" style="background: rgb(4, 120, 87);" title="Zümrüt" type="button">
+            <button aria-label="Kehribar" aria-pressed="false" class="accent-sw" data-a="amber" style="background: rgb(180, 83, 9);" title="Kehribar" type="button">
+            <button aria-label="Gül" aria-pressed="false" class="accent-sw" data-a="rose" style="background: rgb(190, 18, 60);" title="Gül" type="button">
+            <button aria-label="Mor" aria-pressed="false" class="accent-sw" data-a="violet" style="background: rgb(124, 58, 237);" title="Mor" type="button">
+            <button aria-label="Grafit" aria-pressed="false" class="accent-sw" data-a="graphite" style="background: rgb(51, 65, 85);" title="Grafit" type="button">
+        <div class="frow2">
+          <span class="flabel sx-607468">
+            "Sunucular"
+          <div aria-label="Sunucu görünümü" class="segmented" id="set-mode" role="group">
+            <button data-v="tiles">
+              "Simgeler"
+            <button data-v="list">
+              "Liste"
+        <div class="frow2">
+          <span class="flabel sx-607468">
+            "Parola girişi"
+          <div aria-label="Parola girişi" class="segmented" id="set-ask" role="group">
+            <button aria-pressed="true" data-v="system" title="">
+              "Sistem penceresi (önerilen)"
+            <button aria-pressed="false" data-v="inline">
+              "Sayfa içi kutu"
+        <div class="hint small muted">
+          "Sistem penceresi: sudo parolası macOS'un kendi gizli girdi penceresine yazılır; tarayıcıya, eklentilere ve parola yöneticisine hiç uğramaz. Sayfa içi kutu yedek yoldur. Tercihler yalnızca bu tarayıcıda saklanır."
+    <div class="card">
+      <div class="card-head">
+        <h2>
+          "Eylemler"
+        <span class="hint">
+          "sunucu tarafı ayar"
+      <div class="card-body">
+        <div class="frow2">
+          <label class="flabel sx-607468" for="set-maxjobs">
+            "Aynı anda en çok"
+          <input aria-describedby="set-maxjobs-hint" class="num-in" id="set-maxjobs" inputmode="numeric" max="16" min="1" step="1" type="number">
+          <span class="small muted" id="set-maxjobs-st" role="status">
+        <div class="hint small muted" id="set-maxjobs-hint">
+          "Farklı sunucularda aynı anda çalışabilecek eylem sayısı (1-16, varsayılan 4). Aynı sunucuda her zaman tek eylem çalışır; paket kurulumu, sunucu silme ve toplu işlem tek başına çalışır. Her eylem bir ssh/ansible süreci ve bir parola penceresi demektir: yazan eylemlerde düşük tutmanız önerilir. Düşürmek çalışan işleri durdurmaz, yalnız yenilerinin başlamasını sınırlar."
+    <div class="card">
+      <div class="card-head">
+        <h2>
+          "Gizlilik kilidi"
+        <span class="hint">
+          "parola yok"
+      <div class="card-body">
+        <div class="frow2">
+          <span class="flabel sx-607468">
+            "Boşta kilidi"
+          <div aria-label="Boşta kalma süresi" class="segmented" id="set-idle" role="group">
+            <button aria-pressed="true" data-v="0" type="button">
+              "Kapalı"
+            <button aria-pressed="false" data-v="5" type="button">
+              "5 dk"
+            <button aria-pressed="false" data-v="10" type="button">
+              "10 dk"
+            <button aria-pressed="false" data-v="30" type="button">
+              "30 dk"
+          <button class="btn sm sx-6c2dda" id="set-lock-now" type="button">
+            "Şimdi gizle"
+        <div class="hint small muted">
+          "Bu bir parola kilidi değildir: ekranı opak bir perdeyle örter, açmak için parola sorulmaz. Yalnızca yan masadakinin ekranınızı görmesini engeller. Açık pencereler ve çalışan işler olduğu gibi kalır. Kısayol: L tuşu."
+    <div class="card">
+      <div class="card-head">
+        <h2>
+          "Envanter yedeği"
+        <span class="hint">
+          "sunucu adresleri + değişkenler"
+      <div class="card-body">
+        <div class="frow2">
+          <span class="flabel sx-607468">
+            "Dışa aktar"
+          <button class="btn sm" id="bk-export" type="button">
+            "Yedeği indir (.json)"
+        <div class="hint small muted">
+          "Yedek sır içermez: private key, knock dizisi ve adında parola/token/secret geçen değişkenler dışarıda kalır. Yine de sunucu adreslerini içerir; dosyayı güvenli saklayın."
+        <div class="frow2 sx-d6f2af">
+          <span class="flabel sx-607468">
+            "İçe aktar"
+          <input accept=".json,application/json" aria-label="Yedek dosyası" id="bk-file" type="file">
+        <div class="hint small muted">
+          "Önce önizleme gösterilir, hiçbir şey yazılmaz. Mevcut sunucular varsayılan olarak seçili gelmez; seçerseniz adresleri ve değişkenleri yedektekiyle değişir. Anahtarlar ve knock ayarları korunur."
+        <div aria-live="polite" class="sx-56f435" id="bk-result">
+        <div class="row-flex sx-4a5ead">
+          <button class="btn primary sm" hidden="" id="bk-apply" type="button">
+            "Seçilenleri uygula"
+          <span class="small muted" id="bk-status" role="status">
+    <div class="card">
+      <div class="card-head">
+        <h2>
+          "Kaynaklar"
+        <span class="hint">
+          "salt okunur"
+      <div class="card-body tight" id="set-paths">
+    <div class="card">
+      <div class="card-head">
+        <h2>
+          "KeyLab ayarları"
+        <span class="hint">
+          <span class="mono">
+            "sshpocket.conf"
+          "· salt okunur"
+      <div class="card-body tight" id="set-conf">
+    <div class="card">
+      <div class="card-head">
+        <h2>
+          "Güvenlik"
+      <div class="card-body">
+        <ul class="small sx-05a3db">
+          <li>
+            "Arayüz yalnızca"
+            <span class="mono">
+              "127.0.0.1"
+            "'de dinler; her çalıştırmada yeni oturum anahtarı üretilir."
+          <li>
+            <b>
+              "Sudo parolası"
+            "yalnızca motor sorduğunda çıkan kutuya yazılır; doğrudan Ansible'ın terminaline (pty) iletilir, saklanmaz, günlüğe yazılmaz, sayfada gösterilmez. İstemezseniz eylem penceresindeki"
+            <b>
+              "macOS Terminal'de aç"
+            "yolunu kullanın. SSH anahtar parolaları ve gizli anahtarlar arayüzde girilmez (ssh-agent)."
+          <li>
+            "Sayfa"
+            <span class="mono">
+              "Content-Security-Policy"
+            "ile yalnızca kendi betiğini çalıştırır ve dışarıya bağlanamaz."
+          <li>
+            "Arayüzden yalnızca"
+            <b>
+              "salt okunur, sudo istemeyen, onay gerektirmeyen, önkoşulsuz"
+            "eylemler çalıştırılır; sunucu tarafında yeniden denetlenir. Çalıştırma uygulamanın kendi motoruyla yapılır (kapılar, günlük, sonuç kaydı aynı). Eylemler arayüzdeki terminalde çalışır; sudo parolası istenince kutu açılır. Değişiklik yapan (yıkıcı olmayan) eylemler önce plan, snapshot ve ad/e-h onayından geçer; motor onayları yeniden sorabilir. Yıkıcı eylemler (kaldir, yukselt, sunucu silme) ek onay ister: sunucu adı birebir, snapshot ve \"geri alınamayabilir\" onayı."
+    <div class="card">
+      <div class="card-head">
+        <h2>
+          "Klavye kısayolları"
+      <div class="card-body">
+        <div class="small sx-5c43ad">
+          <kbd class="mono">
+            "/"
+          <span>
+            "Aramaya odaklan"
+          <kbd class="mono">
+            "F10"
+          <span>
+            "Seçili sunucuda bağlam menüsü"
+          <kbd class="mono">
+            "Enter"
+          <span>
+            "Sunucuyu aç"
+          <kbd class="mono">
+            "Esc"
+          <span>
+            "Menü ve pencereyi kapat"
+  <section class="view" hidden="" id="view-packages">
+    <div id="pkg-page">
+  <section class="view" id="view-lynis">
+    <div class="card">
+      <div class="card-head">
+        <h2>
+          "Lynis denetimi"
+        <div class="spacer">
+        <span class="hint">
+          "sunucu seçin"
+      <div class="card-body">
+        <div aria-label="Sunucu" class="row-flex" id="lynis-pick" role="tablist">
+    <div id="lynis-detail">
+      <div class="card">
+        <div class="card-body">
+          <div class="empty-state">
+            <h3>
+              "Sunucu yok"
+            <p>
+              "Lynis ölçümü için önce bir sunucu eklenmeli."
+  <section class="view" hidden="" id="view-logs">
+    <div class="card">
+      <div class="card-head">
+        <h2>
+          "Günlükler"
+        <div class="spacer">
+        <span class="hint" id="logs-count">
+      <div class="card-body sx-100841" id="logfilters">
+      <div class="card-body tight loglist" id="loglist">
+    <div class="card" hidden="" id="logcard">
+      <div class="card-head">
+        <h2 class="sx-f2ae6a" id="logtitle">
+        <div class="spacer">
+        <input aria-label="Günlükte ara" class="sx-a82890" id="logfind" placeholder="günlükte ara…" type="search">
+        <button class="btn sm" id="logerr">
+          "Hatalara git"
+      <div class="card-body">
+        <div aria-label="Günlük içeriği" class="log-view" id="logview" role="region" tabindex="0">

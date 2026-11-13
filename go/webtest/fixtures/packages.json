@@ -1,0 +1,175 @@
+{
+ "packages": [
+  {
+   "current": "0.1.0",
+   "description": "Sunucuya Docker taban kurulumu, nginx, MariaDB ve Redis kurar (her biri native ya da Docker modunda); önizler, sürümü sabitler, veriyi silmez. Ubuntu 26.04 ve Debian 13; Proxmox VE kapsam dışı.",
+   "floor": "0.1.0",
+   "id": "kurulum",
+   "name": "Kurulum merkezi: Docker, nginx, MariaDB, Redis",
+   "repo": "syhgorath/kurulum",
+   "uses": null,
+   "versions": [
+    "0.1.0"
+   ]
+  },
+  {
+   "current": "0.13.0",
+   "description": "Ubuntu sunucuları Ansible ile sertleştirir (SSH, ufw, kernel, auditd, fail2ban, AIDE); Lynis denetimi ve geri alma güvenlik ağı içerir",
+   "floor": "0.13.0",
+   "id": "linux-hardening",
+   "name": "Linux sertleştirme",
+   "repo": "syhgorath/linux-hardening",
+   "uses": [
+    {
+     "action": "audit",
+     "result": "ok",
+     "server": "web1",
+     "time": "2026-11-10T09:00:00Z",
+     "version": "0.13.0"
+    }
+   ],
+   "versions": [
+    "0.13.0",
+    "0.12.1",
+    "0.12.0",
+    "0.11.0",
+    "0.10.0",
+    "0.9.1",
+    "0.9.0",
+    "0.8.4",
+    "0.8.3",
+    "0.8.2",
+    "0.8.1",
+    "0.8.0",
+    "0.7.0",
+    "0.6.0",
+    "0.4.0",
+    "0.3.0",
+    "0.2.0"
+   ]
+  },
+  {
+   "current": "0.1.0",
+   "description": "Saat dilimini, sistem dilini (LANG) ve NTP kaynaklarını (chrony drop-in) önizleyerek, yedekleyerek ve onayla yönetir. Ubuntu 26.04 ve Debian 13; Proxmox VE kapsam dışı.",
+   "floor": "0.1.0",
+   "id": "utility",
+   "name": "Sunucu araçları: saat dilimi, locale, NTP",
+   "repo": "syhgorath/utility",
+   "uses": [
+    {
+     "action": "durum",
+     "result": "fail",
+     "server": "db1",
+     "time": "2026-11-10T10:00:00Z",
+     "version": "0.1.0"
+    }
+   ],
+   "versions": [
+    "0.1.0"
+   ]
+  }
+ ],
+ "servers": [
+  {
+   "checked": true,
+   "conn": "down",
+   "hasKey": false,
+   "host": "10.255.0.11",
+   "knock": false,
+   "last": {
+    "action": "durum",
+    "package": "utility",
+    "result": "fail",
+    "time": "2026-11-10T10:00:00Z",
+    "version": "0.1.0"
+   },
+   "lynis": null,
+   "name": "db1",
+   "os": "linux",
+   "platform": "",
+   "port": "22",
+   "recent": [
+    {
+     "action": "durum",
+     "package": "utility",
+     "result": "fail",
+     "time": "2026-11-10T10:00:00Z",
+     "version": "0.1.0"
+    }
+   ],
+   "up": false,
+   "user": "root",
+   "valid": true
+  },
+  {
+   "checked": true,
+   "conn": "down",
+   "hasKey": false,
+   "host": "10.255.0.30",
+   "knock": false,
+   "last": null,
+   "lynis": null,
+   "name": "vm1",
+   "os": "linux",
+   "platform": "",
+   "port": "22",
+   "recent": null,
+   "up": false,
+   "user": "root",
+   "valid": true
+  },
+  {
+   "checked": true,
+   "conn": "down",
+   "hasKey": false,
+   "host": "10.255.0.10",
+   "knock": false,
+   "last": {
+    "action": "audit",
+    "package": "linux-hardening",
+    "result": "ok",
+    "time": "2026-11-10T09:00:00Z",
+    "version": "0.13.0"
+   },
+   "lynis": {
+    "date": "2026-11-10",
+    "dates": [
+     "2026-11-01",
+     "2026-11-05",
+     "2026-11-10"
+    ],
+    "history": [
+     61,
+     68,
+     74
+    ],
+    "score": 74,
+    "suggestions": 12,
+    "warnings": 1
+   },
+   "name": "web1",
+   "os": "linux",
+   "platform": "",
+   "port": "22",
+   "recent": [
+    {
+     "action": "audit",
+     "package": "linux-hardening",
+     "result": "ok",
+     "time": "2026-11-10T09:00:00Z",
+     "version": "0.13.0"
+    },
+    {
+     "action": "preview",
+     "package": "linux-hardening",
+     "result": "ok",
+     "time": "2026-11-10T08:00:00Z",
+     "version": "0.13.0"
+    }
+   ],
+   "up": false,
+   "user": "root",
+   "valid": true
+  }
+ ]
+}

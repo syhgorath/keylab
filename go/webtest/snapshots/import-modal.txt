@@ -1,0 +1,22 @@
+<div aria-labelledby="imp-title" aria-modal="true" class="modal-back open" id="import-modal" role="dialog">
+  <div class="modal sx-48a649">
+    <div class="modal-head">
+      <div>
+        <h3 id="imp-title">
+          "ssh config'ten içe aktar"
+        <div class="sub">
+          "~/.ssh/config dosyasındaki Host kayıtları. Private key kopyalanmaz; yalnızca yolu kaydedilir."
+      <div class="spacer">
+      <button aria-label="Kapat" class="icon-btn" id="imp-x">
+        <svg fill="none" height="16" stroke-width="2" stroke="currentColor" viewBox="0 0 24 24" width="16">
+          <path d="M18 6 6 18M6 6l12 12">
+    <div class="modal-body sx-a5d903">
+      <div aria-live="polite" id="imp-list">
+        <div class="small muted">
+          "~/.ssh/config dosyası bulunamadı."
+    <div class="modal-foot">
+      <span class="small muted sx-471df9" id="imp-status" role="status">
+      <button class="btn ghost" id="imp-cancel">
+        "Vazgeç"
+      <button class="btn primary" disabled="" id="imp-go">
+        "İçe aktar"

@@ -1,0 +1,182 @@
+{
+ "package": "kurulum",
+ "server": "db1",
+ "vars": [
+  {
+   "default": "docker",
+   "description": "Kurulacak yazılım: docker (taban), nginx, mariadb, redis. Eylemler seçili yazılım için çalışır.",
+   "group": "Seçim",
+   "name": "kurulum_yazilim",
+   "required": false,
+   "set": false,
+   "type": "enum",
+   "value": "",
+   "values": [
+    "docker",
+    "nginx",
+    "mariadb",
+    "redis"
+   ]
+  },
+  {
+   "default": "native",
+   "description": "native = dağıtım paketi (apt); docker = Docker konteyneri. docker yazılımı için yok sayılır. Bir yazılım için tek mod.",
+   "group": "Seçim",
+   "name": "kurulum_mod",
+   "required": false,
+   "set": false,
+   "type": "enum",
+   "value": "",
+   "values": [
+    "native",
+    "docker"
+   ]
+  },
+  {
+   "default": "/srv/homelab",
+   "description": "Docker uygulamalarının klasörü (sunucu başına bir kez). Gerçek kaynak sunucudaki /etc/kurulum/ana ve <ana>/.kurulum işaretidir; yerel değer farklıysa paket durur.",
+   "group": "Ana klasör",
+   "name": "kurulum_ana_klasor",
+   "required": false,
+   "set": false,
+   "type": "path",
+   "value": ""
+  },
+  {
+   "default": "resmi",
+   "description": "Docker taban kurulumunda kaynak: resmi = download.docker.com apt deposu (anahtar pakette, parmak izi sabit); dagitim = dağıtımın docker.io paketi. Kurulu Docker'a dokunulmaz.",
+   "group": "Docker",
+   "name": "kurulum_docker_kaynak",
+   "required": false,
+   "set": false,
+   "type": "enum",
+   "value": "",
+   "values": [
+    "resmi",
+    "dagitim"
+   ]
+  },
+  {
+   "default": "false",
+   "description": "false = yalnızca 127.0.0.1'de dinler. true = 0.0.0.0 (dışarı açık); ufw'ye yazılmaz, kural önerisi gösterilir.",
+   "group": "Ağ",
+   "name": "kurulum_dis_erisim",
+   "required": false,
+   "set": false,
+   "type": "bool",
+   "value": "",
+   "warnIf": "true"
+  },
+  {
+   "default": "8080",
+   "description": "nginx portu (sunucuya yayınlanan). Dolu/başkasına verilmişse koşu durur ve boş port önerir.",
+   "group": "nginx",
+   "max": "65535",
+   "min": "1",
+   "name": "kurulum_nginx_port",
+   "required": false,
+   "set": false,
+   "type": "int",
+   "value": ""
+  },
+  {
+   "default": "1.30.6",
+   "description": "nginx imaj sürümü (docker modu; sabit etiket, latest yok; küratörlü liste artan sırada). Yükseltme yalnızca yukselt eyleminde.",
+   "group": "nginx",
+   "name": "kurulum_nginx_surum",
+   "required": false,
+   "set": false,
+   "type": "enum",
+   "value": "",
+   "values": [
+    "1.30.6",
+    "1.31.8"
+   ]
+  },
+  {
+   "default": "",
+   "description": "Küratörlü listede olmayan sürüm için 'nginx:<sürüm>' (örn. nginx:1.31.8); boş = listeden. Latest ve etiketsiz reddedilir. UYARI: listede olmayan sürüm denenmemiştir.",
+   "group": "nginx",
+   "name": "kurulum_nginx_imaj_ozel",
+   "required": false,
+   "set": false,
+   "type": "string",
+   "value": ""
+  },
+  {
+   "default": "3306",
+   "description": "mariadb portu (sunucuya yayınlanan). Dolu/başkasına verilmişse koşu durur ve boş port önerir.",
+   "group": "mariadb",
+   "max": "65535",
+   "min": "1",
+   "name": "kurulum_mariadb_port",
+   "required": false,
+   "set": false,
+   "type": "int",
+   "value": ""
+  },
+  {
+   "default": "11.4.13",
+   "description": "mariadb imaj sürümü (docker modu; sabit etiket, latest yok; küratörlü liste artan sırada). Yükseltme yalnızca yukselt eyleminde.",
+   "group": "mariadb",
+   "name": "kurulum_mariadb_surum",
+   "required": false,
+   "set": false,
+   "type": "enum",
+   "value": "",
+   "values": [
+    "10.11.19",
+    "11.4.13",
+    "11.8.9"
+   ]
+  },
+  {
+   "default": "",
+   "description": "Küratörlü listede olmayan sürüm için 'mariadb:<sürüm>' (örn. mariadb:11.8.9); boş = listeden. Latest ve etiketsiz reddedilir. UYARI: listede olmayan sürüm denenmemiştir.",
+   "group": "mariadb",
+   "name": "kurulum_mariadb_imaj_ozel",
+   "required": false,
+   "set": false,
+   "type": "string",
+   "value": ""
+  },
+  {
+   "default": "6379",
+   "description": "redis portu (sunucuya yayınlanan). Dolu/başkasına verilmişse koşu durur ve boş port önerir.",
+   "group": "redis",
+   "max": "65535",
+   "min": "1",
+   "name": "kurulum_redis_port",
+   "required": false,
+   "set": false,
+   "type": "int",
+   "value": ""
+  },
+  {
+   "default": "7.4.12",
+   "description": "redis imaj sürümü (docker modu; sabit etiket, latest yok; küratörlü liste artan sırada). Yükseltme yalnızca yukselt eyleminde.",
+   "group": "redis",
+   "name": "kurulum_redis_surum",
+   "required": false,
+   "set": false,
+   "type": "enum",
+   "value": "",
+   "values": [
+    "7.2.17",
+    "7.4.12",
+    "8.2.11",
+    "8.4.8"
+   ]
+  },
+  {
+   "default": "",
+   "description": "Küratörlü listede olmayan sürüm için 'redis:<sürüm>' (örn. redis:8.4.8); boş = listeden. Latest ve etiketsiz reddedilir. UYARI: listede olmayan sürüm denenmemiştir.",
+   "group": "redis",
+   "name": "kurulum_redis_imaj_ozel",
+   "required": false,
+   "set": false,
+   "type": "string",
+   "value": ""
+  }
+ ]
+}
