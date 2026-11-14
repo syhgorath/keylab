@@ -42,22 +42,32 @@ func setupPortableTraces(stateDir string) (profBase string, cleanup func(), err 
 	return tmp, func() { once.Do(func() { _ = os.RemoveAll(tmp) }) }, nil
 }
 
-// addCleanup / runCleanups: çıkışta (Çıkış düğmesi, sinyal) çalışacak temizlikler.
-func (a *App) addCleanup(f func()) {
+// cleanupItem: çıkışta çalışacak bir temizlik ve kullanıcıya gösterilecek kodu (etiket: "agent", "tmp").
+type cleanupItem struct {
+	label string
+	f     func()
+}
+
+// addCleanup: çıkışta (Çıkış düğmesi, sinyal) çalışacak temizlik ekler. f nil ise yok sayılır.
+func (a *App) addCleanup(label string, f func()) {
 	if f == nil {
 		return
 	}
 	a.cleanMu.Lock()
-	a.cleanups = append(a.cleanups, f)
+	a.cleanups = append(a.cleanups, cleanupItem{label, f})
 	a.cleanMu.Unlock()
 }
 
-func (a *App) runCleanups() {
+// runCleanups: eklenen temizlikleri sırayla (bir kez) çalıştırır; çalıştırılanların etiketlerini döner.
+func (a *App) runCleanups() []string {
 	a.cleanMu.Lock()
-	fs := a.cleanups
+	items := a.cleanups
 	a.cleanups = nil
 	a.cleanMu.Unlock()
-	for _, f := range fs {
-		f()
+	done := make([]string, 0, len(items))
+	for _, it := range items {
+		it.f()
+		done = append(done, it.label)
 	}
+	return done
 }

@@ -239,8 +239,8 @@ func main() {
 	_, _ = rand.Read(bb)
 	app := &App{serversDir: sd, compDir: cd, stateDir: st, token: hex.EncodeToString(tb), bootTok: hex.EncodeToString(bb), host: ln.Addr().String(), up: map[string]bool{}, conn: map[string]string{}, jobs: map[string]*Job{}}
 	app.loadUISettings()
-	app.addCleanup(agentStop) // önce özel ajanı kapat, sonra geçici klasörü sil
-	app.addCleanup(traceCleanup)
+	app.addCleanup("agent", agentStop) // önce özel ajanı kapat, sonra geçici klasörü sil
+	app.addCleanup("tmp", traceCleanup)
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	go func() { // Ctrl-C / kapatma: terminalleri bitir, geçici klasörü sil, çık

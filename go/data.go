@@ -102,7 +102,8 @@ type App struct {
 	termTickets map[string]termTicket
 	clock       func() time.Time // nil: time.Now (testte sahte saat)
 	cleanMu     sync.Mutex       // çıkış temizlikleri (bkz. traces.go)
-	cleanups    []func()
+	cleanups    []cleanupItem
+	portableFn  func() bool      // nil: isPortableLayout (testte sahte)
 	prompt      platform.Prompt  // nil: platform.DefaultPrompt() (testte sahte)
 	volumes     platform.Volumes // nil: platform.DefaultVolumes() (testte sahte)
 	exitFn      func()           // nil: os.Exit(0)

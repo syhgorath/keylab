@@ -5,6 +5,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Eklendi
+- **Çıkış özeti (taşınabilir modda)**: Çıkış düğmesi artık özel ssh-agent'ı sonlandırır ve geçici klasörü (Python ortamı, tarayıcı profili) **hemen** siler (USB'den anahtarlar silindikten sonra), kapanış perdesinde "Temizlendi" ve "Bu bilgisayarda kalanlar" listelerini gösterir (misafir modda yalnız macOS'un kendi izleri; misafir olmayan taşınabilirde ayrıca Keychain kayıtları ve kendi ssh-agent'ınıza eklenenler). Taşınabilir olmayan kullanımda perde değişmez. FAT32 disk imajında uçtan uca denendi.
+
+### Eklendi
 - **Misafir mod (taşınabilir/USB'de otomatik)**: KeyLab kendi özel `ssh-agent`'ını başlatır (soket geçici klasörde, `SSH_AUTH_SOCK` yalnız KeyLab ve alt süreçleri için); anahtarlar yalnız bu ajana eklenir (`ssh-add`, `--apple-use-keychain` yok), passphrase her oturumda sorulur ve kaydedilmez; Keychain hiç kullanılmaz (`platform.NoSecrets`); kapatınca/Çıkış'ta ajan sonlanır. Bu bilgisayarın Keychain'i ve kullanıcının kendi ssh-agent'ı değişmez. Bedeli: port knocking dizisi kaydedilemez (anlaşılır hata). Ayarlar > Yollar'da "Mod" satırı, `doctor`'da ilgili satır. `KEYLAB_GUEST=0` ile kapatılır; özel ajan başlatılamazsa uyarıyla eski davranışa döner. FAT32 disk imajında uçtan uca denendi (terminal ssh'ı özel ajan soketini ve USB'deki known_hosts'u görüyor, kullanıcının ajanı etkilenmedi).
 
 ### Değişti
