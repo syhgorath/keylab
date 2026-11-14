@@ -529,11 +529,16 @@
 </div>
 
 <div class="modal-back" id="termmodal" role="dialog" aria-modal="true" aria-labelledby="term-title">
-  <div class="modal term-modal">
-    <div class="modal-head">
-      <div><h3 id="term-title" class="mono">&gt;_ SSH</h3><div class="sub" data-i18n="term_sub">Gömülü terminal: kayıtlı sunucuya ssh ile bağlanır. Parola ve passphrase burada, terminalde sorulur.</div></div>
+  <div class="modal term-modal" id="term-window">
+    <div class="term-window-head">
+      <div class="pty-dots" role="group" aria-label="Pencere düğmeleri">
+        <button class="d-r" data-term-close type="button" title="Oturumu kapat (ssh sonlanır)" aria-label="Oturumu kapat"></button>
+        <button class="d-y" data-term-min type="button" title="Küçült (oturum açık kalır)" aria-label="Pencereyi küçült (oturum açık kalır)"></button>
+        <button class="d-g" data-term-max type="button" title="Tam ekran / eski boyut" aria-label="Tam ekran" aria-pressed="false"></button>
+      </div>
+      <div class="term-window-title"><h3 id="term-title" class="mono">&gt;_ SSH</h3><span class="term-window-state" id="term-state" role="status"></span></div>
       <div class="spacer"></div>
-      <button class="icon-btn" data-term-min aria-label="Pencereyi küçült (oturum açık kalır)" title="Pencereyi küçült (oturum açık kalır)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg></button>
+      <span class="term-window-hint small" data-i18n="term_sub">Gömülü terminal: ssh ile bağlanır; parola ve passphrase burada sorulur.</span>
     </div>
     <div class="term-tabs" id="term-tabs" role="tablist" aria-label="Terminal oturumları"></div>
     <div id="term-note" class="notice danger" role="alert" hidden></div>

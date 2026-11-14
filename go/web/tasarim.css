@@ -1467,4 +1467,43 @@ body.dock-open{padding-bottom:276px}
 .schip-sub.bad{color:var(--danger)}
 .schip .status-dot{flex:none}
 .schip.more{justify-content:center;border-style:dashed;background:transparent;color:var(--accent-ink);font-size:12.5px;font-weight:600}
+
+/* ---------- Gömülü terminal: "terminal penceresi" görünümü (koyu pencere, trafik ışığı düğmeleri, durum göstergesi, tam ekran) ----------
+   Pencere açık/koyu temadan bağımsız koyudur (terminal içeriği zaten koyu). Düğmeler: kırmızı = oturumu kapat, sarı = küçült
+   (oturum açık kalır), yeşil = tam ekran / eski boyut. */
+.term-modal{display:flex;flex-direction:column;background:#0d1117;border:1px solid #30363d;border-radius:10px;box-shadow:0 24px 64px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.06);color:#e6edf3;max-height:calc(100vh - 32px);transition:width .16s ease,height .16s ease}
+.term-modal.maximized{width:calc(100vw - 24px);max-width:none;height:calc(100vh - 24px);max-height:none;border-radius:8px}
+.term-window-head{height:42px;flex:none;display:flex;align-items:center;gap:12px;padding:0 14px;background:#161b22;border-bottom:1px solid #30363d;user-select:none}
+.term-window-title{display:flex;align-items:center;gap:10px;min-width:0}
+.term-window-title h3{margin:0;font-size:13px;font-weight:600;color:#e6edf3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term-window-state{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#8b949e}
+.term-window-state:empty{display:none}
+.term-window-state::before{content:"";width:8px;height:8px;border-radius:50%;background:#8b949e}
+.term-window-state.ok{color:#3fb950}.term-window-state.ok::before{background:#3fb950}
+.term-window-state.warn{color:#d29922}.term-window-state.warn::before{background:#d29922}
+.term-window-state.bad{color:#f85149}.term-window-state.bad::before{background:#f85149}
+.term-window-hint{color:#8b949e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:46%}
+.pty-dots{display:inline-flex;gap:8px;flex:none}
+.pty-dots button{all:unset;box-sizing:border-box;width:12px;height:12px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:transform .1s ease,filter .12s ease}
+.pty-dots button:hover{transform:scale(1.1);filter:brightness(1.08)}
+.pty-dots button:focus-visible{box-shadow:0 0 0 2px #58a6ff}
+.pty-dots .d-r{background:#ff5f56}.pty-dots .d-y{background:#ffbd2e}.pty-dots .d-g{background:#27c93f}
+.pty-dots:hover .d-r::before,.pty-dots:focus-within .d-r::before{content:"✕";font-size:7.5px;font-weight:800;color:rgba(0,0,0,.65);line-height:1}
+.pty-dots:hover .d-y::before,.pty-dots:focus-within .d-y::before{content:"–";font-size:8px;font-weight:900;color:rgba(0,0,0,.65);line-height:1}
+.pty-dots:hover .d-g::before,.pty-dots:focus-within .d-g::before{content:"⤢";font-size:7.5px;font-weight:800;color:rgba(0,0,0,.65);line-height:1}
+.term-modal .term-tabs{padding:8px 14px 0;background:#0d1117}
+.term-modal .term-chip{background:#161b22;border-color:#30363d;color:#c9d1d9}
+.term-modal .term-chip:hover{border-color:#58a6ff}
+.term-modal .term-chip.active{background:#1f2937;border-color:#58a6ff;color:#e6edf3}
+.term-modal .term-chip-x{color:#8b949e}
+.term-modal .term-host{margin:0;border-radius:0;flex:1 1 auto;min-height:260px;background:#0d1117;padding:6px 12px}
+.term-modal:not(.maximized) .term-host{height:min(62vh,560px);flex:none}
+.term-modal .term-search{margin:0;padding:8px 14px;background:#161b22;border-top:1px solid #30363d}
+.term-modal .term-search input[type="search"]{background:#0d1117;border-color:#30363d;color:#e6edf3}
+.term-modal .term-quick{margin:0;padding:8px 14px;background:#0d1117;border-top:1px solid #21262d}
+.term-modal .term-quick-chip{background:#161b22;border-color:#30363d;color:#c9d1d9}
+.term-modal .term-quick-chip:hover{border-color:#58a6ff;color:#79c0ff}
+.term-modal .notice{margin:8px 14px}
+.term-modal .modal-foot{background:#161b22;border-top:1px solid #30363d;color:#8b949e;flex:none}
+.term-modal .modal-foot .muted{color:#8b949e}
 [hidden]{display:none !important} /* sj-sonu: !important yardımcı sınıfların display bildirimi hidden özniteliğini ezmesin; DOSYANIN SONUNDA kalmalı */
