@@ -7,8 +7,8 @@ import { appState } from "../state.js";
 export function initSettings(hooks) {
   const { render } = hooks;
   const THEMES = ["auto", "light", "dark"], THEME_TXT = { auto: "otomatik", light: "açık", dark: "koyu" }, THEME_ICO = { auto: "◐", light: "☀", dark: "☾" };
-  let theme = "auto";
-  try { theme = THEMES.includes(localStorage.getItem("sshpocket.theme")) ? localStorage.getItem("sshpocket.theme") : "auto"; } catch (e) { /* depolama kapalı olabilir */ }
+  let theme = "dark"; // varsayılan koyu (Cam + Aurora en iyi koyuda görünür); kullanıcı "Otomatik"/"Açık"ı seçtiyse o saklanır
+  try { theme = THEMES.includes(localStorage.getItem("sshpocket.theme")) ? localStorage.getItem("sshpocket.theme") : "dark"; } catch (e) { /* depolama kapalı olabilir */ }
   function applyTheme() {
     if (theme === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", theme);
     const b = $("#theme-btn"); b.setAttribute("aria-label", "Tema: " + THEME_TXT[theme]); b.title = "Tema: " + THEME_TXT[theme] + " (tıklayınca değişir)";

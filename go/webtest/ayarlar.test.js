@@ -10,20 +10,21 @@ const txt = (h, s) => h.$(s).textContent.replace(/\s+/g, " ").trim();
 const pressed = (h, sel) => h.$$(sel).filter(b => b.getAttribute("aria-pressed") === "true").map(b => b.dataset.v);
 
 /* ---------------- tema ---------------- */
-test("tema: varsayılan otomatik; düğme otomatik → açık → koyu → otomatik döner, kaydeder, öznitelik/etiket günceller", async () => {
+test("tema: varsayılan koyu; düğme koyu → otomatik → açık → koyu döner, kaydeder, öznitelik/etiket günceller", async () => {
   const h = await boot({ hash: "#v=settings", overrides: base() });
   const root = h.doc.documentElement, ico = () => h.$("#theme-ico").textContent;
-  assert.equal(root.getAttribute("data-theme"), null); assert.equal(ico(), "◐"); assert.equal(h.$("#theme-btn").getAttribute("aria-label"), "Tema: otomatik"); assert.deepEqual(pressed(h, "#set-theme button"), ["auto"]);
-  await h.click("#theme-btn"); assert.equal(root.getAttribute("data-theme"), "light"); assert.equal(ico(), "☀"); assert.equal(h.$("#theme-btn").title, "Tema: açık (tıklayınca değişir)"); assert.equal(h.win.localStorage.getItem("sshpocket.theme"), "light"); assert.deepEqual(pressed(h, "#set-theme button"), ["light"]);
-  await h.click("#theme-btn"); assert.equal(root.getAttribute("data-theme"), "dark"); assert.equal(ico(), "☾"); assert.equal(h.$("#theme-btn").getAttribute("aria-label"), "Tema: koyu");
-  await h.click("#theme-btn"); assert.equal(root.getAttribute("data-theme"), null); assert.equal(h.win.localStorage.getItem("sshpocket.theme"), "auto");
-  await h.click('#set-theme button[data-v="dark"]'); assert.equal(root.getAttribute("data-theme"), "dark"); assert.deepEqual(pressed(h, "#set-theme button"), ["dark"]);
+  assert.equal(root.getAttribute("data-theme"), "dark"); assert.equal(ico(), "☾"); assert.equal(h.$("#theme-btn").getAttribute("aria-label"), "Tema: koyu"); assert.deepEqual(pressed(h, "#set-theme button"), ["dark"]);
+  await h.click("#theme-btn"); assert.equal(root.getAttribute("data-theme"), null); assert.equal(ico(), "◐"); assert.equal(h.win.localStorage.getItem("sshpocket.theme"), "auto"); assert.deepEqual(pressed(h, "#set-theme button"), ["auto"]);
+  await h.click("#theme-btn"); assert.equal(root.getAttribute("data-theme"), "light"); assert.equal(ico(), "☀"); assert.equal(h.$("#theme-btn").title, "Tema: açık (tıklayınca değişir)"); assert.equal(h.win.localStorage.getItem("sshpocket.theme"), "light");
+  await h.click("#theme-btn"); assert.equal(root.getAttribute("data-theme"), "dark"); assert.equal(h.win.localStorage.getItem("sshpocket.theme"), "dark");
+  await h.click('#set-theme button[data-v="light"]'); assert.equal(root.getAttribute("data-theme"), "light"); assert.deepEqual(pressed(h, "#set-theme button"), ["light"]);
   assert.deepEqual(h.errors, []); h.close();
 });
 
-test("tema: kayıtlı tercih açılışta uygulanır; geçersiz değer otomatiğe düşer", async () => {
-  let h = await boot({ hash: "", overrides: base(), storage: { "sshpocket.theme": "dark" } }); assert.equal(h.doc.documentElement.getAttribute("data-theme"), "dark"); assert.equal(h.$("#theme-ico").textContent, "☾"); h.close();
-  h = await boot({ hash: "", overrides: base(), storage: { "sshpocket.theme": "mor" } }); assert.equal(h.doc.documentElement.getAttribute("data-theme"), null); h.close();
+test("tema: kayıtlı tercih açılışta uygulanır; geçersiz değer varsayılana (koyu) düşer", async () => {
+  let h = await boot({ hash: "", overrides: base(), storage: { "sshpocket.theme": "auto" } }); assert.equal(h.doc.documentElement.getAttribute("data-theme"), null); assert.equal(h.$("#theme-ico").textContent, "◐"); h.close();
+  h = await boot({ hash: "", overrides: base(), storage: { "sshpocket.theme": "light" } }); assert.equal(h.doc.documentElement.getAttribute("data-theme"), "light"); h.close();
+  h = await boot({ hash: "", overrides: base(), storage: { "sshpocket.theme": "mor" } }); assert.equal(h.doc.documentElement.getAttribute("data-theme"), "dark"); h.close();
 });
 
 /* ---------------- Ayarlar: görünüm / parola girişi ---------------- */
@@ -65,7 +66,7 @@ test("ayarlar: sayfaya her girişte işaretler (görünüm, tema, parola) yenide
   const h = await boot({ hash: "#v=settings", overrides: base() });
   h.$$("#set-mode button").forEach(b => b.setAttribute("aria-pressed", "false")); h.$$("#set-theme button").forEach(b => b.setAttribute("aria-pressed", "false")); h.$$("#set-ask button").forEach(b => b.setAttribute("aria-pressed", "false"));
   await h.click('[data-nav="dash"]'); await h.click('[data-nav="settings"]');
-  assert.deepEqual(pressed(h, "#set-mode button"), ["tiles"]); assert.deepEqual(pressed(h, "#set-theme button"), ["auto"]); assert.deepEqual(pressed(h, "#set-ask button"), ["system"]); h.close();
+  assert.deepEqual(pressed(h, "#set-mode button"), ["tiles"]); assert.deepEqual(pressed(h, "#set-theme button"), ["dark"]); assert.deepEqual(pressed(h, "#set-ask button"), ["system"]); h.close();
 });
 
 /* ---------------- ortak iletişim penceresi ---------------- */

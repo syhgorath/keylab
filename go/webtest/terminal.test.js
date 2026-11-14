@@ -62,5 +62,5 @@ test("terminal penceresi: iki oturum — durum etkin oturumu izler; ilk oturumu 
   let n = 0; const h = await boot({ hash: "#s=web1", overrides: api({ "/api/term/open": () => ({ id: "t" + (++n) }) }) });
   await h.click("#srv-iterm"); await h.click("#srv-iterm");
   assert.equal(h.$$("#term-tabs .term-chip").length, 2); assert.equal(h.$("#term-title").textContent, ">_ web1 #2"); assert.equal(state(h).text, "bağlı");
-  await h.click(".modal-foot [data-term-close]"); assert.deepEqual(posts(h, "/api/term/close"), [{ id: "t2" }]); assert.ok(isOpen(h)); assert.equal(h.$("#term-title").textContent, ">_ web1"); assert.equal(h.$$("#term-tabs .term-chip").length, 1); h.close();
+  await h.click("#term-tabs .term-chip.active .term-chip-x"); assert.deepEqual(posts(h, "/api/term/close"), [{ id: "t2" }]); assert.ok(isOpen(h)); assert.equal(h.$("#term-title").textContent, ">_ web1"); assert.equal(h.$$("#term-tabs .term-chip").length, 1); h.close();
 });
