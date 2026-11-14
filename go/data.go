@@ -101,6 +101,8 @@ type App struct {
 	ttMu        sync.Mutex // terminal akış biletleri
 	termTickets map[string]termTicket
 	clock       func() time.Time // nil: time.Now (testte sahte saat)
+	cleanMu     sync.Mutex       // çıkış temizlikleri (bkz. traces.go)
+	cleanups    []func()
 	prompt      platform.Prompt  // nil: platform.DefaultPrompt() (testte sahte)
 	volumes     platform.Volumes // nil: platform.DefaultVolumes() (testte sahte)
 	exitFn      func()           // nil: os.Exit(0)

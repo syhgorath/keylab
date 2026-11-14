@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"keylab/internal/envx"
 	"keylab/internal/platform"
 	"os"
 	"os/exec"
@@ -86,13 +87,14 @@ func KeyCopy(c Console, user, ip, port, key string) int {
 	if st, err := os.Stat(key); err == nil && st.Mode().IsRegular() {
 		chk := exec.Command("ssh", "-o", "BatchMode=yes", "-o", "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no",
 			"-o", "IdentitiesOnly=yes", "-o", "ConnectTimeout=8", "-i", key, "-p", port, user+"@"+ip, "true")
+		chk.Args = append(chk.Args[:1], append(envx.KnownHostsOption(), chk.Args[1:]...)...)
 		if chk.Run() == nil {
 			c.say("✅ Bu key sunucuda zaten yetkili, yapılacak bir şey yok.")
 			return 0
 		}
 	}
 	boot, _ := c.ask("Girişte başka bir key dosyası kullanılsın mı? (yol girin, Enter = agent/parola) ")
-	args := []string{"-i", pub, "-p", port}
+	args := append([]string{"-i", pub, "-p", port}, envx.KnownHostsOption()...) // ssh-copy-id seçenekleri ssh'a iletir
 	if boot != "" {
 		if boot[0] == '~' {
 			boot = os.Getenv("HOME") + boot[1:]

@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"keylab/internal/cli"
+	"keylab/internal/envx"
 	"keylab/internal/platform"
 	"keylab/internal/servers"
 )
@@ -240,7 +241,7 @@ func (a *App) openTerm(server string, rows, cols uint16) (*TermSession, int, err
 			key = k
 		}
 	}
-	argv := []string{"ssh", "-tt", "-o", "ServerAliveInterval=30"}
+	argv := append([]string{"ssh", "-tt", "-o", "ServerAliveInterval=30"}, envx.KnownHostsOption()...)
 	if st, err := os.Stat(key); err == nil && st.Mode().IsRegular() {
 		argv = append(argv, "-i", key)
 	}

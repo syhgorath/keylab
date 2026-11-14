@@ -93,6 +93,16 @@ func (ec *ExecCtx) values() string {
 	return ec.ValuesFile
 }
 
+// ansibleEnv: ansible-playbook sürecinin ortamı.
+func (ec *ExecCtx) ansibleEnv(timeout string) []string {
+	env := append(os.Environ(), "PYTHONDONTWRITEBYTECODE=1", "ANSIBLE_CONFIG="+filepath.Join(ec.PkgDir, "ansible.cfg"),
+		"ANSIBLE_HOST_KEY_CHECKING=True", "ANSIBLE_TIMEOUT="+timeout, "PATH="+ec.BinDir+":"+os.Getenv("PATH"))
+	if extra, ok := ansibleExtraArgsEnv(ec.PkgDir); ok { // taşınabilir mod: Ansible'ın ssh'ı da USB'deki known_hosts'u kullanır
+		env = append(env, "ANSIBLE_SSH_EXTRA_ARGS="+extra)
+	}
+	return env
+}
+
 func (ec *ExecCtx) say(format string, a ...any) { fmt.Fprintf(ec.Stderr, format, a...) }
 
 // input, girdi okuyucusudur: onaylar ve alt sürecin (ansible/ssh) istemleri AYNI tamponlu okuyucudan okunur
@@ -386,8 +396,7 @@ func (ec *ExecCtx) execBody(info []string, id, ver, action string) (rc int, sdir
 	if timeout == "" {
 		timeout = "30"
 	}
-	cmd.Env = append(os.Environ(), "PYTHONDONTWRITEBYTECODE=1", "ANSIBLE_CONFIG="+filepath.Join(ec.PkgDir, "ansible.cfg"),
-		"ANSIBLE_HOST_KEY_CHECKING=True", "ANSIBLE_TIMEOUT="+timeout, "PATH="+ec.BinDir+":"+os.Getenv("PATH"))
+	cmd.Env = ec.ansibleEnv(timeout)
 	rc = ec.runTee(cmd, lf)
 	logText, _ := os.ReadFile(logPath)
 	if rc != 0 && strings.Contains(string(logText), "waiting for privilege escalation prompt") {

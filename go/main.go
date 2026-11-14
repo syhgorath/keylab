@@ -19,9 +19,11 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	"keylab/internal/cli"
@@ -208,6 +210,15 @@ func main() {
 	if st == "" {
 		st = stateDirFor(sd, selfExe())
 	}
+	var traceCleanup func()
+	traceProf := ""
+	if isPortableLayout(sd, selfExe()) { // taşınabilir mod: venv/tarayıcı profili geçici klasörde (çıkışta silinir), known_hosts USB'de
+		var terr error
+		traceProf, traceCleanup, terr = setupPortableTraces(st)
+		if terr != nil {
+			fmt.Fprintln(os.Stderr, "uyarı: geçici klasör oluşturulamadı; önbellek ve tarayıcı profili bu bilgisayarın varsayılan yerlerinde tutulacak:", terr)
+		}
+	}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -219,6 +230,15 @@ func main() {
 	_, _ = rand.Read(bb)
 	app := &App{serversDir: sd, compDir: cd, stateDir: st, token: hex.EncodeToString(tb), bootTok: hex.EncodeToString(bb), host: ln.Addr().String(), up: map[string]bool{}, conn: map[string]string{}, jobs: map[string]*Job{}}
 	app.loadUISettings()
+	app.addCleanup(traceCleanup)
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	go func() { // Ctrl-C / kapatma: terminalleri bitir, geçici klasörü sil, çık
+		<-sigc
+		app.killAllTerms()
+		app.runCleanups()
+		os.Exit(130)
+	}()
 
 	sub, _ := fs.Sub(webFS, "web")
 	mux := http.NewServeMux()
@@ -718,8 +738,10 @@ func main() {
 	if !*noOpen && platform.DefaultBrowser().Supported() {
 		// komut satırına GERÇEK jeton değil, tek kullanımlık açılış jetonu yazılır (ps ile görünür); yazdırılan adres elle açmak içindir
 		bootURL := fmt.Sprintf("http://%s/?b=%s", app.host, app.bootTok)
-		profBase := st // ayrı profil her zaman bu bilgisayarda: taşınabilirde USB'ye konmaz (bkz. stateDirFor)
-		if *state == "" {
+		profBase := st // ayrı profil USB'ye konmaz (FAT/exFAT'ta SingletonLock sembolik bağı oluşmaz): taşınabilirde geçici klasör, değilse varsayılan durum klasörü
+		if traceProf != "" {
+			profBase = traceProf
+		} else if *state == "" {
 			profBase = defaultStateDir()
 		}
 		if launchBrowser(bootURL, profBase, bm) {
