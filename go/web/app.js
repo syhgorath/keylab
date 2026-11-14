@@ -318,7 +318,7 @@ import { appState } from "./js/state.js";
     openRun, openWrite, openTerm, openVars, varCur, openDlg, closeDlg, showView: n => showView(n), load: () => load(),
     openTask: (s, k) => openTask(s, k), openCtx: (x, y, n) => openCtx(x, y, n), renderSrvTree: () => renderSrvTree(), setHash: (h, r) => setHash(h, r), stateText: s => stateText(s), logs, lynis,
   });
-  const { openServer, renderServer, goLogs, goLynis, openEditAddr, act } = serverPage;
+  const { openServer, renderServer, goLogs, goLynis, openEditAddr } = serverPage;
 
   $$(".mode-toggle button").forEach(b => b.addEventListener("click", () => {
     appState.mode = b.dataset.mode;
@@ -340,7 +340,7 @@ import { appState } from "./js/state.js";
   const pickServer = async (a, name) => {
     try {
       if (a === "copy") { const r = await json("/api/action", { name, action: "cmd" }); try { await navigator.clipboard.writeText(r.cmd); toast("Komut kopyalandı"); } catch { prompt("Kopyalayın:", r.cmd); } }
-      else if (a === "term") await act(name, "terminal", "Terminal'de açıldı");
+      else if (a === "term") window.KeyLabTerminal.open(name); // gömülü terminal (macOS Terminal.app yolu kaldırıldı)
       else if (a === "refresh") { await load(); toast("Yenilendi"); }
       else if (a === "logs") goLogs(name);
       else if (a === "lynis") goLynis(name, "");

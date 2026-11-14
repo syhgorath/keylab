@@ -11,7 +11,7 @@ import { initKnock } from "./knock.js";
 // hooks: { openRun, openWrite, openTerm — iş penceresi; openVars, varCur — değişken penceresi; openDlg, closeDlg — ortak pencere;
 //          openTask(sunucu, görev) — hazırlık görevi; openCtx(x, y, ad) — sunucu bağlam menüsü; showView, load, renderSrvTree, setHash, stateText;
 //          logs, lynis — Günlükler/Lynis sayfası API'leri }
-//   →  { openServer, renderServer, goLogs, goLynis, openEditAddr, act, resetCatalog }
+//   →  { openServer, renderServer, goLogs, goLynis, openEditAddr, resetCatalog }
 export function initServer(hooks) {
   const { openRun, openWrite, openTerm, openVars, varCur, openDlg, closeDlg, openTask, openCtx, showView, load, renderSrvTree, setHash, stateText, logs, lynis } = hooks;
 
@@ -365,14 +365,12 @@ export function initServer(hooks) {
           ${s.valid ? `<button class="sv-chip" id="srv-addr" type="button" title="Adresi kopyala"><span class="mono">${esc(addr)}</span>${COPY_ICON}</button>` : '<span class="small muted">server.env geçersiz</span>'}
           <button class="sv-edit" id="srv-edit" type="button" title="IP, kullanıcı ve portu düzenle" aria-label="Bağlantı bilgilerini düzenle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></div>
         <div class="sv-actions">
-          <button class="btn primary" id="srv-term" ${s.valid ? "" : "disabled"}>Terminal'de bağlan</button>
-          <button class="btn" id="srv-iterm" ${s.valid ? "" : "disabled"} title="Tarayıcıda gömülü terminal (ssh -tt)">Gömülü terminal</button>
+          <button class="btn primary" id="srv-iterm" ${s.valid ? "" : "disabled"} title="Uygulamanın gömülü terminali (ssh -tt); knock etkinse önce knock gönderilir">Terminal'de bağlan</button>
           <button class="btn" id="srv-copy" ${s.valid ? "" : "disabled"} title="knock etkinse önce knock gönderir">SSH komutu</button>
           <button class="btn icon-only" id="srv-more" type="button" aria-haspopup="menu" aria-label="Daha fazla işlem" title="Yeniden adlandır, sil, günlükler…"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
         </div>
       </div>`;
     $("#srv-back").addEventListener("click", e => { e.preventDefault(); showView("servers"); });
-    $("#srv-term").addEventListener("click", () => act(s.name, "terminal", "Terminal'de açıldı"));
     $("#srv-iterm").addEventListener("click", () => window.KeyLabTerminal.open(s.name));
     $("#srv-copy").addEventListener("click", async () => { const r = await json("/api/action", { name: s.name, action: "cmd" }); try { await navigator.clipboard.writeText(r.cmd); toast("Komut kopyalandı"); } catch { prompt("Kopyalayın:", r.cmd); } });
     $("#srv-addr")?.addEventListener("click", async () => { try { await navigator.clipboard.writeText(addr); toast("Adres kopyalandı"); } catch { prompt("Kopyalayın:", addr); } });
@@ -402,11 +400,6 @@ export function initServer(hooks) {
     applyActFilter();
   }
 
-  async function act(name, action, msg) {
-    try { const r = await json("/api/action", { name, action }); toast(r && r.knock ? "Terminal açıldı · 🚪 knock Terminal'de gönderiliyor" : msg); }
-    catch (e) { toast("Hata: " + e.message); }
-  }
-
   async function openServer(name, tab) {
     appState.srvName = name; appState.srvTab = tab || "ozet";
     appState.srv = null;
@@ -424,5 +417,5 @@ export function initServer(hooks) {
     renderServer();
   }
 
-  return { openServer, renderServer, goLogs, goLynis, openEditAddr, act, resetCatalog: () => { catSrv = ""; } };
+  return { openServer, renderServer, goLogs, goLynis, openEditAddr, resetCatalog: () => { catSrv = ""; } };
 }

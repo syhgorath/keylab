@@ -1,6 +1,6 @@
 // sshpocket Go denemesi: ana sayfa (pano, sunucular, paketler, Lynis, günlükler) yerel web arayüzü olarak.
 // Yalnızca 127.0.0.1'e bağlanır, oturum çerezi ister. Salt okunur: sunucuda komut ÇALIŞTIRMAZ
-// (tek istisna: kullanıcı isterse macOS Terminal'de ssh penceresi açar). Gizli değer okumaz/göstermez.
+// (istisnalar: kullanıcının açtığı gömülü terminal ve onaylı paket eylemleri). Gizli değer okumaz/göstermez.
 package main
 
 import (
@@ -703,24 +703,6 @@ func main() {
 		switch req.Action {
 		case "cmd":
 			_ = json.NewEncoder(w).Encode(map[string]string{"cmd": app.copyCmd(s)})
-		case "terminal":
-			if runtime.GOOS != "darwin" {
-				http.Error(w, "yalnızca macOS", http.StatusNotImplemented)
-				return
-			}
-			// knock etkin ama dizi bu bilgisayarda yoksa Terminal'i hiç açma: nedeni arayüzde göster
-			if ki, _ := (&cli.Servers{Dir: app.serversDir}).KnockStatus(s.Name); ki.Enabled && !ki.HasSeq {
-				http.Error(w, "Knock açık ama dizi bu bilgisayarın Keychain'inde yok; Özet → Port knocking'den girin", http.StatusConflict)
-				return
-			}
-			// Terminal'e knock'lı komut verilir (knock-send && ssh): "🚪 Knock gönderildi" Terminal'de de görünür
-			esc := strings.ReplaceAll(strings.ReplaceAll(app.copyCmd(s), `\`, `\\`), `"`, `\"`)
-			script := `tell application "Terminal" to activate` + "\n" + `tell application "Terminal" to do script "` + esc + `"`
-			if err := exec.Command("osascript", "-e", script).Run(); err != nil {
-				http.Error(w, "açılamadı", http.StatusInternalServerError)
-				return
-			}
-			_ = json.NewEncoder(w).Encode(map[string]any{"ok": "açıldı", "knock": s.Knock})
 		default:
 			http.Error(w, "bilinmeyen eylem", http.StatusBadRequest)
 		}

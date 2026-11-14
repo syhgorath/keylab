@@ -38,7 +38,7 @@ test("sunucu sayfası: durum rozeti tonları (geçersiz, denetleniyor, çevrimd�
 test("sunucu sayfası: geçersiz sunucuda adres rozeti yok, düğmeler kapalı", async () => {
   const h = await boot({ hash: "#s=web1", overrides: srv(d => { d.server.valid = false; }) });
   assert.equal(h.$("#srv-addr"), null); assert.match(txt(h, "#srv-head"), /server\.env geçersiz/);
-  for (const id of ["#srv-term", "#srv-iterm", "#srv-copy"]) assert.equal(h.$(id).disabled, true, id);
+  for (const id of ["#srv-iterm", "#srv-copy"]) assert.equal(h.$(id).disabled, true, id);
   assert.ok(h.$("#srv-edit") && h.$("#srv-more")); h.close();
 });
 
@@ -63,13 +63,11 @@ test("sunucu sayfası: geri bağlantısı Sunucular sayfasına döner", async ()
 });
 
 /* ---------------- başlık düğmeleri ---------------- */
-test("sunucu sayfası: 'Terminal'de bağlan' → /api/action terminal; knock varsa ayrı bildirim; hata bildirimi", async () => {
-  let reply = { ok: true };
-  const h = await boot({ hash: "#s=web1", overrides: { ...srv(), "/api/action": (u, { body }) => reply } });
-  await h.click("#srv-term"); assert.deepEqual(h.calls.find(c => c.path === "/api/action").body, { name: "web1", action: "terminal" }); assert.equal(txt(h, "#toast"), "Terminal'de açıldı");
-  reply = { knock: true }; await h.click("#srv-term"); assert.match(txt(h, "#toast"), /knock Terminal'de gönderiliyor/);
-  reply = { status: 500, body: "olmadi" }; await h.click("#srv-term"); assert.match(txt(h, "#toast"), /^Hata: /);
-  assert.deepEqual(h.errors, []); h.close();
+test("sunucu sayfası: 'Terminal'de bağlan' gömülü terminali açar (macOS Terminal.app yolu yok); düğme başlıkta tek terminal düğmesi", async () => {
+  const h = await boot({ hash: "#s=web1", overrides: { ...srv(), "/api/term/open": { id: "t1" }, "/api/term/close": { ok: true }, "/api/term/ticket": { ticket: "tk" }, "/api/term/resize": { ok: true } } });
+  assert.equal(h.$("#srv-term"), null, "eski macOS Terminal düğmesi kalktı"); assert.equal(txt(h, "#srv-iterm"), "Terminal'de bağlan");
+  await h.click("#srv-iterm"); assert.deepEqual(h.calls.filter(c => c.path === "/api/term/open").map(c => c.body.server), ["web1"]);
+  assert.equal(h.calls.filter(c => c.path === "/api/action" && c.body.action === "terminal").length, 0); assert.deepEqual(h.errors, []); h.close();
 });
 
 test("sunucu sayfası: 'Gömülü terminal' KeyLabTerminal.open(sunucu) çağırır", async () => {

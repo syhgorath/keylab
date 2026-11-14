@@ -38,9 +38,9 @@ test("sunucu kartı: geçersiz sunucuda adres 'server.env geçersiz', Terminal/K
 });
 
 test("sunucu kartı: Terminal → /api/action terminal; Kopya → komut panoya; ikisi de sunucu sayfasını AÇMAZ", async () => {
-  const h = await boot({ hash: "#v=servers", overrides: { "/api/home": mixedHome, "/api/action": (u, { body }) => (body.action === "cmd" ? { cmd: "ssh root@10.255.0.10" } : { ok: true }) } });
+  const h = await boot({ hash: "#v=servers", overrides: { "/api/home": mixedHome, "/api/term/open": { id: "t1" }, "/api/term/close": { ok: true }, "/api/term/ticket": { ticket: "tk" }, "/api/term/resize": { ok: true }, "/api/action": (u, { body }) => (body.action === "cmd" ? { cmd: "ssh root@10.255.0.10" } : { ok: true }) } });
   const L = h.win.history.length;
-  await h.click(card(h, "web1").querySelector('[data-qa="term"]')); assert.deepEqual(h.calls.find(c => c.path === "/api/action").body, { name: "web1", action: "terminal" }); assert.equal(t(h.$("#toast")), "Terminal'de açıldı");
+  await h.click(card(h, "web1").querySelector('[data-qa="term"]')); assert.deepEqual(h.calls.filter(c => c.path === "/api/term/open").map(c => c.body.server), ["web1"], "kart Terminal düğmesi gömülü terminali açar"); assert.equal(h.calls.filter(c => c.path === "/api/action" && c.body.action === "terminal").length, 0, "macOS Terminal.app yolu yok");
   await h.click(card(h, "web1").querySelector('[data-qa="copy"]')); assert.deepEqual(h.win.__clip, ["ssh root@10.255.0.10"]); assert.equal(t(h.$("#toast")), "Komut kopyalandı");
   assert.equal(view(h), "view-servers"); assert.equal(h.win.history.length, L); assert.deepEqual(h.errors, []); h.close();
 });
