@@ -54,10 +54,10 @@ test("ayarlar: eşzamanlı iş sınırı — okuma (değer/min/max), geçersiz s
 test("ayarlar: yollar ve sshpocket.conf listelenir; boş değer '—'; conf yoksa uyarı; hata kutusu", async () => {
   let h = await boot({ hash: "#v=settings", overrides: base() });
   const rows = h.$$("#set-paths .urow").map(r => r.textContent.replace(/\s+/g, " ").trim());
-  assert.deepEqual(rows, ["KeyLab sürümü0.0.0-test", "Kök klasör (USB)/fixture/path", "Sunucular/fixture/srv", "Paketler/fixture/path", "Durum ve günlükler/fixture/state", "Platformtest/test", "Gogo-test"]);
+  assert.deepEqual(rows, ["KeyLab sürümü0.0.0-test", "Kök klasör/fixture/path", "Sunucular/fixture/srv", "Paketler/fixture/path", "Durum ve günlükler/fixture/state", "Platformtest/test", "Gogo-test"]);
   assert.deepEqual(h.$$("#set-conf .urow").map(r => r.textContent.replace(/\s+/g, " ").trim()), ["STATUSon", "STATUS_TIMEOUT2"]); h.close();
   h = await boot({ hash: "#v=settings", overrides: base({ "/api/about": () => ({ ...fixture("about"), root: "", conf: {} }) }) });
-  assert.match(txt(h, "#set-paths .urow:nth-child(2)"), /Kök klasör \(USB\)—/); assert.match(txt(h, "#set-conf"), /sshpocket\.conf bulunamadı ya da boş\./); h.close();
+  assert.match(txt(h, "#set-paths .urow:nth-child(2)"), /Kök klasör—/); assert.match(txt(h, "#set-conf"), /sshpocket\.conf bulunamadı ya da boş\./); h.close();
   h = await boot({ hash: "#v=settings", overrides: base({ "/api/about": () => ({ ...fixture("about"), conf: null }) }) }); assert.match(txt(h, "#set-conf"), /bulunamadı/); h.close();
   h = await boot({ hash: "#v=settings", overrides: base({ "/api/about": { status: 500, body: "bozuk" } }) }); assert.match(txt(h, "#set-paths .notice.danger"), /Yüklenemedi/); h.close();
 });
