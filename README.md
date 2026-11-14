@@ -65,6 +65,9 @@ components.lock    paket kilidi;  components/ kurulu paketler
 servers/<ad>/      server.env + id_ed25519_<ad>   (kullanıcı verisi, repoya girmez)
 ```
 
+**Veri nereye gider?** `./sshpocket` yanında `servers/` varsa (USB ya da klasör) **taşınabilir** çalışır: her şey o klasörde kalır.
+Yoksa kurulu gibi çalışır: ilk açılışta `~/.keylab/servers` ve `~/.keylab/components` oluşturulur. İsterseniz `-servers`/`-components` ya da `KEYLAB_SERVERS` ile yer gösterebilirsiniz.
+
 ## Özellikler
 
 - **Sunucu başına klasör**, Keychain'de passphrase (diske yazılmaz), `ssh-add` ile ajana ekleme (Keychain parolasıyla; yanlışsa yeniden kaydetme sorusu).

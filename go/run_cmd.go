@@ -190,11 +190,22 @@ func findRoot(flagRoot string) string {
 	if r := envx.Get("ROOT"); r != "" {
 		return r
 	}
-	exe := filepath.Dir(selfExe())
-	for _, d := range []string{exe, filepath.Dir(exe)} {
+	self := selfExe()
+	exe := filepath.Dir(self)
+	cands := []string{exe, filepath.Dir(exe)}
+	if b := appBase(self); b != exe { // X.app/Contents/MacOS içinden çalışıyorsa: X.app'in yanı (taşınabilir kök)
+		cands = append(cands, b)
+	}
+	if h := homeDataDir(); h != "" {
+		cands = append(cands, h) // kurulu mod: ~/.keylab
+	}
+	for _, d := range cands {
 		if st, err := os.Stat(filepath.Join(d, "components.lock")); err == nil && !st.IsDir() {
 			return d
 		}
+	}
+	if h := homeDataDir(); h != "" && isDir(h) { // ilk açılıştan sonra: henüz components.lock yok ama klasör var
+		return h
 	}
 	return filepath.Dir(exe)
 }

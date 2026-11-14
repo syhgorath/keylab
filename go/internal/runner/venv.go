@@ -115,6 +115,39 @@ func PythonIsStub(path string) bool {
 	return exec.Command(xs, "-p").Run() != nil
 }
 
+// PythonMissingGuide: paket eylemi için uygun Python yokken kullanıcıya gösterilen rehber (ne bulundu, nasıl kurulur). KeyLab Python'u
+// ya da Homebrew'u kendisi KURMAZ (yönetici izni ve indirilen betik gerektirir); kullanıcı kurar, eylemi yeniden başlatır.
+func PythonMissingGuide(rng string) string {
+	found, stub := "", false
+	for _, cand := range PythonCandidates() {
+		p, err := exec.LookPath(cand)
+		if err != nil {
+			continue
+		}
+		if PythonIsStub(p) {
+			stub = true
+			continue
+		}
+		if v := PythonVersion(p); v != "" && !strings.Contains(found, v) {
+			found += " " + v
+		}
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "Paketler (Ansible) için Python %s gerekir; ", rng)
+	if found != "" {
+		fmt.Fprintf(&b, "bulunan sürümler uymuyor (%s).\n", strings.TrimSpace(found))
+	} else {
+		b.WriteString("bu bilgisayarda uygun Python bulunamadı.\n")
+	}
+	if stub {
+		b.WriteString("  /usr/bin/python3 yalnızca Command Line Tools kurulunca gerçek Python olur; yeterli sürüm sağlamaz.\n")
+	}
+	b.WriteString("  Kurulum: https://www.python.org/downloads/ adresinden macOS yükleyicisini indirip kurun\n")
+	b.WriteString("           ya da Homebrew varsa:  brew install python@3.13   (KeyLab bunu kendisi ÇALIŞTIRMAZ)\n")
+	b.WriteString("  Kurduktan sonra eylemi yeniden başlatın. Sunucu yönetimi, terminal ve anahtarlar Python olmadan çalışır. Kontrol: keylab doctor")
+	return b.String()
+}
+
 // PickPython: aralığa uyan ilk yorumlayıcının tam yolu.
 func PickPython(rng string) (string, bool) {
 	for _, cand := range PythonCandidates() {
@@ -266,7 +299,7 @@ func VenvEnsure(id, pkgDir, rng, wheelhouse string) (string, error) {
 	}
 	py, ok := PickPython(rng)
 	if !ok {
-		return "", fmt.Errorf("uygun Python bulunamadı (%s); keylab doctor", rng)
+		return "", errors.New(PythonMissingGuide(rng))
 	}
 	envid, err := EnvID(req, PythonVersion(py))
 	if err != nil {

@@ -246,3 +246,27 @@ func TestVenvEnsureMatchesShell(t *testing.T) {
 		})
 	}
 }
+
+func TestPythonMissingGuide(t *testing.T) {
+	// eski sürüm bulundu: bulunanlar listelenir, kurulum yolları ve "Python'suz da çalışır" notu var
+	fakePythons(t, map[string]string{"py-old": "3.9.1", "py-mid": "3.11.2"})
+	t.Setenv("SSHPOCKET_PYTHON_CANDIDATES", "py-old py-mid yok")
+	g := PythonMissingGuide(">=3.12")
+	for _, want := range []string{"Python >=3.12 gerekir", "bulunan sürümler uymuyor (3.9.1 3.11.2)", "https://www.python.org/downloads/", "brew install python@3.13", "ÇALIŞTIRMAZ", "Python olmadan çalışır", "keylab doctor"} {
+		if !strings.Contains(g, want) {
+			t.Errorf("rehberde %q yok:\n%s", want, g)
+		}
+	}
+	// hiç Python yok
+	t.Setenv("SSHPOCKET_PYTHON_CANDIDATES", "yok1 yok2")
+	if g := PythonMissingGuide(">=3.12"); !strings.Contains(g, "uygun Python bulunamadı") || strings.Contains(g, "bulunan sürümler") {
+		t.Errorf("boş durum:\n%s", g)
+	}
+	// VenvEnsure aynı rehberi hata olarak döndürür
+	dir := t.TempDir()
+	req := "a==1 \\\n  --hash=sha256:" + strings.Repeat("b", 64) + "\n"
+	os.WriteFile(filepath.Join(dir, "requirements.txt"), []byte(req), 0o600)
+	if _, err := VenvEnsure("p", dir, ">=3.12", ""); err == nil || !strings.Contains(err.Error(), "python.org") {
+		t.Errorf("VenvEnsure hatası rehber değil: %v", err)
+	}
+}
