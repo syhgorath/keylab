@@ -8,7 +8,7 @@ export const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;"
 /* ---------------- API ---------------- */
 export async function api(path, body) {
   const r = await fetch(path, { method: body ? "POST" : "GET", headers: { "X-Requested-With": "sshpocket" }, body: body ? JSON.stringify(body) : undefined });
-  if (r.status === 401) throw new Error("oturum yok: terminalde yazılan adresi açın");
+  if (r.status === 401) throw new Error("oturum yok ya da süresi doldu: terminalde yazılan adresi açın");
   if (!r.ok) throw new Error((await r.text()).trim() || r.status);
   return r;
 }

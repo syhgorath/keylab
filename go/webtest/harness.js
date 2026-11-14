@@ -48,7 +48,7 @@ function makeRouter(overrides, calls) {
   const table = {
     "/api/home": home, "/api/status": () => fixture("status"), "/api/jobs": () => fixture("jobs"), "/api/batch": () => fixture("batch"),
     "/api/ui-settings": () => fixture("ui-settings"), "/api/packages": () => fixture("packages"), "/api/about": () => fixture("about"),
-    "/api/profiles": () => fixture("profiles"), "/api/logs": () => fixture("logs"), "/api/term/list": () => [],
+    "/api/profiles": () => fixture("profiles"), "/api/logs": () => fixture("logs"), "/api/term/list": () => [], "/api/term/ticket": () => ({ ticket: "tk-test" }),
     "/api/batch/options": () => ({ options: [], total: 0 }),
     "/api/updates": () => ({ status: 409, body: "fixture: indeks yok" }),
   };
@@ -130,7 +130,7 @@ async function boot(opts = {}) {
   win.clearTimeout = win.clearInterval = i => { if (zeroTimers.delete(i)) { zero--; return; } timers.clear(i); };
   const route = makeRouter(opts.overrides || {}, calls);
   win.fetch = async (u, o) => { inflight++; try { return await route(u, o); } catch (e) { errors.push(String(e.message)); return { ok: false, status: 500, json: async () => ({}), text: async () => String(e.message) }; } finally { inflight--; } };
-  win.EventSource = class { addEventListener() {} close() {} };
+  win.EventSource = class { constructor(u) { (win.__es = win.__es || []).push(String(u)); } addEventListener() {} close() {} }; // açılan akış adresleri win.__es'te
   win.ResizeObserver = class { observe() {} disconnect() {} unobserve() {} };
   win.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} });
   win.CSS = { supports: () => false };

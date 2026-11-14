@@ -40,7 +40,7 @@ func knockApp(t *testing.T, env string) (*App, string) {
 func call(app *App, method, target, body string, hdr map[string]string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(method, target, strings.NewReader(body))
 	req.Host = "127.0.0.1:9999"
-	req.AddCookie(&http.Cookie{Name: cookieName, Value: "jeton"})
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: app.newSession()})
 	for k, v := range hdr {
 		req.Header.Set(k, v)
 	}

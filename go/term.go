@@ -390,6 +390,11 @@ func (a *App) termOpenHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) termStreamHandler(w http.ResponseWriter, r *http.Request) {
+	// akış kısa ömürlü, tek kullanımlık bilet ister (bkz. session.go); EventSource özel başlık gönderemez
+	if !a.redeemTermTicket(r.URL.Query().Get("ticket"), r.URL.Query().Get("id")) {
+		http.Error(w, "akış bileti geçersiz ya da süresi dolmuş", http.StatusForbidden)
+		return
+	}
 	ts := a.getTerm(r.URL.Query().Get("id"))
 	if ts == nil {
 		http.Error(w, "oturum yok", http.StatusNotFound)

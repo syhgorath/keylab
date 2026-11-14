@@ -80,3 +80,24 @@ test("terminal: alt çubuktaki 'Oturumu kapat' ve sekme çipinin ✕ düğmesi y
   await h.click(".modal-foot [data-term-close]"); assert.deepEqual(posts(h, "/api/term/close").map(b => b.id), ["t2"]); assert.deepEqual(tabs(h), [">_ web1"]);
   await open(h, "web1"); await h.click("#term-tabs .term-chip:not(.active) .term-chip-x"); assert.equal(posts(h, "/api/term/close").length, 2); assert.equal(tabs(h).length, 1); h.close();
 });
+
+test("terminal akışı: her oturum için önce /api/term/ticket ile bilet alınır, EventSource bu biletle açılır (kimlik + bilet adreste)", async () => {
+  let n = 0; const h = await boot({ hash: "", overrides: { ...mk(), "/api/term/ticket": (u, { body }) => ({ ticket: "tk-" + body.id + "-" + (++n) }) } });
+  await open(h, "web1"); await open(h, "db1");
+  assert.deepEqual(posts(h, "/api/term/ticket"), [{ id: "t1" }, { id: "t2" }]);
+  assert.deepEqual(h.win.__es, ["/api/term/stream?id=t1&ticket=tk-t1-1", "/api/term/stream?id=t2&ticket=tk-t2-2"]); assert.deepEqual(h.errors, []); h.close();
+});
+
+test("terminal akışı: bilet alınamazsa akış açılmaz; not gösterilir, durum 'bağlanamadı'", async () => {
+  const h = await boot({ hash: "", overrides: { ...mk(), "/api/term/ticket": { status: 401, body: "oturum" } } });
+  await open(h, "web1");
+  assert.equal((h.win.__es || []).length, 0); assert.match(h.$("#term-note").textContent, /Akış bileti alınamadı/); assert.equal(h.$("#term-state").textContent, "bağlanamadı"); h.close();
+});
+
+test("terminal akışı: bilet beklenirken oturum kapatılırsa akış hiç açılmaz", async () => {
+  let release; const gate = new Promise(r => { release = r; });
+  const h = await boot({ hash: "", overrides: { ...mk(), "/api/term/ticket": async () => { await gate; return { ticket: "tk" }; } } });
+  h.win.KeyLabTerminal.open("web1"); await new Promise(r => setImmediate(r)); await new Promise(r => setImmediate(r)); await new Promise(r => setImmediate(r));
+  h.$(".pty-dots .d-r").dispatchEvent(new h.win.MouseEvent("click", { bubbles: true })); await new Promise(r => setImmediate(r));
+  release(); await h.settle(); assert.equal((h.win.__es || []).length, 0); assert.deepEqual(h.errors, []); h.close();
+});
