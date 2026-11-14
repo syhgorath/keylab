@@ -119,15 +119,15 @@ func (s *TermSession) waitLoop(a *App) {
 	s.exit = exitCode
 	s.broadcast(termEvent{Kind: "exit", Data: fmt.Sprintf("%d", exitCode)})
 	s.mu.Unlock()
-	close(s.exited)
-	_ = s.ptmx.Close()
 	if a != nil {
 		a.auditTerm("exit", s.Server, s.ID)
 	}
+	close(s.exited)
+	_ = s.ptmx.Close()
 }
 
 // startTermProcess: argv'yi yeni bir PTY'nin ucunda başlatır. Ssh'tan bağımsızdır (testlenebilir).
-func startTermProcess(argv []string, dir string, env []string, rows, cols uint16) (*TermSession, error) {
+func startTermProcess(name string, args []string, dir string, env []string, rows, cols uint16) (*TermSession, error) {
 	ptmx, ttyName, err := openPTY()
 	if err != nil {
 		return nil, fmt.Errorf("PTY açılamadı: %w", err)
@@ -145,7 +145,7 @@ func startTermProcess(argv []string, dir string, env []string, rows, cols uint16
 	}
 	_ = setWinsize(ptmx, rows, cols)
 
-	cmd := exec.Command(argv[0], argv[1:]...)
+	cmd := exec.Command(name, args...)
 	cmd.Dir = dir
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = slave, slave, slave
 	cmd.Env = env
@@ -259,7 +259,7 @@ func (a *App) openTerm(server string, rows, cols uint16) (*TermSession, int, err
 	}
 	argv = append(argv, "-p", s.Port, s.User+"@"+s.Host) // user@host her zaman harfle başlar: seçenek sayılamaz
 
-	ts, err := startTermProcess(argv, a.serversDir, termEnv(), rows, cols)
+	ts, err := startTermProcess(argv[0], argv[1:], a.serversDir, termEnv(), rows, cols)
 	if err != nil {
 		return nil, http.StatusInternalServerError, err
 	}

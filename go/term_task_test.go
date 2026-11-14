@@ -39,7 +39,7 @@ func TestOpenTaskRunsActionInTerminalAndTakesInput(t *testing.T) {
 	if err != nil || ts == nil {
 		t.Fatalf("başlamadı (%d): %v", code, err)
 	}
-	defer ts.kill()
+	endTask(t, ts)
 	if ts.Kind != "task" || ts.Server != "s1" || ts.Pkg != "demo" || ts.Action != "durum" || ts.Title != "demo · durum" {
 		t.Fatalf("oturum bilgisi: %+v", ts)
 	}
@@ -77,7 +77,7 @@ func TestOpenTaskGatesAndSingleTaskPerServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ts.kill()
+	endTask(t, ts)
 	if _, code, err := a.openTask("s1", "demo", "durum", "", false, "", false, 24, 80); err == nil || code != http.StatusConflict || !strings.Contains(err.Error(), "zaten çalışan") {
 		t.Fatalf("aynı sunucuda ikinci görev: %d %v", code, err)
 	}
@@ -86,7 +86,7 @@ func TestOpenTaskGatesAndSingleTaskPerServer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("başka sunucuda görev: %v", err)
 	}
-	defer ts2.kill()
+	endTask(t, ts2)
 	if n := a.runningTasks(); n != 2 {
 		t.Fatalf("çalışan görev sayısı %d", n)
 	}
@@ -99,7 +99,7 @@ func TestTaskSessionsAreNotReapedWhileRunning(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ts.kill()
+	endTask(t, ts)
 	// çalışan görev, abonesiz ve çok eski olsa da boşta diye KAPATILMAZ (yarım uygulama sunucuyu yarım bırakır)
 	a.reapOnce(time.Now().Add(24*time.Hour), time.Minute, time.Hour)
 	if a.getTerm(ts.ID) == nil {
@@ -130,7 +130,7 @@ func TestTermTaskHandlerAndList(t *testing.T) {
 		if m["kind"] != "task" || m["title"] != "demo · durum" || m["pkg"] != "demo" || m["action"] != "durum" || m["server"] != "s1" || m["id"] == "" {
 			t.Fatalf("yanıt: %v", m)
 		}
-		defer a.closeTerm(m["id"].(string))
+		endTask(t, a.getTerm(m["id"].(string)))
 	}
 	// liste görev bilgisini taşır (sayfa yenilenince sekme geri gelsin)
 	w := httptest.NewRecorder()
@@ -160,7 +160,7 @@ func TestQuitCountsRunningTasks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ts.kill()
+	endTask(t, ts)
 	exited := make(chan struct{}, 1)
 	a.exitFn = func() { exited <- struct{}{} }
 	code, m := quitCall(a, `{}`, http.MethodPost)
@@ -172,4 +172,16 @@ func TestQuitCountsRunningTasks(t *testing.T) {
 		t.Fatal("onaysız çıkıldı")
 	case <-time.After(700 * time.Millisecond):
 	}
+}
+
+// endTask: test bitince görevi öldürür ve çıkışını (denetim satırı dahil) BEKLER; yoksa t.TempDir temizliği çocuğun son yazımıyla yarışır.
+func endTask(t *testing.T, ts *TermSession) {
+	t.Helper()
+	t.Cleanup(func() {
+		ts.kill()
+		select {
+		case <-ts.exited:
+		case <-time.After(5 * time.Second):
+		}
+	})
 }

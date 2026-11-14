@@ -44,6 +44,9 @@ func (a *App) runningTasks() int {
 	return n
 }
 
+// taskProgram: çalıştırılacak komut adı (üretimde kendi ikilimiz; testte sahte komutla değiştirilir). Kullanıcı değerleri yalnız ayrı argümanlardır, kabuk yok.
+var taskProgram = func(exe string) string { return exe }
+
 // openTask: eylemi görev terminali olarak başlatır. Aynı sunucuda aynı anda tek görev; toplam oturum sınırı ssh oturumlarıyla ortaktır.
 func (a *App) openTask(server, pkg, action, item string, snapshot bool, confirm string, ackDestructive bool, rows, cols uint16) (*TermSession, int, error) {
 	if !platform.DefaultPTY().TerminalSupported() {
@@ -77,7 +80,7 @@ func (a *App) openTask(server, pkg, action, item string, snapshot bool, confirm 
 	}
 	a.tmu.Unlock()
 
-	ts, err := startTermProcess(argv, root, taskEnv(), rows, cols)
+	ts, err := startTermProcess(taskProgram(exe), argv[1:], root, taskEnv(), rows, cols) // komut adı kullanıcı girdisinden gelmez: kendi ikilimiz
 	if err != nil {
 		return nil, http.StatusInternalServerError, err
 	}

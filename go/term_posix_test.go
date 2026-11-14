@@ -21,7 +21,7 @@ func waitDone(t *testing.T, ts *TermSession, d time.Duration) {
 
 func startTest(t *testing.T, a *App, script string) *TermSession {
 	t.Helper()
-	ts, err := startTermProcess([]string{"/bin/sh", "-c", script}, t.TempDir(), termEnv(), 24, 80)
+	ts, err := startTermProcess("/bin/sh", []string{"-c", script}, t.TempDir(), termEnv(), 24, 80)
 	if err != nil {
 		t.Fatal(err)
 	}
