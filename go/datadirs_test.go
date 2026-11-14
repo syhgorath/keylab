@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -39,34 +40,34 @@ func TestResolveServersDirOrder(t *testing.T) {
 	mkdirs(t, cwd)
 
 	// hiçbiri yok → ~/.keylab/servers oluşturulacak
-	if d, c := resolveServersDir("", "", exe, cwd); d != filepath.Join(home, ".keylab", "servers") || !c {
+	if d, c := resolveServersDir("", "", exe, cwd, false); d != filepath.Join(home, ".keylab", "servers") || !c {
 		t.Fatalf("boş durum: %q create=%v", d, c)
 	}
 	// eski geliştirici davranışı: ../servers
 	mkdirs(t, filepath.Join(work, "servers"))
-	if d, c := resolveServersDir("", "", exe, cwd); d != filepath.Join(work, "servers") || c {
+	if d, c := resolveServersDir("", "", exe, cwd, false); d != filepath.Join(work, "servers") || c {
 		t.Fatalf("../servers: %q create=%v", d, c)
 	}
 	// ~/.keylab/servers varsa ../servers'ı geçer
 	mkdirs(t, filepath.Join(home, ".keylab", "servers"))
-	if d, _ := resolveServersDir("", "", exe, cwd); d != filepath.Join(home, ".keylab", "servers") {
+	if d, _ := resolveServersDir("", "", exe, cwd, false); d != filepath.Join(home, ".keylab", "servers") {
 		t.Fatalf("~/.keylab: %q", d)
 	}
 	// taşınabilir: .app'in yanındaki servers/ hepsini geçer
 	mkdirs(t, filepath.Join(base, "servers"))
-	if d, c := resolveServersDir("", "", exe, cwd); d != filepath.Join(base, "servers") || c {
+	if d, c := resolveServersDir("", "", exe, cwd, false); d != filepath.Join(base, "servers") || c {
 		t.Fatalf("taşınabilir: %q create=%v", d, c)
 	}
 	// ortam değişkeni taşınabiliri geçer (varsa); olmayan yol yok sayılır
 	envDir := t.TempDir()
-	if d, _ := resolveServersDir("", envDir, exe, cwd); d != envDir {
+	if d, _ := resolveServersDir("", envDir, exe, cwd, false); d != envDir {
 		t.Fatalf("env: %q", d)
 	}
-	if d, _ := resolveServersDir("", filepath.Join(envDir, "yok"), exe, cwd); d != filepath.Join(base, "servers") {
+	if d, _ := resolveServersDir("", filepath.Join(envDir, "yok"), exe, cwd, false); d != filepath.Join(base, "servers") {
 		t.Fatalf("olmayan env yok sayılmalı: %q", d)
 	}
 	// bayrak her şeyi geçer (var olması gerekmez)
-	if d, c := resolveServersDir("/baska/yol", envDir, exe, cwd); d != "/baska/yol" || c {
+	if d, c := resolveServersDir("/baska/yol", envDir, exe, cwd, false); d != "/baska/yol" || c {
 		t.Fatalf("bayrak: %q create=%v", d, c)
 	}
 }
@@ -74,7 +75,7 @@ func TestResolveServersDirOrder(t *testing.T) {
 func TestResolveServersDirSurvivesNoHome(t *testing.T) {
 	t.Setenv("HOME", "")
 	exe := filepath.Join(t.TempDir(), "keylab")
-	if d, c := resolveServersDir("", "", exe, ""); d != "" || c {
+	if d, c := resolveServersDir("", "", exe, "", false); d != "" || c {
 		t.Fatalf("ev klasörü yokken: %q create=%v", d, c)
 	}
 }
@@ -163,5 +164,88 @@ func TestNeedsFirstRunSetup(t *testing.T) {
 	}
 	if needsFirstRunSetup("/ozel/yer/servers", exe, false) {
 		t.Error("-servers ile verilen özel klasöre dokunulmamalı")
+	}
+}
+
+func TestResolveServersDirOnExternalVolume(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	mkdirs(t, filepath.Join(home, ".keylab", "servers")) // kurulu kullanım verisi de var
+	base := t.TempDir()
+	exe := filepath.Join(base, "KeyLab.app", "Contents", "MacOS", "KeyLab")
+	cwd := t.TempDir()
+
+	// harici sürücüde, servers/ yok → yanında oluşturulacak; ~/.keylab'a DÜŞMEZ
+	if d, c := resolveServersDir("", "", exe, cwd, true); d != filepath.Join(base, "servers") || !c {
+		t.Fatalf("harici sürücü: %q create=%v", d, c)
+	}
+	// aynı koşul harici olmayan uygulamada eskisi gibi ~/.keylab
+	if d, c := resolveServersDir("", "", exe, cwd, false); d != filepath.Join(home, ".keylab", "servers") || c {
+		t.Fatalf("harici değil: %q create=%v", d, c)
+	}
+	// servers/ zaten yanındaysa oluşturma yok
+	mkdirs(t, filepath.Join(base, "servers"))
+	if d, c := resolveServersDir("", "", exe, cwd, true); d != filepath.Join(base, "servers") || c {
+		t.Fatalf("var olan: %q create=%v", d, c)
+	}
+	// bayrak ve ortam değişkeni harici sürücüden de önceliklidir
+	if d, c := resolveServersDir("/baska/yol", "", exe, cwd, true); d != "/baska/yol" || c {
+		t.Fatalf("bayrak: %q create=%v", d, c)
+	}
+}
+
+func TestPrepareDataDirsExternalCreatesBesideApp(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	base := t.TempDir()
+	exe := filepath.Join(base, "KeyLab.app", "Contents", "MacOS", "KeyLab")
+	dd, err := prepareDataDirs("", "", "", exe, t.TempDir(), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dd.servers != filepath.Join(base, "servers") || dd.components != filepath.Join(base, "components") || !dd.created || dd.note != "" {
+		t.Fatalf("dizinler: %+v", dd)
+	}
+	if st, err := os.Stat(dd.servers); err != nil || st.Mode().Perm() != 0o700 {
+		t.Fatalf("servers izni: %v %v", st, err)
+	}
+	if !isDir(dd.components) {
+		t.Fatal("components yok")
+	}
+	// ikinci açılış: var olanı kullanır, yeniden oluşturmaz
+	dd2, err := prepareDataDirs("", "", "", exe, t.TempDir(), true)
+	if err != nil || dd2.created || dd2.servers != dd.servers {
+		t.Fatalf("ikinci açılış: %+v %v", dd2, err)
+	}
+}
+
+func TestPrepareDataDirsExternalReadOnlyFallsBackToHome(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root yazma izni denetimini atlar")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	base := t.TempDir()
+	if err := os.Chmod(base, 0o500); err != nil { // salt okunur disk imajı gibi
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(base, 0o700) })
+	exe := filepath.Join(base, "KeyLab.app", "Contents", "MacOS", "KeyLab")
+	dd, err := prepareDataDirs("", "", "", exe, t.TempDir(), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dd.servers != filepath.Join(home, ".keylab", "servers") || !dd.created || !strings.Contains(dd.note, "yazılamadı") {
+		t.Fatalf("geri dönüş: %+v", dd)
+	}
+	if !isDir(dd.servers) || !isDir(dd.components) {
+		t.Fatal("~/.keylab oluşmadı")
+	}
+}
+
+func TestPrepareDataDirsNoHomeNoExternal(t *testing.T) {
+	t.Setenv("HOME", "")
+	dd, err := prepareDataDirs("", "", "", filepath.Join(t.TempDir(), "keylab"), "", false)
+	if err != nil || dd.servers != "" {
+		t.Fatalf("ev yokken: %+v %v", dd, err)
 	}
 }

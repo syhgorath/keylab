@@ -5,7 +5,8 @@ package main
 // Sunucular klasörü (kullanıcı verisi: server.env + anahtarlar). Sıra:
 //  1. -servers bayrağı
 //  2. $KEYLAB_SERVERS (ya da eski $SSHPOCKET_SERVERS)
-//  3. TAŞINABİLİR: ikilinin yanındaki servers/ (ikili X.app/Contents/MacOS içindeyse X.app'in yanındaki servers/)
+//  3. TAŞINABİLİR: ikilinin yanındaki servers/ (ikili X.app/Contents/MacOS içindeyse X.app'in yanındaki servers/); uygulama HARİCİ SÜRÜCÜDEYSE
+//     (USB, /Volumes/<ad>) servers/ yoksa yanında kendisi oluşturulur (yazılamıyorsa, ör. salt okunur disk imajı, 4./6. adımlara düşer)
 //  4. ~/.keylab/servers varsa o
 //  5. eski geliştirici davranışı: çalışma klasörünün üstündeki ../servers varsa o
 //  6. hiçbiri yoksa ~/.keylab/servers (ilk açılışta oluşturulur, 0700)
@@ -48,8 +49,9 @@ func homeDataDir() string {
 	return filepath.Join(h, homeDataName)
 }
 
-// resolveServersDir: yukarıdaki sıra. create=true: klasör yok, çağıran oluşturmalı (yalnız 6. adım).
-func resolveServersDir(flagVal, envVal, exe, cwd string) (dir string, create bool) {
+// resolveServersDir: yukarıdaki sıra (3. adıma, uygulama harici sürücüdeyse "servers/ yoksa yanında oluştur" eklenir: onExternal).
+// create=true: klasör yok, çağıran oluşturmalı.
+func resolveServersDir(flagVal, envVal, exe, cwd string, onExternal bool) (dir string, create bool) {
 	if flagVal != "" {
 		return flagVal, false
 	}
@@ -58,6 +60,9 @@ func resolveServersDir(flagVal, envVal, exe, cwd string) (dir string, create boo
 	}
 	if p := filepath.Join(appBase(exe), "servers"); isDir(p) {
 		return p, false
+	}
+	if onExternal { // uygulama harici bir sürücüde (USB): veri de yanında; servers/ yoksa kendisi açılır, kullanıcı klasör açmaz
+		return filepath.Join(appBase(exe), "servers"), true
 	}
 	home := homeDataDir()
 	if home != "" {
@@ -111,3 +116,50 @@ func ensureHomeDirs(servers, comps string) error {
 }
 
 func envServers() string { return envx.Get("SERVERS") }
+
+// dataDirs: açılışta kullanılacak veri klasörleri.
+type dataDirs struct {
+	servers, components string
+	created             bool   // servers/ (ve components/) bu açılışta oluşturuldu
+	note                string // kullanıcıya gösterilecek açıklama (geri dönüş vb.); boş olabilir
+}
+
+// prepareDataDirs: sunucular/components klasörlerini çözer ve gerekiyorsa oluşturur. Harici sürücüde oluşturma başarısız olursa
+// (salt okunur birim) sessizce eski davranışa (~/.keylab) döner ve nedenini note'ta söyler. servers=="" ise ev klasörü bilinmiyor demektir.
+func prepareDataDirs(flagServers, flagComps, envVal, exe, cwd string, onExternal bool) (dataDirs, error) {
+	pick := func(ext bool) (dataDirs, bool) {
+		sd, create := resolveServersDir(flagServers, envVal, exe, cwd, ext)
+		d := dataDirs{servers: sd, created: create}
+		if sd == "" {
+			return d, true
+		}
+		d.components = flagComps
+		if d.components == "" {
+			d.components = filepath.Join(filepath.Dir(filepath.Clean(sd)), "components")
+		}
+		return d, false
+	}
+	d, empty := pick(onExternal)
+	if empty {
+		return d, nil
+	}
+	if d.created {
+		if err := ensureHomeDirs(d.servers, d.components); err != nil {
+			if !onExternal {
+				return d, err
+			}
+			note := "harici sürücüye yazılamadı (" + err.Error() + "); veriler bu bilgisayarda (~/.keylab) tutulacak"
+			d, empty = pick(false)
+			if empty {
+				return d, nil
+			}
+			d.note = note
+			if d.created {
+				if err2 := ensureHomeDirs(d.servers, d.components); err2 != nil {
+					return d, err2
+				}
+			}
+		}
+	}
+	return d, nil
+}

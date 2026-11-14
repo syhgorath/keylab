@@ -179,20 +179,22 @@ func main() {
 		os.Exit(2)
 	}
 	cwd, _ := os.Getwd()
-	sd, createDirs := resolveServersDir(*servers, envServers(), selfExe(), cwd)
+	exe := selfExe()
+	onExternal := platform.DefaultVolumes().MountRoot(appBase(exe)) != "" // uygulama USB/harici sürücüde mi?
+	dd, derr := prepareDataDirs(*servers, *comps, envServers(), exe, cwd, onExternal)
+	if derr != nil {
+		fmt.Fprintln(os.Stderr, "veri klasörü oluşturulamadı:", derr)
+		os.Exit(1)
+	}
+	sd, cd, createDirs := dd.servers, dd.components, dd.created
 	if sd == "" {
 		fmt.Fprintln(os.Stderr, "sunucular klasörü bulunamadı ve ev klasörü bilinmiyor (-servers verin)")
 		os.Exit(1)
 	}
-	cd := *comps
-	if cd == "" {
-		cd = filepath.Join(filepath.Dir(filepath.Clean(sd)), "components")
+	if dd.note != "" {
+		fmt.Fprintln(os.Stderr, "uyarı:", dd.note)
 	}
-	if createDirs { // kurulu mod, ilk açılış: ~/.keylab/{servers,components}
-		if err := ensureHomeDirs(sd, cd); err != nil {
-			fmt.Fprintln(os.Stderr, "veri klasörü oluşturulamadı:", err)
-			os.Exit(1)
-		}
+	if createDirs { // ilk açılış: ~/.keylab/{servers,components} ya da (harici sürücüde) uygulamanın yanında
 		fmt.Println("ilk açılış: veri klasörü oluşturuldu:", filepath.Dir(sd))
 	}
 	// kurulu ya da taşınabilir (servers/ ikilinin/.app'in yanında) mod: components/ klasörü ve gömülü paket kilidi ilk açılışta hazırlanır
