@@ -4,6 +4,15 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [4.0.5] - 2026-11-15
+
+Yayın sadeleştirmesi.
+
+### Değişti
+- **Yalnızca güncel macOS ve Apple Silicon (arm64)**: macOS 27 yalnız Apple Silicon destekler; Intel (amd64) ve universal ikili artık üretilmez/yayımlanmaz. `KeyLab.app` `LSMinimumSystemVersion` 27.0 ile gelir (eski macOS'ta açılmaz). Yayın varlıkları: `keylab-X.Y.Z-darwin-arm64` (+`.sig`) ve `keylab-X.Y.Z-macos.zip` (+`.sig`). Kendini güncelleme `keylab-…-<os>-<mimari>` adını arar; 4.0.x istemcileri universal bulamayınca arm64 adına geri düşer ve güncellenebilir.
+- **Eski `sshpocket-X.Y.Z-…` adlı kopyalar kaldırıldı** (geçiş dönemi bitti): yükleme boyutu yarıya indi. 4.0.0 öncesi sürümler artık kendini güncelleyemez; elle indirilmelidir.
+- CI çapraz derleme denetimi `darwin/amd64` yerine `darwin/arm64`.
+
 ## [4.0.4] - 2026-11-15
 
 Düzeltme sürümü.

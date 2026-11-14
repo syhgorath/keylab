@@ -8,8 +8,8 @@
 //   - Geri sürüme düşülmez. Yerleştirme atomiktir (aynı klasörde yeni dosya + rename); eski ikili .update-backup/ altına yedeklenir ve
 //     hata olursa geri konur. Kullanıcı verisine (servers/, components/, anahtarlar) dokunulmaz.
 //
-// Yayın varlıkları: keylab-X.Y.Z-<os>-<mimari> (macOS için önce -darwin-universal) ve aynı adla .sig; geçiş döneminde aynı dosyalar
-// eski sshpocket-X.Y.Z-… adıyla da yayımlanır (eski istemciler onu arar; onların `version` çıktısı beklentisi "sshpocket X.Y.Z" de korunur).
+// Yayın varlıkları: keylab-X.Y.Z-darwin-arm64 ve aynı adla .sig (macOS: yalnız Apple Silicon, yalnız güncel macOS). Eski sshpocket-… adlı
+// kopyalar ve universal/amd64 4.0.5'ten itibaren yayımlanmaz; 4.0.x istemcileri arm64 adına geri düşüp güncellenir.
 package selfupdate
 
 import (
@@ -104,16 +104,9 @@ func (u *Updater) assetNames(ver string) []string {
 	if arch == "" {
 		arch = runtime.GOARCH
 	}
-	// Önce yeni ad (keylab-…), sonra eski ad (sshpocket-…): geçiş döneminde her sürüm iki adla da yayımlanır
-	// (eski istemciler yalnız sshpocket-… arar). Aynı içerik, aynı imza; imza ad alanı değişmez.
-	var names []string
-	for _, pre := range []string{"keylab", "sshpocket"} {
-		if goos == "darwin" {
-			names = append(names, fmt.Sprintf("%s-%s-darwin-universal", pre, ver))
-		}
-		names = append(names, fmt.Sprintf("%s-%s-%s-%s", pre, ver, goos, arch))
-	}
-	return names
+	// Tek ad: keylab-<sürüm>-<os>-<mimari>. macOS yayını yalnız Apple Silicon (arm64) içindir; universal/amd64 ve eski sshpocket-… adlı
+	// kopyalar artık yayımlanmaz (4.0.5+).
+	return []string{fmt.Sprintf("keylab-%s-%s-%s", ver, goos, arch)}
 }
 
 func (u *Updater) runVersion(path string) (string, error) {

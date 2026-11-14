@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# package-app.sh - universal ikiliden KeyLab.app üretir (ad-hoc imzalı) ve zip'ler (bakımcı aracı, yalnız macOS; build-release.sh çağırır).
+# package-app.sh - arm64 ikiliden KeyLab.app üretir (ad-hoc imzalı) ve zip'ler (bakımcı aracı, yalnız macOS; build-release.sh çağırır).
 #
-#   bash go/scripts/package-app.sh <universal-ikili> <sürüm> <çıktı-klasörü>
+#   bash go/scripts/package-app.sh <arm64-ikili> <sürüm> <çıktı-klasörü>
 #
 # Çıktı: <çıktı>/KeyLab.app  ve  <çıktı>/keylab-<sürüm>-macos.zip  (zip İMZASIZ üretilir; .sig'i build-release.sh atar).
 # Uygulama paketi yalnızca ikiliyi, Info.plist'i ve simgeyi içerir: başlatıcı betik YOK, çift tıklayınca ikili doğrudan çalışır, veri klasörünü
@@ -12,7 +12,7 @@
 set -euo pipefail
 
 die() { echo "HATA: $*" >&2; exit 1; }
-[ $# -eq 3 ] || die "kullanım: package-app.sh <universal-ikili> <sürüm> <çıktı-klasörü>"
+[ $# -eq 3 ] || die "kullanım: package-app.sh <arm64-ikili> <sürüm> <çıktı-klasörü>"
 BIN="$1"; VER="$2"; OUT="$3"
 [ "$(uname -s)" = "Darwin" ] || die "yalnız macOS'ta çalışır (sips, iconutil, codesign, ditto gerekir)"
 [ -f "$BIN" ] || die "ikili yok: $BIN"
@@ -65,6 +65,7 @@ cat > "$APP/Contents/Info.plist" <<EOF
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>$VER</string>
     <key>CFBundleVersion</key><string>$VER</string>
+    <key>LSMinimumSystemVersion</key><string>27.0</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.developer-tools</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSHumanReadableCopyright</key><string>MIT License</string>
