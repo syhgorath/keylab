@@ -175,5 +175,5 @@ test("eylem düğmeleri: Çalıştır / Onayla… / Terminal → ilgili iş penc
   await h.click('#srv-body [data-run="utility|durum"]'); assert.ok(h.$("#runmodal").classList.contains("open")); assert.match(h.$("#run-title").textContent, /durum/); assert.ok(!h.$("#run-go").hidden);
   h.close();
   const w = await open("#s=web1&p=linux-hardening"); await w.click('#srv-body [data-write="linux-hardening|rollback_now"]'); assert.ok(w.$("#runmodal").classList.contains("open")); assert.match(w.$("#run-title").textContent, /rollback_now/); w.close();
-  const t = await open("#s=web1&p=linux-hardening"); await t.click('#srv-body [data-term="linux-hardening|rollback_status"]'); assert.ok(t.$("#runmodal").classList.contains("open")); assert.match(t.$("#run-title").textContent, /rollback_status/); assert.ok(!t.$("#run-ext").hidden, "Terminal'de aç düğmesi"); t.close();
+  const t = await open("#s=web1&p=linux-hardening"); await t.click('#srv-body [data-term="linux-hardening|rollback_status"]'); assert.ok(t.$("#runmodal").classList.contains("open")); assert.match(t.$("#run-title").textContent, /rollback_status/); assert.equal(t.$("#run-ext"), null, "macOS Terminal alternatifi kalktı"); t.close();
 });

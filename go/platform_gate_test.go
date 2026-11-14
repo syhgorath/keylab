@@ -17,7 +17,6 @@ import (
 var platformGateAllow = map[string]string{
 	"about.go":                          "yalnız GOOS/GOARCH bilgisini gösterir (Ayarlar)",
 	"internal/selfupdate/selfupdate.go": "yayın dosyası adı <ad>-<sürüm>-<os>-<mimari>",
-	"main.go":                           "macOS Terminal.app'te aç alternatifi (eylemler gömülü terminale taşınınca kalkacak)",
 }
 
 var (

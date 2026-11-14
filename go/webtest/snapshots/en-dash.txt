@@ -616,10 +616,7 @@
           <li>
             <b>
               "Sudo password"
-            "is typed only into the box that appears when the engine asks; it is passed straight to Ansible's terminal (pty), never stored, never logged, never shown on the page. If you prefer not to, use the"
-            <b>
-              "Open in macOS Terminal"
-            "route in the action window. SSH key passphrases and private keys are never entered in the UI (ssh-agent)."
+            "is typed only into the box that appears when the engine asks; it is passed straight to Ansible's terminal (pty), never stored, never logged, never shown on the page. Package actions run in the built-in terminal; you type the password right there. SSH key passphrases and private keys are never entered in the UI (ssh-agent)."
           <li>
             "Page"
             <span class="mono">

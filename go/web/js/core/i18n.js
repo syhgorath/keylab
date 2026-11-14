@@ -37,7 +37,7 @@
       quit_c_agent: "Özel ssh-agent sonlandırıldı (anahtarlar bellekten silindi)", quit_c_tmp: "Geçici klasör silindi (Python ortamı, tarayıcı profili)",
       quit_r_macos: "macOS'un kendi izleri (Spotlight, son kullanılanlar, sistem günlükleri)", quit_r_keychain: "Keychain kayıtları (passphrase, knock dizisi)",
       quit_r_agent: "Kendi ssh-agent'ınıza eklenen anahtarlar", quit_done_nousb: "USB çıkarılamadı, elle çıkarın",
-      term_end: "Oturumu kapat", term_exited: "oturum bitti", term_lib_missing: "xterm.js yüklenemedi.",
+      term_end: "Oturumu kapat", term_exited: "oturum bitti", term_task_done: "eylem bitti", term_task_arm: "Eylem hâlâ çalışıyor: kapatmak onu yarıda keser ve sunucuyu yarım bırakabilir. Yine de kapatmak için bir kez daha basın.", term_lib_missing: "xterm.js yüklenemedi.",
       term_input_fail: "Girdi iletilemedi: oturum kapanmış olabilir.", term_conn_lost: "Akış koptu; oturum kapanmış olabilir.",
     },
     en: {
@@ -67,7 +67,7 @@
       quit_c_agent: "Private ssh-agent stopped (keys wiped from memory)", quit_c_tmp: "Temporary folder deleted (Python environment, browser profile)",
       quit_r_macos: "macOS's own traces (Spotlight, recent items, system logs)", quit_r_keychain: "Keychain entries (passphrases, knock sequence)",
       quit_r_agent: "Keys added to your own ssh-agent", quit_done_nousb: "Could not eject the USB, eject it manually",
-      term_end: "End session", term_exited: "session ended", term_lib_missing: "xterm.js could not be loaded.",
+      term_end: "End session", term_exited: "session ended", term_task_done: "action finished", term_task_arm: "The action is still running: closing it interrupts it and may leave the server half-configured. Press once more to close anyway.", term_lib_missing: "xterm.js could not be loaded.",
       term_input_fail: "Input could not be sent: the session may have closed.", term_conn_lost: "Stream lost; the session may have closed.",
     },
   };

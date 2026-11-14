@@ -292,7 +292,7 @@
         <div class="card-head"><h2>Güvenlik</h2></div>
         <div class="card-body"><ul class="small sx-05a3db">
           <li>Arayüz yalnızca <span class="mono">127.0.0.1</span>'de dinler; her çalıştırmada yeni oturum anahtarı üretilir.</li>
-          <li><b>Sudo parolası</b> yalnızca motor sorduğunda çıkan kutuya yazılır; doğrudan Ansible'ın terminaline (pty) iletilir, saklanmaz, günlüğe yazılmaz, sayfada gösterilmez. İstemezseniz eylem penceresindeki <b>macOS Terminal'de aç</b> yolunu kullanın. SSH anahtar parolaları ve gizli anahtarlar arayüzde girilmez (ssh-agent).</li><li>Sayfa <span class="mono">Content-Security-Policy</span> ile yalnızca kendi betiğini çalıştırır ve dışarıya bağlanamaz.</li>
+          <li><b>Sudo parolası</b> yalnızca motor sorduğunda çıkan kutuya yazılır; doğrudan Ansible'ın terminaline (pty) iletilir, saklanmaz, günlüğe yazılmaz, sayfada gösterilmez. Paket eylemleri gömülü terminalde çalışır; parolayı doğrudan orada yazarsınız. SSH anahtar parolaları ve gizli anahtarlar arayüzde girilmez (ssh-agent).</li><li>Sayfa <span class="mono">Content-Security-Policy</span> ile yalnızca kendi betiğini çalıştırır ve dışarıya bağlanamaz.</li>
           <li>Arayüzden yalnızca <b>salt okunur, sudo istemeyen, onay gerektirmeyen, önkoşulsuz</b> eylemler çalıştırılır; sunucu tarafında yeniden denetlenir. Çalıştırma uygulamanın kendi motoruyla yapılır (kapılar, günlük, sonuç kaydı aynı). Eylemler arayüzdeki terminalde çalışır; sudo parolası istenince kutu açılır. Değişiklik yapan (yıkıcı olmayan) eylemler önce plan, snapshot ve ad/e-h onayından geçer; motor onayları yeniden sorabilir. Yıkıcı eylemler (kaldir, yukselt, sunucu silme) ek onay ister: sunucu adı birebir, snapshot ve "geri alınamayabilir" onayı.</li>
         </ul></div>
       </div>
@@ -437,7 +437,7 @@
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn ghost" id="run-ext" hidden title="Parolayı bu sayfaya yazmak istemezseniz">macOS Terminal'de aç</button>
+      
       <button class="btn ghost" id="run-min" hidden title="İş çalışmaya devam eder; üst çubuktaki iş düğmesinden geri açabilirsiniz">Arka plana al</button>
       <button class="btn ghost" id="run-close">Vazgeç</button>
       <button class="btn primary" id="run-go">Çalıştır</button>

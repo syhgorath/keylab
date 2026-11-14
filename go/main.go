@@ -18,10 +18,8 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -266,6 +264,7 @@ func main() {
 	// gömülü terminal (bkz. term.go): hepsi guard'lı; POST uç noktaları CSRF başlığı ister
 	mux.HandleFunc("/api/term/open", app.guard(app.termOpenHandler))
 	mux.HandleFunc("/api/term/ticket", app.guard(app.termTicketHandler))
+	mux.HandleFunc("/api/term/task", app.guard(app.termTaskHandler))
 	mux.HandleFunc("/api/term/stream", app.guard(app.termStreamHandler))
 	mux.HandleFunc("/api/term/input", app.guard(app.termInputHandler))
 	mux.HandleFunc("/api/term/resize", app.guard(app.termResizeHandler))
@@ -601,43 +600,6 @@ func main() {
 		}
 		if _, err := in.Write([]byte(req.Text + "\n")); err != nil {
 			http.Error(w, "gönderilemedi", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"ok":true}`))
-	}))
-	mux.HandleFunc("/api/run-terminal", app.guard(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "POST", http.StatusMethodNotAllowed)
-			return
-		}
-		var req struct {
-			Server, Package, Action, Item, Confirm string
-			Snapshot                               bool
-			AckDestructive                         bool
-		}
-		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req) != nil ||
-			!reName.MatchString(req.Server) || !reName.MatchString(req.Package) || !reAction.MatchString(req.Action) {
-			http.Error(w, "geçersiz istek", http.StatusBadRequest)
-			return
-		}
-		if req.Item != "" { // macOS Terminal komutu öğe seçimi taşımaz: öğe eylemleri yalnız uygulama içinde (kapılı iş olarak) çalışır
-			http.Error(w, "öğe eylemleri macOS Terminal'de açılamaz; uygulama içinde çalıştırın", http.StatusBadRequest)
-			return
-		}
-		if _, code, err := app.authorizeRun(req.Server, req.Package, req.Action, req.Snapshot, req.Confirm, req.AckDestructive); err != nil {
-			http.Error(w, err.Error(), code)
-			return
-		}
-		if runtime.GOOS != "darwin" {
-			http.Error(w, "yalnızca macOS", http.StatusNotImplemented)
-			return
-		}
-		root := filepath.Dir(filepath.Clean(app.compDir))
-		cmdline := terminalCommand(selfExe(), root, req.Package, req.Action, req.Server)
-		script := "tell application \"Terminal\" to activate\ntell application \"Terminal\" to do script " + appleScriptQuote(cmdline)
-		if err := exec.Command("osascript", "-e", script).Run(); err != nil {
-			http.Error(w, "Terminal açılamadı", http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")

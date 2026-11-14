@@ -11,33 +11,6 @@ import (
 	"time"
 )
 
-func TestTerminalCommand(t *testing.T) {
-	got := terminalCommand("/Volumes/te st/it's/sshpocket", "/Volumes/te st/it's", "kurulum", "durum", "ubuntutest")
-	want := `cd '/Volumes/te st/it'\''s' && '/Volumes/te st/it'\''s/sshpocket' components -root '/Volumes/te st/it'\''s' run kurulum durum ubuntutest`
-	if got != want {
-		t.Fatalf("\n got: %s\nwant: %s", got, want)
-	}
-}
-
-func TestAppleScriptQuote(t *testing.T) {
-	if got := appleScriptQuote(`a"b\c`); got != `"a\"b\\c"` {
-		t.Fatalf("got %s", got)
-	}
-}
-
-// AppleScript metni derlenebilir mi (çalıştırılmaz)
-func TestAppleScriptCompiles(t *testing.T) {
-	if _, err := exec.LookPath("osacompile"); err != nil {
-		t.Skip("osacompile yok")
-	}
-	cmd := terminalCommand("/Volumes/te\"st/it's/sshpocket", "/Volumes/te\"st/it's", "kurulum", "durum", "ubuntutest")
-	script := "tell application \"Terminal\" to activate\ntell application \"Terminal\" to do script " + appleScriptQuote(cmd)
-	out := t.TempDir() + "/x.scpt"
-	if b, err := exec.Command("osacompile", "-o", out, "-e", script).CombinedOutput(); err != nil {
-		t.Fatalf("derlenemedi: %v %s", err, strings.TrimSpace(string(b)))
-	}
-}
-
 func TestClassify(t *testing.T) {
 	ok := []Prereq{{Action: "preview", OK: true}}
 	cases := []struct {

@@ -830,10 +830,7 @@
           <li>
             <b>
               "Sudo parolası"
-            "yalnızca motor sorduğunda çıkan kutuya yazılır; doğrudan Ansible'ın terminaline (pty) iletilir, saklanmaz, günlüğe yazılmaz, sayfada gösterilmez. İstemezseniz eylem penceresindeki"
-            <b>
-              "macOS Terminal'de aç"
-            "yolunu kullanın. SSH anahtar parolaları ve gizli anahtarlar arayüzde girilmez (ssh-agent)."
+            "yalnızca motor sorduğunda çıkan kutuya yazılır; doğrudan Ansible'ın terminaline (pty) iletilir, saklanmaz, günlüğe yazılmaz, sayfada gösterilmez. Paket eylemleri gömülü terminalde çalışır; parolayı doğrudan orada yazarsınız. SSH anahtar parolaları ve gizli anahtarlar arayüzde girilmez (ssh-agent)."
           <li>
             "Sayfa"
             <span class="mono">

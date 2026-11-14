@@ -130,7 +130,8 @@ async function boot(opts = {}) {
   win.clearTimeout = win.clearInterval = i => { if (zeroTimers.delete(i)) { zero--; return; } timers.clear(i); };
   const route = makeRouter(opts.overrides || {}, calls);
   win.fetch = async (u, o) => { inflight++; try { return await route(u, o); } catch (e) { errors.push(String(e.message)); return { ok: false, status: 500, json: async () => ({}), text: async () => String(e.message) }; } finally { inflight--; } };
-  win.EventSource = class { constructor(u) { (win.__es = win.__es || []).push(String(u)); } addEventListener() {} close() {} }; // açılan akış adresleri win.__es'te
+  // açılan akış adresleri win.__es'te; örnekler win.__esObj'te (testler emit(tür, veri) ile sunucu olayı gönderebilir)
+  win.EventSource = class { constructor(u) { (win.__es = win.__es || []).push(String(u)); this.h = {}; (win.__esObj = win.__esObj || []).push(this); } addEventListener(t, f) { (this.h[t] = this.h[t] || []).push(f); } close() {} emit(t, data) { (this.h[t] || []).forEach(f => f({ data })); } };
   win.ResizeObserver = class { observe() {} disconnect() {} unobserve() {} };
   win.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} });
   win.CSS = { supports: () => false };
