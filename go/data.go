@@ -92,6 +92,9 @@ type App struct {
 	stateDir   string // ~/.local/share/sshpocket
 	token      string
 	host       string
+	bootTok    string     // tarayıcı açılış adresindeki TEK KULLANIMLIK jeton (?b=); gerçek jeton komut satırına yazılmaz (bkz. browser.go)
+	bootMu     sync.Mutex // bootTok'un bir kez kullanılması
+	bootUsed   bool
 	mu         sync.Mutex
 	jmu        sync.Mutex // eylem işleri
 	vmu        sync.Mutex // değişken dosyası yazımı

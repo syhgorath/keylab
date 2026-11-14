@@ -70,6 +70,14 @@ func (a *App) root(static http.Handler) http.Handler {
 			http.Error(w, "yasak", http.StatusForbidden)
 			return
 		}
+		// tek kullanımlık açılış jetonu (?b=): tarayıcı başlatıcısı bunu kullanır; geçerliyse çerez verir ve jeton yanar
+		if b := r.URL.Query().Get("b"); b != "" {
+			if a.useBootToken(b) {
+				http.SetCookie(w, &http.Cookie{Name: cookieName, Value: a.token, Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode})
+			}
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
+		}
 		if t := r.URL.Query().Get("t"); t != "" {
 			if subtle.ConstantTimeCompare([]byte(t), []byte(a.token)) == 1 {
 				http.SetCookie(w, &http.Cookie{Name: cookieName, Value: a.token, Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode})
@@ -84,6 +92,17 @@ func (a *App) root(static http.Handler) http.Handler {
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		static.ServeHTTP(w, r)
 	})
+}
+
+// useBootToken: açılış jetonu doğruysa VE daha önce kullanılmadıysa true (bir kez); sonraki her deneme false.
+func (a *App) useBootToken(b string) bool {
+	a.bootMu.Lock()
+	defer a.bootMu.Unlock()
+	if a.bootUsed || a.bootTok == "" || subtle.ConstantTimeCompare([]byte(b), []byte(a.bootTok)) != 1 {
+		return false
+	}
+	a.bootUsed = true
+	return true
 }
 
 func (a *App) findServer(name string) (Server, bool) {
@@ -151,7 +170,13 @@ func main() {
 	comps := flag.String("components", "", "components klasörü (varsayılan: sunucular klasörünün yanında)")
 	state := flag.String("state", "", "durum/günlük klasörü (varsayılan: ~/.local/share/keylab; eski sshpocket klasörü varsa o)")
 	noOpen := flag.Bool("no-open", false, "tarayıcıyı açma")
+	browserMode := flag.String("browser", "auto", "tarayıcı: auto = Chrome/Edge/Brave/Chromium varsa KeyLab'a ait ayrı, eklentisiz profille uygulama penceresinde (yoksa sistem tarayıcısı); default = her zaman sistem tarayıcısı")
 	flag.Parse()
+	bm, okMode := normalizeBrowserMode(*browserMode)
+	if !okMode {
+		fmt.Fprintln(os.Stderr, "-browser auto ya da default olmalı")
+		os.Exit(2)
+	}
 	sd := *servers
 	if sd == "" {
 		for _, c := range []string{envx.Get("SERVERS"), "/Volumes/test/servers", "../servers"} {
@@ -183,7 +208,9 @@ func main() {
 	}
 	tb := make([]byte, 24)
 	_, _ = rand.Read(tb)
-	app := &App{serversDir: sd, compDir: cd, stateDir: st, token: hex.EncodeToString(tb), host: ln.Addr().String(), up: map[string]bool{}, conn: map[string]string{}, jobs: map[string]*Job{}}
+	bb := make([]byte, 24)
+	_, _ = rand.Read(bb)
+	app := &App{serversDir: sd, compDir: cd, stateDir: st, token: hex.EncodeToString(tb), bootTok: hex.EncodeToString(bb), host: ln.Addr().String(), up: map[string]bool{}, conn: map[string]string{}, jobs: map[string]*Job{}}
 	app.loadUISettings()
 
 	sub, _ := fs.Sub(webFS, "web")
@@ -710,7 +737,13 @@ func main() {
 	fmt.Println("sshpocket (Go deneme):", url)
 	fmt.Println("sunucular:", sd, "| components:", cd, "| durum:", st, "| durdurmak için Ctrl-C")
 	if !*noOpen && runtime.GOOS == "darwin" {
-		_ = exec.Command("open", url).Start()
+		// komut satırına GERÇEK jeton değil, tek kullanımlık açılış jetonu yazılır (ps ile görünür); yazdırılan adres elle açmak içindir
+		bootURL := fmt.Sprintf("http://%s/?b=%s", app.host, app.bootTok)
+		if launchBrowser(bootURL, st, bm) {
+			fmt.Println("tarayıcı: KeyLab'a ait ayrı profil, eklentiler kapalı (uygulama penceresi); profil:", filepath.Join(st, "browser-profile"))
+		} else if bm == "auto" {
+			fmt.Println("not: Chrome/Edge/Brave/Chromium bulunamadı; sistem tarayıcısı açıldı (eklentileriniz etkin olabilir). Ayrı profil için bunlardan birini kurun.")
+		}
 	}
 	go app.reapTerms() // boşta/bitmiş terminal oturumlarını temizler
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second}
