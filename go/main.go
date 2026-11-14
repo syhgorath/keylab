@@ -229,6 +229,7 @@ func main() {
 	mux.HandleFunc("/api/term/resize", app.guard(app.termResizeHandler))
 	mux.HandleFunc("/api/term/close", app.guard(app.termCloseHandler))
 	mux.HandleFunc("/api/term/list", app.guard(app.termListHandler))
+	mux.HandleFunc("/api/quit", app.guard(app.quitHandler))
 	mux.HandleFunc("/api/status", app.guard(func(w http.ResponseWriter, r *http.Request) {
 		detail := r.URL.Query().Get("detail") == "1" // ayrıntı: {ad: {up, conn}}; varsayılan eski biçim {ad: up}
 		res := map[string]bool{}
@@ -639,7 +640,7 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"version": ver, "root": root, "serversDir": app.serversDir, "componentsDir": app.compDir, "stateDir": app.stateDir,
-			"conf": conf, "platform": runtime.GOOS + "/" + runtime.GOARCH, "go": runtime.Version(), "askpass": askpassAvailable()})
+			"conf": conf, "platform": runtime.GOOS + "/" + runtime.GOARCH, "go": runtime.Version(), "askpass": askpassAvailable(), "usb": usbName(usbRoot(app.serversDir))})
 	}))
 	mux.HandleFunc("/api/profiles", app.guard(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

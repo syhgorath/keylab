@@ -72,7 +72,7 @@ servers/<ad>/      server.env + id_ed25519_<ad>   (kullanıcı verisi, repoya gi
 - **Paketler:** imzalı, kilitli (`components.lock`). Her eylem önizleme, önkoşul ve onay kapılarından geçer; sudo parolası Ansible'ın kendi isteminden alınır; günlükler `0600` ve parola maskelenerek arşivlenir. Ayrıntı: [docs/paketler.md](docs/paketler.md) · hardening: [docs/hardening-kullanim.md](docs/hardening-kullanim.md).
 - **Güncelleme:** `./sshpocket update` (aşağıya bakın) ve paketler için `components update | upgrade`.
 - **Rapor:** `components report` paket sürümü değişince "ne değişti, hangi sunucum etkileniyor" gösterir.
-- **USB çıkarma:** `./sshpocket eject` (USB'deki anahtarları ajandan silip çıkarır).
+- **USB çıkarma:** `./sshpocket eject` (USB'deki anahtarları ajandan silip çıkarır). Arayüzde üst çubuktaki **Çıkış** düğmesi aynı işi yapar ve uygulamayı kapatır.
 - **Test edilenler:** [docs/test-edilen-ortamlar.md](docs/test-edilen-ortamlar.md) — neyin denenip **neyin denenmediği** orada.
 
 - **`~/.ssh/config` içe aktarma:** `./sshpocket servers import-ssh-config [dosya]` (private key kopyalanmaz; `IdentityFile` yolu `KEY` olarak yazılır).
