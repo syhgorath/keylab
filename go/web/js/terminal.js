@@ -237,6 +237,14 @@
     renderBars();
   }
 
+  // kırmızı düğme (pencereyi kapat): bu sunucunun TÜM terminalleri sonlanır; başka sunucuların oturumlarına dokunulmaz
+  function closeServerWindow(server) {
+    for (const s of sessions.filter(x => x.server === server)) disposeSession(s, true);
+    sessions = sessions.filter(x => x.server !== server);
+    active = null; modal().classList.remove("open"); setNote("");
+    renderBars();
+  }
+
   async function open(server) {
     if (typeof Terminal === "undefined" || typeof FitAddon === "undefined") { alert(tr("term_lib_missing", "xterm.js yüklenemedi.")); return; }
     if (sessions.length >= MAX) {
@@ -274,6 +282,7 @@
   document.addEventListener("click", e => {
     if (e.target.closest("[data-term-min]")) minimize();
     else if (e.target.closest("[data-term-max]")) toggleMax();
+    else if (e.target.closest("[data-term-close-all]") && active) closeServerWindow(active.server);
     else if (e.target.closest("[data-term-close]") && active) closeSession(active);
   });
   window.addEventListener("keylab:langchange", () => renderBars());
