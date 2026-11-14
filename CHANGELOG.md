@@ -43,6 +43,7 @@ Bu çalışma sshpocket'i **kabuktan Go'ya** taşır (taslak; sürüm numarasın
 - GitHub `git archive` arşivlerinin başındaki `pax_global_header` Go'da yanlışlıkla reddediliyordu (Go tarafında düzeltildi).
 
 ### Eklendi
+- **Görünüm: Cam + Aurora** (Ayarlar > Görünüm > Yüzeyler; varsayılan "Düz" değişmedi): kenar çubuğu, üst çubuk, kartlar, pencereler ve bağlam menüsü yarı saydam + bulanık, zeminde vurgu rengine bağlı hafif renk geçişleri. Yalnız `<html data-look="glass">` özniteliği değişir (`js/look.js`, tercih `keylab.look`); tüm stil `tasarim.css` sonunda tek blokta. Opak yedekler: bulanıklık desteği yoksa, `prefers-reduced-transparency` ve `forced-colors`; kart yüzeyi en az %72 opak (terminal/günlük okunurluğu). Testler `go/webtest/look.test.js` (6); görsel açık/koyu temada gerçek tarayıcıda ekran görüntüsüyle denetlendi. Sayfa görüntüleri yalnız yeni ayar satırı kadar güncellendi.
 - `servers import-ssh-config | knock | keychain | list` ve `settings` komutları (kabuk akışlarıyla aynı istem metinleri); arayüzde sunucu adımlarına "Keychain parolası" ve "Port knocking"; "Terminal'de aç" bağlanmadan önce knock gönderir; durum yoklaması `sshpocket.conf` (`STATUS`, `STATUS_TIMEOUT`) ayarlarına uyar.
 - Go yürütücüsü: kapılar (önizleme gereği, önkoşul TTL, host key, ajan), onay akışı, günlük arşivi (`logs/<zaman>-<eylem>.log`, 0600, parola maskeli), sonuç kayıtları; yanlış sudo parolası ve Ctrl-C'de temiz çıkış.
 - Arayüz bulguları artık doğrulamalı okuyucudan gelir (`component_findings.py` ile aynı kurallar; sunucudan gelen veri güvenilmez).
