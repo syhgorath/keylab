@@ -160,6 +160,8 @@ func defaultStateDir() string {
 }
 
 func main() {
+	// Dock/Finder'dan açılınca PATH çıplaktır (Homebrew yok): bilinen araç klasörlerini ekle; alt süreçler (terminal, eylemler, Ansible) devralır
+	platform.EnsureToolPath()
 	// ssh-add bizi SSH_ASKPASS olarak çağırdıysa: Keychain parolasını yaz ve çık (bkz. runner.AskpassMain)
 	if handled, code := runner.AskpassMain(os.Stdout); handled {
 		os.Exit(code)
