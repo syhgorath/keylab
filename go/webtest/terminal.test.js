@@ -16,7 +16,7 @@ async function opened(o) { const h = await boot({ hash: "#s=web1", overrides: ap
 test("terminal penceresi: pencere düğmeleri (kapat/küçült/tam ekran) erişilebilir adlarla; başlık '>_ SSH'", async () => {
   const h = await boot({ hash: "", overrides: api() });
   assert.deepEqual([...h.$$("#term-window .pty-dots button")].map(b => b.className), ["d-r", "d-y", "d-g"]);
-  assert.match(h.$(".pty-dots .d-r").getAttribute("aria-label"), /Oturumu kapat/); assert.match(h.$(".pty-dots .d-y").getAttribute("aria-label"), /küçült/); assert.match(h.$(".pty-dots .d-g").getAttribute("aria-label"), /Tam ekran/);
+  assert.match(h.$(".pty-dots .d-r").getAttribute("aria-label"), /Pencereyi kapat/); assert.match(h.$(".pty-dots .d-y").getAttribute("aria-label"), /küçült/); assert.match(h.$(".pty-dots .d-g").getAttribute("aria-label"), /Tam ekran/);
   assert.equal(h.$(".pty-dots .d-g").getAttribute("aria-pressed"), "false"); assert.equal(h.$("#term-title").textContent.trim(), ">_ SSH"); assert.equal(h.$("#term-state").textContent, ""); h.close();
 });
 
@@ -62,5 +62,5 @@ test("terminal penceresi: iki oturum — durum etkin oturumu izler; ilk oturumu 
   let n = 0; const h = await boot({ hash: "#s=web1", overrides: api({ "/api/term/open": () => ({ id: "t" + (++n) }) }) });
   await h.click("#srv-iterm"); await h.click("#srv-iterm");
   assert.equal(h.$$("#term-tabs .term-chip").length, 2); assert.equal(h.$("#term-title").textContent, ">_ web1 #2"); assert.equal(state(h).text, "bağlı");
-  await h.click(".pty-dots .d-r"); assert.deepEqual(posts(h, "/api/term/close"), [{ id: "t2" }]); assert.ok(isOpen(h)); assert.equal(h.$("#term-title").textContent, ">_ web1"); assert.equal(h.$$("#term-tabs .term-chip").length, 1); h.close();
+  await h.click(".modal-foot [data-term-close]"); assert.deepEqual(posts(h, "/api/term/close"), [{ id: "t2" }]); assert.ok(isOpen(h)); assert.equal(h.$("#term-title").textContent, ">_ web1"); assert.equal(h.$$("#term-tabs .term-chip").length, 1); h.close();
 });

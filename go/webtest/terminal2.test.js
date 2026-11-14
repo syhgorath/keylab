@@ -48,8 +48,8 @@ test("sunucu penceresi: '+' bu sunucuda yeni terminal açar (başka sunucuda de�
 test("sunucu penceresi: sunucunun son terminali kapanınca pencere kapanır (başka sunucuya atlamaz); ilk kapanınca aynı sunucunun diğerine geçer", async () => {
   const h = await boot({ hash: "", overrides: mk() });
   await open(h, "web1"); await open(h, "web1"); await open(h, "db1");
-  await h.click(".pty-dots .d-r"); assert.deepEqual(posts(h, "/api/term/close"), [{ id: "t3" }]); assert.ok(!isOpen(h), "db1'in son terminali kapanınca pencere kapanır"); assert.deepEqual(dock(h), [">_ web1 #1", ">_ web1 #2"]);
-  await h.click(dockChip(h, "web1 #2")); await h.click(".pty-dots .d-r"); assert.deepEqual(posts(h, "/api/term/close").map(b => b.id), ["t3", "t2"]);
+  await h.click(".modal-foot [data-term-close]"); assert.deepEqual(posts(h, "/api/term/close"), [{ id: "t3" }]); assert.ok(!isOpen(h), "db1'in son terminali kapanınca pencere kapanır"); assert.deepEqual(dock(h), [">_ web1 #1", ">_ web1 #2"]);
+  await h.click(dockChip(h, "web1 #2")); await h.click(".modal-foot [data-term-close]"); assert.deepEqual(posts(h, "/api/term/close").map(b => b.id), ["t3", "t2"]);
   assert.ok(isOpen(h)); assert.equal(h.$("#term-title").textContent, ">_ web1"); assert.deepEqual(tabs(h), [">_ web1"]); h.close();
 });
 
@@ -64,4 +64,19 @@ test("sunucu penceresi: sunucu sayfasındaki 'Gömülü terminal' her tıklamada
   const h = await boot({ hash: "#s=web1", overrides: mk() });
   await h.click("#srv-iterm"); await h.click("#srv-iterm");
   assert.deepEqual(posts(h, "/api/term/open").map(b => b.server), ["web1", "web1"]); assert.deepEqual(tabs(h), [">_ web1 #1", ">_ web1 #2"]); h.close();
+});
+
+test("kırmızı düğme (pencereyi kapat): bu sunucunun TÜM terminallerini sonlandırır, başka sunucunun oturumlarına dokunmaz", async () => {
+  const h = await boot({ hash: "", overrides: mk() });
+  await open(h, "web1"); await open(h, "web1"); await open(h, "db1"); await h.click(dockChip(h, "web1 #1"));
+  await h.click(".pty-dots .d-r");
+  assert.deepEqual(posts(h, "/api/term/close").map(b => b.id).sort(), ["t1", "t2"], "web1'in iki terminali kapanır"); assert.ok(!isOpen(h)); assert.deepEqual(dock(h), [">_ db1"], "db1 oturumu yaşar");
+  assert.equal(h.$("#term-state").textContent, ""); await h.click(dockChip(h, "db1")); assert.deepEqual(tabs(h), [">_ db1"]); assert.deepEqual(h.errors, []); h.close();
+});
+
+test("terminal: alt çubuktaki 'Oturumu kapat' ve sekme çipinin ✕ düğmesi yalnız tek oturumu kapatır", async () => {
+  const h = await boot({ hash: "", overrides: mk() });
+  await open(h, "web1"); await open(h, "web1");
+  await h.click(".modal-foot [data-term-close]"); assert.deepEqual(posts(h, "/api/term/close").map(b => b.id), ["t2"]); assert.deepEqual(tabs(h), [">_ web1"]);
+  await open(h, "web1"); await h.click("#term-tabs .term-chip:not(.active) .term-chip-x"); assert.equal(posts(h, "/api/term/close").length, 2); assert.equal(tabs(h).length, 1); h.close();
 });

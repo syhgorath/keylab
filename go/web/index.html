@@ -532,7 +532,7 @@
   <div class="modal term-modal" id="term-window">
     <div class="term-window-head">
       <div class="pty-dots" role="group" aria-label="Pencere düğmeleri">
-        <button class="d-r" data-term-close type="button" title="Oturumu kapat (ssh sonlanır)" aria-label="Oturumu kapat"></button>
+        <button class="d-r" data-term-close-all type="button" title="Pencereyi kapat: bu sunucunun tüm terminalleri (ssh) sonlanır" aria-label="Pencereyi kapat (bu sunucunun tüm terminalleri sonlanır)"></button>
         <button class="d-y" data-term-min type="button" title="Küçült (oturum açık kalır)" aria-label="Pencereyi küçült (oturum açık kalır)"></button>
         <button class="d-g" data-term-max type="button" title="Tam ekran / eski boyut" aria-label="Tam ekran" aria-pressed="false"></button>
       </div>
@@ -552,7 +552,7 @@
     </div>
     <div class="term-host" id="term-host"></div>
     <div class="term-quick" id="term-quick" role="group" aria-label="Hızlı komutlar (salt okunur; tıklayınca hemen çalışır)"></div>
-    <div class="modal-foot"><span class="small muted" data-i18n="term_foot">Küçültmek oturumu kapatmaz; "Oturumu kapat" ssh'ı sonlandırır. Terminal açma/kapama durum klasöründe terminal-audit.log dosyasına yazılır.</span><div class="spacer"></div><button class="btn" data-term-close data-i18n="term_end">Oturumu kapat</button></div>
+    <div class="modal-foot"><span class="small muted" data-i18n="term_foot">Küçültmek (sarı) oturumu kapatmaz; kırmızı düğme bu sunucunun tüm terminallerini, "Oturumu kapat" yalnız etkin olanı sonlandırır. Terminal açma/kapama durum klasöründe terminal-audit.log dosyasına yazılır.</span><div class="spacer"></div><button class="btn" data-term-close data-i18n="term_end">Oturumu kapat</button></div>
   </div>
 </div>
 

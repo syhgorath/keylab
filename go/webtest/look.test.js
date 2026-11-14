@@ -12,22 +12,23 @@ const base = { "/api/home": mixedHome };
 const attr = h => h.doc.documentElement.getAttribute("data-look");
 const pressed = h => h.$$("#set-look button").filter(b => b.getAttribute("aria-pressed") === "true").map(b => b.dataset.v);
 
-test("görünüm: varsayılan düz (öznitelik yok); Cam + Aurora seçilince öznitelik, saklama ve işaret; düze dönünce kalkar", async () => {
+test("görünüm: varsayılan Cam + Aurora (kayıt yokken öznitelik var); Düz seçilince öznitelik kalkar ve saklanır; geri dönülebilir", async () => {
   const h = await boot({ hash: "#v=settings", overrides: base });
-  assert.equal(attr(h), null); assert.deepEqual(pressed(h), ["flat"]); assert.equal(h.win.localStorage.getItem("keylab.look"), null);
-  await h.click('#set-look button[data-v="glass"]'); assert.equal(attr(h), "glass"); assert.deepEqual(pressed(h), ["glass"]); assert.equal(h.win.localStorage.getItem("keylab.look"), "glass");
+  assert.equal(attr(h), "glass"); assert.deepEqual(pressed(h), ["glass"]); assert.equal(h.win.localStorage.getItem("keylab.look"), null, "varsayılan saklanmaz");
   await h.click('#set-look button[data-v="flat"]'); assert.equal(attr(h), null); assert.deepEqual(pressed(h), ["flat"]); assert.equal(h.win.localStorage.getItem("keylab.look"), "flat");
+  await h.click('#set-look button[data-v="glass"]'); assert.equal(attr(h), "glass"); assert.deepEqual(pressed(h), ["glass"]); assert.equal(h.win.localStorage.getItem("keylab.look"), "glass");
   assert.deepEqual(h.errors, []); h.close();
 });
 
-test("görünüm: kayıtlı tercih açılışta uygulanır; geçersiz değer yok sayılır", async () => {
-  let h = await boot({ hash: "#v=settings", overrides: base, storage: { "keylab.look": "glass" } }); assert.equal(attr(h), "glass"); assert.deepEqual(pressed(h), ["glass"]); h.close();
-  h = await boot({ hash: "#v=settings", overrides: base, storage: { "keylab.look": "neon" } }); assert.equal(attr(h), null); assert.deepEqual(pressed(h), ["flat"]); h.close();
+test("görünüm: kayıtlı 'Düz' tercihi açılışta uygulanır (varsayılana ezilmez); geçersiz değer varsayılana (cam) düşer", async () => {
+  let h = await boot({ hash: "#v=settings", overrides: base, storage: { "keylab.look": "flat" } }); assert.equal(attr(h), null); assert.deepEqual(pressed(h), ["flat"]); h.close();
+  h = await boot({ hash: "#v=settings", overrides: base, storage: { "keylab.look": "glass" } }); assert.equal(attr(h), "glass"); h.close();
+  h = await boot({ hash: "#v=settings", overrides: base, storage: { "keylab.look": "neon" } }); assert.equal(attr(h), "glass"); assert.deepEqual(pressed(h), ["glass"]); h.close();
 });
 
 test("görünüm: tema ve vurgu rengiyle bağımsız çalışır (öznitelikler birbirini ezmez)", async () => {
   const h = await boot({ hash: "#v=settings", overrides: base });
-  await h.click('#set-look button[data-v="glass"]'); await h.click('#set-theme button[data-v="dark"]');
+  assert.equal(attr(h), "glass"); await h.click('#set-theme button[data-v="dark"]');
   assert.equal(attr(h), "glass"); assert.equal(h.doc.documentElement.getAttribute("data-theme"), "dark"); await h.click('#set-theme button[data-v="auto"]'); assert.equal(attr(h), "glass"); h.close();
 });
 
