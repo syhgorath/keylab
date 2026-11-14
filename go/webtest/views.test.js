@@ -24,7 +24,7 @@ async function page(t, name, { hash = "", overrides = {}, storage, lang, root = 
 
 test("Pano (karışık durum)", t => page(t, "dash"));
 test("Pano (boş: karşılama kartı)", t => page(t, "dash-empty", { overrides: { "/api/home": () => ({ ...fixture("home"), servers: [] }) } }));
-test("Pano: süzgeç 'kapalı'", t => page(t, "dash-filter-down", { after: h => h.click('#view-dash [data-ff="down"]') }));
+test("Sunucular: süzgeç 'kapalı'", t => page(t, "servers-filter-down", { hash: "#v=servers", after: h => h.click('#view-servers [data-ff="down"]') }));
 test("Sunucular (simgeler)", t => page(t, "servers-tiles", { hash: "#v=servers" }));
 test("Sunucular (liste)", t => page(t, "servers-list", { hash: "#v=servers", storage: { "sshpocket.mode": "list" } }));
 test("Paketler", t => page(t, "packages", { hash: "#v=packages" }));

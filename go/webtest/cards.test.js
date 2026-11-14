@@ -65,7 +65,7 @@ test("sunucular sayfası: Liste kipinde satırlar (kart yok); Pano'nun küçük 
   const h = await boot({ hash: "#v=servers", overrides: { "/api/home": mixedHome }, storage: { "sshpocket.mode": "list" } });
   assert.equal(h.$$("#servers-all .stile-rich").length, 0); assert.equal(h.$$("#servers-all li.server").length, 3); h.close();
   const g = await boot({ hash: "", overrides: { "/api/home": mixedHome } });
-  assert.equal(g.$$("#servers .stile-rich").length, 0, "Pano küçük karoları korur"); assert.ok(g.$("#servers .stile[data-name]")); assert.equal(g.$("#servers .stile-addr"), null); assert.equal(g.$$("#servers-all .stile-rich").length, 3); g.close();
+  assert.equal(g.$$("#servers .stile-rich").length, 0, "Pano küçük karoları korur"); assert.equal(g.$$("#servers .schip[data-name]").length, 3); assert.equal(g.$("#servers .stile-addr"), null); assert.equal(g.$$("#servers-all .stile-rich").length, 3); g.close();
 });
 
 test("sunucular sayfası: arama ve süzgeç kartları süzer; ekle kartı yalnız süzgeçsizken", async () => {

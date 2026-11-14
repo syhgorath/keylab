@@ -46,14 +46,16 @@ test("arama: Sunucular sayfasındaki listeyi de süzer (aynı sorgu)", async () 
 
 test("görünüm düğmesi: Simgeler/Liste geçişi listeyi yeniden çizer ve tercihi saklar; Ayarlar'daki düğme de aynı durumu değiştirir", async () => {
   const h = await boot({ overrides: ov() });
-  assert.ok(h.$("#servers").classList.contains("tiles")); assert.ok(h.$("#servers .stile"));
+  await h.click('[data-nav="servers"]');
+  assert.ok(h.$("#servers-all").classList.contains("tiles")); assert.ok(h.$("#servers-all .stile"));
   await h.click('.mode-toggle button[data-mode="list"]');
-  assert.ok(!h.$("#servers").classList.contains("tiles")); assert.equal(h.$$("#servers li.server").length, 3); assert.equal(h.$$("#servers .stile").length, 0);
+  assert.ok(!h.$("#servers-all").classList.contains("tiles")); assert.equal(h.$$("#servers-all li.server").length, 3); assert.equal(h.$$("#servers-all .stile").length, 0);
   assert.equal(h.win.localStorage.getItem("sshpocket.mode"), "list");
   assert.equal(h.$('.mode-toggle button[data-mode="list"]').getAttribute("aria-pressed"), "true");
-  await h.click('.mode-toggle button[data-mode="tiles"]'); assert.ok(h.$("#servers").classList.contains("tiles")); assert.equal(h.win.localStorage.getItem("sshpocket.mode"), "tiles");
+  assert.equal(h.$$("#servers .schip").length, 3, "Pano görünüm kipinden etkilenmez (her zaman çipler)");
+  await h.click('.mode-toggle button[data-mode="tiles"]'); assert.ok(h.$("#servers-all").classList.contains("tiles")); assert.equal(h.win.localStorage.getItem("sshpocket.mode"), "tiles");
   await h.click('[data-nav="settings"]'); await h.click('#set-mode button[data-v="list"]');
-  await h.click('[data-nav="dash"]'); assert.ok(!h.$("#servers").classList.contains("tiles"), "Ayarlar'dan seçilen görünüm Pano'ya yansır");
+  await h.click('[data-nav="servers"]'); assert.ok(!h.$("#servers-all").classList.contains("tiles"), "Ayarlar'dan seçilen görünüm Sunucular sayfasına yansır");
   assert.deepEqual(h.errors, []); h.close();
 });
 
