@@ -69,7 +69,7 @@ window.KeyLabPhrasesEN = {
     "Kullanıcı": "User", "Kur": "Install", "Kurulu paket": "Installed package", "Kurulum": "Setup",
     "Kurulum merkezi: Docker, nginx, MariaDB, Redis": "Setup center: Docker, nginx, MariaDB, Redis",
     "Kurulum merkezi: Docker, nginx, MariaDB, Redis ayrıntıları": "Setup center: Docker, nginx, MariaDB, Redis details",
-    "Kök klasör (USB)": "Root folder (USB)", "Kısayollar": "Shortcuts", "Konum": "Location", "Liste": "List", "Simgeler": "Tiles",
+    "Kök klasör": "Root folder", "Kısayollar": "Shortcuts", "Konum": "Location", "Liste": "List", "Simgeler": "Tiles",
     "Linux sertleştirme": "Linux hardening", "Linux sertleştirme ayrıntıları": "Linux hardening details", "Lynis denetimi": "Lynis audit",
     "Lynis skorunu göster": "Show Lynis score", "Menü ve pencereyi kapat": "Close menu and dialog", "Ortalama Lynis": "Average Lynis",
     "Otomatik": "Auto", "Paket ara": "Search packages", "Paket ara…": "Search packages…", "Paket eylemi": "Package action",

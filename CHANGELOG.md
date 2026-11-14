@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Düzeltildi
+- **Ayarlar'da "KeyLab sürümü" boş (—) görünüyordu** (kurulu modda kök klasörde `VERSION` dosyası yoktur): sürüm artık ikilinin gömülü sürümünden gelir. "Kök klasör (USB)" etiketi "Kök klasör" oldu (kurulu modda USB değildir).
+- README: taşınabilir kullanımda "bilgisayara bir şey yazılmaz" yanlıştı; durum/günlükler, Python önbelleği ve Keychain bilgisayarda kalır, düzeltildi.
+
 ## [4.0.0] - 2026-11-14
 
 Bu sürüm sshpocket'i **kabuktan Go'ya** taşır: ana ürün artık tek, imzalı bir ikilidir ve yerel web arayüzü içinde gömülüdür. Kabuk (bash) motoru `referans/kabuk/` altında dondurulmuş referans olarak durur. Etiket, imza ve Release'i bakımcı oluşturur.

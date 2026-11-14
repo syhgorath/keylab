@@ -600,7 +600,7 @@
             "0.0.0-test"
         <div class="urow sj-8657c7">
           <div class="muted">
-            "Kök klasör (USB)"
+            "Kök klasör"
           <div class="mono small sj-752397">
             "/fixture/path"
         <div class="urow sj-8657c7">

@@ -624,20 +624,8 @@ func main() {
 		_, _ = w.Write([]byte(`{"ok":true}`))
 	}))
 	mux.HandleFunc("/api/about", app.guard(func(w http.ResponseWriter, r *http.Request) {
-		root := filepath.Dir(filepath.Clean(app.compDir))
-		ver := ""
-		if b, err := os.ReadFile(filepath.Join(root, "VERSION")); err == nil && len(b) < 32 {
-			ver = strings.TrimSpace(string(b))
-		}
-		conf := map[string]string{}
-		for k, v := range parseEnv(filepath.Join(root, "sshpocket.conf")) {
-			if len(k) <= 40 && len(v) <= 80 {
-				conf[k] = v
-			}
-		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"version": ver, "root": root, "serversDir": app.serversDir, "componentsDir": app.compDir, "stateDir": app.stateDir,
-			"conf": conf, "platform": runtime.GOOS + "/" + runtime.GOARCH, "go": runtime.Version(), "askpass": askpassAvailable(), "usb": usbName(usbRoot(app.serversDir))})
+		_ = json.NewEncoder(w).Encode(app.aboutInfo())
 	}))
 	mux.HandleFunc("/api/profiles", app.guard(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

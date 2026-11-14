@@ -40,7 +40,7 @@ export function initSettings(hooks) {
     let a;
     try { a = await json("/api/about"); appState.askAvail = !!a.askpass; paintAsk(); } catch (e) { $("#set-paths").innerHTML = `<div class="notice danger"><span class="ico" aria-hidden="true">✕</span><div>Yüklenemedi: ${esc(e.message)}</div></div>`; return; }
     const row = (k, v) => `<div class="urow sj-8657c7"><div class="muted">${esc(k)}</div><div class="mono small sj-752397">${esc(v) || "—"}</div></div>`;
-    $("#set-paths").innerHTML = [["KeyLab sürümü", a.version], ["Kök klasör (USB)", a.root], ["Sunucular", a.serversDir], ["Paketler", a.componentsDir], ["Durum ve günlükler", a.stateDir], ["Platform", a.platform], ["Go", a.go]].map(([k, v]) => row(k, v)).join("");
+    $("#set-paths").innerHTML = [["KeyLab sürümü", a.version], ["Kök klasör", a.root], ["Sunucular", a.serversDir], ["Paketler", a.componentsDir], ["Durum ve günlükler", a.stateDir], ["Platform", a.platform], ["Go", a.go]].map(([k, v]) => row(k, v)).join("");
     const conf = Object.entries(a.conf || {});
     $("#set-conf").innerHTML = conf.length ? conf.map(([k, v]) => row(k, v)).join("") : '<div class="small muted sj-fdf20b">sshpocket.conf bulunamadı ya da boş.</div>';
   }
