@@ -48,8 +48,8 @@ test("sunucu penceresi: '+' bu sunucuda yeni terminal açar (başka sunucuda de�
 test("sunucu penceresi: sunucunun son terminali kapanınca pencere kapanır (başka sunucuya atlamaz); ilk kapanınca aynı sunucunun diğerine geçer", async () => {
   const h = await boot({ hash: "", overrides: mk() });
   await open(h, "web1"); await open(h, "web1"); await open(h, "db1");
-  await h.click(".modal-foot [data-term-close]"); assert.deepEqual(posts(h, "/api/term/close"), [{ id: "t3" }]); assert.ok(!isOpen(h), "db1'in son terminali kapanınca pencere kapanır"); assert.deepEqual(dock(h), [">_ web1 #1", ">_ web1 #2"]);
-  await h.click(dockChip(h, "web1 #2")); await h.click(".modal-foot [data-term-close]"); assert.deepEqual(posts(h, "/api/term/close").map(b => b.id), ["t3", "t2"]);
+  await h.click("#term-tabs .term-chip.active .term-chip-x"); assert.deepEqual(posts(h, "/api/term/close"), [{ id: "t3" }]); assert.ok(!isOpen(h), "db1'in son terminali kapanınca pencere kapanır"); assert.deepEqual(dock(h), [">_ web1 #1", ">_ web1 #2"]);
+  await h.click(dockChip(h, "web1 #2")); await h.click("#term-tabs .term-chip.active .term-chip-x"); assert.deepEqual(posts(h, "/api/term/close").map(b => b.id), ["t3", "t2"]);
   assert.ok(isOpen(h)); assert.equal(h.$("#term-title").textContent, ">_ web1"); assert.deepEqual(tabs(h), [">_ web1"]); h.close();
 });
 
@@ -74,10 +74,10 @@ test("kırmızı düğme (pencereyi kapat): bu sunucunun TÜM terminallerini son
   assert.equal(h.$("#term-state").textContent, ""); await h.click(dockChip(h, "db1")); assert.deepEqual(tabs(h), [">_ db1"]); assert.deepEqual(h.errors, []); h.close();
 });
 
-test("terminal: alt çubuktaki 'Oturumu kapat' ve sekme çipinin ✕ düğmesi yalnız tek oturumu kapatır", async () => {
+test("terminal: sekme çipinin ✕ düğmesi (etkin ya da değil) yalnız tek oturumu kapatır", async () => {
   const h = await boot({ hash: "", overrides: mk() });
   await open(h, "web1"); await open(h, "web1");
-  await h.click(".modal-foot [data-term-close]"); assert.deepEqual(posts(h, "/api/term/close").map(b => b.id), ["t2"]); assert.deepEqual(tabs(h), [">_ web1"]);
+  await h.click("#term-tabs .term-chip.active .term-chip-x"); assert.deepEqual(posts(h, "/api/term/close").map(b => b.id), ["t2"]); assert.deepEqual(tabs(h), [">_ web1"]);
   await open(h, "web1"); await h.click("#term-tabs .term-chip:not(.active) .term-chip-x"); assert.equal(posts(h, "/api/term/close").length, 2); assert.equal(tabs(h).length, 1); h.close();
 });
 

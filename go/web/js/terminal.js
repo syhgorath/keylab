@@ -294,7 +294,6 @@
     if (e.target.closest("[data-term-min]")) minimize();
     else if (e.target.closest("[data-term-max]")) toggleMax();
     else if (e.target.closest("[data-term-close-all]") && active) closeServerWindow(active.server);
-    else if (e.target.closest("[data-term-close]") && active) closeSession(active);
   });
   window.addEventListener("keylab:langchange", () => renderBars());
   initSearchUi();

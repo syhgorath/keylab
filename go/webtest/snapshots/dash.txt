@@ -480,11 +480,11 @@
           <span class="flabel sx-607468">
             "Tema"
           <div aria-label="Tema" class="segmented" id="set-theme" role="group">
-            <button aria-pressed="true" data-v="auto">
+            <button aria-pressed="false" data-v="auto">
               "Otomatik"
             <button aria-pressed="false" data-i18n="theme_light" data-v="light">
               "Açık"
-            <button aria-pressed="false" data-v="dark">
+            <button aria-pressed="true" data-v="dark">
               "Koyu"
         <div class="frow2">
           <span class="flabel sx-607468">
