@@ -6,8 +6,9 @@ package main
 //
 // Çalışan eylem işi varsa 409 döner; arayüz onay isterse force=true ile yeniden gönderir. USB tespiti: sunucular klasörü
 // /Volumes/<ad>/... altındaysa o birim (macOS); değilse çıkarılacak bir şey yok, yalnız uygulama kapanır.
-// Not: ikili USB'den çalışıyorsa diskutil "kullanımda" diyebilir; eject.Run zaten force unmount dener, olmazsa yanıt bunu söyler ve
-// kullanıcı USB'yi uygulama kapandıktan sonra elle çıkarır.
+// Not: ikili çıkarılacak USB'nin KENDİSİNDEN çalışıyorsa (KeyLab.app USB'de) disk sürecin altından çekilmez: çıkarma uygulama kapandıktan
+// sonra ayrı bir yardımcı süreçle yapılır (yanıtta "deferred": true; bkz. internal/eject/defer.go). Eskiden zorla çıkarılan birimdeki süreç ölmek
+// yerine %400+ CPU ile döngüye giriyordu.
 
 import (
 	"bytes"
@@ -82,15 +83,16 @@ func (a *App) quitHandler(w http.ResponseWriter, r *http.Request) {
 	terms := a.killAllTerms()
 	usb := usbRoot(a.serversDir)
 	var log bytes.Buffer
-	ejected := false
+	ejected, deferred := false, false
 	if usb != "" {
+		deferred = ejectDeferred(usb)
 		eject := a.ejectFn
 		if eject == nil {
 			eject = ejectUSB
 		}
 		ejected = eject(&log, usb) == 0
 	}
-	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "terms": terms, "usb": usbName(usb), "ejected": ejected, "log": strings.TrimSpace(log.String())})
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "terms": terms, "usb": usbName(usb), "ejected": ejected && !deferred, "deferred": ejected && deferred, "log": strings.TrimSpace(log.String())})
 	if f, ok := w.(http.Flusher); ok {
 		f.Flush()
 	}
@@ -106,3 +108,7 @@ func (a *App) quitHandler(w http.ResponseWriter, r *http.Request) {
 
 // ejectUSB: gerçek çıkarma (testte App.ejectFn ile değiştirilir).
 func ejectUSB(w io.Writer, usb string) int { return eject.Run(w, usb) }
+
+// ejectDeferred: KeyLab o USB'nin kendisinden mi çalışıyor? Öyleyse çıkarma uygulama kapandıktan sonra yapılır (bkz. internal/eject/defer.go);
+// testte değiştirilir.
+var ejectDeferred = eject.WillDefer

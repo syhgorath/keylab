@@ -5,6 +5,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Düzeltildi
+- **Çıkış, USB'deki uygulamada süreci takılı bırakıyordu**: `KeyLab.app` çıkarılacak USB'nin kendisinden çalışıyorsa disk sürecin altından çekiliyor, süreç ölmek yerine saatlerce %400+ CPU ile dönüyordu (gerçek USB'de görüldü). Artık böyle durumda anahtarlar silinir, uygulama kapanır ve USB'yi **kapandıktan sonra** ayrı bir yardımcı süreç çıkarır (zorla çıkarma yalnız o zaman, disk artık meşgul değilken yedek olarak). Perde "USB uygulama kapandıktan hemen sonra çıkarılacak" der. `keylab eject` komutu da aynı korumayı kullanır. FAT32 disk imajında uçtan uca denendi (süreç bitti, birim çıktı).
+
+### Düzeltildi
 - **Paketler sayfası "Paketleri keşfet" boş geliyordu** (4.0.1): kurulu modda `~/.keylab/servers` klasörü daha önce varsa (ör. 4.0.0'dan ya da elle taşınan sunucularla) gömülü paket kilidi hiç kopyalanmıyordu; indeks doğrulanıyor ama kilit yok/boş olduğu için hiçbir paket listelenmiyordu. Artık hem ilk açılış kurulu modda her zaman kilidi hazırlar hem de indeks/yükseltme denetimi kilit yoksa gömülü kilidi kopyalar; kilit boşsa pencere nedenini ("paket kilidi boş") yazar.
 
 ## [4.0.1] - 2026-11-14
