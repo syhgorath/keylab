@@ -56,6 +56,9 @@ test("ayarlar: yollar ve sshpocket.conf listelenir; boş değer '—'; conf yoks
   const rows = h.$$("#set-paths .urow").map(r => r.textContent.replace(/\s+/g, " ").trim());
   assert.deepEqual(rows, ["KeyLab sürümü0.0.0-test", "Kök klasör/fixture/path", "Sunucular/fixture/srv", "Paketler/fixture/path", "Durum ve günlükler/fixture/state", "Platformtest/test", "Gogo-test"]);
   assert.deepEqual(h.$$("#set-conf .urow").map(r => r.textContent.replace(/\s+/g, " ").trim()), ["STATUSon", "STATUS_TIMEOUT2"]); h.close();
+  // taşınabilir (misafir) mod: Yollar'da "Mod" satırı çıkar; kapalıyken yok
+  h = await boot({ hash: "#v=settings", overrides: base({ "/api/about": () => ({ ...fixture("about"), guest: true }) }) });
+  assert.deepEqual(h.$$("#set-paths .urow").map(r => r.textContent.replace(/\s+/g, " ").trim()).filter(r => r.startsWith("Mod")), ["ModTaşınabilir: özel ssh-agent, Keychain kullanılmıyor"]); h.close();
   h = await boot({ hash: "#v=settings", overrides: base({ "/api/about": () => ({ ...fixture("about"), root: "", conf: {} }) }) });
   assert.match(txt(h, "#set-paths .urow:nth-child(2)"), /Kök klasör—/); assert.match(txt(h, "#set-conf"), /sshpocket\.conf bulunamadı ya da boş\./); h.close();
   h = await boot({ hash: "#v=settings", overrides: base({ "/api/about": () => ({ ...fixture("about"), conf: null }) }) }); assert.match(txt(h, "#set-conf"), /bulunamadı/); h.close();

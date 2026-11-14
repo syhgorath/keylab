@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **Misafir mod (taşınabilir/USB'de otomatik)**: KeyLab kendi özel `ssh-agent`'ını başlatır (soket geçici klasörde, `SSH_AUTH_SOCK` yalnız KeyLab ve alt süreçleri için); anahtarlar yalnız bu ajana eklenir (`ssh-add`, `--apple-use-keychain` yok), passphrase her oturumda sorulur ve kaydedilmez; Keychain hiç kullanılmaz (`platform.NoSecrets`); kapatınca/Çıkış'ta ajan sonlanır. Bu bilgisayarın Keychain'i ve kullanıcının kendi ssh-agent'ı değişmez. Bedeli: port knocking dizisi kaydedilemez (anlaşılır hata). Ayarlar > Yollar'da "Mod" satırı, `doctor`'da ilgili satır. `KEYLAB_GUEST=0` ile kapatılır; özel ajan başlatılamazsa uyarıyla eski davranışa döner. FAT32 disk imajında uçtan uca denendi (terminal ssh'ı özel ajan soketini ve USB'deki known_hosts'u görüyor, kullanıcının ajanı etkilenmedi).
+
 ### Değişti
 - **Taşınabilir (USB) modda bilgisayarda iz azaltıldı**: Python önbelleği (venv) ve ayrı tarayıcı profili artık geçici bir klasörde (`$TMPDIR/keylab-…`, 0700) tutulur ve Çıkış, Ctrl-C/kapatma sinyali ya da normal çıkışta silinir; ssh `known_hosts` USB'deki `state/known_hosts` dosyasına yönlendirilir (gömülü terminal, eylemler, `ssh-copy-id` ve Ansible — paketin `ssh_extra_args` ayarı korunarak `ANSIBLE_SSH_EXTRA_ARGS` ile). `KEYLAB_CACHE_DIR` / `KEYLAB_KNOWN_HOSTS` kullanıcı tarafından verilmişse ezilmez. Taşınabilir olmayan kullanımda değişiklik yok. FAT32 disk imajında çalışma/kapatma/Çıkış temizliği denendi; Ansible ile gerçek bir sunucuda henüz denenmedi (hardening'i bir test VM'inde deneyin).
 

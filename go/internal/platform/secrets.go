@@ -30,7 +30,7 @@ type Secrets interface {
 }
 
 // SecretsSupported: bu işletim sisteminde gizli değer deposu (Keychain) resmen destekleniyor mu? (Şimdilik yalnız macOS; Linux/Windows uygulamaları gelince genişler.)
-func SecretsSupported() bool { return runtime.GOOS == "darwin" }
+func SecretsSupported() bool { return runtime.GOOS == "darwin" && !GuestMode() }
 
 // Default: bu işletim sisteminin gizli değer deposu (KeychainService altında). macOS dışında şimdilik aynı `security` çağrılarını dener ve
 // araç olmadığı için hepsi başarısız olur (bugünkü davranış); Linux/Windows uygulamaları gelince burada seçilecek.
@@ -38,6 +38,9 @@ func Default() Secrets { return For(KeychainService) }
 
 // For: belirli bir servis adı için depo (yalnız SSH_ASKPASS'ın ASKPASS_SERVICE geçersiz kılması içindir).
 func For(service string) Secrets {
+	if GuestMode() {
+		return NoSecrets{} // misafir mod: Keychain kullanılmaz
+	}
 	if service == "" {
 		service = KeychainService
 	}

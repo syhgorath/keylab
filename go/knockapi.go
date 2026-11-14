@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"keylab/internal/cli"
+	"keylab/internal/platform"
 )
 
 // /api/knock: port knocking formu (Özet sekmesi).
@@ -37,6 +38,10 @@ func (a *App) knockHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		switch req.Action {
 		case "save":
+			if platform.GuestMode() {
+				http.Error(w, "Port knocking dizisi taşınabilir modda kaydedilemez: bu bilgisayarın Keychain'i kullanılmıyor", http.StatusConflict)
+				return
+			}
 			err = srv.KnockSave(req.Name, req.Proto, req.Delay, req.Seq)
 		case "disable":
 			err = srv.KnockDisable(req.Name)

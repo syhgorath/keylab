@@ -210,13 +210,22 @@ func main() {
 	if st == "" {
 		st = stateDirFor(sd, selfExe())
 	}
-	var traceCleanup func()
+	var traceCleanup, agentStop func()
 	traceProf := ""
 	if isPortableLayout(sd, selfExe()) { // taşınabilir mod: venv/tarayıcı profili geçici klasörde (çıkışta silinir), known_hosts USB'de
 		var terr error
 		traceProf, traceCleanup, terr = setupPortableTraces(st)
 		if terr != nil {
 			fmt.Fprintln(os.Stderr, "uyarı: geçici klasör oluşturulamadı; önbellek ve tarayıcı profili bu bilgisayarın varsayılan yerlerinde tutulacak:", terr)
+		} else if envx.Get("GUEST") != "0" { // misafir mod: özel ssh-agent, Keychain yok (KEYLAB_GUEST=0 ile kapatılır)
+			if sock, stop, aerr := platform.StartPrivateAgent(traceProf); aerr != nil {
+				fmt.Fprintln(os.Stderr, "uyarı: özel ssh-agent başlatılamadı; misafir mod kapalı (bu bilgisayarın ssh-agent'ı ve Keychain'i kullanılacak):", aerr)
+			} else {
+				os.Setenv("SSH_AUTH_SOCK", sock)
+				platform.SetGuestMode(true)
+				agentStop = stop
+				fmt.Println("taşınabilir mod: özel ssh-agent (anahtarlar yalnız bu oturumda), Keychain kullanılmıyor")
+			}
 		}
 	}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -230,6 +239,7 @@ func main() {
 	_, _ = rand.Read(bb)
 	app := &App{serversDir: sd, compDir: cd, stateDir: st, token: hex.EncodeToString(tb), bootTok: hex.EncodeToString(bb), host: ln.Addr().String(), up: map[string]bool{}, conn: map[string]string{}, jobs: map[string]*Job{}}
 	app.loadUISettings()
+	app.addCleanup(agentStop) // önce özel ajanı kapat, sonra geçici klasörü sil
 	app.addCleanup(traceCleanup)
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)

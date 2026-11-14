@@ -23,7 +23,7 @@ func (a *App) aboutInfo() map[string]any {
 		}
 	}
 	return map[string]any{"version": ver, "root": root, "serversDir": a.serversDir, "componentsDir": a.compDir, "stateDir": a.stateDir,
-		"conf": conf, "platform": runtime.GOOS + "/" + runtime.GOARCH, "go": runtime.Version(), "askpass": a.promptOS().Available(), "usb": usbName(a.volumesOS().MountRoot(a.serversDir))}
+		"conf": conf, "platform": runtime.GOOS + "/" + runtime.GOARCH, "go": runtime.Version(), "askpass": a.promptOS().Available(), "guest": platform.GuestMode(), "usb": usbName(a.volumesOS().MountRoot(a.serversDir))}
 }
 
 // promptOS: sistem parola penceresi (platform katmanı); testte App.prompt ile değiştirilir.
