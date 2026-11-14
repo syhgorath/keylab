@@ -93,6 +93,21 @@ import { appState } from "./js/state.js";
       <div class="stile-last ${!s.valid || (s.last && !isOk(s.last.result)) ? "bad" : ""}">${last}</div></li>`;
   }
 
+  // Sunucular sayfası kartı: Pano'daki küçük karoya göre adres, anahtar durumu, durum rozeti ve hızlı düğmeler de taşır
+  function richTile(s) {
+    const st = dotState(s), ok = st === "on", tone = ok ? "ok" : st === "unk" ? "plain" : st === "off" ? "danger" : "warn";
+    const last = !s.valid ? "⚠ server.env geçersiz (IP, USER, PORT)" : s.last ? `${isOk(s.last.result) ? "✔" : "✖"} ${esc(s.last.package)} · ${esc(s.last.action)} · ${esc(ago(s.last.time))}` : "kayıt yok";
+    const addr = s.valid ? `${s.user}@${s.host}:${s.port}` : "server.env geçersiz";
+    const dis = s.valid ? "" : " disabled";
+    return `<li class="stile stile-rich ${st === "off" ? "is-off" : ""}" tabindex="0" data-name="${esc(s.name)}" data-state="${st}" aria-label="${esc(s.name)}, ${stateText(s)}">
+      <div class="stile-top">${osIcon(s.os, 40)}<div class="stile-ident"><div class="stile-name">${esc(s.name)}</div><div class="stile-os">${esc(OS_LABEL[s.os] || "Linux")}${s.platform ? ` · ${esc(s.platform)}` : ""}</div></div>
+        <span class="stile-pill ${tone}"><span class="status-dot ${st}" aria-hidden="true"></span>${stateText(s)}</span>
+        <button class="btn-icon" data-act="menu" aria-label="Daha fazla eylem"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button></div>
+      <div class="stile-addr"><span class="mono">${esc(addr)}</span>${s.hasKey ? '<span class="badge ok">Anahtar var</span>' : '<span class="badge warn">Anahtar yok</span>'}</div>
+      <div class="stile-last ${!s.valid || (s.last && !isOk(s.last.result)) ? "bad" : ""}">${last}</div>
+      <div class="stile-foot"><button class="btn sm" data-qa="term"${dis}>Terminal</button><button class="btn sm" data-qa="copy"${dis}>Kopya</button><span class="grow"></span><button class="link" data-qa="open">Yönet →</button></div></li>`;
+  }
+
   // Durumlar: on (yeşil) · lock (turuncu, knock gerekir) · closed (turuncu, makine yanıt veriyor ama port kapalı) · off (kırmızı, yanıt yok)
   const dotState = s => (!s.valid ? "bad" : !s.checked ? "unk" : s.up ? "on" : s.knock ? "lock" : s.conn === "refused" ? "closed" : "off");
   const stateText = s => (!s.valid ? t("st_invalid", "yapılandırma geçersiz") : !s.checked ? t("st_checking", "denetleniyor") : s.up ? t("st_up", "çevrimiçi") : s.knock ? t("st_knock", "🔒 kapalı — knock gerekir") : s.conn === "refused" ? t("st_closed", "port kapalı (makine yanıt veriyor)") : t("st_down", "bağlantı yok"));
@@ -221,8 +236,8 @@ import { appState } from "./js/state.js";
     renderFleetFilter();
     const pk = appState.home.packages.filter(p => matches(p.id));
     const addTile = '<li class="stile add" tabindex="0" data-add="1" aria-label="Sunucu ekle"><div class="plus" aria-hidden="true">+</div><div>Sunucu ekle</div></li>';
-    const rows = (sv.map(appState.mode === "tiles" ? tile : serverRow).join("") || emptyServers) + (appState.mode === "tiles" && !appState.query && fleetFilter === "all" ? addTile : "");
-    for (const id of ["#servers", "#servers-all"]) { $(id).innerHTML = rows; $(id).classList.toggle("tiles", appState.mode === "tiles"); }
+    const rowsWith = fn => (sv.map(appState.mode === "tiles" ? fn : serverRow).join("") || emptyServers) + (appState.mode === "tiles" && !appState.query && fleetFilter === "all" ? addTile : "");
+    for (const [id, fn] of [["#servers", tile], ["#servers-all", richTile]]) { $(id).innerHTML = rowsWith(fn); $(id).classList.toggle("tiles", appState.mode === "tiles"); }
     $$(".mode-toggle button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === appState.mode)));
     $("#servers-count").textContent = appState.home.servers.length + " kayıt";
     $("#pkgs-dash").innerHTML = pk.map(pkgRow).join("") || '<div class="small muted sj-cc781b">Paket bulunamadı.</div>';
@@ -316,21 +331,24 @@ import { appState } from "./js/state.js";
   /* ---------------- Bağlam menüsü ---------------- */
   const { open: openShortcuts, close: closeShortcuts } = initShortcuts();
   const sshImport = initSshImport({ load: () => load() });
+  // sunucu eylemleri: bağlam menüsü ve Sunucular sayfasındaki kart düğmeleri (Terminal, Kopya, Yönet) aynı işleve gider
+  const pickServer = async (a, name) => {
+    try {
+      if (a === "copy") { const r = await json("/api/action", { name, action: "cmd" }); try { await navigator.clipboard.writeText(r.cmd); toast("Komut kopyalandı"); } catch { prompt("Kopyalayın:", r.cmd); } }
+      else if (a === "term") await act(name, "terminal", "Terminal'de açıldı");
+      else if (a === "refresh") { await load(); toast("Yenilendi"); }
+      else if (a === "logs") goLogs(name);
+      else if (a === "lynis") goLynis(name, "");
+      else if (a === "draft") openWizard(name);
+      else if (a === "edit") openEditAddr(name);
+      else if (a === "rename") openRename(name);
+      else if (a === "delete") openDelete(name);
+      else if (a === "open") openServer(name);
+    } catch (err) { toast("Hata: " + err.message); }
+  };
   const ctxMenu = initContextMenu({
     // menü düğmesi seçilince (menü zaten kapanmıştır): eylem app.js'tedir
-    onPick: async (a, name) => {
-      try {
-        if (a === "copy") { const r = await json("/api/action", { name, action: "cmd" }); try { await navigator.clipboard.writeText(r.cmd); toast("Komut kopyalandı"); } catch { prompt("Kopyalayın:", r.cmd); } }
-        else if (a === "term") await act(name, "terminal", "Terminal'de açıldı");
-        else if (a === "refresh") { await load(); toast("Yenilendi"); }
-        else if (a === "logs") goLogs(name);
-        else if (a === "lynis") goLynis(name, "");
-        else if (a === "draft") openWizard(name);
-        else if (a === "edit") openEditAddr(name);
-        else if (a === "rename") openRename(name);
-        else if (a === "delete") openDelete(name);
-      } catch (err) { toast("Hata: " + err.message); }
-    },
+    onPick: pickServer,
   });
   const openCtx = ctxMenu.open, closeCtx = ctxMenu.close;
   function bindServers() {
@@ -340,11 +358,12 @@ import { appState } from "./js/state.js";
     });
     $$(".server[data-name], .stile[data-name]").forEach(el => {
       el.addEventListener("click", () => openServer(el.dataset.name));
-      el.addEventListener("keydown", e => { if (e.key === "Enter") openServer(el.dataset.name); });
+      el.addEventListener("keydown", e => { if (e.key === "Enter" && e.target === el) openServer(el.dataset.name); }); // iç düğmelerde Enter yalnız o düğmeyi çalıştırır
       el.addEventListener("contextmenu", e => { e.preventDefault(); openCtx(e.clientX, e.clientY, el.dataset.name); });
       el.addEventListener("keydown", e => {
         if (e.key === "F10" || e.key === "ContextMenu") { e.preventDefault(); const r = el.getBoundingClientRect(); openCtx(r.left + 40, r.bottom + 4, el.dataset.name); }
       });
+      $$("[data-qa]", el).forEach(qb => qb.addEventListener("click", e => { e.stopPropagation(); pickServer(qb.dataset.qa, el.dataset.name); }));
       const m = el.querySelector('[data-act="menu"]');
       if (m) m.addEventListener("click", e => { e.stopPropagation(); const r = m.getBoundingClientRect(); openCtx(r.right - 240, r.bottom + 4, el.dataset.name); });
     });
