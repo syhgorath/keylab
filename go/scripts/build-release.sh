@@ -28,8 +28,17 @@ fi
 [ -f "$KEY" ] || die "imza anahtarı bulunamadı: $KEY (SSHPOCKET_SIGNING_KEY ile belirtin)"
 
 rm -rf dist && mkdir -p dist
+# macOS ikilisi GÖMÜLÜ PENCERE (WKWebView; CGO + -tags webview) ile derlenir: uygulama kendi penceresinde açılır, kapatınca süreç biter, Chrome gerekmez.
+# Her mimari kendi clang -arch'ıyla (Apple Silicon'da amd64 de çapraz derlenir; Xcode Command Line Tools gerekir). Pencere derlenemezse sürüm DURUR:
+# pencere olmadan yayınlamak eski "Chrome penceresi" davranışını sessizce geri getirirdi.
 build() { # goos goarch out
-    CGO_ENABLED=0 GOOS="$1" GOARCH="$2" go build -trimpath -ldflags "-s -w -X main.buildVersion=$VERSION" -o "$3" .
+    if [ "$1" = darwin ]; then
+        local cc="clang -arch arm64"; [ "$2" = amd64 ] && cc="clang -arch x86_64"
+        CGO_ENABLED=1 CC="$cc" GOOS="$1" GOARCH="$2" go build -trimpath -tags webview -ldflags "-s -w -X main.buildVersion=$VERSION" -o "$3" . \
+            || die "pencere (webview) derlemesi başarısız: $1/$2 (Xcode Command Line Tools: xcode-select --install)"
+    else
+        CGO_ENABLED=0 GOOS="$1" GOARCH="$2" go build -trimpath -ldflags "-s -w -X main.buildVersion=$VERSION" -o "$3" .
+    fi
 }
 A="dist/keylab-$VERSION-darwin-arm64"; B="dist/keylab-$VERSION-darwin-amd64"; U="dist/keylab-$VERSION-darwin-universal"
 build darwin arm64 "$A"; build darwin amd64 "$B"

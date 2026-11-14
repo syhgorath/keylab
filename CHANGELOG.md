@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- **Uygulama kendi penceresinde açılır** (gömülü webview — macOS'ta WKWebView): Chrome ya da başka bir tarayıcı gerekmez, ayrı tarayıcı profili/eklenti sorunu yoktur, **pencereyi kapatınca KeyLab de kapanır** (terminaller, özel ajan ve geçici klasör temizlenir). Eskiden pencere kapanınca süreç yaşıyor, `.app`'e yeniden basınca pencere açılmıyordu. `-browser auto` (varsayılan) pencere derlemesinde pencereyi, değilse eski Chromium uygulama penceresi/sistem tarayıcısını kullanır; `-browser default` sistem tarayıcısı, `-browser window` pencereyi zorlar; `-no-open` yalnız sunucuyu başlatır. macOS yayın derlemesi CGO + `-tags webview` ile yapılır (`build-release.sh`; Xcode Command Line Tools gerekir), `keylabtest.sh` macOS'ta aynısını kullanır (`--chrome` ile CGO'suz). Pencerede Cmd+C/V/X/A/Z/Q için ana menü kurulur. İlk üçüncü taraf bağımlılık: `webview/webview_go` (MIT; yalnız etiketli derlemede). CI macOS'ta pencere derlemesini denetler. Pencere kapatınca çıkışın gerçek davranışı ve Cmd+V gerçek bir pencerede kullanıcı tarafından denenmelidir (otomasyon izni yok).
+
 ### Eklendi
 - **Çıkış özeti (taşınabilir modda)**: Çıkış düğmesi artık özel ssh-agent'ı sonlandırır ve geçici klasörü (Python ortamı, tarayıcı profili) **hemen** siler (USB'den anahtarlar silindikten sonra), kapanış perdesinde "Temizlendi" ve "Bu bilgisayarda kalanlar" listelerini gösterir (misafir modda yalnız macOS'un kendi izleri; misafir olmayan taşınabilirde ayrıca Keychain kayıtları ve kendi ssh-agent'ınıza eklenenler). Taşınabilir olmayan kullanımda perde değişmez. FAT32 disk imajında uçtan uca denendi.
 

@@ -30,15 +30,26 @@ func isolatedBrowserArgs(url, profileDir string) []string {
 	return []string{"--user-data-dir=" + profileDir, "--app=" + url, "--disable-extensions", "--no-first-run", "--no-default-browser-check"}
 }
 
-// normalizeBrowserMode: "" ya da "auto" → auto; "default" → default; başka değer → ok=false.
+// normalizeBrowserMode: "" ya da "auto" → auto; "default" → default; "window" → window; başka değer → ok=false.
 func normalizeBrowserMode(m string) (string, bool) {
 	switch m {
 	case "", "auto":
 		return "auto", true
 	case "default":
 		return "default", true
+	case "window":
+		return "window", true
 	}
 	return "", false
+}
+
+// effectiveBrowserMode: auto, gömülü pencere kabuğu olan derlemede (macOS, `-tags webview`) uygulamanın KENDİ penceresi demektir (tarayıcı/eklenti/ayrı
+// profil gerekmez, pencere kapanınca süreç biter); pencere yoksa Chromium uygulama penceresi ya da sistem tarayıcısı (eski davranış).
+func effectiveBrowserMode(mode string, windowOK bool) string {
+	if mode == "auto" && windowOK {
+		return "window"
+	}
+	return mode
 }
 
 func isExecutableFile(p string) bool {

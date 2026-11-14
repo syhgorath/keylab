@@ -41,13 +41,30 @@ func TestIsolatedBrowserArgs(t *testing.T) {
 }
 
 func TestNormalizeBrowserMode(t *testing.T) {
-	for in, want := range map[string]string{"": "auto", "auto": "auto", "default": "default"} {
+	for in, want := range map[string]string{"": "auto", "auto": "auto", "default": "default", "window": "window"} {
 		if got, ok := normalizeBrowserMode(in); !ok || got != want {
 			t.Errorf("%q → %q,%v (beklenen %q)", in, got, ok, want)
 		}
 	}
 	if _, ok := normalizeBrowserMode("safari"); ok {
 		t.Error("bilinmeyen kip reddedilmeli")
+	}
+}
+
+// auto: gömülü pencere varsa pencere; yoksa eski davranış. Açık seçimler (default/window) olduğu gibi kalır.
+func TestEffectiveBrowserMode(t *testing.T) {
+	for _, c := range []struct {
+		mode     string
+		windowOK bool
+		want     string
+	}{
+		{"auto", true, "window"}, {"auto", false, "auto"},
+		{"default", true, "default"}, {"default", false, "default"},
+		{"window", true, "window"}, {"window", false, "window"},
+	} {
+		if got := effectiveBrowserMode(c.mode, c.windowOK); got != c.want {
+			t.Errorf("effectiveBrowserMode(%q,%v)=%q, beklenen %q", c.mode, c.windowOK, got, c.want)
+		}
 	}
 }
 

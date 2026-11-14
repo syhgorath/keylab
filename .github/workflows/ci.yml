@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go/go.mod
-          cache: false # bağımlılık yok (go.sum yok): önbellek anlamsız, uyarı veriyordu
+          cache: false # tek üçüncü taraf bağımlılık (webview, yalnız -tags webview): önbellek kazanç sağlamıyor
       - name: vet
         working-directory: go
         run: go vet ./...
@@ -37,6 +37,14 @@ jobs:
       - name: Derleme (tek ikili)
         working-directory: go
         run: CGO_ENABLED=0 go build -trimpath -o /tmp/sshpocket . && /tmp/sshpocket version
+      # macOS yayın derlemesi gömülü pencereyle (WKWebView; CGO + -tags webview) yapılır: etiketli kodun derlendiğini ve vet'ten geçtiğini denetle.
+      - name: Pencere derlemesi (macOS, -tags webview)
+        if: runner.os == 'macOS'
+        working-directory: go
+        run: |
+          go mod verify
+          CGO_ENABLED=1 go vet -tags webview .
+          CGO_ENABLED=1 go build -trimpath -tags webview -o /tmp/keylab-window . && /tmp/keylab-window version
   # Arayüz testleri: gerçek arayüz jsdom'da, kaydedilmiş API yanıtlarıyla (bkz. go/webtest/README.md). Yalnız geliştirme aracı; ikiliye girmez.
   web:
     runs-on: ubuntu-26.04

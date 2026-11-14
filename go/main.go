@@ -173,13 +173,18 @@ func main() {
 	comps := flag.String("components", "", "components klasörü (varsayılan: sunucular klasörünün yanında)")
 	state := flag.String("state", "", "durum/günlük klasörü (varsayılan: ~/.local/share/keylab; eski sshpocket klasörü varsa o)")
 	noOpen := flag.Bool("no-open", false, "tarayıcıyı açma")
-	browserMode := flag.String("browser", "auto", "tarayıcı: auto = Chrome/Edge/Brave/Chromium varsa KeyLab'a ait ayrı, eklentisiz profille uygulama penceresinde (yoksa sistem tarayıcısı); default = her zaman sistem tarayıcısı")
+	browserMode := flag.String("browser", "auto", "tarayıcı: auto = gömülü pencere derlemesinde uygulamanın kendi penceresi, değilse Chrome/Edge/Brave/Chromium varsa KeyLab'a ait ayrı, eklentisiz profille uygulama penceresinde (yoksa sistem tarayıcısı); default = her zaman sistem tarayıcısı")
 	flag.Parse()
 	bm, okMode := normalizeBrowserMode(*browserMode)
 	if !okMode {
-		fmt.Fprintln(os.Stderr, "-browser auto ya da default olmalı")
+		fmt.Fprintln(os.Stderr, "-browser auto, default ya da window olmalı")
 		os.Exit(2)
 	}
+	if bm == "window" && !windowSupported() {
+		fmt.Fprintln(os.Stderr, "bu derlemede pencere kabuğu yok (CGO ve -tags webview ile derlenmeli); -browser auto ya da default kullanın")
+		os.Exit(2)
+	}
+	bm = effectiveBrowserMode(bm, windowSupported())
 	cwd, _ := os.Getwd()
 	exe := selfExe()
 	onExternal := platform.DefaultVolumes().MountRoot(appBase(exe)) != "" // uygulama USB/harici sürücüde mi?
@@ -745,6 +750,21 @@ func main() {
 	url := fmt.Sprintf("http://%s/?t=%s", app.host, app.token)
 	fmt.Println("sshpocket (Go deneme):", url)
 	fmt.Println("sunucular:", sd, "| components:", cd, "| durum:", st, "| durdurmak için Ctrl-C")
+	if bm == "window" && !*noOpen {
+		// uygulamanın kendi penceresi (gömülü webview): pencere kapanınca süreç biter; terminaller ve geçici klasör/özel ajan temizlenir
+		go app.reapTerms()
+		wsrv := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+		go func() {
+			if err := wsrv.Serve(ln); err != nil && err != http.ErrServerClosed {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+		}()
+		runWindow(fmt.Sprintf("http://%s/?b=%s", app.host, app.bootTok), "KeyLab") // ana iş parçacığında bloklar; pencere kapanınca döner
+		app.killAllTerms()
+		app.runCleanups()
+		os.Exit(0)
+	}
 	if !*noOpen && platform.DefaultBrowser().Supported() {
 		// komut satırına GERÇEK jeton değil, tek kullanımlık açılış jetonu yazılır (ps ile görünür); yazdırılan adres elle açmak içindir
 		bootURL := fmt.Sprintf("http://%s/?b=%s", app.host, app.bootTok)
