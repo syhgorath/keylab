@@ -1,0 +1,4 @@
+# sshpocket paket indeksi imza anahtarları (ssh allowed_signers biçimi; docs/package-index.md §4).
+# Paket indeksi (index.json) yalnızca buradaki anahtarlarla (ad alanı sshpocket-index) imzalıysa kabul edilir.
+# Bu dosya BOŞ (yalnızca yorum) iken indeks özelliği kapalıdır.
+sshpocket-index namespaces="sshpocket-index" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKVJS3mGlCaOT/l8XfR0TxuKxqLUs6PpVDa9TYqm0fLn

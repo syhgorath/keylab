@@ -4,6 +4,14 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **Güven dosyaları ikilinin içinde**: `release_signers`, `index_signers` ve `components.lock` ikiliye gömülür (`go/embedded/`, `go/trustdefaults.go`), böylece indirilen tek `KeyLab.app` yanında hiçbir dosya olmadan ilk açılışta paketleri imzalı biçimde kurabilir. Sıra: kök klasördeki dosya (ya da eski `sistem/` yeri) VARSA o kullanılır (bugünkü davranış; anahtar değişimi ve özel indeksler için), yoksa gömülü kopya. Gömülü imzacılar kalıcı olarak kullanıcı klasörüne yazılmaz: her açılışta önbelleğe (`~/.cache/keylab/trust`, 0600) yeniden yazılır. `components.lock` kullanıcı verisidir (upgrade yazar): kurulu/taşınabilir modda ilk açılışta yoksa gömülü kilit bir kez kopyalanır, var olana dokunulmaz. Gömülü kopyalar depo köküyle senkron tutulur: `go test` ve `build-release.sh` farkı reddeder (`bash go/scripts/sync-embedded.sh`).
+- **İlk kurulum Paketler sayfasından**: paket yokken "Paketleri keşfet ve kur" düğmesi imzalı indeksi açar; her paketin imzası ve özeti doğrulanır, kurulum onay akışından geçer. Boş HOME ile uçtan uca denendi (ilk açılış → kilit → `components sync` → üç paket kuruldu).
+
+### Düzeltildi
+- Kurulu modda (`~/.keylab`) kökte `VERSION` dosyası olmadığı için indeks denetimi (Güncellemeler/Paketleri keşfet) sürümü bilemiyordu; artık ikilinin gömülü sürümü kullanılır.
+- "Paketleri keşfet" penceresi, sayfada Güncellemeler kartı yokken (paket yok durumu) indeks gelince yeniden çizilmiyordu.
+
 ### Değişti
 - **Taşınabilir kullanımda durum ve günlükler USB'de** (`servers/`'ın yanındaki `state/`): terminal denetim günlüğü, sertleştirme sonuçları, arayüz ayarları USB ile birlikte gider. Kurulu modda (`~/.keylab`) değişiklik yok; `$KEYLAB_STATE_DIR` ve `-state` her zaman önceliklidir. Ayrı tarayıcı profili bilerek bilgisayarda kalır (Chromium'un `SingletonLock` sembolik bağı FAT/exFAT USB'de oluşturulamaz). Taşınabilirde önceden bilgisayara yazılmış eski günlükler otomatik taşınmaz.
 

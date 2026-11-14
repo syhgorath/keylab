@@ -16,7 +16,7 @@ export function initPackages(hooks) {
     pkgRepo = Object.fromEntries((d.packages || []).map(p => [p.id, p.repo])); pkgInfo = Object.fromEntries((d.packages || []).map(p => [p.id, p]));
     const cmp = (a, b) => { const x = String(a).split(".").map(Number), y = String(b).split(".").map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const p = x[i] || 0, q = y[i] || 0; if (p !== q) return p < q ? -1 : 1; } return 0; };
     d.packages = d.packages || []; d.servers = d.servers || [];
-    if (!d.packages.length) { $("#pkg-page").innerHTML = '<div class="card"><div class="card-body"><div class="empty-state"><h3>Paket bulunamadı</h3><p>USB\'de <span class="mono">components/&lt;paket&gt;/current</span> yok. Paketler menüden ya da <span class="mono">sshpocket</span> ile yüklenir.</p></div></div></div>'; return; }
+    if (!d.packages.length) { $("#pkg-page").innerHTML = '<div class="card"><div class="card-body"><div class="empty-state"><h3>Paket bulunamadı</h3><p>Henüz kurulu paket yok. Paketler imzalı indeksten kurulur: indirilen her paketin imzası ve özeti doğrulanır.</p><button class="btn primary" id="pkg-empty-disc" type="button">Paketleri keşfet ve kur</button></div></div></div>'; $("#pkg-empty-disc").addEventListener("click", openDiscover); return; }
     const order = ["linux-hardening", "utility", "kurulum"];
     d.packages.sort((a, b) => (order.indexOf(a.id) + 1 || 99) - (order.indexOf(b.id) + 1 || 99));
     $("#pkg-page").innerHTML = `<div id="upd-card"></div><div class="notice sj-87c136"><span class="ico" aria-hidden="true">ℹ</span><div>Bir pakete tıklayın: sürümler, kilit tabanı ve sunuculardaki son kullanım açılır. "Kullanıldı", paketin o sunucuda en son çalıştırıldığı anlamına gelir; paketler sunucuya kurulmaz, kontrolcüden çalıştırılır.</div></div>` +
@@ -91,7 +91,8 @@ export function initPackages(hooks) {
   const updUp = () => updRep && updRep.ok ? updRep.rows.filter(r => r.verdict === "upgrade" || r.verdict === "install").length : 0;
   const isUpdDlg = () => isDlgOpen() && $("#dlg-title").textContent === "Güncellemeler";
   function renderUpdates() {
-    const el = $("#upd-card"); if (!el) return;
+    const el = $("#upd-card");
+    if (!el) { if (isUpdDlg()) paintUpdDlg(); else if (isDiscDlg()) paintDisc(); return; } // kart yok (ör. paket yok boş durumu): açık pencere yine de güncellenir
     let st;
     if (updBusy) st = '<span class="spinner" aria-hidden="true"></span> İmzalı indeks alınıyor ve doğrulanıyor…';
     else if (updErr) st = '<span class="sj-497726">✕ denetlenemedi</span>';

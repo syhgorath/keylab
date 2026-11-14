@@ -31,6 +31,8 @@ anahtara sahip bir sürüm kurduktan sonra, sonraki güncellemeleri yalnızca bu
 
 Ürün, macOS için tek imzalı ikilidir (`keylab-X.Y.Z-darwin-universal`; arm64 ve amd64 ayrıca; geçiş için aynı dosyalar eski `sshpocket-X.Y.Z-…` adıyla da). Ayrıntı: [go/YAYIN.md](go/YAYIN.md).
 
+> **Köktekileri değiştirirseniz:** `release_signers`, `index_signers` ya da `components.lock` (ör. yeni paket sürümü kilitlediğinizde) ikiliye gömülü kopyalarıdır `go/embedded/`. Değişiklikten sonra `bash go/scripts/sync-embedded.sh` çalıştırıp sonucu commit'leyin; `go test` ve `build-release.sh` kopyalar farklıysa durur.
+
 ### Önerilen: tek komut (`go/scripts/release-publish.sh`)
 1. `VERSION`'ı artırın, `CHANGELOG.md`'de `[Unreleased]` içeriğini yeni sürüm başlığına (`## [X.Y.Z] - GG-AA-YYYY`) taşıyın; PR açın, CI yeşil olunca birleştirin.
 2. `main`'in CI'ının da yeşil olmasını bekleyin, sonra:

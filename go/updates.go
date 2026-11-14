@@ -46,7 +46,7 @@ func (a *App) checkUpdates() (UpdateReport, error) {
 	c := &trust.Client{
 		ComponentsDir: a.compDir,
 		SignersFile:   signersPath(root, "index_signers"),
-		SSHPocketVer:  trust.ReadVersionFile(filepath.Join(root, "VERSION")),
+		SSHPocketVer:  engineVersion(root),
 		Download:      a.idxDL,
 	}
 	idx, err := c.Refresh()
@@ -110,7 +110,7 @@ func (a *App) startUpgrade(pkg, version string) (*Job, int, error) {
 		c := &trust.Client{
 			ComponentsDir: a.compDir,
 			SignersFile:   signersPath(root, "index_signers"),
-			SSHPocketVer:  trust.ReadVersionFile(filepath.Join(root, "VERSION")),
+			SSHPocketVer:  engineVersion(root),
 			Download:      a.idxDL,
 		}
 		emit("İmzalı paket indeksi alınıyor ve doğrulanıyor…")

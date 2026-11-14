@@ -58,7 +58,15 @@ test("paketler: sürüm karşılaştırması noktalı sayısaldır (0.10.0 > 0.9
 
 test("paketler: paket yok → boş durum; API hatası → hata kutusu; null listeler boş sayılır", async () => {
   let h = await boot({ hash: "#v=packages", overrides: { "/api/home": mixedHome, "/api/packages": () => ({ packages: [], servers: [] }) } });
-  assert.match(h.$("#pkg-page").textContent, /Paket bulunamadı/); assert.match(h.$("#pkg-page").textContent, /components\/<paket>\/current/); h.close();
+  assert.match(h.$("#pkg-page").textContent, /Paket bulunamadı/); assert.match(h.$("#pkg-page").textContent, /Henüz kurulu paket yok/); assert.doesNotMatch(h.$("#pkg-page").textContent, /components\/<paket>\/current/); h.close();
+  // boş durumdaki düğme "Paketleri keşfet" penceresini açar (ilk kurulum buradan yapılır; kurulum onay akışından geçer)
+  const REPORT = { ok: true, serial: "7", valid: "2027-01-01", exit: 0, raw: "HAM", rows: [{ id: "utility", installed: "-", verdict: "install", version: "0.1.0", text: "" }] };
+  h = await boot({ hash: "#v=packages", overrides: { "/api/home": mixedHome, "/api/packages": () => ({ packages: [], servers: [] }), "/api/updates": REPORT } });
+  assert.equal(h.$("#pkg-empty-disc").textContent, "Paketleri keşfet ve kur");
+  await h.click("#pkg-empty-disc");
+  assert.ok(h.$("#dlg").classList.contains("open")); assert.equal(h.$("#dlg-title").textContent, "Paketleri keşfet");
+  assert.ok(h.$("#disc-list .disc-row"), "indeksteki kurulabilir paket listelendi"); assert.match(h.$("#disc-list").textContent, /Kur…/);
+  assert.equal(h.calls.filter(c => c.path === "/api/updates").length, 1); assert.deepEqual(h.errors, []); h.close();
   h = await boot({ hash: "#v=packages", overrides: { "/api/home": mixedHome, "/api/packages": () => ({ packages: null, servers: null }) } });
   assert.match(h.$("#pkg-page").textContent, /Paket bulunamadı/); assert.deepEqual(h.errors, []); h.close();
   h = await boot({ hash: "#v=packages", overrides: { "/api/home": mixedHome, "/api/packages": { status: 500, body: "bozuk" } } });
