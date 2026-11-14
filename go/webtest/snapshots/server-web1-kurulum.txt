@@ -176,10 +176,8 @@
               <path d="M12 20h9">
               <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z">
         <div class="sv-actions">
-          <button class="btn primary" id="srv-term">
+          <button class="btn primary" id="srv-iterm" title="Uygulamanın gömülü terminali (ssh -tt); knock etkinse önce knock gönderilir">
             "Terminal'de bağlan"
-          <button class="btn" id="srv-iterm" title="Tarayıcıda gömülü terminal (ssh -tt)">
-            "Gömülü terminal"
           <button class="btn" id="srv-copy" title="knock etkinse önce knock gönderir">
             "SSH komutu"
           <button aria-haspopup="menu" aria-label="Daha fazla işlem" class="btn icon-only" id="srv-more" title="Yeniden adlandır, sil, günlükler…" type="button">

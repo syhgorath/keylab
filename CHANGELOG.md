@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- **"Terminal'de bağlan" artık gömülü terminali açar** (sunucu sayfası, sunucu kartı ve sağ tık menüsü): macOS Terminal.app'e (`osascript`) bağlanan ayrı yol kaldırıldı (`/api/action` `terminal` eylemi); sunucu sayfasındaki iki terminal düğmesi tek oldu. Knock etkinse gömülü terminal önce knock gönderir. Bu, işletim sistemine bağlı kodu azaltmak için platform katmanı planının ilk adımıdır. Paket eylemlerinde "macOS Terminal'de aç" alternatifi şimdilik duruyor (eylemler gömülü terminale taşınınca kalkacak).
+
 ### Düzeltildi
 - **Çıkış, USB'deki uygulamada süreci takılı bırakıyordu**: `KeyLab.app` çıkarılacak USB'nin kendisinden çalışıyorsa disk sürecin altından çekiliyor, süreç ölmek yerine saatlerce %400+ CPU ile dönüyordu (gerçek USB'de görüldü). Artık böyle durumda anahtarlar silinir, uygulama kapanır ve USB'yi **kapandıktan sonra** ayrı bir yardımcı süreç çıkarır (zorla çıkarma yalnız o zaman, disk artık meşgul değilken yedek olarak). Perde "USB uygulama kapandıktan hemen sonra çıkarılacak" der. `keylab eject` komutu da aynı korumayı kullanır. FAT32 disk imajında uçtan uca denendi (süreç bitti, birim çıktı).
 
