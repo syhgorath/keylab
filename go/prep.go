@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"keylab/internal/platform"
 	"keylab/internal/servers"
 )
 
@@ -22,7 +23,7 @@ func (a *App) prepState(s Server) PrepState {
 	if !s.HasKey {
 		return st
 	}
-	st.Passphrase = servers.Keychain{}.Has(servers.PassphraseAccount(servers.Prefix(s.Name)))
+	st.Passphrase = platform.Default().Has(servers.PassphraseAccount(servers.Prefix(s.Name)))
 	st.Agent = keyInAgent(s.keyPath)
 	return st
 }

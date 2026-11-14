@@ -16,6 +16,7 @@ import (
 	"keylab/internal/cli"
 	"keylab/internal/doctor"
 	"keylab/internal/eject"
+	"keylab/internal/platform"
 	"keylab/internal/report"
 	"keylab/internal/runner"
 	"keylab/internal/selfupdate"
@@ -144,7 +145,7 @@ func subcommand(args []string) (int, bool) {
 			fmt.Fprintln(os.Stderr, "kullanım: keylab server-remove <servers-klasörü> <ad>")
 			return 2, true
 		}
-		return servers.RemoveInteractive(con, servers.Keychain{}, args[1], args[2]), true
+		return servers.RemoveInteractive(con, platform.Default(), args[1], args[2]), true
 	}
 	return 0, false
 }

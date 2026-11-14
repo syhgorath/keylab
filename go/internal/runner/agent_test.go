@@ -3,7 +3,6 @@ package runner
 import (
 	"bytes"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -75,10 +74,6 @@ func adder(answers ...string) (*AgentAdder, *bytes.Buffer) {
 		i++
 		return answers[i-1], true
 	}}
-	a.Keyring = func(args ...string) *exec.Cmd {
-		c := exec.Command("security", args...)
-		return c
-	}
 	return a, &errb
 }
 

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"keylab/internal/platform"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -136,7 +137,7 @@ func firstLineOf(s string) string {
 
 // RemoveInteractive, cmd_remove: sunucu adı yazılarak onaylanır; klasör silinir; Knock dizisi Keychain'den silinir;
 // passphrase kaydı varsa silinip silinmeyeceği sorulur. Çıkış kodu: 0 tamam, 1 iptal/hata.
-func RemoveInteractive(c Console, kc Keychain, serversDir, name string) int {
+func RemoveInteractive(c Console, kc platform.Secrets, serversDir, name string) int {
 	if !NameValid(name) {
 		fmt.Fprintf(c.Err, "⚠️  Geçersiz sunucu adı: '%s'\n", name)
 		return 1
@@ -167,7 +168,7 @@ func RemoveInteractive(c Console, kc Keychain, serversDir, name string) int {
 		return 1
 	}
 	c.say("✅ Silindi: %s", name)
-	if _, err := exec.LookPath("security"); err == nil {
+	if kc.Available() {
 		up := Prefix(name)
 		if kc.Delete(KnockAccount(up)) {
 			c.say("✅ Knock dizisi Keychain'den silindi")

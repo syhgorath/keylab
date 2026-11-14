@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"keylab/internal/platform"
 	"keylab/internal/runner"
 	"keylab/internal/servers"
 )
@@ -24,10 +25,10 @@ type Servers struct {
 	Dir         string // servers/
 	In          *bufio.Reader
 	Out, Err    io.Writer
-	ChildIn     *os.File // security/ssh-add gibi alt süreçlerin terminali
-	Keychain    servers.Keychain
-	DefaultUser string // ~/.ssh/config'te User yoksa (kabuk: $USER)
-	Askpass     string // ssh-add askpass olarak çağrılacak ikili (boşsa kendisi)
+	ChildIn     *os.File         // security/ssh-add gibi alt süreçlerin terminali
+	Keychain    platform.Secrets // nil: platform.Default()
+	DefaultUser string           // ~/.ssh/config'te User yoksa (kabuk: $USER)
+	Askpass     string           // ssh-add askpass olarak çağrılacak ikili (boşsa kendisi)
 }
 
 func (s *Servers) say(f string, a ...any) { fmt.Fprintf(s.Out, f+"\n", a...) }
@@ -108,10 +109,12 @@ func (s *Servers) ImportSSHConfig(config string) int {
 	return 0
 }
 
-func (s *Servers) security(args ...string) error {
-	cmd := exec.Command("security", args...)
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = s.ChildIn, s.Out, s.Err
-	return cmd.Run()
+// secrets: gizli değer deposu (platform katmanı); verilmediyse bu işletim sisteminin varsayılanı.
+func (s *Servers) secrets() platform.Secrets {
+	if s.Keychain != nil {
+		return s.Keychain
+	}
+	return platform.Default()
 }
 
 func (s *Servers) keyNote() {
@@ -192,9 +195,7 @@ func (s *Servers) askSequence() (string, bool) {
 
 // storeSecret: değeri `security -i` ile komut satırında GÖSTERMEDEN (stdin'den) Keychain'e yazar.
 func (s *Servers) storeSecret(account, value string) error {
-	cmd := exec.Command("security", "-i")
-	cmd.Stdin = strings.NewReader("add-generic-password -U -a " + account + " -s " + servers.KeychainService + " -w " + value + "\n")
-	return cmd.Run()
+	return s.secrets().Set(account, value)
 }
 
 // KnockManage, knock_manage (düz akış): protokol, bekleme ve dizi ayarı; dizi Keychain'de.
@@ -207,7 +208,7 @@ func (s *Servers) KnockManage(name string) int {
 	account := servers.KnockAccount(prefix)
 	s.say("")
 	fmt.Fprintf(s.Out, "%s\n\n", "Port knocking: sunucunun SSH portu kapalıyken, önceden kararlaştırılmış bir port\nsırasına 'vurarak' açtırma yöntemidir. Sunucu yöneticisi bu sırayı sunucuda tanımlamış olmalı.")
-	if servers.KnockEnabled(dir) && s.Keychain.Has(account) {
+	if servers.KnockEnabled(dir) && s.secrets().Has(account) {
 		p, _ := servers.Get(dir, "KNOCK_PROTO")
 		d, _ := servers.Get(dir, "KNOCK_DELAY_MS")
 		s.say("Durum: ✅ etkin (%s, gecikme %s ms; dizi Keychain'de)", p, d)
@@ -244,8 +245,8 @@ func (s *Servers) KnockManage(name string) int {
 			s.say("⚠️  Kaydedilemedi")
 			return 1
 		}
-		if got, _ := s.Keychain.Find(account); got != seq {
-			s.Keychain.Delete(account)
+		if got, _ := s.secrets().Find(account); got != seq {
+			s.secrets().Delete(account)
 			s.say("⚠️  Kayıt doğrulanamadı ve silindi.")
 			return 1
 		}
@@ -254,7 +255,7 @@ func (s *Servers) KnockManage(name string) int {
 		servers.Set(dir, "KNOCK_DELAY_MS", delay)
 		s.say("✅ Knock etkin (%s, %s ms): bağlanmadan önce otomatik gönderilir", proto, delay)
 	case "2":
-		s.Keychain.Delete(account)
+		s.secrets().Delete(account)
 		servers.Set(dir, "KNOCK", "")
 		s.say("✅ Knock kapatıldı")
 	}
@@ -319,7 +320,7 @@ func (s *Servers) KnockStatus(name string) (KnockInfo, error) {
 	if d == "" {
 		d = "300"
 	}
-	seq, has := s.Keychain.Find(servers.KnockAccount(servers.Prefix(name)))
+	seq, has := s.secrets().Find(servers.KnockAccount(servers.Prefix(name)))
 	info := KnockInfo{Enabled: servers.KnockEnabled(dir), HasSeq: has, Proto: p, Delay: d}
 	if has {
 		info.Hint = MaskSequence(seq)
@@ -341,7 +342,7 @@ func (s *Servers) KnockSave(name, proto, delay, seq string) error {
 	}
 	account := servers.KnockAccount(servers.Prefix(name))
 	if seq == "" { // dizi boş: bu bilgisayarda kayıtlı dizi KORUNUR, yalnızca protokol ve bekleme güncellenir
-		if !s.Keychain.Has(account) {
+		if !s.secrets().Has(account) {
 			return errors.New("dizi gerekli: bu bilgisayarın Keychain'inde kayıtlı dizi yok")
 		}
 		servers.Set(dir, "KNOCK", "keychain")
@@ -355,8 +356,8 @@ func (s *Servers) KnockSave(name, proto, delay, seq string) error {
 	if err := s.storeSecret(account, seq); err != nil {
 		return ErrKnockStore
 	}
-	if got, _ := s.Keychain.Find(account); got != seq {
-		s.Keychain.Delete(account)
+	if got, _ := s.secrets().Find(account); got != seq {
+		s.secrets().Delete(account)
 		return ErrKnockVerify
 	}
 	servers.Set(dir, "KNOCK", "keychain")
@@ -371,7 +372,7 @@ func (s *Servers) KnockDisable(name string) error {
 	if err != nil {
 		return err
 	}
-	s.Keychain.Delete(servers.KnockAccount(servers.Prefix(name)))
+	s.secrets().Delete(servers.KnockAccount(servers.Prefix(name)))
 	servers.Set(dir, "KNOCK", "")
 	return nil
 }
@@ -386,7 +387,7 @@ func (s *Servers) KeychainManage(name string) int {
 	account := servers.PassphraseAccount(prefix)
 	key := servers.KeyPath(s.Dir, name)
 	s.say("")
-	if s.Keychain.Has(account) {
+	if s.secrets().Has(account) {
 		s.say("Keychain kaydı: ✅ var (%s)", account)
 	} else {
 		s.say("Keychain kaydı: ❌ yok")
@@ -401,7 +402,11 @@ func (s *Servers) KeychainManage(name string) int {
 	switch choice {
 	case "1":
 		s.keyNote()
-		if err := s.security("add-generic-password", "-U", "-a", account, "-s", servers.KeychainService, "-w"); err != nil {
+		var in io.Reader // typed-nil *os.File tuzağı: ChildIn yoksa girdi yok
+		if s.ChildIn != nil {
+			in = s.ChildIn
+		}
+		if err := s.secrets().SetInteractive(account, in, s.Out, s.Err); err != nil {
 			s.say("⚠️  Kaydedilemedi")
 			return 0
 		}
@@ -417,7 +422,7 @@ func (s *Servers) KeychainManage(name string) int {
 			}
 		}
 	case "2":
-		if s.Keychain.Delete(account) {
+		if s.secrets().Delete(account) {
 			s.say("✅ Keychain kaydı silindi")
 		} else {
 			s.say("ℹ️  Silinecek kayıt yok")
@@ -434,5 +439,5 @@ func SendKnock(ctx context.Context, serversDir, name string) error {
 	}
 	dir := filepath.Join(serversDir, name)
 	ip, _ := servers.Get(dir, "IP")
-	return servers.PreConnect(ctx, servers.Keychain{}, dir, servers.Prefix(name), ip)
+	return servers.PreConnect(ctx, platform.Default(), dir, servers.Prefix(name), ip)
 }
