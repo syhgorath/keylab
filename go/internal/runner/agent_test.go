@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bytes"
+	"keylab/internal/platform"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,6 +17,7 @@ if [ "$1" = "-l" ]; then
   [ -s "$A" ] && { cat "$A"; exit 0; }; echo "The agent has no identities." ; exit 1
 fi
 echo "ssh-add $*" >> "$FAKE_LOG"
+if [ -z "$SSH_ASKPASS" ]; then read -r pw; echo "tty-cevap=[$pw]" >> "$FAKE_LOG"; [ "$pw" = "gizli" ] && { ssh-keygen -lf "$1" > "$A"; exit 0; }; exit 1; fi
 pw="$("$SSH_ASKPASS" "Enter passphrase:")"
 echo "askpass-cevap=[$pw]" >> "$FAKE_LOG"
 if [ "$pw" = "gizli" ]; then ssh-keygen -lf "$1" > "$A"; exit 0; fi
@@ -157,5 +159,57 @@ func TestAskpassAlreadyInAgent(t *testing.T) {
 	a, errb := adder()
 	if err := a.AddRetry("WEB1", priv); err != nil || !strings.Contains(errb.String(), "zaten agent'ta") {
 		t.Errorf("zaten ajandayken: %v %s", err, errb)
+	}
+}
+
+// stdinWith: os.Stdin'i geçici olarak verilen metni sunan bir boruyla değiştirir (terminalde yazılan passphrase).
+func stdinWith(t *testing.T, s string) {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.WriteString(s)
+	w.Close()
+	old := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() { os.Stdin = old; r.Close() })
+}
+
+// Misafir mod (Keychain yok) + gerçek terminal: passphrase ssh-add'in kendi istemiyle terminalde sorulur; askpass/Keychain devreye girmez.
+func TestGuestModePromptsPassphraseInTerminal(t *testing.T) {
+	priv, logf, agentf := agentEnv(t, "")
+	stdinWith(t, "gizli\n")
+	a, errb := adder()
+	a.Secrets, a.TTY = platform.NoSecrets{}, func() bool { return true }
+	if err := a.AddRetry("WEB1", priv); err != nil {
+		t.Fatalf("eklenemedi: %v %s", err, errb)
+	}
+	if b, _ := os.ReadFile(agentf); !strings.Contains(string(b), "SHA256:") {
+		t.Fatalf("ajana yazılmadı: %q", b)
+	}
+	lg, _ := os.ReadFile(logf)
+	if !strings.Contains(string(lg), "tty-cevap=[gizli]") || strings.Contains(string(lg), "askpass-cevap") {
+		t.Errorf("parola terminalden değil askpass'tan sorulmuş: %s", lg)
+	}
+	if strings.Contains(errb.String(), "Keychain'e kaydedeyim") || strings.Contains(errb.String(), "gizli") {
+		t.Errorf("Keychain sorusu çıktı ya da parola sızdı: %s", errb)
+	}
+}
+
+// Yanlış passphrase: Keychain'e kaydetme sorusu YOK (misafirde anlamsız), hata net.
+func TestGuestModeWrongPassphraseDoesNotOfferKeychain(t *testing.T) {
+	priv, _, agentf := agentEnv(t, "")
+	stdinWith(t, "yanlis\n")
+	a, errb := adder("e")
+	a.Secrets, a.TTY = platform.NoSecrets{}, func() bool { return true }
+	if err := a.AddRetry("WEB1", priv); err == nil {
+		t.Fatal("yanlış passphrase ile eklendi")
+	}
+	if b, _ := os.ReadFile(agentf); len(b) != 0 {
+		t.Fatalf("ajana yazılmamalıydı: %q", b)
+	}
+	if strings.Contains(errb.String(), "Keychain'e kaydedeyim") {
+		t.Errorf("misafirde Keychain sorusu çıktı: %s", errb)
 	}
 }

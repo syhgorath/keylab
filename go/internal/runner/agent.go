@@ -31,6 +31,41 @@ type AgentAdder struct {
 	Exe     string           // askpass olarak çağrılacak ikili (boşsa os.Executable)
 	Tmp     string           // askpass durum dosyası klasörü (boşsa TMPDIR/os temp)
 	Secrets platform.Secrets // nil: platform.Default()
+	TTY     func() bool      // girdi gerçek bir terminal mi (nil: os.Stdin); testte değiştirilir
+}
+
+// guestPrompt: gizli değer deposu yokken (misafir mod: Keychain kullanılmaz) ve girdi gerçek bir terminalse passphrase'i ssh-add'in KENDİ
+// istemiyle terminalde sorarız: askpass/Keychain yok, parola KeyLab'dan geçmez, hiçbir yere kaydedilmez; anahtar yalnız (özel) ajana girer.
+func (a *AgentAdder) guestPrompt() bool {
+	if a.secrets().Available() {
+		return false
+	}
+	if a.TTY != nil {
+		return a.TTY()
+	}
+	st, err := os.Stdin.Stat()
+	return err == nil && st.Mode()&os.ModeCharDevice != 0
+}
+
+func (a *AgentAdder) addInTerminal(key string) error {
+	fp := fingerprintOf(key)
+	w := a.errw()
+	fmt.Fprintln(w, "🔐 Taşınabilir/misafir mod: anahtarın PASSPHRASE'ini şimdi bu terminalde yazın (ekranda görünmez).")
+	fmt.Fprintln(w, "   Keychain kullanılmaz, parola kaydedilmez; anahtar yalnızca bu oturumun özel ssh-agent'ına eklenir. Sunucunun sudo parolası DEĞİLDİR.")
+	cmd := exec.Command("ssh-add", key)
+	for _, kv := range os.Environ() {
+		if !strings.HasPrefix(kv, "SSH_ASKPASS=") && !strings.HasPrefix(kv, "SSH_ASKPASS_REQUIRE=") {
+			cmd.Env = append(cmd.Env, kv)
+		}
+	}
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	_ = cmd.Run()
+	if agentHas(fp) {
+		fmt.Fprintln(w, "✅ SSH key agent'a eklendi")
+		return nil
+	}
+	fmt.Fprintln(w, "⚠️  Anahtar ajana eklenemedi (passphrase yanlış olabilir); eylemi yeniden başlatıp tekrar deneyin")
+	return fmt.Errorf("ajana eklenemedi")
 }
 
 func (a *AgentAdder) errw() io.Writer {
@@ -81,6 +116,9 @@ func (a *AgentAdder) add(prefix, key string) error {
 		fmt.Fprintln(a.errw(), "✅ SSH key zaten agent'ta")
 		return nil
 	}
+	if a.guestPrompt() {
+		return a.addInTerminal(key)
+	}
 	fmt.Fprintln(a.errw(), "🔐 SSH key agent'a ekleniyor (Keychain passphrase'i ile)...")
 	exe := a.Exe
 	if exe == "" {
@@ -126,6 +164,9 @@ func (a *AgentAdder) AddOnce(prefix, key string) error { return a.add(prefix, ke
 func (a *AgentAdder) AddRetry(prefix, key string) error {
 	if a.add(prefix, key) == nil {
 		return nil
+	}
+	if a.guestPrompt() { // Keychain yok: "yeniden kaydedeyim mi" sorusu anlamsız; ssh-add zaten kendi istemiyle denedi
+		return fmt.Errorf("ajana eklenemedi")
 	}
 	for attempt := 0; attempt < 3; attempt++ {
 		if !agentReachable() {
