@@ -1433,4 +1433,23 @@ body.dock-open{padding-bottom:276px}
   :root[data-look="glass"] .modal-back{background:rgba(20,15,10,.42)}
   :root[data-look="glass"] body{background-image:none}
 }
+
+/* ---------- Sunucular sayfası: zengin sunucu kartı (adres, anahtar, durum rozeti, Terminal/Kopya/Yönet) ---------- */
+#servers-all.server-list.tiles{grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:14px}
+.stile-rich{gap:10px;padding:16px}
+.stile-rich .stile-top{align-items:center;margin-bottom:0}
+.stile-ident{min-width:0;flex:1}
+.stile-rich .stile-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stile-pill{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap;border:1px solid var(--border);background:var(--surface-2);color:var(--text-2);max-width:46%;overflow:hidden;text-overflow:ellipsis}
+.stile-pill.ok{background:var(--ok-weak);border-color:var(--ok-border);color:var(--ok)}
+.stile-pill.warn{background:var(--warn-weak);border-color:var(--warn-border);color:var(--warn)}
+.stile-pill.danger{background:var(--danger-weak);border-color:var(--danger-border);color:var(--danger)}
+.stile-rich .stile-top .status-dot{margin:0}
+.stile-addr{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);font-size:12.5px}
+.stile-addr .mono{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.stile-rich .stile-last{margin-top:0}
+.stile-foot{display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--border-subtle)}
+.stile-foot .grow{flex:1}
+.stile-foot .btn:disabled{opacity:.5;cursor:not-allowed}
+.stile-addr .badge{white-space:nowrap;flex:none}
 [hidden]{display:none !important} /* sj-sonu: !important yardımcı sınıfların display bildirimi hidden özniteliğini ezmesin; DOSYANIN SONUNDA kalmalı */

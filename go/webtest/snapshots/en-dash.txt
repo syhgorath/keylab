@@ -239,66 +239,114 @@
             <span class="muted">
               "3"
         <ul class="server-list tiles" id="servers-all">
-          <li aria-label="db1, online" class="stile " data-name="db1" data-state="on" tabindex="0">
+          <li aria-label="db1, online" class="stile stile-rich " data-name="db1" data-state="on" tabindex="0">
             <div class="stile-top">
-              <svg aria-label="Linux" class="osico" height="44" role="img" viewBox="0 0 48 48" width="44">
+              <svg aria-label="Linux" class="osico" height="40" role="img" viewBox="0 0 48 48" width="40">
                 <rect fill="var(--surface-3)" height="48" rx="11" width="48">
                 <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="13">
                 <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="26">
                 <circle cx="17" cy="17.5" fill="var(--muted)" r="1.4">
                 <circle cx="17" cy="30.5" fill="var(--muted)" r="1.4">
-              <span aria-label="online" class="status-dot on">
+              <div class="stile-ident">
+                <div class="stile-name">
+                  "db1"
+                <div class="stile-os">
+                  "Linux"
+              <span class="stile-pill ok">
+                <span aria-hidden="true" class="status-dot on">
+                "online"
               <button aria-label="More actions" class="btn-icon" data-act="menu">
                 <svg fill="currentColor" height="16" viewBox="0 0 24 24" width="16">
                   <circle cx="5" cy="12" r="1.8">
                   <circle cx="12" cy="12" r="1.8">
                   <circle cx="19" cy="12" r="1.8">
-            <div class="stile-name">
-              "db1"
-            <div class="stile-os">
-              "Linux · no key"
+            <div class="stile-addr">
+              <span class="mono">
+                "root@10.255.0.11:22"
+              <span class="badge warn">
+                "Anahtar yok"
             <div class="stile-last bad">
               "✖ utility · durum · 4 gün"
-          <li aria-label="vm1, no connection" class="stile is-off" data-name="vm1" data-state="off" tabindex="0">
+            <div class="stile-foot">
+              <button class="btn sm" data-qa="term">
+                "Terminal"
+              <button class="btn sm" data-qa="copy">
+                "Kopya"
+              <span class="grow">
+              <button class="link" data-qa="open">
+                "Yönet →"
+          <li aria-label="vm1, no connection" class="stile stile-rich is-off" data-name="vm1" data-state="off" tabindex="0">
             <div class="stile-top">
-              <svg aria-label="Linux" class="osico" height="44" role="img" viewBox="0 0 48 48" width="44">
+              <svg aria-label="Linux" class="osico" height="40" role="img" viewBox="0 0 48 48" width="40">
                 <rect fill="var(--surface-3)" height="48" rx="11" width="48">
                 <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="13">
                 <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="26">
                 <circle cx="17" cy="17.5" fill="var(--muted)" r="1.4">
                 <circle cx="17" cy="30.5" fill="var(--muted)" r="1.4">
-              <span aria-label="no connection" class="status-dot off">
+              <div class="stile-ident">
+                <div class="stile-name">
+                  "vm1"
+                <div class="stile-os">
+                  "Linux"
+              <span class="stile-pill danger">
+                <span aria-hidden="true" class="status-dot off">
+                "no connection"
               <button aria-label="More actions" class="btn-icon" data-act="menu">
                 <svg fill="currentColor" height="16" viewBox="0 0 24 24" width="16">
                   <circle cx="5" cy="12" r="1.8">
                   <circle cx="12" cy="12" r="1.8">
                   <circle cx="19" cy="12" r="1.8">
-            <div class="stile-name">
-              "vm1"
-            <div class="stile-os">
-              "Linux · no key"
+            <div class="stile-addr">
+              <span class="mono">
+                "root@10.255.0.30:22"
+              <span class="badge warn">
+                "Anahtar yok"
             <div class="stile-last ">
               "no records"
-          <li aria-label="web1, online" class="stile " data-name="web1" data-state="on" tabindex="0">
+            <div class="stile-foot">
+              <button class="btn sm" data-qa="term">
+                "Terminal"
+              <button class="btn sm" data-qa="copy">
+                "Kopya"
+              <span class="grow">
+              <button class="link" data-qa="open">
+                "Yönet →"
+          <li aria-label="web1, online" class="stile stile-rich " data-name="web1" data-state="on" tabindex="0">
             <div class="stile-top">
-              <svg aria-label="Linux" class="osico" height="44" role="img" viewBox="0 0 48 48" width="44">
+              <svg aria-label="Linux" class="osico" height="40" role="img" viewBox="0 0 48 48" width="40">
                 <rect fill="var(--surface-3)" height="48" rx="11" width="48">
                 <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="13">
                 <rect fill="none" height="9" rx="2.5" stroke-width="2.4" stroke="var(--muted)" width="24" x="12" y="26">
                 <circle cx="17" cy="17.5" fill="var(--muted)" r="1.4">
                 <circle cx="17" cy="30.5" fill="var(--muted)" r="1.4">
-              <span aria-label="online" class="status-dot on">
+              <div class="stile-ident">
+                <div class="stile-name">
+                  "web1"
+                <div class="stile-os">
+                  "Linux"
+              <span class="stile-pill ok">
+                <span aria-hidden="true" class="status-dot on">
+                "online"
               <button aria-label="More actions" class="btn-icon" data-act="menu">
                 <svg fill="currentColor" height="16" viewBox="0 0 24 24" width="16">
                   <circle cx="5" cy="12" r="1.8">
                   <circle cx="12" cy="12" r="1.8">
                   <circle cx="19" cy="12" r="1.8">
-            <div class="stile-name">
-              "web1"
-            <div class="stile-os">
-              "Linux · no key"
+            <div class="stile-addr">
+              <span class="mono">
+                "root@10.255.0.10:22"
+              <span class="badge warn">
+                "Anahtar yok"
             <div class="stile-last ">
               "✔ linux-hardening · audit · 4 gün"
+            <div class="stile-foot">
+              <button class="btn sm" data-qa="term">
+                "Terminal"
+              <button class="btn sm" data-qa="copy">
+                "Kopya"
+              <span class="grow">
+              <button class="link" data-qa="open">
+                "Yönet →"
           <li aria-label="Add server" class="stile add" data-add="1" tabindex="0">
             <div aria-hidden="true" class="plus">
               "+"
