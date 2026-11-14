@@ -3,6 +3,7 @@
 **Ne dağıtılır:** macOS için tek dosya `sshpocket` (arm64 + amd64 `lipo` ile birleşik, ad-hoc `codesign`'lı). Web arayüzü ikilinin içinde gömülüdür.
 GitHub Release varlıkları (X.Y.Z sürümü için), her biri aynı adla `.sig` ile:
 
+- `keylab-X.Y.Z-macos.zip`: içinde `KeyLab.app` (universal ikili, ad-hoc imzalı; çift tıklanır; `go/scripts/package-app.sh` üretir). Kullanıcıların asıl indireceği dosya. Eski adlı kopyası yoktur. `update` bu zip'i hedeflemez (ikilinin kendi güncellemesi içindir); `.app` içindeki ikiliyi değiştirmek paketin imza mührünü bozar (denendi: `codesign --verify` "code has no resources but signature indicates they must be present"), bu yüzden `.app` kullanıcıları yeni zip'i indirir.
 - `keylab-X.Y.Z-darwin-universal` (USB için)
 - `keylab-X.Y.Z-darwin-arm64`, `keylab-X.Y.Z-darwin-amd64`
 - Geçiş dönemi: aynı dosyalar ve imzalar eski `sshpocket-X.Y.Z-darwin-…` adıyla da yüklenir (eski sürümlerin `--update`'i yalnız bu adı arar; `version` çıktısı da "sshpocket X.Y.Z" kalır). `build-release.sh` ikisini de üretir.

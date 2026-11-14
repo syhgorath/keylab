@@ -5,6 +5,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Eklendi
+- **`KeyLab.app` + zip** (`go/scripts/package-app.sh`, `build-release.sh` çağırır): universal ikiliden çift tıklanır uygulama paketi (Info.plist, simge, ad-hoc imza; başlatıcı betik yok, ikili veri klasörünü kendisi bulur). `keylab-X.Y.Z-macos.zip` olarak üretilir, aynı anahtarla imzalanır (`.sig`) ve `release-publish.sh` Release'e yükler. README'ye "Kurulum (macOS)" bölümü eklendi (normal / USB-taşınabilir kullanım, Gatekeeper uyarısı). Apple Developer ID/noter onayı YOK; Linux ve Windows paketi yok.
 - **Tek komutlu yayın** (`go/scripts/release-publish.sh`): kontroller → derle ve imzala (`build-release.sh`) → etiket → GitHub Release (varlıklar + CHANGELOG notu) → yüklenen dosyaların SHA-256 doğrulaması. İmza başarısız olursa uzakta etiket kalmaz. `RELEASING.md` Go yayın akışına göre yeniden yazıldı; CI'da ShellCheck kapsamına eklendi. Eski kabuk dönemindeki `scripts/release-publish.sh`'ın karşılığıdır.
 
 ## [4.0.0] - 2026-11-14

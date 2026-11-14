@@ -78,6 +78,6 @@ jobs:
       - name: ShellCheck kur (sabit sürüm, sha256 doğrulamalı)
         run: bash .github/scripts/ci-install-shellcheck.sh
       - name: ShellCheck
-        run: shellcheck -s bash go/launcher/start.command go/scripts/build-release.sh go/scripts/release-publish.sh go/scripts/keylabtest.sh
+        run: shellcheck -s bash go/launcher/start.command go/scripts/build-release.sh go/scripts/package-app.sh go/scripts/release-publish.sh go/scripts/keylabtest.sh
       - name: Syntax check (bash -n)
-        run: for f in go/launcher/start.command go/scripts/build-release.sh go/scripts/release-publish.sh go/scripts/keylabtest.sh; do bash -n "$f"; done
+        run: for f in go/launcher/start.command go/scripts/build-release.sh go/scripts/package-app.sh go/scripts/release-publish.sh go/scripts/keylabtest.sh; do bash -n "$f"; done
