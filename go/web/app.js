@@ -11,6 +11,7 @@ import { initVars } from "./js/ui/vars.js";
 import { initServer } from "./js/ui/server.js";
 import { initSettings } from "./js/ui/settings.js";
 import { initDialog } from "./js/ui/dialog.js";
+import { initQuit } from "./js/ui/quit.js";
 import { initServerOps } from "./js/ui/serverops.js";
 import { initAddServer } from "./js/ui/add.js";
 import { OS_LABEL, osIcon } from "./js/lib/icons.js";
@@ -297,6 +298,7 @@ import { appState } from "./js/state.js";
 
   /* ---------------- Ortak iletişim penceresi (js/ui/dialog.js) + yeniden adlandırma/silme (js/ui/serverops.js) ---------------- */
   const { dlg, openDlg, closeDlg } = initDialog();
+  initQuit({ openDlg, closeDlg });
   const ops = initServerOps({ openDlg, closeDlg, jobs, load: () => load(), openServer: n => openServer(n) });
   const { openRename, openDelete } = ops;
 

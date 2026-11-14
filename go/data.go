@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -99,7 +100,9 @@ type App struct {
 	sessions    map[string]session
 	ttMu        sync.Mutex // terminal akış biletleri
 	termTickets map[string]termTicket
-	clock       func() time.Time // nil: time.Now (testte sahte saat)
+	clock       func() time.Time            // nil: time.Now (testte sahte saat)
+	ejectFn     func(io.Writer, string) int // nil: eject.Run (bkz. quit.go; testte değiştirilir)
+	exitFn      func()                      // nil: os.Exit(0)
 	mu          sync.Mutex
 	jmu         sync.Mutex // eylem işleri
 	vmu         sync.Mutex // değişken dosyası yazımı

@@ -30,6 +30,7 @@
     <button class="icon-btn" id="theme-btn" aria-label="Tema: otomatik" title="Tema: otomatik (tıklayınca değişir)"><span id="theme-ico" aria-hidden="true">◐</span></button>
     <button class="icon-btn" id="lock-btn" type="button" aria-label="Ekranı gizle (L)" title="Ekranı gizle (L)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
     <button class="icon-btn" id="shortcuts-btn" type="button" aria-label="Klavye kısayolları (?)" title="Klavye kısayolları (?)"><span class="mono sx-d17f9e" aria-hidden="true">?</span></button>
+    <button class="icon-btn" id="quit-btn" type="button" aria-label="Çıkış" title="Çıkış (terminalleri kapatır; USB'den çalışıyorsa USB'yi çıkarır)" data-i18n-title="quit_btn_title" data-i18n-aria="quit_btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v9"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button>
   </header>
 
   <nav class="sidebar" aria-label="Ana gezinme">
@@ -556,6 +557,9 @@
   </div>
 </div>
 
+<div class="quit-done" id="quit-done" hidden role="alertdialog" aria-modal="true" aria-labelledby="quit-done-title">
+  <div class="quit-done-card"><h3 id="quit-done-title" data-i18n="quit_done_title">KeyLab kapatıldı</h3><p id="quit-done-text" role="status"></p><pre class="mono small muted" id="quit-done-log"></pre></div>
+</div>
 <div class="privacy-lock" id="privacy-lock" hidden role="dialog" aria-modal="true" aria-labelledby="privacy-lock-title">
   <div class="privacy-lock-card">
     <div class="privacy-lock-ico" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>

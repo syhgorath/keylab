@@ -1513,4 +1513,10 @@ body.dock-open{padding-bottom:276px}
 .term-chip-add:focus-visible{box-shadow:0 0 0 2px #58a6ff}
 .term-chip-add:disabled{opacity:.4;cursor:not-allowed}
 .term-tabs{align-items:center}
+/* Çıkış: uygulama durduktan sonra tüm ekranı örten "kapatıldı" perdesi */
+.quit-done{position:fixed;inset:0;z-index:10000;background:var(--bg,#0b0e14);display:flex;align-items:center;justify-content:center;padding:20px}
+.quit-done-card{max-width:460px;width:100%;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;box-shadow:var(--shadow-2)}
+.quit-done-card h3{margin:0 0 8px;font-size:18px}
+.quit-done-card p{margin:0}
+.quit-done-card pre{margin:12px 0 0;white-space:pre-wrap;text-align:left}
 [hidden]{display:none !important} /* sj-sonu: !important yardımcı sınıfların display bildirimi hidden özniteliğini ezmesin; DOSYANIN SONUNDA kalmalı */
