@@ -53,6 +53,17 @@ for f in "${assets[@]}"; do
     ssh-keygen -Y verify -f "$SIGNERS" -I "$ID" -n "$NS" -s "$old.sig" < "$old" >/dev/null || die "$old imzası doğrulanamadı"
     assets+=("$old")
 done
+# macOS uygulama paketi: KeyLab.app (universal ikiliden, ad-hoc imzalı) → keylab-X.Y.Z-macos.zip; zip de aynı anahtarla imzalanır.
+# (eski adlı kopyası yok: eski istemciler yalnız ikili arar.)
+if [ -f "$U" ] && [ "$(uname -s)" = "Darwin" ]; then
+    bash scripts/package-app.sh "$U" "$VERSION" dist
+    Z="dist/keylab-$VERSION-macos.zip"
+    ssh-keygen -Y sign -f "$KEY" -n "$NS" "$Z"
+    ssh-keygen -Y verify -f "$SIGNERS" -I "$ID" -n "$NS" -s "$Z.sig" < "$Z" >/dev/null || die "$Z imzası doğrulanamadı"
+    assets+=("$Z")
+else
+    echo "UYARI: KeyLab.app/zip üretilmedi (universal ikili ya da macOS yok)"
+fi
 echo ""
 echo "✅ İmzalı varlıklar hazır ve doğrulandı:"
 ls -l "${assets[@]/%/}" ; for f in "${assets[@]}"; do ls -l "$f.sig"; done

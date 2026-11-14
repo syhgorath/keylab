@@ -28,7 +28,18 @@ Her sunucu `servers/<ad>/` altında bir klasördür; passphrase macOS Keychain'd
 > kullanım sorumluluğu size aittir (bkz. [LICENSE](LICENSE)).
 
 > **Otomatik başlamaz.** macOS, Linux ve modern Windows USB takılınca script çalıştırmaz (güvenlik gereği).
-> Elle başlatın: Finder'da `start.command` dosyasına çift tıklayın ya da `./sshpocket`.
+> Elle başlatın: `KeyLab.app`'e çift tıklayın (ya da Finder'da `start.command`, ya da `./sshpocket`).
+
+## Kurulum (macOS)
+
+1. [Release sayfasından](https://github.com/syhgorath/keylab/releases/latest) `keylab-X.Y.Z-macos.zip` dosyasını indirin ve açın: `KeyLab.app` çıkar.
+2. Nasıl kullanacağınıza göre yerleştirin:
+   - **Normal:** `KeyLab.app`'i Uygulamalar'a sürükleyin. Verileriniz `~/.keylab/` altında tutulur (ilk açılışta oluşur).
+   - **USB / taşınabilir:** `KeyLab.app`'i USB belleğe (ya da herhangi bir klasöre) koyun ve yanında bir `servers/` klasörü açın. Sunucularınız ve anahtarlarınız orada kalır, bilgisayara bir şey yazılmaz.
+3. `KeyLab.app`'e çift tıklayın; arayüz tarayıcıda açılır. Kapatmak için arayüzdeki **Çıkış** düğmesi (USB'den çalışıyorsanız anahtarları ajandan silip USB'yi de çıkarır).
+4. **İlk açılışta macOS uyarı verebilir** ("doğrulanamadı"): uygulama Apple'ın noter onayından geçmedi (ücretli Developer ID gerekir), ama **imzalıdır**. Sağ tıklayıp **Aç**'ı seçin (macOS 15 ve sonrasında: Sistem Ayarları → Gizlilik ve Güvenlik → "Yine de aç"). Güvenmeden önce indirdiğiniz dosyayı aşağıdaki [İlk indirmeyi doğrulama](#i̇lk-indirmeyi-doğrulama) adımıyla kontrol etmenizi öneririz.
+5. **Güncelleme:** `KeyLab.app` için yeni sürümün zip'ini indirip eskisinin yerine koyun (verileriniz `servers/` ya da `~/.keylab/` içinde kalır). `./sshpocket update` komutu tek başına ikili içindir; `.app` paketinin içindeki ikiliyi değiştirmek paketin imza mührünü bozar, bu yüzden `.app` için önerilmez (Finder'dan açılışının bundan etkilenip etkilenmediği denenmedi).
+6. **Python (yalnızca paketler için):** sunucu yönetimi, terminal, anahtarlar ve port knocking Python olmadan çalışır. Paketler (sertleştirme, saat/locale, kurulum) Ansible kullanır ve Python ≥ 3.12 ister; yoksa KeyLab ilk paket eyleminde nasıl kuracağınızı söyler (kendisi kurmaz).
 
 ## Gereksinimler
 
@@ -109,12 +120,13 @@ Yerleştirme atomiktir, eski ikili `.update-backup/` altına yedeklenir; `server
 bunu bakımcıdan **başka bir yoldan** da teyit etmeniz, depodaki dosyaya körü körüne güvenmekten iyidir.
 
 ```bash
-# Release'ten sshpocket-X.Y.Z-darwin-universal ve .sig dosyalarını indirdikten sonra:
+# Release'ten keylab-X.Y.Z-macos.zip ve .sig dosyalarını indirdikten sonra
+# (komut satırı ikilisi için keylab-X.Y.Z-darwin-universal ve .sig; aşağıda dosya adlarını ona göre değiştirin):
 cat > /tmp/sshpocket_signers <<'EOF'
 sshpocket-release namespaces="sshpocket-release" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKVJS3mGlCaOT/l8XfR0TxuKxqLUs6PpVDa9TYqm0fLn
 EOF
 ssh-keygen -Y verify -f /tmp/sshpocket_signers -I sshpocket-release -n sshpocket-release \
-  -s sshpocket-X.Y.Z-darwin-universal.sig < sshpocket-X.Y.Z-darwin-universal      # "Good ... signature" yazmalı
+  -s keylab-X.Y.Z-macos.zip.sig < keylab-X.Y.Z-macos.zip      # "Good ... signature" yazmalı
 ```
 
 ## Güvenlik modeli
