@@ -178,11 +178,22 @@
     $("#term-find-close").addEventListener("click", closeSearch);
   }
 
-  function connect(s) { // oturum kimliği biliniyor: girdi + akış
+  async function connect(s) { // oturum kimliği biliniyor: girdi + akış
     s.term.onData(d => { s.queue += d; flushInput(s); });
     let rt; s.term.onResize(({ rows, cols }) => { clearTimeout(rt); rt = setTimeout(() => { if (!s.closed) post("/api/term/resize", { id: s.id, rows, cols }).catch(() => {}); }, 120); });
     s.ro = new ResizeObserver(() => { if (!s.host.hidden) { try { s.fit.fit(); } catch {} } }); s.ro.observe(s.host);
-    const es = s.es = new EventSource("/api/term/stream?id=" + encodeURIComponent(s.id));
+    // akış KISA ömürlü, TEK kullanımlık bir biletle açılır (EventSource özel başlık gönderemez; bkz. session.go)
+    let ticket = "";
+    try {
+      const tr0 = await post("/api/term/ticket", { id: s.id });
+      if (!tr0.ok) throw new Error(String(tr0.status));
+      ticket = String((await tr0.json()).ticket || "");
+    } catch {
+      if (!s.closed) { s.closed = true; s.note = "✖ " + tr("term_ticket_fail", "Akış bileti alınamadı; oturum süresi dolmuş olabilir."); if (s === active) setNote(s.note); renderBars(); }
+      return;
+    }
+    if (s.closed) return; // bilet beklenirken oturum kapatıldı
+    const es = s.es = new EventSource("/api/term/stream?id=" + encodeURIComponent(s.id) + "&ticket=" + encodeURIComponent(ticket));
     es.addEventListener("data", ev => {
       try { s.term.write(b64ToBytes(ev.data)); } catch {}
       if (s !== active || !modalOpen()) { if (!s.unread) { s.unread = true; renderBars(); } }

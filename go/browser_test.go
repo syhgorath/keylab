@@ -84,7 +84,8 @@ func TestBootTokenOneTime(t *testing.T) {
 	}
 	hasCookie := func(w *httptest.ResponseRecorder) bool {
 		for _, c := range w.Result().Cookies() {
-			if c.Name == cookieName && c.Value == "gercek" && c.HttpOnly && c.SameSite == http.SameSiteStrictMode {
+			// çerez değeri jeton DEĞİL, geçerli bir oturum biletidir
+			if c.Name == cookieName && c.Value != "gercek" && c.Value != "acilis" && app.sessionValid(c.Value) && c.HttpOnly && c.SameSite == http.SameSiteStrictMode {
 				return true
 			}
 		}

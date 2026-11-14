@@ -90,7 +90,7 @@ func TestServerEditHandlerGuard(t *testing.T) {
 		req := httptest.NewRequest("POST", "/api/server-edit", strings.NewReader(body))
 		req.Host = "127.0.0.1:9999"
 		if cookie {
-			req.AddCookie(&http.Cookie{Name: cookieName, Value: "jeton"})
+			req.AddCookie(&http.Cookie{Name: cookieName, Value: a.newSession()})
 		}
 		for k, v := range hdr {
 			req.Header.Set(k, v)

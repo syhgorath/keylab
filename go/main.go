@@ -38,8 +38,8 @@ func (a *App) guard(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		c, err := r.Cookie(cookieName)
-		if err != nil || subtle.ConstantTimeCompare([]byte(c.Value), []byte(a.token)) != 1 {
-			http.Error(w, "yetkisiz", http.StatusUnauthorized)
+		if err != nil || !a.sessionValid(c.Value) {
+			http.Error(w, "oturum yok ya da süresi doldu", http.StatusUnauthorized)
 			return
 		}
 		// durum değiştiren istekler: özel başlık + aynı kaynak (SameSite=Strict çerezle birlikte CSRF savunması)
@@ -73,14 +73,14 @@ func (a *App) root(static http.Handler) http.Handler {
 		// tek kullanımlık açılış jetonu (?b=): tarayıcı başlatıcısı bunu kullanır; geçerliyse çerez verir ve jeton yanar
 		if b := r.URL.Query().Get("b"); b != "" {
 			if a.useBootToken(b) {
-				http.SetCookie(w, &http.Cookie{Name: cookieName, Value: a.token, Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode})
+				http.SetCookie(w, &http.Cookie{Name: cookieName, Value: a.newSession(), Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode})
 			}
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
 		if t := r.URL.Query().Get("t"); t != "" {
 			if subtle.ConstantTimeCompare([]byte(t), []byte(a.token)) == 1 {
-				http.SetCookie(w, &http.Cookie{Name: cookieName, Value: a.token, Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode})
+				http.SetCookie(w, &http.Cookie{Name: cookieName, Value: a.newSession(), Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode})
 			}
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
@@ -223,6 +223,7 @@ func main() {
 	}))
 	// gömülü terminal (bkz. term.go): hepsi guard'lı; POST uç noktaları CSRF başlığı ister
 	mux.HandleFunc("/api/term/open", app.guard(app.termOpenHandler))
+	mux.HandleFunc("/api/term/ticket", app.guard(app.termTicketHandler))
 	mux.HandleFunc("/api/term/stream", app.guard(app.termStreamHandler))
 	mux.HandleFunc("/api/term/input", app.guard(app.termInputHandler))
 	mux.HandleFunc("/api/term/resize", app.guard(app.termResizeHandler))
