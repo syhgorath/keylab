@@ -166,7 +166,7 @@ func main() {
 	if code, ok := subcommand(os.Args[1:]); ok {
 		os.Exit(code)
 	}
-	servers := flag.String("servers", "", "sunucular klasörü (varsayılan: $KEYLAB_SERVERS, /Volumes/test/servers, ../servers)")
+	servers := flag.String("servers", "", "sunucular klasörü (varsayılan: $KEYLAB_SERVERS, ikilinin yanındaki servers/ [taşınabilir], ~/.keylab/servers)")
 	comps := flag.String("components", "", "components klasörü (varsayılan: sunucular klasörünün yanında)")
 	state := flag.String("state", "", "durum/günlük klasörü (varsayılan: ~/.local/share/keylab; eski sshpocket klasörü varsa o)")
 	noOpen := flag.Bool("no-open", false, "tarayıcıyı açma")
@@ -177,25 +177,22 @@ func main() {
 		fmt.Fprintln(os.Stderr, "-browser auto ya da default olmalı")
 		os.Exit(2)
 	}
-	sd := *servers
+	cwd, _ := os.Getwd()
+	sd, createDirs := resolveServersDir(*servers, envServers(), selfExe(), cwd)
 	if sd == "" {
-		for _, c := range []string{envx.Get("SERVERS"), "/Volumes/test/servers", "../servers"} {
-			if c == "" {
-				continue
-			}
-			if st, err := os.Stat(c); err == nil && st.IsDir() {
-				sd = c
-				break
-			}
-		}
-	}
-	if sd == "" {
-		fmt.Fprintln(os.Stderr, "sunucular klasörü bulunamadı (-servers verin)")
+		fmt.Fprintln(os.Stderr, "sunucular klasörü bulunamadı ve ev klasörü bilinmiyor (-servers verin)")
 		os.Exit(1)
 	}
 	cd := *comps
 	if cd == "" {
 		cd = filepath.Join(filepath.Dir(filepath.Clean(sd)), "components")
+	}
+	if createDirs { // kurulu mod, ilk açılış: ~/.keylab/{servers,components}
+		if err := ensureHomeDirs(sd, cd); err != nil {
+			fmt.Fprintln(os.Stderr, "veri klasörü oluşturulamadı:", err)
+			os.Exit(1)
+		}
+		fmt.Println("ilk açılış: veri klasörü oluşturuldu:", filepath.Dir(sd))
 	}
 	st := *state
 	if st == "" {
