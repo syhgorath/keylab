@@ -76,6 +76,18 @@ func resolveServersDir(flagVal, envVal, exe, cwd string) (dir string, create boo
 	return filepath.Join(home, "servers"), true
 }
 
+// stateDirFor: durum/günlük klasörünün varsayılanı (-state bayrağı verilmediyse). TAŞINABİLİR modda (sunucular klasörü ikilinin/.app'in
+// yanındaki servers/ ise) sunucular klasörünün yanındaki state/ kullanılır: günlükler, denetim kayıtları, sertleştirme sonuçları USB ile
+// birlikte gider ve bilgisayarda iz kalmaz. $KEYLAB_STATE_DIR her zaman önceliklidir. Diğer modlarda ~/.local/share/keylab (defaultStateDir).
+// Ayrı Chromium profili BURAYA konmaz (bkz. main.go): Chromium profilindeki sembolik bağ (SingletonLock) FAT/exFAT USB'de oluşturulamaz.
+// Python önbelleği (~/.cache/keylab) ve Keychain da bilgisayarda kalır.
+func stateDirFor(servers, exe string) string {
+	if envx.Get("STATE_DIR") == "" && filepath.Clean(servers) == filepath.Join(appBase(exe), "servers") {
+		return filepath.Join(filepath.Dir(filepath.Clean(servers)), "state")
+	}
+	return defaultStateDir()
+}
+
 // ensureHomeDirs: kurulu modda ilk açılışta klasörleri oluşturur (servers 0700: anahtarlar burada durur).
 func ensureHomeDirs(servers, comps string) error {
 	if err := os.MkdirAll(servers, 0o700); err != nil {

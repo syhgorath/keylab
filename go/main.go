@@ -196,7 +196,7 @@ func main() {
 	}
 	st := *state
 	if st == "" {
-		st = defaultStateDir()
+		st = stateDirFor(sd, selfExe())
 	}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -726,8 +726,12 @@ func main() {
 	if !*noOpen && runtime.GOOS == "darwin" {
 		// komut satırına GERÇEK jeton değil, tek kullanımlık açılış jetonu yazılır (ps ile görünür); yazdırılan adres elle açmak içindir
 		bootURL := fmt.Sprintf("http://%s/?b=%s", app.host, app.bootTok)
-		if launchBrowser(bootURL, st, bm) {
-			fmt.Println("tarayıcı: KeyLab'a ait ayrı profil, eklentiler kapalı (uygulama penceresi); profil:", filepath.Join(st, "browser-profile"))
+		profBase := st // ayrı profil her zaman bu bilgisayarda: taşınabilirde USB'ye konmaz (bkz. stateDirFor)
+		if *state == "" {
+			profBase = defaultStateDir()
+		}
+		if launchBrowser(bootURL, profBase, bm) {
+			fmt.Println("tarayıcı: KeyLab'a ait ayrı profil, eklentiler kapalı (uygulama penceresi); profil:", filepath.Join(profBase, "browser-profile"))
 		} else if bm == "auto" {
 			fmt.Println("not: Chrome/Edge/Brave/Chromium bulunamadı; sistem tarayıcısı açıldı (eklentileriniz etkin olabilir). Ayrı profil için bunlardan birini kurun.")
 		}
