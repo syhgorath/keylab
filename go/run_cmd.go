@@ -15,7 +15,6 @@ import (
 
 	"keylab/internal/cli"
 	"keylab/internal/doctor"
-	"keylab/internal/eject"
 	"keylab/internal/platform"
 	"keylab/internal/report"
 	"keylab/internal/runner"
@@ -137,7 +136,7 @@ func subcommand(args []string) (int, bool) {
 		if len(args) > 1 {
 			usb = args[1]
 		}
-		return eject.Run(os.Stdout, usb), true
+		return platform.DefaultVolumes().Eject(os.Stdout, usb), true
 	case "report":
 		return reportCommand(args[1:]), true
 	case "server-remove":

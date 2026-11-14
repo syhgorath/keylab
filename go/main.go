@@ -509,7 +509,7 @@ func main() {
 			http.Error(w, "geçersiz", http.StatusBadRequest)
 			return
 		}
-		if !askpassAvailable() {
+		if !app.promptOS().Available() {
 			http.Error(w, "sistem parola penceresi bu platformda yok", http.StatusNotImplemented)
 			return
 		}
@@ -524,7 +524,7 @@ func main() {
 			http.Error(w, "çalışan iş yok", http.StatusNotFound)
 			return
 		}
-		pw, err := askPassNative(req.Prompt)
+		pw, err := app.promptOS().Secret(req.Prompt)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusConflict)
 			return

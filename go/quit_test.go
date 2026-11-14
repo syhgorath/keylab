@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"io"
+	"keylab/internal/platform"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,27 +12,21 @@ import (
 	"time"
 )
 
-func TestUSBRoot(t *testing.T) {
-	for in, want := range map[string]string{
-		"/Volumes/test/servers":       "/Volumes/test",
-		"/Volumes/My USB/servers/":    "/Volumes/My USB",
-		"/Volumes/test":               "/Volumes/test",
-		"/Volumes/":                   "",
-		"/Volumes/../etc/servers":     "",
-		"/Users/x/servers":            "",
-		"../servers":                  "",
-		"":                            "",
-		"/Volumesx/test/servers":      "",
-		"/Volumes/test/../../etc/foo": "",
-	} {
-		if got := usbRoot(in); got != want {
-			t.Errorf("usbRoot(%q)=%q, beklenen %q", in, got, want)
-		}
-	}
+func TestUSBName(t *testing.T) {
 	if usbName("") != "" || usbName("/Volumes/test") != "test" {
 		t.Error("usbName")
 	}
 }
+
+// fakeVolumes: gerçek MountRoot (/Volumes/<ad>) ama sahte çıkarma; ikili-USB'de-mi bilgisi ayarlanabilir.
+type fakeVolumes struct {
+	platform.DiskutilVolumes
+	eject    func(io.Writer, string) int
+	deferred bool
+}
+
+func (f fakeVolumes) Eject(w io.Writer, root string) int { return f.eject(w, root) }
+func (f fakeVolumes) WillDefer(string) bool              { return f.deferred }
 
 func quitCall(a *App, body string, method string) (int, map[string]any) {
 	w := httptest.NewRecorder()
@@ -45,11 +40,11 @@ func TestQuitHandlerEjectsUSBAndExits(t *testing.T) {
 	var ejectedPath string
 	exited := make(chan struct{}, 1)
 	a := &App{serversDir: "/Volumes/test/servers", jobs: map[string]*Job{"done": {Done: true}}}
-	a.ejectFn = func(w io.Writer, usb string) int {
+	a.volumes = fakeVolumes{eject: func(w io.Writer, usb string) int {
 		ejectedPath = usb
 		io.WriteString(w, "✅ USB çıkarıldı")
 		return 0
-	}
+	}}
 	a.exitFn = func() { exited <- struct{}{} }
 	code, m := quitCall(a, `{}`, http.MethodPost)
 	if code != 200 || m["ok"] != true || m["usb"] != "test" || m["ejected"] != true || m["log"] != "✅ USB çıkarıldı" {
@@ -69,7 +64,7 @@ func TestQuitHandlerNoUSBJustExits(t *testing.T) {
 	var ejectCalls atomic.Int32
 	exited := make(chan struct{}, 1)
 	a := &App{serversDir: "/Users/x/servers"}
-	a.ejectFn = func(io.Writer, string) int { ejectCalls.Add(1); return 0 }
+	a.volumes = fakeVolumes{eject: func(io.Writer, string) int { ejectCalls.Add(1); return 0 }}
 	a.exitFn = func() { exited <- struct{}{} }
 	code, m := quitCall(a, `{}`, http.MethodPost)
 	if code != 200 || m["usb"] != "" || m["ejected"] != false || ejectCalls.Load() != 0 {
@@ -85,7 +80,7 @@ func TestQuitHandlerNoUSBJustExits(t *testing.T) {
 func TestQuitHandlerEjectFailureReported(t *testing.T) {
 	exited := make(chan struct{}, 1)
 	a := &App{serversDir: "/Volumes/test/servers"}
-	a.ejectFn = func(w io.Writer, usb string) int { io.WriteString(w, "⚠️  USB çıkarılamadı"); return 1 }
+	a.volumes = fakeVolumes{eject: func(w io.Writer, usb string) int { io.WriteString(w, "⚠️  USB çıkarılamadı"); return 1 }}
 	a.exitFn = func() { exited <- struct{}{} }
 	_, m := quitCall(a, `{}`, http.MethodPost)
 	if m["ok"] != true || m["ejected"] != false || m["usb"] != "test" || m["log"] != "⚠️  USB çıkarılamadı" {
@@ -98,7 +93,7 @@ func TestQuitHandlerRunningJobNeedsForce(t *testing.T) {
 	var ejectCalls atomic.Int32
 	exited := make(chan struct{}, 1)
 	a := &App{serversDir: "/Volumes/test/servers", jobs: map[string]*Job{"j1": {Done: false}}}
-	a.ejectFn = func(io.Writer, string) int { ejectCalls.Add(1); return 0 }
+	a.volumes = fakeVolumes{eject: func(io.Writer, string) int { ejectCalls.Add(1); return 0 }}
 	a.exitFn = func() { exited <- struct{}{} }
 	code, m := quitCall(a, `{}`, http.MethodPost)
 	if code != http.StatusConflict || m["error"] != "running" || m["jobs"] != float64(1) {
@@ -131,12 +126,9 @@ func TestQuitHandlerRejects(t *testing.T) {
 }
 
 func TestQuitHandlerDefersEjectWhenRunningFromTheUSB(t *testing.T) {
-	old := ejectDeferred
-	t.Cleanup(func() { ejectDeferred = old })
-	ejectDeferred = func(string) bool { return true }
 	exited := make(chan struct{}, 1)
 	a := &App{serversDir: "/Volumes/test/servers"}
-	a.ejectFn = func(w io.Writer, usb string) int { io.WriteString(w, "📤 ertelendi"); return 0 }
+	a.volumes = fakeVolumes{deferred: true, eject: func(w io.Writer, usb string) int { io.WriteString(w, "📤 ertelendi"); return 0 }}
 	a.exitFn = func() { exited <- struct{}{} }
 	_, m := quitCall(a, `{}`, http.MethodPost)
 	if m["deferred"] != true || m["ejected"] != false || m["usb"] != "test" {

@@ -3,32 +3,12 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
-
-func TestChromiumCandidatesOrder(t *testing.T) {
-	c := chromiumCandidates("/Users/x")
-	want := []string{
-		"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-		"/Users/x/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-		"/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
-		"/Users/x/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
-		"/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
-		"/Users/x/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
-		"/Applications/Chromium.app/Contents/MacOS/Chromium",
-		"/Users/x/Applications/Chromium.app/Contents/MacOS/Chromium",
-	}
-	if len(c) != len(want) {
-		t.Fatalf("aday sayısı %d, beklenen %d: %v", len(c), len(want), c)
-	}
-	for i := range want {
-		if c[i] != want[i] {
-			t.Errorf("aday %d: %q, beklenen %q", i, c[i], want[i])
-		}
-	}
-}
 
 func TestFindChromium(t *testing.T) {
 	edge := "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"
@@ -111,5 +91,26 @@ func TestBootTokenOneTime(t *testing.T) {
 	}
 	if strings.Contains(isolatedBrowserArgs("http://h/?b=acilis", "/p")[1], "gercek") {
 		t.Error("gerçek jeton komut satırında olmamalı")
+	}
+}
+
+// sistem tarayıcısı yolu: -browser default (ya da Chromium yok) → `open <adres>`; ayrı profil kullanılmadı (false)
+func TestLaunchBrowserDefaultUsesSystemOpen(t *testing.T) {
+	bin, log := t.TempDir(), filepath.Join(t.TempDir(), "calls.log")
+	if err := os.WriteFile(filepath.Join(bin, "open"), []byte("#!/bin/bash\necho \"$*\" >> \""+log+"\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
+	if launchBrowser("http://127.0.0.1:9/?b=x", t.TempDir(), "default") {
+		t.Fatal("default kipte ayrı profil kullanıldı denmemeli")
+	}
+	for i := 0; i < 50; i++ {
+		if b, _ := os.ReadFile(log); strings.TrimSpace(string(b)) != "" {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if b, _ := os.ReadFile(log); strings.TrimSpace(string(b)) != "http://127.0.0.1:9/?b=x" {
+		t.Fatalf("open çağrısı: %q", b)
 	}
 }

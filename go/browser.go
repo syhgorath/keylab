@@ -9,28 +9,15 @@ package main
 // kullanıcılarca görülebilir; gerçek oturum jetonu bu yüzden komut satırına yazılmaz (bkz. App.useBootToken, main.go root).
 
 import (
+	"keylab/internal/platform"
 	"os"
 	"os/exec"
 	"path/filepath"
 )
 
-// chromiumApps: macOS uygulama paket adları (ikili adı paket adıyla aynıdır), öncelik sırasıyla.
-var chromiumApps = []string{"Google Chrome", "Microsoft Edge", "Brave Browser", "Chromium"}
-
-// chromiumCandidates: aranan ikili yolları (önce /Applications, sonra ~/Applications; uygulama sırasına göre).
-func chromiumCandidates(home string) []string {
-	var out []string
-	for _, app := range chromiumApps {
-		for _, base := range []string{"/Applications", filepath.Join(home, "Applications")} {
-			out = append(out, filepath.Join(base, app+".app", "Contents", "MacOS", app))
-		}
-	}
-	return out
-}
-
 // findChromium: adaylardan var olan ilk ikili ("" = yok). exists enjekte edilir (test).
 func findChromium(home string, exists func(string) bool) string {
-	for _, c := range chromiumCandidates(home) {
+	for _, c := range platform.DefaultBrowser().ChromiumCandidates(home) {
 		if exists(c) {
 			return c
 		}
@@ -75,6 +62,6 @@ func launchBrowser(url, stateDir, mode string) (isolated bool) {
 			}
 		}
 	}
-	_ = exec.Command("open", url).Start()
+	_ = platform.DefaultBrowser().OpenURL(url)
 	return false
 }

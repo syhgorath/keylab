@@ -3,6 +3,7 @@ package main
 // /api/about gövdesi: sürüm, klasörler, platform (Ayarlar > Yollar ve yapılandırma).
 
 import (
+	"keylab/internal/platform"
 	"path/filepath"
 	"runtime"
 )
@@ -22,5 +23,21 @@ func (a *App) aboutInfo() map[string]any {
 		}
 	}
 	return map[string]any{"version": ver, "root": root, "serversDir": a.serversDir, "componentsDir": a.compDir, "stateDir": a.stateDir,
-		"conf": conf, "platform": runtime.GOOS + "/" + runtime.GOARCH, "go": runtime.Version(), "askpass": askpassAvailable(), "usb": usbName(usbRoot(a.serversDir))}
+		"conf": conf, "platform": runtime.GOOS + "/" + runtime.GOARCH, "go": runtime.Version(), "askpass": a.promptOS().Available(), "usb": usbName(a.volumesOS().MountRoot(a.serversDir))}
+}
+
+// promptOS: sistem parola penceresi (platform katmanı); testte App.prompt ile değiştirilir.
+func (a *App) promptOS() platform.Prompt {
+	if a.prompt != nil {
+		return a.prompt
+	}
+	return platform.DefaultPrompt()
+}
+
+// volumesOS: çıkarılabilir birimler (platform katmanı); testte App.volumes ile değiştirilir.
+func (a *App) volumesOS() platform.Volumes {
+	if a.volumes != nil {
+		return a.volumes
+	}
+	return platform.DefaultVolumes()
 }

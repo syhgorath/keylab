@@ -5,6 +5,7 @@ package main
 // diğer sistemlerde atlanır. (Keychain `security` sözleşmesi: internal/servers, internal/cli, internal/runner altındaki *_contract_test.go.)
 
 import (
+	"keylab/internal/platform"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -72,19 +73,20 @@ func TestContractPtyArgvMac(t *testing.T) {
 
 func TestContractNativePasswordDialogMac(t *testing.T) {
 	needDarwin(t)
+	pr := platform.DefaultPrompt()
 	// osascript yok → pencere kullanılamaz
 	t.Setenv("PATH", t.TempDir())
-	if askpassAvailable() {
+	if pr.Available() {
 		t.Fatal("osascript yokken parola penceresi 'var' sayıldı")
 	}
 	t.Setenv("PATH", os.Getenv("PATH")+":/bin:/usr/bin")
 
 	// osascript var: tek sahte araç hem kullanılabilirlik hem çağrı sözleşmesi
 	log := fakeTool(t, "osascript", `printf 'gizli-parola\n'`)
-	if !askpassAvailable() {
+	if !pr.Available() {
 		t.Fatal("osascript varken parola penceresi yok sayıldı")
 	}
-	got, err := askPassNative("Sudo parolası \"web1\": ")
+	got, err := pr.Secret("Sudo parolası \"web1\": ")
 	if err != nil || string(got) != "gizli-parola" {
 		t.Fatalf("parola: %q %v", got, err)
 	}
@@ -96,7 +98,7 @@ func TestContractNativePasswordDialogMac(t *testing.T) {
 	}
 	// iptal (osascript hata kodu) → anlamlı hata, parola yok
 	fakeTool(t, "osascript", "exit 1")
-	if b, err := askPassNative("x"); err == nil || b != nil || !strings.Contains(err.Error(), "iptal") {
+	if b, err := pr.Secret("x"); err == nil || b != nil || !strings.Contains(err.Error(), "iptal") {
 		t.Fatalf("iptal: %q %v", b, err)
 	}
 }

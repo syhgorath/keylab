@@ -5,6 +5,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Değişti
+- **Dahili: platform katmanı 3. adım**: sistem parola penceresi (`Prompt`), tarayıcı/URL açma ve Chromium aday yolları (`Browser`) ve çıkarılabilir birimler (`Volumes`: USB kökü, çıkarma, ertelenmiş çıkarma) `internal/platform` arayüzlerine taşındı; macOS çağrıları birebir aynı, kullanıcıya görünen davranış değişmedi. Artık `osascript`, `open`, `diskutil` ve `/Volumes` yalnızca platform katmanında (ve Terminal.app'te aç alternatifi gidene kadar `main.go`'da) geçer.
 - **Dahili: platform katmanı başladı** (`internal/platform`): gizli değer deposu (Keychain) için `Secrets` arayüzü (`Find/Has/Delete/Set/SetInteractive/Available`) ve macOS uygulaması (`security`, çağrılar birebir aynı). Sunucu, knock, ssh-add askpass ve sunucu silme artık doğrudan `security` çağırmaz. Kullanıcıya görünen davranış değişmedi; Linux/Windows uygulamaları bu arayüze eklenecek.
 
 ### Değişti
