@@ -195,7 +195,7 @@ func main() {
 		fmt.Println("ilk açılış: veri klasörü oluşturuldu:", filepath.Dir(sd))
 	}
 	// kurulu ya da taşınabilir (servers/ ikilinin/.app'in yanında) mod: components/ klasörü ve gömülü paket kilidi ilk açılışta hazırlanır
-	if createDirs || filepath.Clean(sd) == filepath.Join(appBase(selfExe()), "servers") {
+	if needsFirstRunSetup(sd, selfExe(), createDirs) {
 		_ = os.MkdirAll(cd, 0o755)
 		if bootstrapLock(filepath.Dir(filepath.Clean(cd))) {
 			fmt.Println("ilk açılış: paket kilidi (components.lock) oluşturuldu; paketler Paketler sayfasından kurulur")

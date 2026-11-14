@@ -39,9 +39,13 @@ func (a *App) checkUpdates() (UpdateReport, error) {
 	if a.anyRunning() {
 		return UpdateReport{}, fmt.Errorf("çalışan bir eylem varken güncelleme denetlenemez")
 	}
+	bootstrapLock(root) // kilit hiç yoksa gömülü kilit kopyalanır (var olana dokunulmaz)
 	lock, err := trust.LoadLock(filepath.Join(root, "components.lock"))
 	if err != nil {
 		return UpdateReport{Rows: []UpdateRow{}, Raw: err.Error(), Exit: 1}, nil
+	}
+	if len(lock.Entries) == 0 {
+		return UpdateReport{Rows: []UpdateRow{}, Raw: "paket kilidi (components.lock) boş: kurulabilir paket yok. Kilit dosyası: " + filepath.Join(root, "components.lock"), Exit: 1}, nil
 	}
 	c := &trust.Client{
 		ComponentsDir: a.compDir,
@@ -102,6 +106,7 @@ func (a *App) startUpgrade(pkg, version string) (*Job, int, error) {
 			a.jmu.Unlock()
 		}()
 		root := a.engineRoot()
+		bootstrapLock(root)
 		lock, err := trust.LoadLock(filepath.Join(root, "components.lock"))
 		if err != nil {
 			emit("✖ %v", err)

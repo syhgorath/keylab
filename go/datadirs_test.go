@@ -145,3 +145,23 @@ func TestStateDirFor(t *testing.T) {
 		t.Fatalf("env: %q", got)
 	}
 }
+
+func TestNeedsFirstRunSetup(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	base := t.TempDir()
+	exe := filepath.Join(base, "KeyLab.app", "Contents", "MacOS", "KeyLab")
+	if !needsFirstRunSetup("/herhangi/servers", exe, true) {
+		t.Error("yeni oluşturulan klasör için hazırlık gerekir")
+	}
+	// kurulu mod: ~/.keylab/servers klasörü daha önce VARSA da kilit hazırlanmalı (4.0.1'de eksikti)
+	if !needsFirstRunSetup(filepath.Join(home, ".keylab", "servers"), exe, false) {
+		t.Error("kurulu mod (klasör önceden var) hazırlanmadı")
+	}
+	if !needsFirstRunSetup(filepath.Join(base, "servers"), exe, false) {
+		t.Error("taşınabilir mod hazırlanmadı")
+	}
+	if needsFirstRunSetup("/ozel/yer/servers", exe, false) {
+		t.Error("-servers ile verilen özel klasöre dokunulmamalı")
+	}
+}
