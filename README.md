@@ -46,7 +46,7 @@ Her sunucu `servers/<ad>/` altında bir klasördür; passphrase macOS Keychain'd
 
 | Ne | Not |
 |---|---|
-| macOS (Apple Silicon veya Intel) | Tek ikili hem arm64 hem amd64 içerir |
+| macOS 27 veya üstü, Apple Silicon (arm64) | Yalnızca güncel macOS ve Apple Silicon desteklenir; Intel ve eski macOS sürümleri için yayın yapılmaz |
 | `ssh`, `ssh-keygen`, `ssh-add`, `ssh-copy-id`, `security`, `osascript`, `diskutil` | Hepsi macOS ile gelir; `./sshpocket doctor` eksik olanı söyler (hiçbir şey kurmaz) |
 | **Python ≥ 3.12** | Yalnızca **paketler** (Ansible) için; `brew install python@3.13`. sshpocket gerekli sanal ortamı kendisi kurar |
 
@@ -69,7 +69,7 @@ Arayüz yalnızca `127.0.0.1`'e bağlanır; oturum çerezi ister.
 ## Düzen (USB / klasör)
 
 ```
-sshpocket          ikili (Release'ten indirilen universal dosya bu adla)
+sshpocket          ikili (Release'ten indirilen keylab-X.Y.Z-darwin-arm64 dosyası bu adla)
 start.command      çift tıkla başlatıcı
 release_signers    güncelleme güven noktası (imzacı public key)
 index_signers      paket indeksi güven noktası
@@ -122,7 +122,7 @@ bunu bakımcıdan **başka bir yoldan** da teyit etmeniz, depodaki dosyaya kör�
 
 ```bash
 # Release'ten keylab-X.Y.Z-macos.zip ve .sig dosyalarını indirdikten sonra
-# (komut satırı ikilisi için keylab-X.Y.Z-darwin-universal ve .sig; aşağıda dosya adlarını ona göre değiştirin):
+# (komut satırı ikilisi için keylab-X.Y.Z-darwin-arm64 ve .sig; aşağıda dosya adlarını ona göre değiştirin):
 cat > /tmp/sshpocket_signers <<'EOF'
 sshpocket-release namespaces="sshpocket-release" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKVJS3mGlCaOT/l8XfR0TxuKxqLUs6PpVDa9TYqm0fLn
 EOF
@@ -149,7 +149,7 @@ ssh-keygen -Y verify -f /tmp/sshpocket_signers -I sshpocket-release -n sshpocket
 go/                          Go kaynağı (ana ürün): main + internal/{manifest,trust,runner,servers,cli,report,findings,selfupdate,eject,doctor,settings}
 go/web/                      gömülü web arayüzü
 go/YAYIN.md                  yayın biçimi ve sürüm çıkarma adımları
-go/scripts/build-release.sh  universal ikiliyi derler ve İMZALAR (bakımcı aracı)
+go/scripts/build-release.sh  arm64 ikiliyi ve KeyLab.app zip'ini derler ve İMZALAR (bakımcı aracı)
 components.lock              paket kilit dosyası;  components/ kurulu paketler (repoya girmez)
 servers/<ad>/                server.env, id_ed25519_<ad>   (kullanıcı verisi)
 docs/                        ayrıntılı belgeler (paketler, güncelleme, test edilen ortamlar, standart)

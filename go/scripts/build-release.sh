@@ -3,7 +3,8 @@
 #
 #   SSHPOCKET_SIGNING_KEY=~/.ssh/sshpocket_release go/scripts/build-release.sh [--dry-run]
 #
-# Çıktı (go/dist/): keylab-X.Y.Z-darwin-{arm64,amd64,universal} ve aynı adlarla .sig; geçiş için aynı dosyaların sshpocket-X.Y.Z-… adlı kopyaları da (eski istemciler) (SSHSIG, ad alanı sshpocket-release).
+# Çıktı (go/dist/): keylab-X.Y.Z-darwin-arm64 ve .sig (SSHSIG, ad alanı sshpocket-release) + KeyLab.app zip'i. Yalnız Apple Silicon ve güncel macOS (27+):
+# amd64/universal ve eski sshpocket-… adlı kopyalar 4.0.5'ten itibaren üretilmez.
 # Sürüm kökteki VERSION dosyasından alınır ve ikiliye gömülür (-X main.buildVersion). Özel anahtar ASLA repoya/CI'a konmaz.
 # Sonraki adımlar sizde: etiket, GitHub Release'e yükleme (RELEASING.md).
 set -euo pipefail
@@ -21,7 +22,7 @@ command -v go >/dev/null || die "go bulunamadı"
 bash scripts/sync-embedded.sh --check || die "gömülü güven dosyaları kökle aynı değil (ikiliye yanlış anahtar/kilit gömülmesin)"
 grep -q '^[^#].*ssh-' "$SIGNERS" || die "$SIGNERS içinde public key yok"
 if [ "$DRY" = 1 ]; then
-    echo "(deneme) $VERSION için derlenecek: darwin/arm64, darwin/amd64 → universal; imza anahtarı: $KEY"
+    echo "(deneme) $VERSION için derlenecek: darwin/arm64 (yalnız Apple Silicon); imza anahtarı: $KEY"
     [ -f "$KEY" ] && echo "(deneme) anahtar var" || echo "(deneme) UYARI: anahtar bulunamadı"
     exit 0
 fi
@@ -29,50 +30,36 @@ fi
 
 rm -rf dist && mkdir -p dist
 # macOS ikilisi GÖMÜLÜ PENCERE (WKWebView; CGO + -tags webview) ile derlenir: uygulama kendi penceresinde açılır, kapatınca süreç biter, Chrome gerekmez.
-# Her mimari kendi clang -arch'ıyla (Apple Silicon'da amd64 de çapraz derlenir; Xcode Command Line Tools gerekir). Pencere derlenemezse sürüm DURUR:
+# clang -arch arm64 (Xcode Command Line Tools gerekir). Pencere derlenemezse sürüm DURUR:
 # pencere olmadan yayınlamak eski "Chrome penceresi" davranışını sessizce geri getirirdi.
 build() { # goos goarch out
     if [ "$1" = darwin ]; then
-        local cc="clang -arch arm64"; [ "$2" = amd64 ] && cc="clang -arch x86_64"
+        local cc="clang -arch arm64"
         CGO_ENABLED=1 CC="$cc" GOOS="$1" GOARCH="$2" go build -trimpath -tags webview -ldflags "-s -w -X main.buildVersion=$VERSION" -o "$3" . \
             || die "pencere (webview) derlemesi başarısız: $1/$2 (Xcode Command Line Tools: xcode-select --install)"
     else
         CGO_ENABLED=0 GOOS="$1" GOARCH="$2" go build -trimpath -ldflags "-s -w -X main.buildVersion=$VERSION" -o "$3" .
     fi
 }
-A="dist/keylab-$VERSION-darwin-arm64"; B="dist/keylab-$VERSION-darwin-amd64"; U="dist/keylab-$VERSION-darwin-universal"
-build darwin arm64 "$A"; build darwin amd64 "$B"
-assets=("$A" "$B")
-if command -v lipo >/dev/null; then
-    lipo -create -output "$U" "$A" "$B"
-    command -v codesign >/dev/null && codesign --force -s - "$U"
-    assets+=("$U")
-else
-    echo "UYARI: lipo yok; universal ikili üretilmedi (USB için tek dosya gerekir)"
-fi
+A="dist/keylab-$VERSION-darwin-arm64"
+build darwin arm64 "$A"
+command -v codesign >/dev/null && codesign --force -s - "$A"
+assets=("$A")
 for f in "${assets[@]}"; do
     chmod 755 "$f"
     ssh-keygen -Y sign -f "$KEY" -n "$NS" "$f"
     ssh-keygen -Y verify -f "$SIGNERS" -I "$ID" -n "$NS" -s "$f.sig" < "$f" >/dev/null \
         || die "$f imzası $SIGNERS ile DOĞRULANAMADI (yanlış anahtar?)"
 done
-# geçiş dönemi: eski adlı kopyalar (içerik ve imza aynı; imza içeriğe bağlıdır, ada değil). Eski istemciler yalnız sshpocket-… arar.
-for f in "${assets[@]}"; do
-    old="dist/sshpocket-${f#dist/keylab-}"
-    cp "$f" "$old"; cp "$f.sig" "$old.sig"
-    ssh-keygen -Y verify -f "$SIGNERS" -I "$ID" -n "$NS" -s "$old.sig" < "$old" >/dev/null || die "$old imzası doğrulanamadı"
-    assets+=("$old")
-done
-# macOS uygulama paketi: KeyLab.app (universal ikiliden, ad-hoc imzalı) → keylab-X.Y.Z-macos.zip; zip de aynı anahtarla imzalanır.
-# (eski adlı kopyası yok: eski istemciler yalnız ikili arar.)
-if [ -f "$U" ] && [ "$(uname -s)" = "Darwin" ]; then
-    bash scripts/package-app.sh "$U" "$VERSION" dist
+# macOS uygulama paketi: KeyLab.app (arm64 ikiliden, ad-hoc imzalı) → keylab-X.Y.Z-macos.zip; zip de aynı anahtarla imzalanır.
+if [ -f "$A" ] && [ "$(uname -s)" = "Darwin" ]; then
+    bash scripts/package-app.sh "$A" "$VERSION" dist
     Z="dist/keylab-$VERSION-macos.zip"
     ssh-keygen -Y sign -f "$KEY" -n "$NS" "$Z"
     ssh-keygen -Y verify -f "$SIGNERS" -I "$ID" -n "$NS" -s "$Z.sig" < "$Z" >/dev/null || die "$Z imzası doğrulanamadı"
     assets+=("$Z")
 else
-    echo "UYARI: KeyLab.app/zip üretilmedi (universal ikili ya da macOS yok)"
+    echo "UYARI: KeyLab.app/zip üretilmedi (arm64 ikili ya da macOS yok)"
 fi
 echo ""
 echo "✅ İmzalı varlıklar hazır ve doğrulandı:"

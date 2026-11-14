@@ -29,7 +29,7 @@ anahtara sahip bir sürüm kurduktan sonra, sonraki güncellemeleri yalnızca bu
 
 ## 2) Her sürüm
 
-Ürün, macOS için tek imzalı ikilidir (`keylab-X.Y.Z-darwin-universal`; arm64 ve amd64 ayrıca; geçiş için aynı dosyalar eski `sshpocket-X.Y.Z-…` adıyla da). Ayrıntı: [go/YAYIN.md](go/YAYIN.md).
+Ürün, macOS 27+ ve Apple Silicon için tek imzalı ikilidir (`keylab-X.Y.Z-darwin-arm64`) ve `KeyLab.app` zip'idir (`keylab-X.Y.Z-macos.zip`). Intel (amd64), universal ve eski `sshpocket-X.Y.Z-…` adlı kopyalar 4.0.5'ten itibaren yayımlanmaz (4.0.x istemcileri arm64 adına geri düşüp güncellenir; 4.0.0 öncesi istemciler güncellenemez). Ayrıntı: [go/YAYIN.md](go/YAYIN.md).
 
 > **Köktekileri değiştirirseniz:** `release_signers`, `index_signers` ya da `components.lock` (ör. yeni paket sürümü kilitlediğinizde) ikiliye gömülü kopyalarıdır `go/embedded/`. Değişiklikten sonra `bash go/scripts/sync-embedded.sh` çalıştırıp sonucu commit'leyin; `go test` ve `build-release.sh` kopyalar farklıysa durur.
 

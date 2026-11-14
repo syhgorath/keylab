@@ -65,7 +65,7 @@ awk -v v="$VERSION" '$0 ~ "^## \\[" v "\\]" {f=1; next} /^## \[/ {f=0} f' CHANGE
 
 echo "Sürüm: $TAG (commit ${HEAD_SHA:0:7})"
 echo "Yapılacaklar:"
-echo "  1) go/scripts/build-release.sh  (derle: darwin arm64+amd64+universal + KeyLab.app zip, İMZALA, kendi doğrulaması; passphrase sorulur)"
+echo "  1) go/scripts/build-release.sh  (derle: darwin arm64 (yalnız Apple Silicon) + KeyLab.app zip, İMZALA, kendi doğrulaması; passphrase sorulur)"
 echo "  2) git tag -a $TAG -m \"KeyLab $VERSION\" && git push origin $TAG"
 echo "  3) gh release create $TAG <go/dist varlıkları ve .sig'leri> --title $TAG --notes-file <CHANGELOG [$VERSION] bölümü, $(wc -l < "$NOTES" | tr -d ' ') satır>"
 echo "  4) yüklenen dosyaların SHA-256 özetini yerel dosyalarla karşılaştır"
@@ -78,8 +78,8 @@ fi
 
 # 1) derle + imzala (başarısız olursa hiçbir şey itilmemiş olur)
 SSHPOCKET_SIGNING_KEY="$KEY" bash go/scripts/build-release.sh   # (depoda çalıştırma biti yok; bash ile)
-U="go/dist/keylab-$VERSION-darwin-universal"
-[ -f "$U" ] && [ -f "$U.sig" ] || die "universal ikili ya da imzası üretilmedi (lipo yok mu?)"
+U="go/dist/keylab-$VERSION-darwin-arm64"
+[ -f "$U" ] && [ -f "$U.sig" ] || die "arm64 ikili ya da imzası üretilmedi"
 [ -f "go/dist/keylab-$VERSION-macos.zip" ] && [ -f "go/dist/keylab-$VERSION-macos.zip.sig" ] || die "KeyLab.app zip'i ya da imzası üretilmedi"
 "$U" version 2>&1 | grep -qF "$VERSION" || die "$U version çıktısında $VERSION yok"
 
@@ -110,5 +110,5 @@ for f in "${assets[@]}"; do
 done
 echo ""
 echo "✅ $TAG yayımlandı ve yüklenen ${#assets[@]} dosyanın özeti yerelle aynı."
-echo "Evrensel ikili SHA-256: $(SUMOF "$U")"
+echo "arm64 ikili SHA-256: $(SUMOF "$U")"
 echo "Sıradaki: eski sürümlü bir kopyada './sshpocket update --check' ile deneyin; USB'yi güncelleyin."

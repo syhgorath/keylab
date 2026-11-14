@@ -34,7 +34,7 @@ Signed **packages** (currently server hardening, time zone/locale setup and inst
 
 | What | Note |
 |---|---|
-| macOS (Apple Silicon or Intel) | The single binary contains both arm64 and amd64 |
+| macOS 27 or later, Apple Silicon (arm64) | Only current macOS and Apple Silicon are supported; no Intel or older-macOS builds are published |
 | `ssh`, `ssh-keygen`, `ssh-add`, `ssh-copy-id`, `security`, `osascript`, `diskutil` | All ship with macOS; `./sshpocket doctor` tells you what is missing (it installs nothing) |
 | **Python ≥ 3.12** | Only for **packages** (Ansible); `brew install python@3.13`. sshpocket creates the virtual environment it needs |
 
@@ -106,12 +106,12 @@ You can verify it yourself before running it (OpenSSH ≥ 8.0, ready on macOS). 
 confirming it with the maintainer **through another channel** is better than trusting the file in the repo blindly.
 
 ```bash
-# after downloading keylab-X.Y.Z-darwin-universal and its .sig from the Release:
+# after downloading keylab-X.Y.Z-darwin-arm64 and its .sig from the Release:
 cat > /tmp/sshpocket_signers <<'EOF'
 sshpocket-release namespaces="sshpocket-release" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKVJS3mGlCaOT/l8XfR0TxuKxqLUs6PpVDa9TYqm0fLn
 EOF
 ssh-keygen -Y verify -f /tmp/sshpocket_signers -I sshpocket-release -n sshpocket-release \
-  -s keylab-X.Y.Z-darwin-universal.sig < keylab-X.Y.Z-darwin-universal      # must print "Good ... signature"
+  -s keylab-X.Y.Z-darwin-arm64.sig < keylab-X.Y.Z-darwin-arm64      # must print "Good ... signature"
 ```
 
 ## Security model
