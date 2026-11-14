@@ -77,7 +77,9 @@ func Run(w io.Writer, o Options) int {
 	} else {
 		s.warn("ssh-copy-id yok (key gönderme elle kurulum komutuyla yapılır)")
 	}
-	if platform.SecretsSupported() {
+	if platform.GuestMode() {
+		s.ok("taşınabilir mod: Keychain kullanılmıyor, anahtarlar KeyLab'ın özel ssh-agent'ında")
+	} else if platform.SecretsSupported() {
 		if platform.Default().Available() {
 			s.ok("security (Keychain)")
 		} else {

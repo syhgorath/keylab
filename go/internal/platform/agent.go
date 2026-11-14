@@ -22,6 +22,9 @@ func (OpenSSHAgent) AddKeyArgv(key string) []string { return []string{"ssh-add",
 
 // DefaultAgent: bu işletim sisteminin ajan komutu.
 func DefaultAgent() Agent {
+	if GuestMode() {
+		return OpenSSHAgent{} // misafir mod: Keychain'e kaydetme yok; passphrase her oturumda sorulur
+	}
 	if runtime.GOOS == "darwin" {
 		return KeychainAgent{}
 	}
