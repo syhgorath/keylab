@@ -4,6 +4,13 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [4.0.3] - 2026-11-15
+
+Düzeltme sürümü.
+
+### Düzeltildi
+- **`.app` olarak açılınca Homebrew'daki Python bulunmuyordu** ("bulunan sürümler uymuyor (3.9.6)"): macOS, Dock/Finder'dan açılan uygulamaya yalnızca `/usr/bin:/bin:/usr/sbin:/sbin` verir; terminalden açılınca kabuğun `PATH`'i gelir. KeyLab açılışta `PATH`'in SONUNA var olan `/opt/homebrew/bin`, `/opt/homebrew/sbin`, `/usr/local/bin`, `/usr/local/sbin` klasörlerini ekler (kullanıcının sırası bozulmaz, yinelenmez); terminal, eylemler ve Ansible bunu devralır. Eski Terminal.app yolu giriş kabuğunun `PATH`'ini taşıdığı için bu eksiği örtüyordu. Çıplak `PATH` ile `keylab doctor` denendi; gerçek `.app` + Dock açılışı kullanıcı tarafından denenmelidir. Python hiç kurulu değilse mesaj aynen sürer (Python'u gömme ayrı bir iştir).
+
 ## [4.0.2] - 2026-11-14
 
 Taşınabilir (USB) kullanım ve gömülü pencere sürümü: uygulama kendi penceresinde açılır, paket eylemleri gömülü terminalde çalışır, USB'de misafir mod ve Çıkış temizliği vardır.
