@@ -47,7 +47,7 @@ Betik sırayla: `main` dalında, çalışma alanı temiz, `HEAD == origin/main`,
 
 - Yarıda kalırsa (örn. ağ koptu) aynı komutu tekrar çalıştırın: etiket zaten bu commit'teyse yeniden etiketlemez; Release açılmışsa betik "zaten var" der, o durumda yalnız eksik dosyaları elle yükleyin.
 - `--yes` onayı atlar, `--no-ci-check` CI denetimini atlar (önerilmez).
-- Gerekenler: `go`, `gh` (oturum açılmış), `ssh-keygen`, `lipo`/`codesign` (macOS).
+- Gerekenler: `go`, `gh` (oturum açılmış), `ssh-keygen`, `lipo`/`codesign` ve **Xcode Command Line Tools** (macOS ikilisi gömülü pencere için CGO + `-tags webview` ile, her mimari kendi `clang -arch`'ıyla derlenir; derlenemezse sürüm durur).
 - Yayından sonra: eski sürümlü bir kopyada `./sshpocket update --check`, sonra `./sshpocket update` ile deneyin (gerçek Release ile uçtan uca `update` ilk yayında henüz denenmemiştir).
 
 ### Elle (yedek yol)

@@ -4,6 +4,7 @@
 #   bash go/scripts/keylabtest.sh                  # derle, paketleri eşitle, başlat
 #   bash go/scripts/keylabtest.sh --sadece-derle   # derle ve eşitle, BAŞLATMA
 #   bash go/scripts/keylabtest.sh --paketleri-atla # components/ eşitlemesini atla (yalnız programı güncelle)
+#   bash go/scripts/keylabtest.sh --chrome         # gömülü pencere (macOS varsayılanı: CGO + -tags webview) yerine Chrome/sistem tarayıcısı derlemesi (CGO'suz, hızlı)
 #   bash go/scripts/keylabtest.sh --main           # GitHub'daki GÜNCEL main'i ayrı bir klonda çekip (git pull) ondan derle, eşitle, başlat
 #
 # --main: çalışma klasörünüzdeki dal/değişikliklerden BAĞIMSIZDIR. Ayrı klon ~/Developer/keylab-main (KEYLAB_MAIN_CLONE ile değişir; yoksa
@@ -19,11 +20,13 @@ set -euo pipefail
 
 SRC="$(cd "$(dirname "$0")/../.." && pwd)"
 KT="${KEYLABTEST:-$HOME/Developer/keylabtest}"
-START=1; PKG=1; MAIN=0
+START=1; PKG=1; MAIN=0; WIN=0
+[ "$(uname -s)" = Darwin ] && WIN=1   # macOS: uygulamanın kendi penceresi (yayın derlemesiyle aynı)
 for a in "$@"; do
     case "$a" in
         --sadece-derle) START=0 ;;
         --paketleri-atla) PKG=0 ;;
+        --chrome) WIN=0 ;;
         --main) MAIN=1 ;;
         *) echo "bilinmeyen seçenek: $a" >&2; exit 2 ;;
     esac
@@ -52,7 +55,11 @@ case "$KT" in ""|"/"|"$HOME"|"$SRC") echo "HATA: geçersiz deneme klasörü: '$K
 
 mkdir -p "$KT/servers" "$KT/state"
 echo "→ derleniyor: $KT/keylab"
-(cd "$SRC/go" && go build -o "$KT/keylab" .)
+if [ "$WIN" = 1 ]; then
+    (cd "$SRC/go" && CGO_ENABLED=1 go build -tags webview -o "$KT/keylab" .) || { echo "HATA: pencere derlemesi başarısız (Xcode Command Line Tools gerekir; CGO'suz denemek için --chrome)" >&2; exit 1; }
+else
+    (cd "$SRC/go" && CGO_ENABLED=0 go build -o "$KT/keylab" .)
+fi
 
 if [ "$PKG" = 1 ]; then
     if [ -d "$SRC/components" ]; then
