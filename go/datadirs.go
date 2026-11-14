@@ -88,6 +88,20 @@ func stateDirFor(servers, exe string) string {
 	return defaultStateDir()
 }
 
+// needsFirstRunSetup: components/ klasörü ve gömülü paket kilidi bu açılışta hazırlanmalı mı? Kurulu mod (sunucular klasörü ~/.keylab/servers,
+// klasör daha önce var olsa bile) ve taşınabilir mod (servers/ ikilinin/.app'in yanında) için evet; -servers ile verilen özel klasörler için hayır.
+func needsFirstRunSetup(servers, exe string, created bool) bool {
+	if created {
+		return true
+	}
+	s := filepath.Clean(servers)
+	if s == filepath.Join(appBase(exe), "servers") {
+		return true
+	}
+	h := homeDataDir()
+	return h != "" && s == filepath.Join(h, "servers")
+}
+
 // ensureHomeDirs: kurulu modda ilk açılışta klasörleri oluşturur (servers 0700: anahtarlar burada durur).
 func ensureHomeDirs(servers, comps string) error {
 	if err := os.MkdirAll(servers, 0o700); err != nil {

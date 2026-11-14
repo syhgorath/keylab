@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Düzeltildi
+- **Paketler sayfası "Paketleri keşfet" boş geliyordu** (4.0.1): kurulu modda `~/.keylab/servers` klasörü daha önce varsa (ör. 4.0.0'dan ya da elle taşınan sunucularla) gömülü paket kilidi hiç kopyalanmıyordu; indeks doğrulanıyor ama kilit yok/boş olduğu için hiçbir paket listelenmiyordu. Artık hem ilk açılış kurulu modda her zaman kilidi hazırlar hem de indeks/yükseltme denetimi kilit yoksa gömülü kilidi kopyalar; kilit boşsa pencere nedenini ("paket kilidi boş") yazar.
+
 ## [4.0.1] - 2026-11-14
 
 Kurulumu sadeleştiren düzeltme sürümü: `KeyLab.app` tek başına, yanında hiçbir dosya olmadan ilk açılışta paketleri (Paketler sayfasından) imzalı biçimde kurabilir; taşınabilir (USB) kullanımda durum ve günlükler USB'de kalır.
