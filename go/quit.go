@@ -79,6 +79,7 @@ func (a *App) quitHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	go func() {
 		time.Sleep(500 * time.Millisecond) // yanıt tarayıcıya ulaşsın
+		a.runCleanups()                    // taşınabilir mod: geçici klasörü (venv, tarayıcı profili) sil
 		if a.exitFn != nil {
 			a.exitFn()
 			return

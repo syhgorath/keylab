@@ -20,8 +20,8 @@ import (
 
 // SSHOptions, her ssh çağrısına eklenen sabit seçeneklerdir.
 func SSHOptions() []string {
-	return []string{"-o", "BatchMode=yes", "-o", "IdentitiesOnly=yes", "-o", "StrictHostKeyChecking=yes", "-o", "ConnectTimeout=10",
-		"-o", "PreferredAuthentications=publickey", "-o", "PasswordAuthentication=no"}
+	return append([]string{"-o", "BatchMode=yes", "-o", "IdentitiesOnly=yes", "-o", "StrictHostKeyChecking=yes", "-o", "ConnectTimeout=10",
+		"-o", "PreferredAuthentications=publickey", "-o", "PasswordAuthentication=no"}, envx.KnownHostsOption()...)
 }
 
 func runCapture(name string, args []string, stdin io.Reader) (stdout, stderr []byte, err error) {

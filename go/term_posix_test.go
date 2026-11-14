@@ -3,6 +3,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -157,5 +159,37 @@ func TestOpenTermRejectsUnknownServer(t *testing.T) {
 	}
 	if _, code, err := a.openTerm("../etc", 24, 80); err == nil || code != 400 {
 		t.Fatalf("geçersiz ad: beklenen 400, gelen %d %v", code, err)
+	}
+}
+
+// Taşınabilir mod: gömülü terminalin ssh'ı known_hosts'u KEYLAB_KNOWN_HOSTS'taki (USB) dosyaya yönlendirir; ayar yoksa seçenek eklenmez.
+func TestOpenTermUsesConfiguredKnownHosts(t *testing.T) {
+	bin, log := t.TempDir(), filepath.Join(t.TempDir(), "args.log")
+	os.WriteFile(filepath.Join(bin, "ssh"), []byte("#!/bin/bash\necho \"$*\" >> \""+log+"\"\nsleep 0.2\n"), 0o755)
+	t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
+	srvs := t.TempDir()
+	os.MkdirAll(filepath.Join(srvs, "kvm"), 0o700)
+	os.WriteFile(filepath.Join(srvs, "kvm", "server.env"), []byte("IP=192.0.2.10\nUSER=admin\nPORT=22\n"), 0o600)
+	a := &App{serversDir: srvs, compDir: filepath.Join(t.TempDir(), "components"), stateDir: t.TempDir(), jobs: map[string]*Job{}, up: map[string]bool{}}
+
+	open := func() string {
+		os.Remove(log)
+		ts, code, err := a.openTerm("kvm", 24, 80)
+		if err != nil {
+			t.Fatalf("açılamadı (%d): %v", code, err)
+		}
+		waitDone(t, ts, 5*time.Second)
+		b, _ := os.ReadFile(log)
+		return strings.TrimSpace(string(b))
+	}
+	t.Setenv("KEYLAB_KNOWN_HOSTS", "")
+	t.Setenv("SSHPOCKET_KNOWN_HOSTS", "")
+	if got := open(); strings.Contains(got, "UserKnownHostsFile") || !strings.Contains(got, "admin@192.0.2.10") {
+		t.Fatalf("ayarsız: %q", got)
+	}
+	kh := filepath.Join(t.TempDir(), "state", "known_hosts")
+	t.Setenv("KEYLAB_KNOWN_HOSTS", kh)
+	if got := open(); !strings.Contains(got, "-o UserKnownHostsFile="+kh) {
+		t.Fatalf("known_hosts yönlendirilmedi: %q", got)
 	}
 }

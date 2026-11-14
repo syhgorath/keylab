@@ -5,6 +5,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Değişti
+- **Taşınabilir (USB) modda bilgisayarda iz azaltıldı**: Python önbelleği (venv) ve ayrı tarayıcı profili artık geçici bir klasörde (`$TMPDIR/keylab-…`, 0700) tutulur ve Çıkış, Ctrl-C/kapatma sinyali ya da normal çıkışta silinir; ssh `known_hosts` USB'deki `state/known_hosts` dosyasına yönlendirilir (gömülü terminal, eylemler, `ssh-copy-id` ve Ansible — paketin `ssh_extra_args` ayarı korunarak `ANSIBLE_SSH_EXTRA_ARGS` ile). `KEYLAB_CACHE_DIR` / `KEYLAB_KNOWN_HOSTS` kullanıcı tarafından verilmişse ezilmez. Taşınabilir olmayan kullanımda değişiklik yok. FAT32 disk imajında çalışma/kapatma/Çıkış temizliği denendi; Ansible ile gerçek bir sunucuda henüz denenmedi (hardening'i bir test VM'inde deneyin).
+
+### Değişti
 - **Harici sürücüdeki (USB) uygulama otomatik taşınabilir**: `KeyLab.app` `/Volumes/<ad>/` altında çalışıyorsa `servers/`, `components/` ve `state/` ilk açılışta uygulamanın yanında kendiliğinden oluşur; `~/.keylab`'da veri olsa bile USB'deki uygulama yanındaki klasörü kullanır. Yazılamazsa (salt okunur disk imajı vb.) uyarı verip `~/.keylab`'a döner. `-servers`/`$KEYLAB_SERVERS` her zaman önceliklidir. FAT32 disk imajında ve salt okunur imajda uçtan uca denendi.
 
 ### Değişti
