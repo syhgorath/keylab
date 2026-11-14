@@ -1506,4 +1506,11 @@ body.dock-open{padding-bottom:276px}
 .term-modal .notice{margin:8px 14px}
 .term-modal .modal-foot{background:#161b22;border-top:1px solid #30363d;color:#8b949e;flex:none}
 .term-modal .modal-foot .muted{color:#8b949e}
+
+/* ---------- Terminal penceresi: bu sunucuda yeni terminal (+) ---------- */
+.term-chip-add{all:unset;box-sizing:border-box;cursor:pointer;width:26px;height:26px;border-radius:50%;text-align:center;line-height:24px;font-size:16px;color:#8b949e;border:1px dashed #30363d}
+.term-chip-add:hover:not(:disabled),.term-chip-add:focus-visible{color:#e6edf3;border-color:#58a6ff;background:#161b22}
+.term-chip-add:focus-visible{box-shadow:0 0 0 2px #58a6ff}
+.term-chip-add:disabled{opacity:.4;cursor:not-allowed}
+.term-tabs{align-items:center}
 [hidden]{display:none !important} /* sj-sonu: !important yardımcı sınıfların display bildirimi hidden özniteliğini ezmesin; DOSYANIN SONUNDA kalmalı */
