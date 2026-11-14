@@ -37,6 +37,13 @@ test("çıkış: USB çıkarıldı / çıkarılamadı iletisi ve günlük perded
   assert.match(h.$("#quit-done-text").textContent, /^USB çıkarılamadı, elle çıkarın: test\./); h.close();
 });
 
+test("çıkış: uygulama USB'den çalışıyorsa çıkarma ertelenir; perde bunu söyler (yanlışlıkla 'çıkarıldı' denmez)", async () => {
+  const h = await boot({ hash: "", overrides: base({ "/api/about": about("test"), "/api/quit": { ok: true, usb: "test", ejected: false, deferred: true, log: "📤 ertelendi" } }) }); noclose(h);
+  await h.click("#quit-btn"); await h.click("#dlg-ok");
+  assert.match(h.$("#quit-done-text").textContent, /^USB uygulama kapandıktan hemen sonra çıkarılacak: test\. KeyLab durduruldu/);
+  assert.doesNotMatch(h.$("#quit-done-text").textContent, /USB çıkarıldı/); assert.deepEqual(h.errors, []); h.close();
+});
+
 test("çıkış: çalışan iş varsa 409 → uyarılı ikinci onay → force:true ile çıkar", async () => {
   let n = 0;
   const h = await boot({ hash: "", overrides: base({ "/api/about": about("test"), "/api/quit": () => (++n === 1 ? { status: 409, body: { error: "running", jobs: 2 } } : { ok: true, usb: "test", ejected: true, log: "" }) }) }); noclose(h);

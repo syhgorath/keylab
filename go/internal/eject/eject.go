@@ -55,6 +55,9 @@ func Run(w io.Writer, usb string) int {
 	if n := RemoveUSBKeys(usb); n > 0 {
 		fmt.Fprintf(w, "🔑 %d anahtar ssh-agent'tan çıkarıldı\n", n)
 	}
+	if selfOnVolume(usb) {
+		return runDeferred(w, usb)
+	}
 	fmt.Fprintf(w, "\n📤 USB çıkarılıyor: %s\n", filepath.Base(usb))
 	os.Chdir(os.Getenv("HOME")) // çalışma dizini USB üzerinde olmasın
 	disk := ""

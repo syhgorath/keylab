@@ -129,3 +129,18 @@ func TestQuitHandlerRejects(t *testing.T) {
 		t.Errorf("bozuk gövde: %d", code)
 	}
 }
+
+func TestQuitHandlerDefersEjectWhenRunningFromTheUSB(t *testing.T) {
+	old := ejectDeferred
+	t.Cleanup(func() { ejectDeferred = old })
+	ejectDeferred = func(string) bool { return true }
+	exited := make(chan struct{}, 1)
+	a := &App{serversDir: "/Volumes/test/servers"}
+	a.ejectFn = func(w io.Writer, usb string) int { io.WriteString(w, "📤 ertelendi"); return 0 }
+	a.exitFn = func() { exited <- struct{}{} }
+	_, m := quitCall(a, `{}`, http.MethodPost)
+	if m["deferred"] != true || m["ejected"] != false || m["usb"] != "test" {
+		t.Fatalf("ertelenen çıkarma: %v", m)
+	}
+	<-exited
+}

@@ -28,7 +28,7 @@ export function initQuit(hooks) {
     closeDlg();
     const o = $("#quit-done"); if (!o) return;
     let line = t("quit_done_plain", "KeyLab durduruldu. Bu pencereyi kapatabilirsiniz.");
-    if (d.usb) line = d.ejected ? `${t("quit_done_usb", "USB çıkarıldı")}: ${d.usb}. ${line}` : `${t("quit_done_nousb", "USB çıkarılamadı, elle çıkarın")}: ${d.usb}. ${line}`;
+    if (d.usb) line = d.deferred ? `${t("quit_done_deferred", "USB uygulama kapandıktan hemen sonra çıkarılacak")}: ${d.usb}. ${line}` : d.ejected ? `${t("quit_done_usb", "USB çıkarıldı")}: ${d.usb}. ${line}` : `${t("quit_done_nousb", "USB çıkarılamadı, elle çıkarın")}: ${d.usb}. ${line}`;
     $("#quit-done-text").textContent = line;
     $("#quit-done-log").textContent = d.log || "";
     o.hidden = false;
