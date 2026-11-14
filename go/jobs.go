@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"keylab/internal/platform"
 	"net/http"
 	"os"
 	"os/exec"
@@ -59,61 +60,13 @@ func confirmOK(a ActionInfo, server, got string) bool {
 	return got == "" || got == "evet"
 }
 
-// sanitizePrompt: pencerede gösterilecek istem metni (kontrol karakterleri atılır, en fazla 160 karakter)
-func sanitizePrompt(p string) string {
-	var b strings.Builder
-	for _, r := range p {
-		if r >= 32 && r != 127 {
-			b.WriteRune(r)
-		}
-	}
-	out := strings.TrimSpace(b.String())
-	if rs := []rune(out); len(rs) > 160 {
-		out = string(rs[:160])
-	}
-	if out == "" {
-		out = "Parola"
-	}
-	return out
-}
-
-// askpassScript: gizli yanıtlı macOS parola penceresi (System Events ile öne gelir; İptal → osascript hata kodu verir)
-func askpassScript(prompt string) string {
-	return "tell application \"System Events\"\n" +
-		"activate\n" +
-		"set r to text returned of (display dialog " + appleScriptQuote(sanitizePrompt(prompt)) + " with title \"sshpocket\" default answer \"\" with hidden answer buttons {\"İptal\", \"Tamam\"} default button \"Tamam\" cancel button \"İptal\" with icon caution)\n" +
-		"end tell\n" +
-		"return r"
-}
-
-func askpassAvailable() bool {
-	if runtime.GOOS != "darwin" {
-		return false
-	}
-	_, err := exec.LookPath("osascript")
-	return err == nil
-}
-
-// askPassNative: parolayı işletim sisteminin kendi penceresinden alır; tarayıcıya hiç uğramaz. Parola argümanla değil osascript'in çıktısıyla gelir.
-func askPassNative(prompt string) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-	out, err := exec.CommandContext(ctx, "osascript", "-e", askpassScript(prompt)).Output()
-	if err != nil {
-		return nil, fmt.Errorf("parola penceresi iptal edildi")
-	}
-	return []byte(strings.TrimSuffix(string(out), "\n")), nil
-}
-
 // terminalCommand: macOS Terminal'de çalışacak komut (Go ikilisi). Tüm parçalar doğrulanmış adlardır ve tek tırnakla alıntılanır.
 func terminalCommand(exe, root, pkg, action, server string) string {
 	return "cd " + shQuote(root) + " && " + shQuote(exe) + " components -root " + shQuote(root) + " run " + pkg + " " + action + " " + server
 }
 
-// appleScriptQuote: AppleScript metin değişmezi için kaçışlar (\ ve ")
-func appleScriptQuote(s string) string {
-	return `"` + strings.ReplaceAll(strings.ReplaceAll(s, `\`, `\\`), `"`, `\"`) + `"`
-}
+// appleScriptQuote: AppleScript metin değişmezi için kaçışlar (macOS Terminal yolu için; asıl uygulama platform.AppleScriptQuote).
+func appleScriptQuote(s string) string { return platform.AppleScriptQuote(s) }
 
 // Job: arka planda, sahte terminal (pty) altında çalışan bir motor komutu. Çıktı ham bayt olarak biriktirilir
 // (istem satırları "\n" ile bitmediği için satır satır okunamaz); girdi stdin borusuyla pty'ye gider.

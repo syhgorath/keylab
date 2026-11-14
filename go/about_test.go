@@ -65,3 +65,20 @@ func TestCheckUpdatesBootstrapsMissingLockAndWarnsWhenEmpty(t *testing.T) {
 		t.Fatalf("boş kilit uyarısı: called=%v %+v", called, rep)
 	}
 }
+
+type fakePrompt struct{ avail bool }
+
+func (f fakePrompt) Available() bool               { return f.avail }
+func (f fakePrompt) Secret(string) ([]byte, error) { return nil, nil }
+
+func TestAboutInfoReportsPromptAvailability(t *testing.T) {
+	app := &App{compDir: filepath.Join(t.TempDir(), "components")}
+	app.prompt = fakePrompt{avail: false}
+	if m := app.aboutInfo(); m["askpass"] != false {
+		t.Fatalf("pencere yokken askpass: %v", m["askpass"])
+	}
+	app.prompt = fakePrompt{avail: true}
+	if m := app.aboutInfo(); m["askpass"] != true {
+		t.Fatalf("pencere varken askpass: %v", m["askpass"])
+	}
+}

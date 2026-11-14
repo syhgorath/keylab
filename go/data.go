@@ -6,7 +6,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
-	"io"
+	"keylab/internal/platform"
 	"net"
 	"os"
 	"path/filepath"
@@ -100,9 +100,10 @@ type App struct {
 	sessions    map[string]session
 	ttMu        sync.Mutex // terminal akış biletleri
 	termTickets map[string]termTicket
-	clock       func() time.Time            // nil: time.Now (testte sahte saat)
-	ejectFn     func(io.Writer, string) int // nil: eject.Run (bkz. quit.go; testte değiştirilir)
-	exitFn      func()                      // nil: os.Exit(0)
+	clock       func() time.Time // nil: time.Now (testte sahte saat)
+	prompt      platform.Prompt  // nil: platform.DefaultPrompt() (testte sahte)
+	volumes     platform.Volumes // nil: platform.DefaultVolumes() (testte sahte)
+	exitFn      func()           // nil: os.Exit(0)
 	mu          sync.Mutex
 	jmu         sync.Mutex // eylem işleri
 	vmu         sync.Mutex // değişken dosyası yazımı
