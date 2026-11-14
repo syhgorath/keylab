@@ -53,7 +53,23 @@
     return el;
   }
 
+  // pencere başlığındaki durum: bağlanıyor… / bağlı / oturum bitti / bağlanamadı (renkli nokta + metin)
+  function renderState() {
+    const el = $("#term-state"); if (!el) return;
+    const s = active;
+    const [cls, text] = !s ? ["", ""] : s.closed ? (s.note ? ["bad", tr("term_state_failed", "bağlanamadı")] : ["bad", tr("term_state_ended", "oturum bitti")]) : !s.id ? ["warn", tr("term_state_connecting", "bağlanıyor…")] : ["ok", tr("term_state_connected", "bağlı")];
+    el.className = "term-window-state" + (cls ? " " + cls : ""); el.textContent = text;
+  }
+
+  function toggleMax() {
+    const w = $("#term-window"), on = !w.classList.contains("maximized");
+    w.classList.toggle("maximized", on);
+    const b = $("[data-term-max]"); if (b) { b.setAttribute("aria-pressed", String(on)); b.title = on ? tr("term_restore", "Eski boyuta dön") : tr("term_maximize", "Tam ekran / eski boyut"); }
+    if (active && active.fit) { try { active.fit.fit(); } catch {} } // ResizeObserver de yeniden boyutlar; hemen sığdır
+  }
+
   function renderBars() {
+    renderState();
     const tabs = $("#term-tabs"), dock = $("#term-dock");
     tabs.replaceChildren(...sessions.map(s => chip(s, "tab")));
     dock.replaceChildren(...sessions.map(s => chip(s, "dock")));
@@ -244,6 +260,7 @@
 
   document.addEventListener("click", e => {
     if (e.target.closest("[data-term-min]")) minimize();
+    else if (e.target.closest("[data-term-max]")) toggleMax();
     else if (e.target.closest("[data-term-close]") && active) closeSession(active);
   });
   window.addEventListener("keylab:langchange", () => renderBars());
