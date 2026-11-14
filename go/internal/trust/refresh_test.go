@@ -239,9 +239,13 @@ func TestEvalMatchesShell(t *testing.T) {
 			os.MkdirAll(filepath.Join(comp, "p"), 0o755)
 			os.WriteFile(filepath.Join(comp, "p", "current"), []byte(c.installed+"\n"), 0o644)
 		}
+		// "me boş" senaryoları kayıt anında kabuğun repodaki VERSION dosyasını (o gün 3.7.0) okumasıyla kaydedildi. Repodaki VERSION artık
+		// değiştiği için (4.0.0 → "requires 4.0.0" artık karşılanır) kayıtlı davranış sabit bir sürümle yeniden üretilir; böylece test
+		// repo sürümüne bağlı kalmaz. Kabuk tarafına da aynı sürüm SCRIPT_VERSION ile verilir (yeniden kayıtta aynı sonucu verir).
+		const goldVersion = "3.7.0"
 		me := c.me
-		if me == "" { // kabuk SCRIPT_VERSION boşken repodaki VERSION dosyasını okur
-			me = ReadVersionFile(filepath.Join(root, "VERSION"))
+		if me == "" {
+			me = goldVersion
 		}
 		// sürüm numarası (VERSION dosyasından geliyorsa) yer tutucuya çevrilir: sürüm artınca kayıt eskimesin
 		vn := func(s string) string {
@@ -252,7 +256,7 @@ func TestEvalMatchesShell(t *testing.T) {
 		}
 		outStdout := goldDo(t, func() string {
 			o := runShell(t, root, []string{"SSHPOCKET_INDEX_SIGNERS=" + signers, "SSHPOCKET_COMPONENTS_DIR=" + comp, "SSHPOCKET_COMPONENTS_LOCK=" + lockPath,
-				"SSHPOCKET_INDEX_NOW=" + fmt.Sprint(testNow), "SRC=" + src, "SCRIPT_VERSION=" + c.me}, []string{"Components.sh", "ComponentsInstall.sh", "ComponentsIndex.sh"}, prelude, "th")
+				"SSHPOCKET_INDEX_NOW=" + fmt.Sprint(testNow), "SRC=" + src, "SCRIPT_VERSION=" + me}, []string{"Components.sh", "ComponentsInstall.sh", "ComponentsIndex.sh"}, prelude, "th")
 			return vn(o.stdout)
 		})
 		out := shOut{0, outStdout, ""}
