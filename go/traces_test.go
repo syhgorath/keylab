@@ -66,11 +66,16 @@ func TestSetupPortableTracesKeepsUserSettings(t *testing.T) {
 func TestCleanupsRunOnce(t *testing.T) {
 	var n atomic.Int32
 	a := &App{}
-	a.addCleanup(nil) // güvenli
-	a.addCleanup(func() { n.Add(1) })
-	a.addCleanup(func() { n.Add(10) })
-	a.runCleanups()
-	a.runCleanups()
+	a.addCleanup("x", nil) // güvenli
+	a.addCleanup("a", func() { n.Add(1) })
+	a.addCleanup("b", func() { n.Add(10) })
+	labels := a.runCleanups()
+	if strings.Join(labels, ",") != "a,b" {
+		t.Fatalf("etiketler: %v", labels)
+	}
+	if again := a.runCleanups(); len(again) != 0 {
+		t.Fatalf("ikinci çalıştırma: %v", again)
+	}
 	if n.Load() != 11 {
 		t.Fatalf("temizlikler: %d (11 beklenir, bir kez)", n.Load())
 	}
@@ -80,7 +85,7 @@ func TestQuitRunsCleanupsBeforeExit(t *testing.T) {
 	var order []string
 	done := make(chan struct{}, 1)
 	a := &App{serversDir: "/Users/x/servers"}
-	a.addCleanup(func() { order = append(order, "temizlik") })
+	a.addCleanup("t", func() { order = append(order, "temizlik") })
 	a.exitFn = func() { order = append(order, "çıkış"); done <- struct{}{} }
 	quitCall(a, `{}`, "POST")
 	<-done

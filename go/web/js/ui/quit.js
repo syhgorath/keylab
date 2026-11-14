@@ -31,6 +31,22 @@ export function initQuit(hooks) {
     if (d.usb) line = d.deferred ? `${t("quit_done_deferred", "USB uygulama kapandıktan hemen sonra çıkarılacak")}: ${d.usb}. ${line}` : d.ejected ? `${t("quit_done_usb", "USB çıkarıldı")}: ${d.usb}. ${line}` : `${t("quit_done_nousb", "USB çıkarılamadı, elle çıkarın")}: ${d.usb}. ${line}`;
     $("#quit-done-text").textContent = line;
     $("#quit-done-log").textContent = d.log || "";
+    // taşınabilir mod: temizlenenler ve bu bilgisayarda kalanlar (kodlar sunucudan gelir; metinler burada çevrilir)
+    const rep = d.report, box = $("#quit-done-report");
+    if (box) {
+      box.hidden = !rep;
+      if (rep) {
+        const fill = (sel, codes, names) => { const ul = $(sel); ul.replaceChildren(...(codes || []).map(c => { const li = document.createElement("li"); li.textContent = names[c] || c; return li; })); };
+        fill("#quit-done-cleaned", rep.cleaned, {
+          terms: t("quit_c_terms", "Açık terminaller kapatıldı"), agent: t("quit_c_agent", "Özel ssh-agent sonlandırıldı (anahtarlar bellekten silindi)"),
+          tmp: t("quit_c_tmp", "Geçici klasör silindi (Python ortamı, tarayıcı profili)")
+        });
+        fill("#quit-done-remains", rep.remains, {
+          macos: t("quit_r_macos", "macOS'un kendi izleri (Spotlight, son kullanılanlar, sistem günlükleri)"), keychain: t("quit_r_keychain", "Keychain kayıtları (passphrase, knock dizisi)"),
+          user_agent: t("quit_r_agent", "Kendi ssh-agent'ınıza eklenen anahtarlar")
+        });
+      }
+    }
     o.hidden = false;
     try { window.close(); } catch (e) { /* uygulama penceresi dışında kapanmayabilir */ }
   }

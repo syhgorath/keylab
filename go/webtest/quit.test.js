@@ -66,6 +66,20 @@ test("çıkış: /api/about USB bilgisi vermezse (eski yanıt) USB satırı olma
   await h.click("#quit-btn"); assert.ok(h.$("#dlg").classList.contains("open")); assert.doesNotMatch(dlgText(h), /USB çıkarılır/); h.close();
 });
 
+test("çıkış: taşınabilir modda perdede 'temizlenenler' ve 'bu bilgisayarda kalanlar' listelenir; özet yoksa bölüm gizli", async () => {
+  const REP = { cleaned: ["terms", "agent", "tmp"], remains: ["macos", "keychain", "user_agent", "bilinmeyen_kod"] };
+  let h = await boot({ hash: "", overrides: base({ "/api/about": about("test"), "/api/quit": { ok: true, usb: "test", ejected: true, log: "", report: REP } }) }); noclose(h);
+  await h.click("#quit-btn"); await h.click("#dlg-ok");
+  assert.equal(h.$("#quit-done-report").hidden, false);
+  assert.deepEqual(h.$$("#quit-done-cleaned li").map(l => l.textContent), ["Açık terminaller kapatıldı", "Özel ssh-agent sonlandırıldı (anahtarlar bellekten silindi)", "Geçici klasör silindi (Python ortamı, tarayıcı profili)"]);
+  assert.deepEqual(h.$$("#quit-done-remains li").map(l => l.textContent), ["macOS'un kendi izleri (Spotlight, son kullanılanlar, sistem günlükleri)", "Keychain kayıtları (passphrase, knock dizisi)", "Kendi ssh-agent'ınıza eklenen anahtarlar", "bilinmeyen_kod"]);
+  assert.deepEqual(h.errors, []); h.close();
+  // özet yok (taşınabilir değil) → bölüm gizli
+  h = await boot({ hash: "", overrides: base({ "/api/about": about(""), "/api/quit": { ok: true, usb: "", ejected: false, log: "" } }) }); noclose(h);
+  await h.click("#quit-btn"); await h.click("#dlg-ok");
+  assert.equal(h.$("#quit-done-report").hidden, true); assert.equal(h.$$("#quit-done-cleaned li").length, 0); h.close();
+});
+
 test("çıkış: İngilizce arayüzde metinler çevrilir", async () => {
   const h = await boot({ hash: "", overrides: base({ "/api/about": about("test") }), storage: { "keylab.lang": "en" } });
   await h.click("#quit-btn"); assert.equal(h.$("#dlg-title").textContent, "Quit"); assert.equal(h.$("#dlg-ok").textContent, "Quit"); assert.match(dlgText(h), /The USB is ejected: test/); h.close();

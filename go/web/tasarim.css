@@ -1519,4 +1519,7 @@ body.dock-open{padding-bottom:276px}
 .quit-done-card h3{margin:0 0 8px;font-size:18px}
 .quit-done-card p{margin:0}
 .quit-done-card pre{margin:12px 0 0;white-space:pre-wrap;text-align:left}
+.quit-done-card h4{margin:14px 0 4px;font-size:13px;text-align:left}
+.quit-list{margin:0;padding-left:18px;text-align:left;font-size:13px}
+.quit-list li{margin:2px 0}
 [hidden]{display:none !important} /* sj-sonu: !important yardımcı sınıfların display bildirimi hidden özniteliğini ezmesin; DOSYANIN SONUNDA kalmalı */
