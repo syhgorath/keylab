@@ -3,6 +3,7 @@ package platform
 import (
 	"os/exec"
 	"path/filepath"
+	"runtime"
 )
 
 // MacBrowser: macOS (uygulama paketleri /Applications ve ~/Applications; sistem tarayıcısı `open` ile).
@@ -21,6 +22,9 @@ func (MacBrowser) ChromiumCandidates(home string) []string {
 	}
 	return out
 }
+
+// Supported: yalnız macOS'ta.
+func (MacBrowser) Supported() bool { return runtime.GOOS == "darwin" }
 
 // OpenURL: `open <adres>`.
 func (MacBrowser) OpenURL(url string) error { return exec.Command("open", url).Start() }

@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
+	"keylab/internal/platform"
 	"keylab/internal/servers"
 )
 
@@ -89,11 +89,7 @@ func (a *App) startServerTask(kind, server string) (*Job, int, error) {
 		if st, err := os.Stat(key); err != nil || !st.Mode().IsRegular() {
 			return nil, http.StatusConflict, fmt.Errorf("anahtar bulunamadı")
 		}
-		if runtime.GOOS == "darwin" {
-			argv = []string{"ssh-add", "--apple-use-keychain", key}
-		} else {
-			argv = []string{"ssh-add", key}
-		}
+		argv = platform.DefaultAgent().AddKeyArgv(key)
 	case "keychain":
 		argv = []string{selfExe(), "servers", "-servers", a.serversDir, "keychain", server}
 	case "knock":

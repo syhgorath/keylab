@@ -4,7 +4,10 @@
 // Linux/Windows uygulamaları sonradan eklenir.
 package platform
 
-import "io"
+import (
+	"io"
+	"runtime"
+)
 
 // KeychainService: gizli değerlerin tutulduğu Keychain servis adı (eski kayıtlar bu ada bağlıdır; DEĞİŞTİRİLMEZ).
 const KeychainService = "USBMonitor"
@@ -25,6 +28,9 @@ type Secrets interface {
 	// Available: bu bilgisayarda depo aracı var mı?
 	Available() bool
 }
+
+// SecretsSupported: bu işletim sisteminde gizli değer deposu (Keychain) resmen destekleniyor mu? (Şimdilik yalnız macOS; Linux/Windows uygulamaları gelince genişler.)
+func SecretsSupported() bool { return runtime.GOOS == "darwin" }
 
 // Default: bu işletim sisteminin gizli değer deposu (KeychainService altında). macOS dışında şimdilik aynı `security` çağrılarını dener ve
 // araç olmadığı için hepsi başarısız olur (bugünkü davranış); Linux/Windows uygulamaları gelince burada seçilecek.

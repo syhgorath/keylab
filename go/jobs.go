@@ -14,7 +14,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -184,25 +183,13 @@ func (a *App) authorizeRunItem(server, pkg, action, item string, snapshot bool, 
 	return ai, itemVar, 0, nil
 }
 
-// ptyArgv: komutu sahte terminal altında çalıştıran sarmalayıcı (macOS/BSD ve Linux script)
-func ptyArgv(argv []string) []string {
-	if runtime.GOOS == "darwin" {
-		return append([]string{"script", "-q", "/dev/null"}, argv...)
-	}
-	q := make([]string, len(argv))
-	for i, x := range argv {
-		q[i] = shQuote(x)
-	}
-	return []string{"script", "-qfec", strings.Join(q, " "), "/dev/null"}
-}
-
 // spawn: argv'yi pty altında başlatır ve çıktıyı job.buf'a akıtır. Çağıran a.jmu'yu TUTMAMALI.
 func (a *App) spawn(job *Job, dir string, argv []string) error {
 	if _, err := exec.LookPath("script"); err != nil {
 		return fmt.Errorf("'script' aracı bulunamadı (sahte terminal için gerekli)")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), jobTimeout)
-	pa := ptyArgv(argv)
+	pa := platform.DefaultPTY().Wrap(argv)
 	cmd := exec.CommandContext(ctx, pa[0], pa[1:]...)
 	cmd.Dir = dir
 	cmd.Env = append(append(os.Environ(), "TERM=dumb", "ANSIBLE_NOCOLOR=1", "NO_COLOR=1"), job.env...)

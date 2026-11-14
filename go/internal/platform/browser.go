@@ -7,6 +7,8 @@ type Browser interface {
 	ChromiumCandidates(home string) []string
 	// OpenURL: adresi sistemin varsayılan tarayıcısında açar (başlatır, beklemez).
 	OpenURL(url string) error
+	// Supported: KeyLab açılışta arayüzü kendisi açabilir mi (macOS: evet; diğer sistemlerde adres terminale yazılır, kullanıcı açar).
+	Supported() bool
 }
 
 // DefaultBrowser: bu işletim sisteminin tarayıcı açıcısı. macOS dışında şimdilik aynı yollar (adaylar yok/`open` yok); Linux/Windows sonra.
