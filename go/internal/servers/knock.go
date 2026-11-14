@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"keylab/internal/platform"
 	"net"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -14,7 +14,7 @@ import (
 // Knock.sh (istemci tarafı port knocking) ve SSHModule.sh ssh_port_open / ssh_module_status karşılığı.
 // Knock dizisi düz metin dosyada TUTULMAZ: Keychain hesabı USBMonitor_<ÖNEK>_Knock. server.env: KNOCK=keychain, KNOCK_PROTO, KNOCK_DELAY_MS.
 
-const KeychainService = "USBMonitor"
+const KeychainService = platform.KeychainService
 
 // KnockAccount, knock_account.
 func KnockAccount(prefix string) string { return "USBMonitor_" + prefix + "_Knock" }
@@ -66,27 +66,8 @@ func KnockSettings(dir string) (proto string, delayMS int, err error) {
 	return proto, n, nil
 }
 
-// Keychain: macOS `security` aracı (testte PATH'teki sahte araçla değiştirilir).
-type Keychain struct{}
-
-// Find, hesabın değerini verir (security find-generic-password -w).
-func (Keychain) Find(account string) (string, bool) {
-	out, err := exec.Command("security", "find-generic-password", "-a", account, "-s", KeychainService, "-w").Output()
-	if err != nil {
-		return "", false
-	}
-	return strings.TrimSuffix(string(out), "\n"), true
-}
-
-// Has: kayıt var mı (değeri okumadan).
-func (Keychain) Has(account string) bool {
-	return exec.Command("security", "find-generic-password", "-a", account, "-s", KeychainService).Run() == nil
-}
-
-// Delete: kaydı siler; yoksa false.
-func (Keychain) Delete(account string) bool {
-	return exec.Command("security", "delete-generic-password", "-a", account, "-s", KeychainService).Run() == nil
-}
+// Keychain: gizli değer deposunun macOS uygulaması (internal/platform); eski ad uyumluluk içindir. Testte PATH'teki sahte `security` ile değiştirilir.
+type Keychain = platform.SecurityKeychain
 
 // Dialer: knock vuruşu ve port yoklaması için bağlantı kurucu (testte yerel dinleyiciye yönlendirilir).
 var dialTimeout = func(network, addr string, d time.Duration) (net.Conn, error) {
@@ -117,7 +98,7 @@ func KnockSend(ctx context.Context, ip, seq, proto string, delayMS int) {
 }
 
 // PreConnect, knock_pre_connect: etkin değilse hiçbir şey yapmaz. Keychain/ayar bozuksa hata (bağlantı denenmemeli).
-func PreConnect(ctx context.Context, kc Keychain, dir, prefix, ip string) error {
+func PreConnect(ctx context.Context, kc platform.Secrets, dir, prefix, ip string) error {
 	if !KnockEnabled(dir) {
 		return nil
 	}

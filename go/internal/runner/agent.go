@@ -3,6 +3,7 @@ package runner
 import (
 	"fmt"
 	"io"
+	"keylab/internal/platform"
 	"os"
 	"os/exec"
 	"strings"
@@ -16,7 +17,7 @@ import (
 // Go bunu Stderr'e yazar, kullanıcı macOS'un "password data for new item:" isteminin ne olduğunu görür.
 
 const (
-	KeychainService = "USBMonitor"
+	KeychainService = platform.KeychainService
 	askpassEnv      = "SSHPOCKET_ASKPASS_STATE"
 )
 
@@ -27,9 +28,9 @@ func KeychainAccount(prefix string) string { return "USBMonitor_" + prefix + "_P
 type AgentAdder struct {
 	Ask     func(prompt string) (string, bool) // satır okur; girdi yoksa ok=false
 	Err     io.Writer
-	Exe     string // askpass olarak çağrılacak ikili (boşsa os.Executable)
-	Tmp     string // askpass durum dosyası klasörü (boşsa TMPDIR/os temp)
-	Keyring func(args ...string) *exec.Cmd
+	Exe     string           // askpass olarak çağrılacak ikili (boşsa os.Executable)
+	Tmp     string           // askpass durum dosyası klasörü (boşsa TMPDIR/os temp)
+	Secrets platform.Secrets // nil: platform.Default()
 }
 
 func (a *AgentAdder) errw() io.Writer {
@@ -39,11 +40,11 @@ func (a *AgentAdder) errw() io.Writer {
 	return a.Err
 }
 
-func (a *AgentAdder) security(args ...string) *exec.Cmd {
-	if a.Keyring != nil {
-		return a.Keyring(args...)
+func (a *AgentAdder) secrets() platform.Secrets {
+	if a.Secrets != nil {
+		return a.Secrets
 	}
-	return exec.Command("security", args...)
+	return platform.Default()
 }
 
 func fingerprintOf(key string) string {
@@ -147,9 +148,7 @@ func (a *AgentAdder) AddRetry(prefix, key string) error {
 		fmt.Fprintln(w, "   İstem 'password data for new item:' diye görünür; yazarken ekranda bir şey görünmez.")
 		fmt.Fprintln(w, "   Aynı passphrase'i yazın; macOS doğrulama için bir kez daha sorabilir. Sunucunun sudo parolası DEĞİLDİR.")
 		// -w son argüman: parola komut satırında görünmez, güvenli sorulur (security terminalden okur)
-		cmd := a.security("add-generic-password", "-U", "-a", KeychainAccount(prefix), "-s", KeychainService, "-w")
-		cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stderr, os.Stderr
-		if err := cmd.Run(); err != nil {
+		if err := a.secrets().SetInteractive(KeychainAccount(prefix), os.Stdin, os.Stderr, os.Stderr); err != nil {
 			return err
 		}
 		if a.add(prefix, key) == nil {
@@ -182,10 +181,10 @@ func AskpassMain(stdout io.Writer) (handled bool, code int) {
 	if svc == "" {
 		svc = KeychainService
 	}
-	cmd := exec.Command("security", "find-generic-password", "-a", acct, "-s", svc, "-w")
-	cmd.Stdout = stdout
-	if err := cmd.Run(); err != nil {
+	secret, ok := platform.For(svc).Find(acct)
+	if !ok {
 		return true, 1
 	}
+	fmt.Fprintln(stdout, secret)
 	return true, 0
 }

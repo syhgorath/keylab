@@ -5,6 +5,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Değişti
+- **Dahili: platform katmanı başladı** (`internal/platform`): gizli değer deposu (Keychain) için `Secrets` arayüzü (`Find/Has/Delete/Set/SetInteractive/Available`) ve macOS uygulaması (`security`, çağrılar birebir aynı). Sunucu, knock, ssh-add askpass ve sunucu silme artık doğrudan `security` çağırmaz. Kullanıcıya görünen davranış değişmedi; Linux/Windows uygulamaları bu arayüze eklenecek.
+
+### Değişti
 - **"Terminal'de bağlan" artık gömülü terminali açar** (sunucu sayfası, sunucu kartı ve sağ tık menüsü): macOS Terminal.app'e (`osascript`) bağlanan ayrı yol kaldırıldı (`/api/action` `terminal` eylemi); sunucu sayfasındaki iki terminal düğmesi tek oldu. Knock etkinse gömülü terminal önce knock gönderir. Bu, işletim sistemine bağlı kodu azaltmak için platform katmanı planının ilk adımıdır. Paket eylemlerinde "macOS Terminal'de aç" alternatifi şimdilik duruyor (eylemler gömülü terminale taşınınca kalkacak).
 
 ### Düzeltildi
