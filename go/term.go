@@ -17,12 +17,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
 
 	"keylab/internal/cli"
+	"keylab/internal/platform"
 	"keylab/internal/servers"
 )
 
@@ -185,7 +185,7 @@ func (a *App) auditTerm(event, server, id string) {
 }
 
 func (a *App) openTerm(server string, rows, cols uint16) (*TermSession, int, error) {
-	if runtime.GOOS == "windows" {
+	if !platform.DefaultPTY().TerminalSupported() {
 		return nil, http.StatusNotImplemented, fmt.Errorf("Windows'ta gömülü terminal henüz yok (WSL 2 kullanabilirsiniz)")
 	}
 	if !reName.MatchString(server) {

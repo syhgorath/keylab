@@ -14,10 +14,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
+	"keylab/internal/platform"
 	"keylab/internal/runner"
 )
 
@@ -77,8 +77,8 @@ func Run(w io.Writer, o Options) int {
 	} else {
 		s.warn("ssh-copy-id yok (key gönderme elle kurulum komutuyla yapılır)")
 	}
-	if runtime.GOOS == "darwin" {
-		if have("security") {
+	if platform.SecretsSupported() {
+		if platform.Default().Available() {
 			s.ok("security (Keychain)")
 		} else {
 			s.fail("security (Keychain) bulunamadı")

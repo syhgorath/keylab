@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -111,5 +112,28 @@ func TestDoctorMatchesShell(t *testing.T) {
 		if (sc == 0) != (gc == 0) && !strings.Contains(so, "curl bulunamadı") && !strings.Contains(so, "tar bulunamadı") {
 			t.Errorf("%s: çıkış kodu kabuk=%d go=%d", name, sc, gc)
 		}
+	}
+}
+
+// Keychain satırı: macOS'ta `security` aracı varsa "ok", yoksa "fail"; macOS dışında "desteklenmiyor" uyarısı (platform.SecretsSupported).
+func TestDoctorKeychainLine(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("macOS sözleşmesi")
+	}
+	t.Setenv("SSHPOCKET_DOCTOR_OFFLINE", "1")
+	bin := t.TempDir()
+	os.WriteFile(filepath.Join(bin, "security"), []byte("#!/bin/sh\nexit 0\n"), 0o755)
+	t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
+	var b bytes.Buffer
+	Run(&b, Options{})
+	out := b.String()
+	if !strings.Contains(out, "security (Keychain)") || strings.Contains(out, "security (Keychain) bulunamadı") || strings.Contains(out, "macOS değil") {
+		t.Fatalf("araç varken Keychain satırı:\n%s", out)
+	}
+	t.Setenv("PATH", t.TempDir()) // araç yok
+	b.Reset()
+	Run(&b, Options{})
+	if out := b.String(); !strings.Contains(out, "security (Keychain) bulunamadı") {
+		t.Fatalf("araç yokken Keychain satırı:\n%s", out)
 	}
 }

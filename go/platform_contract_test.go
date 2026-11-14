@@ -64,10 +64,10 @@ func TestContractSSHAddUsesAppleKeychainOnMac(t *testing.T) {
 
 func TestContractPtyArgvMac(t *testing.T) {
 	needDarwin(t)
-	got := ptyArgv([]string{"ssh-add", "--apple-use-keychain", "/k ey"})
+	got := platform.DefaultPTY().Wrap([]string{"ssh-add", "--apple-use-keychain", "/k ey"})
 	want := []string{"script", "-q", "/dev/null", "ssh-add", "--apple-use-keychain", "/k ey"}
 	if strings.Join(got, "\x00") != strings.Join(want, "\x00") {
-		t.Fatalf("ptyArgv macOS: %q", got)
+		t.Fatalf("pty sarmalayıcı macOS: %q", got)
 	}
 }
 

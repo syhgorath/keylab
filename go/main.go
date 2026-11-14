@@ -14,6 +14,7 @@ import (
 	"io"
 	"io/fs"
 	"keylab/internal/envx"
+	"keylab/internal/platform"
 	"net"
 	"net/http"
 	"os"
@@ -712,7 +713,7 @@ func main() {
 	url := fmt.Sprintf("http://%s/?t=%s", app.host, app.token)
 	fmt.Println("sshpocket (Go deneme):", url)
 	fmt.Println("sunucular:", sd, "| components:", cd, "| durum:", st, "| durdurmak için Ctrl-C")
-	if !*noOpen && runtime.GOOS == "darwin" {
+	if !*noOpen && platform.DefaultBrowser().Supported() {
 		// komut satırına GERÇEK jeton değil, tek kullanımlık açılış jetonu yazılır (ps ile görünür); yazdırılan adres elle açmak içindir
 		bootURL := fmt.Sprintf("http://%s/?b=%s", app.host, app.bootTok)
 		profBase := st // ayrı profil her zaman bu bilgisayarda: taşınabilirde USB'ye konmaz (bkz. stateDirFor)
