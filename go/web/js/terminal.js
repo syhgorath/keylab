@@ -71,7 +71,18 @@
   function renderBars() {
     renderState();
     const tabs = $("#term-tabs"), dock = $("#term-dock");
-    tabs.replaceChildren(...sessions.map(s => chip(s, "tab")));
+    // her sunucunun terminalleri KENDİ pencere sekmelerinde: pencere yalnız etkin oturumun sunucusundakileri gösterir (+ aynı sunucuda yeni terminal);
+    // alt çubuk tüm oturumları gösterir ve başka sunucunun çipi o sunucunun penceresini açar
+    const mine = active ? sessions.filter(x => x.server === active.server) : [];
+    const els = mine.map(s => chip(s, "tab"));
+    if (active) {
+      const add = document.createElement("button"); add.type = "button"; add.className = "term-chip-add"; add.textContent = "+";
+      const addTip = tr("term_add", "Bu sunucuda yeni terminal aç"); add.title = addTip; add.setAttribute("aria-label", addTip + ": " + active.server);
+      add.disabled = sessions.length >= MAX;
+      add.addEventListener("click", () => open(active.server));
+      els.push(add);
+    }
+    tabs.replaceChildren(...els);
     dock.replaceChildren(...sessions.map(s => chip(s, "dock")));
     dock.hidden = !sessions.length;
   }
@@ -218,7 +229,9 @@
     sessions = sessions.filter(x => x !== s);
     if (active === s) {
       active = null;
-      if (sessions.length && modalOpen()) { show(sessions[sessions.length - 1]); return; }
+      // pencere o sunucunun kalan terminaline geçer; başka sunucunun penceresine atlamaz (bağımsız pencereler)
+      const rest = sessions.filter(x => x.server === s.server);
+      if (rest.length && modalOpen()) { show(rest[rest.length - 1]); return; }
       modal().classList.remove("open"); setNote("");
     }
     renderBars();
