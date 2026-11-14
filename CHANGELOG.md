@@ -4,7 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
-Bu çalışma sshpocket'i **kabuktan Go'ya** taşır (taslak; sürüm numarasını, etiketi, imzayı ve Release'i bakımcı belirler). Bu satırlar bir sonraki sürümün notlarına dönüştürülmek üzere yazıldı.
+## [4.0.0] - 2026-11-14
+
+Bu sürüm sshpocket'i **kabuktan Go'ya** taşır: ana ürün artık tek, imzalı bir ikilidir ve yerel web arayüzü içinde gömülüdür. Kabuk (bash) motoru `referans/kabuk/` altında dondurulmuş referans olarak durur. Etiket, imza ve Release'i bakımcı oluşturur.
 
 ### Değişti
 - **Veri klasörü artık kendiliğinden bulunur** (taşınabilir ya da kurulu): sıra `-servers` → `$KEYLAB_SERVERS` → ikilinin (macOS'ta `KeyLab.app`'in) yanındaki `servers/` (**taşınabilir**, USB için) → `~/.keylab/servers` → eski `../servers`. Hiçbiri yoksa ilk açılışta `~/.keylab/{servers,components}` oluşturulur (`servers` 0700) ve kök klasör (`components.lock`, imza dosyaları, `VERSION`) orada aranır. Eskiden geliştiricinin kendi USB adına bağlı sabit `/Volumes/test/servers` yolu varsayılandı; kaldırıldı (USB'den çalışan ikili zaten kendi yanındaki `servers/`'ı bulur). macOS'un indirilen `.app`'i rastgele salt okunur yolda çalıştırması (App Translocation) durumunda `~/.keylab` kullanılır.
