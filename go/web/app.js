@@ -82,16 +82,15 @@ import { appState } from "./js/state.js";
   }
   try { appState.mode = localStorage.getItem("sshpocket.mode") === "list" ? "list" : "tiles"; } catch (e) { /* tarayıcı depolaması kapalı olabilir */ }
 
-  function tile(s) {
+  // Pano durum çipi: tek satırlık özet (durum noktası, ad, son işlem); ayrıntı Sunucular sayfasındaki kartta
+  function chip(s) {
     const st = dotState(s);
-    const last = !s.valid ? "⚠ server.env geçersiz (IP, USER, PORT)" : s.last ? `${isOk(s.last.result) ? "✔" : "✖"} ${esc(s.last.package)} · ${esc(s.last.action)} · ${esc(ago(s.last.time))}` : "kayıt yok";
-    return `<li class="stile ${st === "off" ? "is-off" : ""}" tabindex="0" data-name="${esc(s.name)}" data-state="${st}" aria-label="${esc(s.name)}, ${stateText(s)}">
-      <div class="stile-top">${osIcon(s.os)}<span class="status-dot ${st}" aria-label="${stateText(s)}"></span>
-        <button class="btn-icon" data-act="menu" aria-label="Daha fazla eylem"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button></div>
-      <div class="stile-name">${esc(s.name)}</div>
-      <div class="stile-os">${esc(OS_LABEL[s.os] || "Linux")}${s.platform ? ` · ${esc(s.platform)}` : ""}${s.hasKey ? "" : " · anahtar yok"}</div>
-      <div class="stile-last ${!s.valid || (s.last && !isOk(s.last.result)) ? "bad" : ""}">${last}</div></li>`;
+    const last = !s.valid ? "⚠ server.env geçersiz" : s.last ? `${isOk(s.last.result) ? "✔" : "✖"} ${esc(s.last.action)} · ${esc(ago(s.last.time))}` : "kayıt yok";
+    return `<li class="schip ${st === "off" ? "is-off" : ""}" tabindex="0" data-name="${esc(s.name)}" data-state="${st}" aria-label="${esc(s.name)}, ${stateText(s)}" title="${esc(stateText(s))}">
+      ${osIcon(s.os, 28)}<div class="schip-body"><div class="schip-name">${esc(s.name)}</div><div class="schip-sub ${!s.valid || (s.last && !isOk(s.last.result)) ? "bad" : ""}">${last}</div></div>
+      <span class="status-dot ${st}" aria-label="${stateText(s)}"></span></li>`;
   }
+  const DASH_MAX = 12; // Pano genel özettir: sorunlu sunucular önce, en çok 12 çip; kalanı Sunucular sayfasında
 
   // Sunucular sayfası kartı: Pano'daki küçük karoya göre adres, anahtar durumu, durum rozeti ve hızlı düğmeler de taşır
   function richTile(s) {
@@ -237,7 +236,11 @@ import { appState } from "./js/state.js";
     const pk = appState.home.packages.filter(p => matches(p.id));
     const addTile = '<li class="stile add" tabindex="0" data-add="1" aria-label="Sunucu ekle"><div class="plus" aria-hidden="true">+</div><div>Sunucu ekle</div></li>';
     const rowsWith = fn => (sv.map(appState.mode === "tiles" ? fn : serverRow).join("") || emptyServers) + (appState.mode === "tiles" && !appState.query && fleetFilter === "all" ? addTile : "");
-    for (const [id, fn] of [["#servers", tile], ["#servers-all", richTile]]) { $(id).innerHTML = rowsWith(fn); $(id).classList.toggle("tiles", appState.mode === "tiles"); }
+    $("#servers-all").innerHTML = rowsWith(richTile); $("#servers-all").classList.toggle("tiles", appState.mode === "tiles");
+    // Pano: arama uygulanır, Sunucular sayfasının süzgeci/görünüm kipi uygulanmaz; sorunlu sunucular (çevrimiçi olmayanlar) önce
+    const dash = appState.home.servers.filter(s => matches(s.name, s.platform, s.last && s.last.package)).sort((x, y) => (dotState(x) === "on") - (dotState(y) === "on"));
+    const shown = dash.slice(0, DASH_MAX), more = dash.length - shown.length;
+    $("#servers").innerHTML = (shown.map(chip).join("") || emptyServers) + (more > 0 ? `<li class="schip more" tabindex="0" data-more="1">+ ${more} sunucu daha · Tümünü gör</li>` : "");
     $$(".mode-toggle button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === appState.mode)));
     $("#servers-count").textContent = appState.home.servers.length + " kayıt";
     $("#pkgs-dash").innerHTML = pk.map(pkgRow).join("") || '<div class="small muted sj-cc781b">Paket bulunamadı.</div>';
@@ -356,7 +359,11 @@ import { appState } from "./js/state.js";
       el.addEventListener("click", () => showView("add"));
       el.addEventListener("keydown", e => { if (e.key === "Enter") showView("add"); });
     });
-    $$(".server[data-name], .stile[data-name]").forEach(el => {
+    $$(".schip[data-more]").forEach(el => {
+      el.addEventListener("click", () => showView("servers"));
+      el.addEventListener("keydown", e => { if (e.key === "Enter") showView("servers"); });
+    });
+    $$(".server[data-name], .stile[data-name], .schip[data-name]").forEach(el => {
       el.addEventListener("click", () => openServer(el.dataset.name));
       el.addEventListener("keydown", e => { if (e.key === "Enter" && e.target === el) openServer(el.dataset.name); }); // iç düğmelerde Enter yalnız o düğmeyi çalıştırır
       el.addEventListener("contextmenu", e => { e.preventDefault(); openCtx(e.clientX, e.clientY, el.dataset.name); });

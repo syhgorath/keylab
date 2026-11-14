@@ -1452,4 +1452,19 @@ body.dock-open{padding-bottom:276px}
 .stile-foot .grow{flex:1}
 .stile-foot .btn:disabled{opacity:.5;cursor:not-allowed}
 .stile-addr .badge{white-space:nowrap;flex:none}
+
+/* ---------- Pano: kompakt sunucu durum çipleri (ayrıntılı kart Sunucular sayfasında) ---------- */
+.server-list.schips{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(210px,100%),1fr));gap:10px;padding:14px}
+.schip{list-style:none;display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);cursor:pointer;transition:box-shadow .12s,border-color .12s}
+.schip:hover{box-shadow:var(--shadow-2);border-color:var(--border-strong)}
+.schip:focus-visible{box-shadow:var(--focus);outline:0}
+.schip.is-off{opacity:.85}
+.schip.is-off .osico{filter:grayscale(.85)}
+.schip .osico{flex:none}
+.schip-body{min-width:0;flex:1}
+.schip-name{font-weight:700;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.schip-sub{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.schip-sub.bad{color:var(--danger)}
+.schip .status-dot{flex:none}
+.schip.more{justify-content:center;border-style:dashed;background:transparent;color:var(--accent-ink);font-size:12.5px;font-weight:600}
 [hidden]{display:none !important} /* sj-sonu: !important yardımcı sınıfların display bildirimi hidden özniteliğini ezmesin; DOSYANIN SONUNDA kalmalı */

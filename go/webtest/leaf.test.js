@@ -59,7 +59,9 @@ test("bağlam menüsü: F10 / ContextMenu tuşu ve ⋯ düğmesi açar", async (
   h.$("#ctx").classList.remove("open");
   await key(h, "ContextMenu", {}, tile(h)); assert.ok(open(h, "#ctx"));
   h.$("#ctx").classList.remove("open");
-  const menuBtn = tile(h).querySelector('[data-act="menu"]'); assert.ok(menuBtn, "⋯ düğmesi var");
+  assert.equal(tile(h).querySelector('[data-act="menu"]'), null, "Pano çipinde ⋯ düğmesi yok (menü sağ tık / F10 ile)");
+  await h.click('[data-nav="servers"]');
+  const menuBtn = h.$('#servers-all [data-name="web1"] [data-act="menu"]'); assert.ok(menuBtn, "Sunucular kartında ⋯ düğmesi var");
   await h.click(menuBtn); assert.ok(open(h, "#ctx"), "⋯ menüyü açar (kartın kendi tıklaması sunucuya gitmez)"); assert.equal(h.$("#view-server").hidden, true);
   assert.deepEqual(h.errors, []); h.close();
 });
