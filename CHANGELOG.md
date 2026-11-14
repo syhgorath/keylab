@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **Tek komutlu yayın** (`go/scripts/release-publish.sh`): kontroller → derle ve imzala (`build-release.sh`) → etiket → GitHub Release (varlıklar + CHANGELOG notu) → yüklenen dosyaların SHA-256 doğrulaması. İmza başarısız olursa uzakta etiket kalmaz. `RELEASING.md` Go yayın akışına göre yeniden yazıldı; CI'da ShellCheck kapsamına eklendi. Eski kabuk dönemindeki `scripts/release-publish.sh`'ın karşılığıdır.
+
 ## [4.0.0] - 2026-11-14
 
 Bu sürüm sshpocket'i **kabuktan Go'ya** taşır: ana ürün artık tek, imzalı bir ikilidir ve yerel web arayüzü içinde gömülüdür. Kabuk (bash) motoru `referans/kabuk/` altında dondurulmuş referans olarak durur. Etiket, imza ve Release'i bakımcı oluşturur.
