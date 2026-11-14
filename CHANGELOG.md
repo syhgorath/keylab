@@ -4,6 +4,13 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [4.0.4] - 2026-11-15
+
+Düzeltme sürümü.
+
+### Düzeltildi
+- **Misafir/taşınabilir modda anahtar passphrase'i sorulamıyor, eylem "Anahtar ssh-agent'ta değil" diye duruyordu**: misafir modda Keychain kullanılmadığı için eski akış ("Keychain'e kaydedeyim mi?") hemen hata veriyordu. Eylemler artık gerçek bir terminalde (gömülü xterm) çalıştığından, Keychain yokken ve girdi bir terminalse passphrase **ssh-add'in kendi istemiyle terminalde** sorulur: parola KeyLab'dan geçmez, kaydedilmez, anahtar yalnızca bu oturumun özel ssh-agent'ına eklenir. Yanlış passphrase'de anlamsız "Keychain'e kaydedeyim mi" sorusu çıkmaz. Keychain kullanılan normal mod değişmedi. Sahte ssh-add ile test edildi; gerçek parolalı anahtarla ve gerçek sunucuda kullanıcı tarafından denenmelidir.
+
 ## [4.0.3] - 2026-11-15
 
 Düzeltme sürümü.
