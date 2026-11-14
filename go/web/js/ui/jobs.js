@@ -104,12 +104,12 @@ export function initJobs(hooks) {
     bg.delete(id); attachUi(w); showRunModal();
   }
 
-  let runMode = "exec", termTimer = 0, runUpgTo = ""; // runUpgTo: yükseltme modunda hedef sürüm (setUpgradeTo ile verilir)
+  let runMode = "exec", termTimer = 0, termOnExit = null, runUpgTo = ""; // runUpgTo: yükseltme modunda hedef sürüm (setUpgradeTo ile verilir)
   function openRun(server, pkg, action, item) {
     if (jobBusy(server)) return;
     runMode = "exec"; $("#run-log").hidden = false; $("#run-cancel").hidden = false;
     $("#run-yes").hidden = $("#run-no").hidden = true;
-    $("#run-confirm-extra").hidden = true; $("#run-confirm-extra").innerHTML = ""; $("#run-go").classList.remove("warnbtn", "dangerbtn"); $("#run-ext").hidden = true; $("#run-ext").disabled = false; $("#run-input").hidden = true;
+    $("#run-confirm-extra").hidden = true; $("#run-confirm-extra").innerHTML = ""; $("#run-go").classList.remove("warnbtn", "dangerbtn"); $("#run-input").hidden = true;
     runSrv = server; runPkg = pkg; runAct = action; runJob = ""; runItem = item || "";
     $("#run-title").innerHTML = `<span class="mono">${esc(action)}</span> · ${esc(TAB_LABEL[pkg] || pkg)}${runItem ? ` · <b>${esc(runItem)}</b>` : ""}`;
     $("#run-confirm-note").textContent = "Çalıştırma uygulamanın kendi motoruyla yapılır; kapılar, günlük ve sonuç kaydı menüdekiyle aynıdır. Parola sorulmaz: ssh anahtarınız ssh-agent'ta yüklü olmalı.";
@@ -124,7 +124,7 @@ export function initJobs(hooks) {
   function closeRun() { if (runBusy()) return; clearInterval(termTimer); termTimer = 0; runm.classList.remove("open"); pill = null; renderPill(); }
 
   /* değişiklik yapan eylem: plan → snapshot + onay → Terminal (sudo parolası orada) → canlı ilerleme.
-     Motor Terminal'de aynı onayları yeniden ister (tek doğruluk kaynağı); arayüz onayı bunun ÖN adımıdır. */
+     Eylem gömülü terminalde çalışır; motor aynı onayları orada yeniden ister (tek doğruluk kaynağı); arayüz onayı bunun ÖN adımıdır. */
   const EFFECT_TXT = { "installs-package": "paket kurar", "changes-config": "yapılandırmayı değiştirir", destructive: "yıkıcı" };
   let wAct = null, logSince = 0;
   function openWrite(server, pkg, action, item) {
@@ -154,10 +154,9 @@ export function initJobs(hooks) {
       ${destr ? `<label class="small sj-b97486"><input type="checkbox" id="w-destr"> <span><b>Bu eylemin geri alınamayabileceğini anlıyorum</b>; yedeğim var ve sonuçlarını üstleniyorum.</span></label>` : ""}
       ${typeName ? `<div class="field sj-56f435"><label for="w-confirm">Onay için sunucu adını yazın: <span class="mono">${esc(server)}</span></label><input id="w-confirm" autocomplete="off" spellcheck="false" placeholder="${esc(server)}"><div class="hint">Büyük/küçük harf duyarlıdır.</div></div>`
         : `<label class="small sj-6abd0a"><input type="checkbox" id="w-yes"> <span>Evet, bu eylemi <b>${esc(server)}</b> üzerinde çalıştırmak istiyorum.</span></label>`}`;
-    $("#run-confirm-note").textContent = "Motor aynı onayları (snapshot, e/h ya da ad) ve sudo parolasını çıktıda yeniden sorabilir: kurallar menüdekiyle aynıdır, yanıtları burada verirsiniz. Çalışırken ilerleme izlenir. Parolayı web sayfasına yazmak istemezseniz \"macOS Terminal'de aç\" düğmesini kullanın.";
-    $("#run-go").textContent = destr ? "Yıkıcı eylemi çalıştır" : "Çalıştır (onaylı)"; $("#run-go").classList.add(destr ? "dangerbtn" : "warnbtn"); $("#run-go").disabled = true; $("#run-ext").hidden = !!runItem; // öğe eylemleri macOS Terminal'de açılamaz (yalnız uygulama içinde, kapılı iş olarak)
-    const check = () => { const okc = $("#w-snap").checked && (!destr || $("#w-destr").checked) && (typeName ? $("#w-confirm").value === server : $("#w-yes").checked); $("#run-go").disabled = !okc; $("#run-ext").disabled = !okc; };
-    $("#run-ext").disabled = true;
+    $("#run-confirm-note").textContent = "Eylem terminal penceresinde çalışır: motor aynı onayları (snapshot, e/h ya da ad) ve sudo parolasını orada yeniden sorabilir (kurallar menüdekiyle aynıdır); yanıtları terminalde yazarsınız. Çalışırken ilerleme burada izlenir.";
+    $("#run-go").textContent = destr ? "Yıkıcı eylemi çalıştır" : "Çalıştır (onaylı)"; $("#run-go").classList.add(destr ? "dangerbtn" : "warnbtn"); $("#run-go").disabled = true;
+    const check = () => { const okc = $("#w-snap").checked && (!destr || $("#w-destr").checked) && (typeName ? $("#w-confirm").value === server : $("#w-yes").checked); $("#run-go").disabled = !okc; };
     ["#w-snap", "#w-destr", "#w-confirm", "#w-yes"].forEach(id => { const e = $(id); if (e) { e.addEventListener("input", check); e.addEventListener("change", check); } });
   }
 
@@ -186,7 +185,7 @@ export function initJobs(hooks) {
     } catch (e) { /* günlük henüz yok ya da okunamadı: bir sonraki turda */ }
   }
 
-  /* sudo gerektiren salt okunur eylem: macOS Terminal'de sshpocket motoru; parolayı kullanıcı orada girer, arayüz görmez */
+  /* sudo gerektiren salt okunur eylem: gömülü terminalde sshpocket motoru; parolayı kullanıcı terminalde yazar */
   // runItem doluysa eylem durumu O ÖĞENİN kapsamında hesaplanmış olandır (önkoşul, son sonuç); yoksa paketin şimdiki seçimine göre.
   function actionOf(pkg, action) {
     const p = appState.srv && appState.srv.packages.find(x => x.id === pkg); if (!p) return undefined;
@@ -197,30 +196,33 @@ export function initJobs(hooks) {
     if (jobBusy(server)) return;
     openRun(server, pkg, action, item);
     runMode = "term";
-    $("#run-confirm-text").innerHTML = `<b>${esc(server)}</b> sunucusunda <span class="mono">${esc(action)}</span> (<b>salt okunur</b>) çalışacak. Motor <b>sudo parolası</b> isteyecek: bu pencerede çıkan parola kutusuna yazarsınız; doğrudan Ansible'a iletilir, arayüz onu saklamaz ya da günlüğe yazmaz.`;
-    $("#run-go").textContent = "Çalıştır"; $("#run-ext").hidden = !!runItem;
+    $("#run-confirm-text").innerHTML = `<b>${esc(server)}</b> sunucusunda <span class="mono">${esc(action)}</span> (<b>salt okunur</b>) çalışacak. Motor <b>sudo parolası</b> isteyecek: terminal penceresinde yazarsınız; doğrudan Ansible'a iletilir, KeyLab onu saklamaz ya da günlüğe yazmaz.`;
+    $("#run-go").textContent = "Çalıştır";
     const pv = (actionOf(pkg, action) && appState.srv && appState.srv.packages.find(x => x.id === pkg).vars || []).filter(v => v.set);
     if (pv.length) $("#run-confirm-text").insertAdjacentHTML("beforeend", `<div class="chips sj-8a77e5"><span class="small muted sj-9162a2">Bu değişkenlerle:</span>${pv.map(v => `<span class="chip">${esc(v.name)}=${esc(v.value.length > 48 ? v.value.slice(0, 48) + "…" : v.value)}</span>`).join("")}</div>`);
-    $("#run-confirm-note").textContent = "Parola istemi çıktıda belirince burada bir kutu açılır. Sonuç menüdekiyle aynı şekilde kaydedilir. ssh anahtarınızın ssh-agent'ta yüklü olması gerekir. Parolayı bir web sayfasına yazmak istemezseniz \"macOS Terminal'de aç\" düğmesini kullanın.";
+    $("#run-confirm-note").textContent = "Eylem terminal penceresinde çalışır: sudo parolası istemi orada belirince yazarsınız. Sonuç menüdekiyle aynı şekilde kaydedilir. ssh anahtarınızın ssh-agent'ta yüklü olması gerekir.";
   }
+  // sudo gerektiren (term) ve değişiklik yapan (write) eylemler gömülü terminalde çalışır: sudo/ansible parolası ve motorun onay soruları terminalde yazılır.
+  // Arayüz onayı (snapshot, e/h ya da ad) bunun ÖN adımıdır; sunucu aynı kapıları yeniden denetler. Sonuç kartı eylem bitince (olay) ya da günlük değişince yenilenir.
   async function startTerm() {
-    $("#run-go").disabled = true; $("#run-ext").hidden = true;
+    $("#run-go").disabled = true;
     const a0 = actionOf(runPkg, runAct), base = a0 ? a0.lastTime || "" : "";
     const body = { server: runSrv, package: runPkg, action: runAct };
     if (runItem) body.item = runItem;
     if (runMode === "write") { body.snapshot = $("#w-snap").checked; body.ackDestructive = !!($("#w-destr") && $("#w-destr").checked); body.confirm = $("#w-confirm") ? $("#w-confirm").value : $("#w-yes").checked ? "evet" : ""; }
     logSince = Date.now();
-    try { await json("/api/run-terminal", body); }
-    catch (e) { $("#run-go").disabled = false; $("#run-ext").hidden = false; toast("Terminal açılamadı: " + e.message); return; }
+    const started = await window.KeyLabTerminal.openTask(body); // → /api/term/task; terminal penceresi açılır
+    if (!started.ok) { $("#run-go").disabled = false; toast("Eylem başlatılamadı: " + started.error); return; }
     $("#run-confirm").hidden = true; $("#run-live").hidden = false; $("#run-go").hidden = true; $("#run-close").hidden = false; $("#run-close").textContent = "Kapat";
     $("#run-log").hidden = true; $("#run-cancel").hidden = true; $("#run-result").innerHTML = "";
     const t0 = Date.now();
-    const tick = () => { $("#run-state").innerHTML = `<span class="spinner" aria-hidden="true"></span> Terminal'de çalışıyor… parolayı orada girin · ${Math.round((Date.now() - t0) / 1000)} sn`; };
+    const tick = () => { $("#run-state").innerHTML = `<span class="spinner" aria-hidden="true"></span> Terminal penceresinde çalışıyor… parolayı ve onayları orada yazın · ${Math.round((Date.now() - t0) / 1000)} sn`; };
     tick();
     clearInterval(termTimer);
     let prgTimer = 0;
     if (runMode === "write") { prgTimer = setInterval(() => pollProgress(runPkg, runSrv, logSince), 2000); }
-    termTimer = setInterval(async () => {
+    const check = async () => {
+      if (!termTimer) return; // sonuç zaten alındı
       tick();
       if (Date.now() - t0 > (runMode === "write" ? 40 : 10) * 60 * 1000) { clearInterval(termTimer); clearInterval(prgTimer); $("#run-state").textContent = "Sonuç beklenirken süre doldu; sayfa yine de sonucu gösterecek."; return; }
       try {
@@ -234,7 +236,12 @@ export function initJobs(hooks) {
           $("#run-open-log").addEventListener("click", () => { const pk = runPkg, sv = runSrv; closeRun(); openLastLog(pk, sv); });
         }
       } catch (e) { /* bir sonraki turda yeniden denenir */ }
-    }, 3000);
+    };
+    termTimer = setInterval(check, 3000);
+    // eylem bitince (görev terminalinin "exit" olayı) sonuç 3 sn'lik yoklamayı beklemeden hemen alınır
+    if (termOnExit) window.removeEventListener("keylab:taskexit", termOnExit);
+    termOnExit = e => { const d = e.detail || {}; if (d.server === runSrv && d.pkg === runPkg && d.action === runAct) check(); };
+    window.addEventListener("keylab:taskexit", termOnExit);
   }
 
   // ham terminal çıktısı → okunur metin: ANSI kaçışlarını at, "\r" ile satır başına dönmeyi uygula
@@ -272,7 +279,7 @@ export function initJobs(hooks) {
   function watchJob(id, startedAt, resume) {
     runJob = id; runStart = startedAt || Date.now(); pill = { label: runLabel(), state: "run" }; $("#run-min").hidden = false;
     const w = curWatch = { id, server: runSrv, pkg: runPkg, act: runAct, item: runItem, mode: runMode, started: runStart, raw: (resume && resume.raw) || "", from: (resume && resume.from) || 0, idle: 0 };
-    $("#run-confirm").hidden = true; $("#run-live").hidden = false; $("#run-go").hidden = true; $("#run-ext").hidden = true; $("#run-close").hidden = true;
+    $("#run-confirm").hidden = true; $("#run-live").hidden = false; $("#run-go").hidden = true; $("#run-close").hidden = true;
     $("#run-log").innerHTML = ""; $("#run-log").hidden = false; $("#run-progress").innerHTML = ""; $("#run-result").innerHTML = ""; $("#run-input").hidden = true;
     $("#run-cancel").hidden = false; $("#run-cancel").disabled = false;
     const logEl = $("#run-log");
@@ -376,8 +383,7 @@ export function initJobs(hooks) {
     }
     try { appState.srv = await json("/api/server?name=" + encodeURIComponent(runSrv)); if (appState.view === "server") renderServer(); load(); } catch (e) { /* bir sonraki turda yenilenir */ }
   }
-  $("#run-go").addEventListener("click", startRun);
-  $("#run-ext").addEventListener("click", startTerm);
+  $("#run-go").addEventListener("click", () => (runMode === "term" || runMode === "write" ? startTerm() : startRun()));
   $("#run-close").addEventListener("click", closeRun);
   $("#run-cancel").addEventListener("click", async () => { $("#run-cancel").disabled = true; try { await json("/api/run/cancel", { id: runJob }); } catch (e) { toast("İptal edilemedi: " + e.message); } });
 

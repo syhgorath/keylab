@@ -8,6 +8,8 @@ const { boot, fixture } = require("./harness");
 const { fakeJobs, mixedHome, status } = require("./lib/fakejobs");
 
 const ov = extra => ({ "/api/home": mixedHome, "/api/status": status, ...extra });
+// sudo'lu/yazan eylemler gömülü terminalde (görev sekmesi) çalışır
+const taskOv = tasks => ({ "/api/term/task": (u, { body }) => { tasks.push(body); return { id: "k1", kind: "task", title: "görev" }; }, "/api/term/close": { ok: true }, "/api/term/resize": { ok: true }, "/api/term/input": { ok: true } });
 const isOpen = (h, s) => h.$(s).classList.contains("open");
 const text = (h, s) => h.$(s).textContent.replace(/\s+/g, " ").trim();
 const tickPoll = async (h, n = 1) => { for (let i = 0; i < n; i++) { h.timers.run(600); await h.settle(); } };
@@ -254,20 +256,21 @@ test("günlük: 'changed:' satırları da yeşil (ok) sınıfı alır", async ()
   assert.deepEqual(h.errors, []); h.close();
 });
 
-test("arka plana alma: YAZAN (onaylı) iş de başka sunucuda yeni eylem başlatılırken arka plana geçer", async () => {
-  const f = fakeJobs(); const h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov(f.overrides) });
+test("yazan eylem terminalde başladıktan sonra çalıştırma penceresini Kapat eylemi KESMEZ (görev sekmesi çalışmaya devam eder)", async () => {
+  const tasks = []; const h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov(taskOv(tasks)) });
   await h.click('#srv-body [data-write="linux-hardening|audit"]'); await h.click("#w-snap"); await h.click("#w-yes"); await h.click("#run-go");
-  assert.deepEqual(f.posts.map(p => `${p.server}/${p.action}`), ["web1/audit"]); await h.click("#run-min");
-  await h.click('[data-tsrv="db1"]'); await h.click('#srv-tabs button[data-p="utility"]'); await h.click(runBtn(h));
-  assert.match(toast(h), /web1: audit arka planda sürüyor/, "yazan iş atılmaz, arka plana geçer"); assert.ok(isOpen(h, "#runmodal")); assert.equal(text(h, "#run-sub"), "Sunucu: db1");
-  assert.deepEqual(h.errors, []); h.close();
+  assert.deepEqual(tasks.map(p => `${p.server}/${p.action}`), ["web1/audit"]); assert.ok(h.$("#termmodal").classList.contains("open"));
+  assert.equal(h.$("#run-close").hidden, false); await h.click("#run-close");
+  assert.ok(!isOpen(h, "#runmodal"), "çalıştırma penceresi kapandı");
+  assert.equal(h.calls.filter(c => c.path === "/api/term/close").length, 0, "görev oturumu sonlandırılmadı");
+  assert.equal(h.$$("#term-dock .term-chip").length, 1); assert.deepEqual(h.errors, []); h.close();
 });
 
 test("terminal + yazan eylem: sonuç gelince ilerleme günlüğü yoklaması DURUR", async () => {
   let phase = 0;
-  const h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov({ "/api/run-terminal": { ok: true }, "/api/log": { status: 200, body: "SSHPOCKET_PROGRESS alan=a sira=1/2 durum=bitti", headers: { "X-Log-Mtime": new Date(Date.UTC(2026, 10, 14, 10, 0, 1)).toUTCString() } },
+  const h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov({ ...taskOv([]), "/api/log": { status: 200, body: "SSHPOCKET_PROGRESS alan=a sira=1/2 durum=bitti", headers: { "X-Log-Mtime": new Date(Date.UTC(2026, 10, 14, 10, 0, 1)).toUTCString() } },
     "/api/server": u => { const d = fixture("server-" + u.searchParams.get("name")); if (phase) { const a = d.packages.find(p => p.id === "linux-hardening").actions.find(x => x.id === "audit"); a.lastTime = "2026-11-14T10:00:09Z"; a.lastResult = "ok"; } return d; } }) });
-  await h.click('#srv-body [data-write="linux-hardening|audit"]'); await h.click("#w-snap"); await h.click("#w-yes"); await h.click("#run-ext");
+  await h.click('#srv-body [data-write="linux-hardening|audit"]'); await h.click("#w-snap"); await h.click("#w-yes"); await h.click("#run-go");
   h.timers.run(2000); await h.settle(); const logCalls = () => h.calls.filter(c => c.path.startsWith("/api/log?")).length; assert.ok(logCalls() >= 1, "ilerleme yoklanıyor");
   phase = 1; h.timers.run(3000); await h.settle(); assert.match(text(h, "#run-state"), /✔ tamamlandı/);
   const n = logCalls(); h.timers.run(10000); await h.settle();

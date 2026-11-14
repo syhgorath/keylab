@@ -38,7 +38,9 @@ func fakeJob(t *testing.T, script string) {
 	jobArgv = func(exe, servers, comps, state, pkg, action, server, itemVar, item string) []string {
 		return []string{"bash", "-c", `s="$1"; ` + script, "x", server}
 	}
-	t.Cleanup(func() { jobArgv = old })
+	oldProg := taskProgram
+	taskProgram = func(string) string { return "bash" }
+	t.Cleanup(func() { jobArgv = old; taskProgram = oldProg })
 }
 
 func needScript(t *testing.T) {

@@ -59,14 +59,6 @@ func confirmOK(a ActionInfo, server, got string) bool {
 	return got == "" || got == "evet"
 }
 
-// terminalCommand: macOS Terminal'de çalışacak komut (Go ikilisi). Tüm parçalar doğrulanmış adlardır ve tek tırnakla alıntılanır.
-func terminalCommand(exe, root, pkg, action, server string) string {
-	return "cd " + shQuote(root) + " && " + shQuote(exe) + " components -root " + shQuote(root) + " run " + pkg + " " + action + " " + server
-}
-
-// appleScriptQuote: AppleScript metin değişmezi için kaçışlar (macOS Terminal yolu için; asıl uygulama platform.AppleScriptQuote).
-func appleScriptQuote(s string) string { return platform.AppleScriptQuote(s) }
-
 // Job: arka planda, sahte terminal (pty) altında çalışan bir motor komutu. Çıktı ham bayt olarak biriktirilir
 // (istem satırları "\n" ile bitmediği için satır satır okunamaz); girdi stdin borusuyla pty'ye gider.
 type Job struct {

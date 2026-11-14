@@ -58,6 +58,7 @@ func (a *App) quitHandler(w http.ResponseWriter, r *http.Request) {
 	a.jmu.Lock()
 	running := len(a.runningLocked())
 	a.jmu.Unlock()
+	running += a.runningTasks() // görev terminalleri (xterm) de çalışan iş sayılır
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	if running > 0 && !req.Force {

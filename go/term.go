@@ -45,6 +45,11 @@ type TermSession struct {
 	ID      string
 	Server  string
 	Started time.Time
+	// Kind: "" ya da "ssh" (kullanıcının açtığı ssh oturumu) ya da "task" (paket eylemi: `keylab run …`, parola/onaylar terminalde yazılır).
+	// Görev oturumları boşta kalınca KAPATILMAZ (yarıda kesilen bir uygulama sunucuyu yarım bırakır); yalnız bitince temizlenir.
+	Kind        string
+	Title       string // sekmede görünen ad (görev: "<paket> · <eylem>")
+	Pkg, Action string
 
 	mu         sync.Mutex // lastActive, ring, subs, done, exit
 	lastActive time.Time
@@ -114,15 +119,15 @@ func (s *TermSession) waitLoop(a *App) {
 	s.exit = exitCode
 	s.broadcast(termEvent{Kind: "exit", Data: fmt.Sprintf("%d", exitCode)})
 	s.mu.Unlock()
-	close(s.exited)
-	_ = s.ptmx.Close()
 	if a != nil {
 		a.auditTerm("exit", s.Server, s.ID)
 	}
+	close(s.exited)
+	_ = s.ptmx.Close()
 }
 
 // startTermProcess: argv'yi yeni bir PTY'nin ucunda başlatır. Ssh'tan bağımsızdır (testlenebilir).
-func startTermProcess(argv []string, dir string, env []string, rows, cols uint16) (*TermSession, error) {
+func startTermProcess(name string, args []string, dir string, env []string, rows, cols uint16) (*TermSession, error) {
 	ptmx, ttyName, err := openPTY()
 	if err != nil {
 		return nil, fmt.Errorf("PTY açılamadı: %w", err)
@@ -140,7 +145,7 @@ func startTermProcess(argv []string, dir string, env []string, rows, cols uint16
 	}
 	_ = setWinsize(ptmx, rows, cols)
 
-	cmd := exec.Command(argv[0], argv[1:]...)
+	cmd := exec.Command(name, args...)
 	cmd.Dir = dir
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = slave, slave, slave
 	cmd.Env = env
@@ -185,6 +190,29 @@ func (a *App) auditTerm(event, server, id string) {
 	fmt.Fprintf(f, "%s\t%s\t%s\t%s\n", time.Now().UTC().Format(time.RFC3339), event, server, id)
 }
 
+// termSlotCheck: yeni terminal oturumu için yer var mı (en çok maxTerms; bitmişler önce temizlenir)? a.topen tutulurken çağrılır.
+func (a *App) termSlotCheck() error {
+	a.tmu.Lock()
+	defer a.tmu.Unlock()
+	if a.terms == nil {
+		a.terms = map[string]*TermSession{}
+	}
+	if len(a.terms) >= maxTerms {
+		for id, ts := range a.terms { // bitmişleri temizle
+			ts.mu.Lock()
+			done := ts.done
+			ts.mu.Unlock()
+			if done {
+				delete(a.terms, id)
+			}
+		}
+	}
+	if len(a.terms) >= maxTerms {
+		return fmt.Errorf("en fazla %d terminal oturumu açılabilir", maxTerms)
+	}
+	return nil
+}
+
 func (a *App) openTerm(server string, rows, cols uint16) (*TermSession, int, error) {
 	if !platform.DefaultPTY().TerminalSupported() {
 		return nil, http.StatusNotImplemented, fmt.Errorf("Windows'ta gömülü terminal henüz yok (WSL 2 kullanabilirsiniz)")
@@ -203,24 +231,8 @@ func (a *App) openTerm(server string, rows, cols uint16) (*TermSession, int, err
 	// açılışlar sıraya girer: sayım ile ekleme arasında yarış olmaz
 	a.topen.Lock()
 	defer a.topen.Unlock()
-	a.tmu.Lock()
-	if a.terms == nil {
-		a.terms = map[string]*TermSession{}
-	}
-	if len(a.terms) >= maxTerms {
-		for id, ts := range a.terms { // bitmişleri temizle
-			ts.mu.Lock()
-			done := ts.done
-			ts.mu.Unlock()
-			if done {
-				delete(a.terms, id)
-			}
-		}
-	}
-	full := len(a.terms) >= maxTerms
-	a.tmu.Unlock()
-	if full {
-		return nil, http.StatusConflict, fmt.Errorf("en fazla %d terminal oturumu açılabilir", maxTerms)
+	if err := a.termSlotCheck(); err != nil {
+		return nil, http.StatusConflict, err
 	}
 
 	// Knock (etkin değilse hiçbir şey yapmaz): süreç içinde gönderilir, kabuk kullanılmaz
@@ -247,7 +259,7 @@ func (a *App) openTerm(server string, rows, cols uint16) (*TermSession, int, err
 	}
 	argv = append(argv, "-p", s.Port, s.User+"@"+s.Host) // user@host her zaman harfle başlar: seçenek sayılamaz
 
-	ts, err := startTermProcess(argv, a.serversDir, termEnv(), rows, cols)
+	ts, err := startTermProcess(argv[0], argv[1:], a.serversDir, termEnv(), rows, cols)
 	if err != nil {
 		return nil, http.StatusInternalServerError, err
 	}
@@ -303,7 +315,7 @@ func (a *App) reapOnce(now time.Time, idleAfter, doneAfter time.Duration) {
 	a.tmu.Lock()
 	for id, ts := range a.terms {
 		ts.mu.Lock()
-		idle := now.Sub(ts.lastActive) > idleAfter && len(ts.subs) == 0
+		idle := now.Sub(ts.lastActive) > idleAfter && len(ts.subs) == 0 && ts.Kind != "task"
 		gone := ts.done && now.Sub(ts.Started) > doneAfter
 		ts.mu.Unlock()
 		if idle || gone {
@@ -538,7 +550,7 @@ func (a *App) termListHandler(w http.ResponseWriter, r *http.Request) {
 	res := make([]map[string]any, 0, len(a.terms))
 	for _, ts := range a.terms {
 		ts.mu.Lock()
-		res = append(res, map[string]any{"id": ts.ID, "server": ts.Server, "started": ts.Started.Format(time.RFC3339), "done": ts.done})
+		res = append(res, map[string]any{"id": ts.ID, "server": ts.Server, "started": ts.Started.Format(time.RFC3339), "done": ts.done, "kind": ts.Kind, "title": ts.Title, "pkg": ts.Pkg, "action": ts.Action})
 		ts.mu.Unlock()
 	}
 	a.tmu.Unlock()

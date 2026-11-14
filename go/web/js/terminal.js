@@ -14,7 +14,7 @@
   const MAX = 4;
 
   // s: { id, server, term, fit, es, ro, host, closed, queue, sending, unread, built, note }
-  let sessions = [], active = null;
+  let sessions = [], active = null, armed = null;
 
   const $ = s => document.querySelector(s);
   const modal = () => $("#termmodal");
@@ -34,7 +34,8 @@
     s.sending = false;
   }
 
-  const label = s => { const same = sessions.filter(x => x.server === s.server); return same.length > 1 ? `${s.server} #${same.indexOf(s) + 1}` : s.server; };
+  // görev sekmeleri (title dolu) ssh numaralamasını etkilemez
+  const label = s => { if (s.title) return s.title; const same = sessions.filter(x => x.server === s.server && !x.title); return same.length > 1 ? `${s.server} #${same.indexOf(s) + 1}` : s.server; };
 
   function chip(s, kind) {
     const el = document.createElement("div");
@@ -42,7 +43,7 @@
     el.setAttribute("role", kind === "tab" ? "tab" : "button"); el.tabIndex = 0;
     el.setAttribute("aria-selected", String(s === active));
     const dot = document.createElement("span"); dot.className = "status-dot " + (s.closed ? "bad" : "on"); dot.setAttribute("aria-hidden", "true");
-    const name = document.createElement("span"); name.className = "mono"; name.textContent = ">_ " + label(s);
+    const name = document.createElement("span"); name.className = "mono"; name.textContent = (s.kind === "task" ? "⚙ " : ">_ ") + label(s);
     const x = document.createElement("button"); x.type = "button"; x.className = "term-chip-x"; x.textContent = "✕";
     x.title = tr("term_end", "Oturumu kapat"); x.setAttribute("aria-label", tr("term_end", "Oturumu kapat") + ": " + label(s));
     x.addEventListener("click", e => { e.stopPropagation(); closeSession(s); });
@@ -201,8 +202,9 @@
     es.addEventListener("exit", ev => {
       s.closed = true; es.close();
       const code = String(parseInt(ev.data, 10) || 0); // yalnız sayı
-      s.term.write("\r\n\x1b[90m[" + tr("term_exited", "oturum bitti") + ": " + code + "]\x1b[0m\r\n");
+      s.term.write("\r\n\x1b[90m[" + (s.kind === "task" ? tr("term_task_done", "eylem bitti") : tr("term_exited", "oturum bitti")) + ": " + code + "]\x1b[0m\r\n");
       renderBars();
+      if (s.kind === "task") window.dispatchEvent(new CustomEvent("keylab:taskexit", { detail: { server: s.server, pkg: s.pkg, action: s.action, code: parseInt(code, 10) || 0 } }));
     });
     es.onerror = () => { if (!s.closed && s === active) setNote(tr("term_conn_lost", "Akış koptu; oturum kapanmış olabilir.")); };
   }
@@ -216,7 +218,7 @@
     s.host.hidden = false;
     if (!s.opened) { s.term.open(s.host); s.opened = true; }
     closeSearch();
-    $("#term-title").textContent = ">_ " + label(s);
+    $("#term-title").textContent = (s.kind === "task" ? "⚙ " : ">_ ") + label(s);
     setNote(s.note || "");
     try { s.fit.fit(); } catch {}
     if (s.lazy) { s.lazy = false; connect(s); } // sayfa yenilemesinden sonra yeniden bağlanan oturum
@@ -235,7 +237,20 @@
     if (s.host) s.host.remove();
   }
 
+  // çalışan eylemi kapatmak onu YARIDA keser (sunucu yarım kalabilir): ilk basış uyarır, 6 sn içindeki ikinci basış kapatır (confirm() gömülü pencerede çalışmaz)
+  function armClose(items, key) {
+    const running = items.filter(x => x.kind === "task" && !x.closed);
+    if (!running.length) return true;
+    if (armed && armed.key === key && Date.now() - armed.at < 6000) { armed = null; return true; }
+    armed = { key, at: Date.now() };
+    const m = tr("term_task_arm", "Eylem hâlâ çalışıyor: kapatmak onu yarıda keser ve sunucuyu yarım bırakabilir. Yine de kapatmak için bir kez daha basın.");
+    setNote(m); renderBars();
+    setTimeout(() => { if ($("#term-note").textContent === m) setNote(active && active.note || ""); }, 6000);
+    return false;
+  }
+
   function closeSession(s) {
+    if (!armClose([s], "s:" + (s.id || s.title))) return;
     disposeSession(s, true);
     sessions = sessions.filter(x => x !== s);
     if (active === s) {
@@ -250,6 +265,7 @@
 
   // kırmızı düğme (pencereyi kapat): bu sunucunun TÜM terminalleri sonlanır; başka sunucuların oturumlarına dokunulmaz
   function closeServerWindow(server) {
+    if (!armClose(sessions.filter(x => x.server === server), "w:" + server)) return;
     for (const s of sessions.filter(x => x.server === server)) disposeSession(s, true);
     sessions = sessions.filter(x => x.server !== server);
     active = null; modal().classList.remove("open"); setNote("");
@@ -278,13 +294,42 @@
     if (active === s && modalOpen()) s.term.focus();
   }
 
+  // eylemi (paket eylemi: `keylab run …`) görev sekmesi olarak başlatır; parola ve onaylar terminalde yazılır. spec: { server, package, action, item?, snapshot?, confirm?, ackDestructive? }
+  // → { ok: true, id } ya da { ok: false, error }. Bitince window "keylab:taskexit" olayı gönderilir.
+  async function openTask(spec) {
+    if (typeof Terminal === "undefined" || typeof FitAddon === "undefined") { const m = tr("term_lib_missing", "xterm.js yüklenemedi."); alert(m); return { ok: false, error: m }; }
+    if (sessions.length >= MAX) {
+      const m = tr("term_max", "En fazla 4 terminal oturumu açık olabilir; birini kapatın.");
+      const s0 = active || sessions[0]; show(s0); setNote(m); setTimeout(() => { if ($("#term-note").textContent === m) setNote(s0.note || ""); }, 4000);
+      return { ok: false, error: m };
+    }
+    const s = { id: "", server: spec.server, kind: "task", title: spec.package + " · " + spec.action, pkg: spec.package, action: spec.action, term: null, fit: null, es: null, ro: null, host: null, closed: false, queue: "", sending: false, unread: false, built: false, opened: false, lazy: false, note: "" };
+    sessions.push(s);
+    show(s);
+    let res;
+    try {
+      const r = await post("/api/term/task", { ...spec, rows: s.term.rows, cols: s.term.cols });
+      if (!r.ok) throw new Error((await r.text()).trim() || r.status);
+      res = await r.json();
+    } catch (e) { // başlamadı: boş bir sekme bırakma, nedeni çağıran gösterir
+      disposeSession(s, false); sessions = sessions.filter(x => x !== s);
+      if (active === s) { active = null; const rest = sessions[sessions.length - 1]; if (rest) show(rest); else { modal().classList.remove("open"); setNote(""); } }
+      renderBars();
+      return { ok: false, error: e.message };
+    }
+    if (!sessions.includes(s)) { post("/api/term/close", { id: res.id }).catch(() => {}); return { ok: false, error: "kapatıldı" }; }
+    s.id = res.id; connect(s); renderBars();
+    if (active === s && modalOpen()) s.term.focus();
+    return { ok: true, id: res.id };
+  }
+
   async function adopt() { // sayfa yenilenmişse sunucuda yaşayan oturumları çubuğa geri getir
     try {
       const r = await fetch("/api/term/list", { headers: { "X-Requested-With": "sshpocket" } });
       if (!r.ok) return;
       for (const t of (await r.json()) || []) {
         if (t.done || sessions.length >= MAX || sessions.some(x => x.id === t.id)) continue;
-        sessions.push({ id: String(t.id), server: String(t.server), term: null, fit: null, es: null, ro: null, host: null, closed: false, queue: "", sending: false, unread: false, built: false, opened: false, lazy: true, note: "" });
+        sessions.push({ id: String(t.id), server: String(t.server), kind: t.kind === "task" ? "task" : "ssh", title: t.kind === "task" ? String(t.title || "") : "", pkg: String(t.pkg || ""), action: String(t.action || ""), term: null, fit: null, es: null, ro: null, host: null, closed: false, queue: "", sending: false, unread: false, built: false, opened: false, lazy: true, note: "" });
       }
       renderBars();
     } catch { /* çubuk boş kalır */ }
@@ -300,5 +345,5 @@
   initQuick();
   adopt();
 
-  window.KeyLabTerminal = { open, close: () => active && closeSession(active), minimize };
+  window.KeyLabTerminal = { open, openTask, close: () => active && closeSession(active), minimize };
 })();
