@@ -113,3 +113,35 @@ func TestFindRootInstalledMode(t *testing.T) {
 		t.Fatalf("bayrak: %q", r)
 	}
 }
+
+func TestStateDirFor(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_DATA_HOME", "")
+	t.Setenv("KEYLAB_STATE_DIR", "")
+	t.Setenv("SSHPOCKET_STATE_DIR", "")
+	base := t.TempDir()
+	exe := filepath.Join(base, "KeyLab.app", "Contents", "MacOS", "KeyLab")
+	local := filepath.Join(home, ".local", "share", "keylab")
+
+	// taşınabilir: sunucular klasörü .app'in yanındaki servers/ → state/ onun yanında (USB'de)
+	if got := stateDirFor(filepath.Join(base, "servers"), exe); got != filepath.Join(base, "state") {
+		t.Fatalf("taşınabilir: %q", got)
+	}
+	// sondaki / ve gereksiz parçalar sonucu değiştirmez
+	if got := stateDirFor(filepath.Join(base, "servers")+"/", exe); got != filepath.Join(base, "state") {
+		t.Fatalf("taşınabilir (sondaki /): %q", got)
+	}
+	// kurulu mod (~/.keylab/servers) ve başka bir klasör: yerel varsayılan
+	if got := stateDirFor(filepath.Join(home, ".keylab", "servers"), exe); got != local {
+		t.Fatalf("kurulu: %q", got)
+	}
+	if got := stateDirFor("/baska/servers", exe); got != local {
+		t.Fatalf("başka klasör: %q", got)
+	}
+	// ortam değişkeni taşınabilirde de önceliklidir
+	t.Setenv("KEYLAB_STATE_DIR", "/ozel/durum")
+	if got := stateDirFor(filepath.Join(base, "servers"), exe); got != "/ozel/durum" {
+		t.Fatalf("env: %q", got)
+	}
+}

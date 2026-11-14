@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- **Taşınabilir kullanımda durum ve günlükler USB'de** (`servers/`'ın yanındaki `state/`): terminal denetim günlüğü, sertleştirme sonuçları, arayüz ayarları USB ile birlikte gider. Kurulu modda (`~/.keylab`) değişiklik yok; `$KEYLAB_STATE_DIR` ve `-state` her zaman önceliklidir. Ayrı tarayıcı profili bilerek bilgisayarda kalır (Chromium'un `SingletonLock` sembolik bağı FAT/exFAT USB'de oluşturulamaz). Taşınabilirde önceden bilgisayara yazılmış eski günlükler otomatik taşınmaz.
+
 ### Düzeltildi
 - **Ayarlar'da "KeyLab sürümü" boş (—) görünüyordu** (kurulu modda kök klasörde `VERSION` dosyası yoktur): sürüm artık ikilinin gömülü sürümünden gelir. "Kök klasör (USB)" etiketi "Kök klasör" oldu (kurulu modda USB değildir).
 - README: taşınabilir kullanımda "bilgisayara bir şey yazılmaz" yanlıştı; durum/günlükler, Python önbelleği ve Keychain bilgisayarda kalır, düzeltildi.
