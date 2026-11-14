@@ -1,0 +1,26 @@
+# sshpocket paket kilit dosyası (docs/package-standard.md). İmzalı sshpocket sürümüyle gelir.
+# Burada olmayan paket ÇALIŞTIRILMAZ.
+#
+# [paket-kimliği]
+# repo    = sahip/depo
+# version = 1.2.3
+# sha256  = <arşivin 64 haneli sha256 özeti>
+# signers = sshpocket-component namespaces="sshpocket-component" ssh-ed25519 <açık anahtar>
+
+[utility]
+repo = syhgorath/utility
+version = 0.1.0
+sha256 = a10e7c3d85ab14a1372ab94e2b2a7b0815613fa28f3d3cc64eb0dd9db8f3789d
+signers = sshpocket-component namespaces="sshpocket-component" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKVJS3mGlCaOT/l8XfR0TxuKxqLUs6PpVDa9TYqm0fLn
+
+[kurulum]
+repo = syhgorath/kurulum
+version = 0.1.0
+sha256 = 997ee2088c8566f8111d37afe537fee675a10eb24ca986aa0dfbb674b3eee3b3
+signers = sshpocket-component namespaces="sshpocket-component" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKVJS3mGlCaOT/l8XfR0TxuKxqLUs6PpVDa9TYqm0fLn
+
+[linux-hardening]
+repo = syhgorath/linux-hardening
+version = 0.13.0
+sha256 = f31f7c3073f125f4e0ccab39f6039e118089f5d56e481fe45eb2150cf59956de
+signers = sshpocket-component namespaces="sshpocket-component" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKVJS3mGlCaOT/l8XfR0TxuKxqLUs6PpVDa9TYqm0fLn

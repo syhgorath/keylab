@@ -238,6 +238,9 @@ func componentsCommand(args []string) int {
 		return 2
 	}
 	root := findRoot(*rootF)
+	if h := homeDataDir(); h != "" && root == h {
+		bootstrapLock(root) // kurulu mod: kilit yoksa gömülü kilit kopyalanır
+	}
 	srv, comp := *srvF, *compF
 	if srv == "" {
 		srv = envx.Get("SERVERS_DIR")
@@ -321,6 +324,9 @@ func signersPath(root, name string) string {
 	if _, err := os.Stat(p); err != nil {
 		if q := filepath.Join(root, "sistem", name); fileExists(q) {
 			return q
+		}
+		if mp, ok := materializeSigners(name); ok { // kökte yok: ikilinin gömülü kopyası (bkz. trustdefaults.go)
+			return mp
 		}
 	}
 	return p

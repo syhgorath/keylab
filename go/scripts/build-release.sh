@@ -18,6 +18,7 @@ DRY=0; [ "${1:-}" = "--dry-run" ] && DRY=1
 VERSION=$(tr -d '[:space:]' < "$ROOT/VERSION")
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "VERSION geçersiz: '$VERSION'"
 command -v go >/dev/null || die "go bulunamadı"
+bash scripts/sync-embedded.sh --check || die "gömülü güven dosyaları kökle aynı değil (ikiliye yanlış anahtar/kilit gömülmesin)"
 grep -q '^[^#].*ssh-' "$SIGNERS" || die "$SIGNERS içinde public key yok"
 if [ "$DRY" = 1 ]; then
     echo "(deneme) $VERSION için derlenecek: darwin/arm64, darwin/amd64 → universal; imza anahtarı: $KEY"
