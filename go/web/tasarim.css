@@ -1386,4 +1386,51 @@ body.dock-open{padding-bottom:276px}
 .term-quick-chip{padding:3px 10px;border:1px solid var(--border);border-radius:99px;background:var(--surface);color:var(--text-2);font:12px var(--mono);cursor:pointer}
 .term-quick-chip:hover{border-color:var(--accent);color:var(--accent-ink)}
 .term-quick-chip:focus-visible{box-shadow:var(--focus);outline:none}
+
+/* ---------- Görünüm: Cam + Aurora (Ayarlar > Görünüm > Yüzeyler; js/look.js <html data-look="glass"> koyar) ----------
+   Yalnız kenar çubuğu, üst çubuk, kartlar, pencereler ve bağlam menüsü yarı saydamlaşır; terminal, günlükler ve tablolar kart içinde
+   okunur kalır (yüzey en az %72 opak). Zemine vurgu rengine bağlı çok hafif radyal geçişler eklenir. */
+:root[data-look="glass"] body{
+  background-color:var(--bg);
+  background-image:
+    radial-gradient(ellipse 70% 45% at 15% -5%,color-mix(in oklab,var(--accent) 16%,transparent) 0%,transparent 65%),
+    radial-gradient(ellipse 60% 40% at 85% 10%,color-mix(in oklab,var(--brand-cyan) 13%,transparent) 0%,transparent 65%),
+    radial-gradient(ellipse 80% 50% at 50% 105%,color-mix(in oklab,var(--accent) 12%,transparent) 0%,transparent 70%);
+  background-attachment:fixed;background-repeat:no-repeat;
+}
+:root[data-look="glass"] .topbar{
+  background:color-mix(in oklab,var(--surface) 62%,transparent);
+  -webkit-backdrop-filter:blur(12px) saturate(140%);backdrop-filter:blur(12px) saturate(140%);
+}
+:root[data-look="glass"] .sidebar{
+  background:color-mix(in oklab,var(--surface) 48%,transparent);
+  -webkit-backdrop-filter:blur(10px) saturate(130%);backdrop-filter:blur(10px) saturate(130%);
+}
+:root[data-look="glass"] .card{
+  background:color-mix(in oklab,var(--surface) 72%,transparent);
+  -webkit-backdrop-filter:blur(10px) saturate(130%);backdrop-filter:blur(10px) saturate(130%);
+  box-shadow:inset 0 1px 0 0 rgba(255,255,255,.06),var(--shadow-1);
+}
+:root[data-look="glass"] .modal{
+  background:color-mix(in oklab,var(--surface) 84%,transparent);
+  -webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);
+}
+:root[data-look="glass"] .modal-back{-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+:root[data-look="glass"] .ctx{
+  background:color-mix(in oklab,var(--surface) 86%,transparent);
+  -webkit-backdrop-filter:blur(14px) saturate(150%);backdrop-filter:blur(14px) saturate(150%);
+}
+/* opak yedekler: bulanıklık desteği yok / kullanıcı saydamlığı azaltmış / yüksek karşıtlık modu */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  :root[data-look="glass"] .topbar,:root[data-look="glass"] .sidebar,:root[data-look="glass"] .card,
+  :root[data-look="glass"] .modal,:root[data-look="glass"] .ctx{background:var(--surface)}
+}
+@media (prefers-reduced-transparency:reduce),(forced-colors:active){
+  :root[data-look="glass"] .topbar,:root[data-look="glass"] .sidebar,:root[data-look="glass"] .card,
+  :root[data-look="glass"] .modal,:root[data-look="glass"] .modal-back,:root[data-look="glass"] .ctx{
+    background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none;
+  }
+  :root[data-look="glass"] .modal-back{background:rgba(20,15,10,.42)}
+  :root[data-look="glass"] body{background-image:none}
+}
 [hidden]{display:none !important} /* sj-sonu: !important yardımcı sınıfların display bildirimi hidden özniteliğini ezmesin; DOSYANIN SONUNDA kalmalı */

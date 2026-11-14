@@ -402,6 +402,14 @@
               "Koyu"
         <div class="frow2">
           <span class="flabel sx-607468">
+            "Yüzeyler"
+          <div aria-label="Yüzey görünümü" class="segmented" id="set-look" role="group">
+            <button aria-pressed="true" data-v="flat">
+              "Düz"
+            <button aria-pressed="false" data-v="glass">
+              "Cam + Aurora"
+        <div class="frow2">
+          <span class="flabel sx-607468">
             "Vurgu rengi"
           <div aria-label="Vurgu rengi" class="accent-row" id="set-accent" role="group">
             <button aria-label="İndigo" aria-pressed="true" class="accent-sw" data-a="default" style="background: rgb(79, 70, 229);" title="İndigo" type="button">

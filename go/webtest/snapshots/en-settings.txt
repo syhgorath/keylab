@@ -492,6 +492,14 @@
               "Dark"
         <div class="frow2">
           <span class="flabel sx-607468">
+            "Yüzeyler"
+          <div aria-label="Yüzey görünümü" class="segmented" id="set-look" role="group">
+            <button aria-pressed="true" data-v="flat">
+              "Düz"
+            <button aria-pressed="false" data-v="glass">
+              "Cam + Aurora"
+        <div class="frow2">
+          <span class="flabel sx-607468">
             "Accent color"
           <div aria-label="Accent color" class="accent-row" id="set-accent" role="group">
             <button aria-label="Indigo" aria-pressed="true" class="accent-sw" data-a="default" style="background: rgb(79, 70, 229);" title="Indigo" type="button">
