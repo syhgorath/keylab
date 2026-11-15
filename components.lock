@@ -8,7 +8,7 @@
 # signers = sshpocket-component namespaces="sshpocket-component" ssh-ed25519 <açık anahtar>
 
 [utility]
-repo = syhgorath/kurulum
+repo = syhgorath/utility
 version = 0.2.0
 sha256 = 680469ce7d1c4828044de308115b6893a07abd4deac56470d6f7f5c9b4da4423
 signers = sshpocket-component namespaces="sshpocket-component" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKVJS3mGlCaOT/l8XfR0TxuKxqLUs6PpVDa9TYqm0fLn
