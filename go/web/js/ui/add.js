@@ -1,6 +1,6 @@
 /* KeyLab — Sunucu ekle sayfası: form + canlı taslak doğrulaması, oluşturma, sonraki adımlar (hazırlık görevleri) ve görev penceresi.
    app.js'ten çıkarıldı (refaktör 5e), kod BİREBİR. Testler: go/webtest/ops.test.js, runmodal2.test.js */
-import { $, $$, esc, json, toast } from "../lib/util.js";
+import { $, $$, t, esc, json, toast } from "../lib/util.js";
 import { appState } from "../state.js";
 import { TAB_LABEL } from "../lib/labels.js";
 
@@ -42,14 +42,17 @@ export function initAddServer(hooks) {
         ${step(1, "Sunucu kaydı", `<span class="mono">servers/${esc(addServer)}/server.env</span> yazıldı`, "ok")}
         ${step(2, "SSH anahtarı", hasKey ? "Anahtar var" : "Yeni bir ed25519 anahtarı üretin (ya da mevcut anahtarı <span class=\"mono\">servers/" + esc(addServer) + "/</span> içine koyun)", hasKey ? "ok" : "todo", hasKey ? "" : '<button class="btn sm primary" data-task="keygen">Yeni anahtar üret</button>')}
         ${step(3, "Anahtarı sunucuya gönder", "Genel anahtarı sunucudaki ~/.ssh/authorized_keys dosyasına ekler (ssh-copy-id)", done("keycopy") ? "ok" : hasKey ? "todo" : "idle", hasKey ? '<button class="btn sm" data-task="keycopy">Gönder…</button>' : "")}
-        ${step(4, "ssh-agent'a ekle", "Eylemlerin parola sormadan bağlanması için (macOS Keychain)", done("sshadd") ? "ok" : hasKey ? "todo" : "idle", hasKey ? '<button class="btn sm" data-task="sshadd">Ekle…</button>' : "")}
-        ${step(5, "Keychain parolası", "Passphrase'i Keychain'e kaydeder (parolalı anahtar kullanıyorsanız)", done("keychain") ? "ok" : hasKey ? "todo" : "idle", hasKey ? '<button class="btn sm" data-task="keychain">Ayarla…</button>' : "")}
+        ${step(4, "ssh-agent'a ekle", appState.guest ? t("srv_sshadd_wiz_guest", "Eylemlerin parola sormadan bağlanması için (bu oturumun özel ajanı; passphrase terminalde sorulur)") : "Eylemlerin parola sormadan bağlanması için (macOS Keychain)", done("sshadd") ? "ok" : hasKey ? "todo" : "idle", hasKey ? '<button class="btn sm" data-task="sshadd">Ekle…</button>' : "")}
+        ${appState.guest
+          ? step(5, t("srv_vault_title", "Passphrase (şifreli kasa)"), t("srv_vault_wiz", "Misafir (USB) modda Keychain kullanılmaz: passphrase'i Ayarlar > Şifreli passphrase kasası'ndan ekleyin (parolalı anahtar kullanıyorsanız)."), "idle", '<button class="btn sm" data-go-settings>' + esc(t("srv_vault_go", "Kasaya git")) + "</button>")
+          : step(5, "Keychain parolası", "Passphrase'i Keychain'e kaydeder (parolalı anahtar kullanıyorsanız)", done("keychain") ? "ok" : hasKey ? "todo" : "idle", hasKey ? '<button class="btn sm" data-task="keychain">Ayarla…</button>' : "")}
         ${step(6, "Port knocking (isteğe bağlı)", "Sunucu SSH portunu knock dizisiyle açıyorsa", done("knock") ? "ok" : "idle", '<button class="btn sm" data-task="knock">Ayarla…</button>')}
         ${step(7, "Bağlantıyı dene", "Salt okunur <span class=\"mono\">utility durum</span> çalıştırır: ssh bağlantısı, platform ve saat denetlenir", "idle", hasKey ? '<button class="btn sm" id="add-test">Dene</button>' : "")}
         ${step(8, "Değişkenler", "linux-hardening için <span class=\"mono\">hardening_ssh_allow_from</span> gibi zorunlu değerleri ayarlayın", "idle", '<button class="btn sm" id="add-vars">Değişkenleri ayarla</button>')}
       </div></div>
       <div class="row-flex sj-d6f2af"><button class="btn primary" id="add-open">Sunucu sayfasına git</button><button class="btn ghost" id="add-another">Yeni bir sunucu daha ekle</button></div>`;
     $$("#add-steps [data-task]").forEach(b => b.addEventListener("click", () => openTask(addServer, b.dataset.task)));
+    $("#add-steps [data-go-settings]")?.addEventListener("click", () => $('.nav-item[data-nav="settings"]').click());
     $("#add-test")?.addEventListener("click", () => openRun(addServer, "utility", "durum"));
     $("#add-vars").addEventListener("click", async () => { await openServer(addServer, "linux-hardening"); openVars(addServer, "linux-hardening"); });
     $("#add-open").addEventListener("click", () => openServer(addServer));

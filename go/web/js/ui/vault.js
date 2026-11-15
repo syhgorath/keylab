@@ -5,6 +5,7 @@
    Bu GERÇEK bir kilittir (gizlilik perdesinden [privacy.js] farklı): ana parola olmadan kasadaki passphrase'ler ve ajandaki anahtarlar yoktur.
    Parolalar yalnız istek gövdesinde gider; alanlar her işlemden sonra temizlenir; yanıtlar sır içermez. */
 import { $, t, toast } from "../lib/util.js";
+import { appState } from "../state.js";
 
 const post = async (path, body) => {
   const r = await fetch(path, { method: "POST", headers: { "X-Requested-With": "sshpocket" }, body: JSON.stringify(body || {}) });
@@ -79,6 +80,9 @@ export function initVault({ getServers = () => [], reloadPage = () => location.r
   }
   function paint() {
     const card = $("#vault-card"); if (!card) return;
+    // sunucu sayfası "kasada kayıtlı" rozetini buradan okur; değişince sayfa yeniden çizilsin
+    const was = (appState.vaultStored || []).join(","), now = st.available && st.unlocked ? (st.stored || []) : [];
+    appState.vaultStored = now; if (now.join(",") !== was) window.dispatchEvent(new CustomEvent("keylab:vaultstate"));
     card.hidden = !st.available;
     $("#vault-lock-btn").hidden = !(st.available && st.unlocked);
     if (!st.available) return;

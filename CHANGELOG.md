@@ -4,6 +4,13 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [4.0.9] - 2026-11-15
+
+Arayüz kullanılan moda (misafir / Keychain) göre davranır.
+
+### Değişti
+- **Sunucu sayfası ve "Sunucu ekle" sihirbazı moda duyarlı oldu**: misafir (USB) modda Keychain kullanılmadığı için çalışmayan adımlar artık gösterilmez, yerine ne yapılacağı söylenir. "Bağlantı hazırlığı"nda **"Keychain parolası" adımı yerine "Passphrase (şifreli kasa)"** çıkar (kasada kayıtlıysa "kasada kayıtlı" rozetiyle, passphrase eklenince sayfa kendiliğinden güncellenir; "Kasaya git" düğmesi Ayarlar'ı açar); "ssh-agent'a ekle" açıklaması özel ajanı ve terminalde sorulan passphrase'i anlatır ("macOS Keychain" demez); **"Port knocking" için düğme çıkmaz** (knock dizisi Keychain olmadan saklanamaz) ve nedeni ile **Ayarlar > Bu Mac'te Keychain** yolu yazılır. Hazırlık sayacı ve ipucu da moda göre sayar. Keychain modunda (misafir değil) hiçbir şey değişmez. Bayrak `GET /api/about` → `guest`. jsdom testleri, mutasyon kontrolleri ve gerçek uygulamada (taşınabilir düzen) denendi.
+
 ## [4.0.8] - 2026-11-15
 
 Çıkış akışı, Kaynaklar sayfası ve eylem penceresi düzeltmesi.
