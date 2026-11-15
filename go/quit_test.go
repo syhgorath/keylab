@@ -12,6 +12,14 @@ import (
 	"time"
 )
 
+// quitFinish: arayüzdeki "Kapat" düğmesi (POST /api/quit/finish); süreç yalnız bununla (ya da zamanaşımıyla) kapanır.
+func quitFinish(t *testing.T, a *App) int {
+	t.Helper()
+	w := httptest.NewRecorder()
+	a.quitFinishHandler(w, httptest.NewRequest(http.MethodPost, "/api/quit/finish", nil))
+	return w.Code
+}
+
 func TestUSBName(t *testing.T) {
 	if usbName("") != "" || usbName("/Volumes/test") != "test" {
 		t.Error("usbName")
@@ -29,6 +37,9 @@ func (f fakeVolumes) Eject(w io.Writer, root string) int { return f.eject(w, roo
 func (f fakeVolumes) WillDefer(string) bool              { return f.deferred }
 
 func quitCall(a *App, body string, method string) (int, map[string]any) {
+	if a.quitPauseFn == nil {
+		a.quitPauseFn = func() {} // adımlar arası bekleme testte yok
+	}
 	w := httptest.NewRecorder()
 	a.quitHandler(w, httptest.NewRequest(method, "/api/quit", strings.NewReader(body)))
 	var m map[string]any
@@ -53,6 +64,9 @@ func TestQuitHandlerEjectsUSBAndExits(t *testing.T) {
 	if ejectedPath != "/Volumes/test" {
 		t.Errorf("eject yolu %q", ejectedPath)
 	}
+	if c := quitFinish(t, a); c != 200 {
+		t.Fatalf("finish: %d", c)
+	}
 	select {
 	case <-exited:
 	case <-time.After(3 * time.Second):
@@ -70,6 +84,9 @@ func TestQuitHandlerNoUSBJustExits(t *testing.T) {
 	if code != 200 || m["usb"] != "" || m["ejected"] != false || ejectCalls.Load() != 0 {
 		t.Fatalf("yanıt: %d %v eject=%d", code, m, ejectCalls.Load())
 	}
+	if c := quitFinish(t, a); c != 200 {
+		t.Fatalf("finish: %d", c)
+	}
 	select {
 	case <-exited:
 	case <-time.After(3 * time.Second):
@@ -86,6 +103,9 @@ func TestQuitHandlerEjectFailureReported(t *testing.T) {
 	if m["ok"] != true || m["ejected"] != false || m["usb"] != "test" || m["log"] != "⚠️  USB çıkarılamadı" {
 		t.Fatalf("yanıt: %v", m)
 	}
+	if c := quitFinish(t, a); c != 200 {
+		t.Fatalf("finish: %d", c)
+	}
 	<-exited
 }
 
@@ -100,6 +120,9 @@ func TestQuitHandlerRunningJobNeedsForce(t *testing.T) {
 		t.Fatalf("çalışan iş varken 409 beklenirdi: %d %v", code, m)
 	}
 	time.Sleep(700 * time.Millisecond)
+	if c := quitFinish(t, a); c != http.StatusConflict {
+		t.Fatalf("çıkış başlamadan finish 409 vermeli: %d", c)
+	}
 	select {
 	case <-exited:
 		t.Fatal("onaysız kapandı")
@@ -111,6 +134,9 @@ func TestQuitHandlerRunningJobNeedsForce(t *testing.T) {
 	code, m = quitCall(a, `{"force":true}`, http.MethodPost)
 	if code != 200 || m["ok"] != true || ejectCalls.Load() != 1 {
 		t.Fatalf("force ile: %d %v", code, m)
+	}
+	if c := quitFinish(t, a); c != 200 {
+		t.Fatalf("finish: %d", c)
 	}
 	<-exited
 }
@@ -133,6 +159,9 @@ func TestQuitHandlerDefersEjectWhenRunningFromTheUSB(t *testing.T) {
 	_, m := quitCall(a, `{}`, http.MethodPost)
 	if m["deferred"] != true || m["ejected"] != false || m["usb"] != "test" {
 		t.Fatalf("ertelenen çıkarma: %v", m)
+	}
+	if c := quitFinish(t, a); c != 200 {
+		t.Fatalf("finish: %d", c)
 	}
 	<-exited
 }

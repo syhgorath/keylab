@@ -55,7 +55,7 @@ func (a *App) guard(next http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 		// kasa kilitliyse (dosya var, açık değil) kasa uçları ve çıkış dışındaki her uç 423 verir; kullanıcı eylemleri kilidin boşta sayacını sıfırlar
-		if p := r.URL.Path; !strings.HasPrefix(p, "/api/vault") && p != "/api/quit" {
+		if p := r.URL.Path; !strings.HasPrefix(p, "/api/vault") && !strings.HasPrefix(p, "/api/quit") {
 			if a.vaultM().locked() {
 				http.Error(w, "kasa kilitli", http.StatusLocked)
 				return
@@ -289,7 +289,10 @@ func main() {
 	mux.HandleFunc("/api/trusted-mac", app.guard(app.trustedMacHandler))
 	mux.HandleFunc("/api/vault", app.guard(app.vaultStatusHandler))
 	mux.HandleFunc("/api/vault/", app.guard(app.vaultActionHandler))
+	mux.HandleFunc("/api/monitor", app.guard(app.monitorHandler))
 	mux.HandleFunc("/api/quit", app.guard(app.quitHandler))
+	mux.HandleFunc("/api/quit/status", app.guard(app.quitStatusHandler))
+	mux.HandleFunc("/api/quit/finish", app.guard(app.quitFinishHandler))
 	mux.HandleFunc("/api/status", app.guard(func(w http.ResponseWriter, r *http.Request) {
 		detail := r.URL.Query().Get("detail") == "1" // ayrıntı: {ad: {up, conn}}; varsayılan eski biçim {ad: up}
 		res := map[string]bool{}

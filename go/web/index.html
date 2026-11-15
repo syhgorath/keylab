@@ -71,6 +71,10 @@
     </div>
     <div class="nav-group">
       <div class="nav-title" data-i18n="nav_system">Sistem</div>
+      <button class="nav-item" data-nav="monitor">
+        <span class="ico" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></span>
+        <span data-i18n="nav_monitor">Kaynaklar</span>
+      </button>
       <button class="nav-item" data-nav="settings">
         <span class="ico" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></span>
         <span data-i18n="nav_settings">Ayarlar</span>
@@ -244,6 +248,26 @@
       </div>
     </section>
 
+    <section class="view" id="view-monitor" hidden>
+      <div class="mon-tiles">
+        <div class="card mon-tile"><div class="mon-label">CPU</div><div class="mon-big" id="mon-cpu">–</div><div class="mon-sub small muted" id="mon-cpu-sub"></div><svg class="mon-spark" id="mon-cpu-spark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="currentColor" stroke-width="1.5" points=""/></svg></div>
+        <div class="card mon-tile"><div class="mon-label">RAM</div><div class="mon-big" id="mon-ram">–</div><div class="mon-sub small muted" id="mon-ram-sub"></div><svg class="mon-spark" id="mon-ram-spark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="currentColor" stroke-width="1.5" points=""/></svg></div>
+        <div class="card mon-tile"><div class="mon-label" data-i18n="mon_disk">Disk</div><div class="mon-big" id="mon-disk">–</div><div class="mon-sub small muted" id="mon-disk-sub"></div></div>
+      </div>
+      <div class="small muted mon-up" id="mon-up"></div>
+      <div class="card">
+        <div class="card-head"><h2 data-i18n="mon_procs_h">Şu an çalışanlar</h2><span class="hint" id="mon-procs-count"></span></div>
+        <div class="card-body tight">
+          <table class="mon-table"><thead><tr><th data-i18n="mon_th_name">Süreç</th><th data-i18n="mon_th_kind">Tür</th><th>PID</th><th>CPU</th><th>RAM</th><th data-i18n="mon_th_time">Süre</th></tr></thead><tbody id="mon-procs"></tbody></table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2 data-i18n="mon_disk_h">Diskte kapladığı yer</h2></div>
+        <div class="card-body"><ul class="mon-dirs" id="mon-dirs"></ul></div>
+      </div>
+      <div class="hint small muted" data-i18n="mon_note_h">Yalnızca KeyLab'ın kendisi ve başlattığı süreçler sayılır (özel ssh-agent, eylem terminalleri, ssh, Python/Ansible). Pencerenin kendisi (WebKit) macOS'un ayrı süreçleridir ve burada görünmez. CPU yüzdesi tek çekirdeğe göredir. Klasör boyutları 30 sn'de bir yenilenir.</div>
+      <div class="small mon-note" id="mon-note" role="status"></div>
+    </section>
     <section class="view" id="view-settings" hidden>
       <div class="card">
         <div class="card-head"><h2>Görünüm</h2></div>
@@ -593,7 +617,7 @@
 </div>
 
 <div class="quit-done" id="quit-done" hidden role="alertdialog" aria-modal="true" aria-labelledby="quit-done-title">
-  <div class="quit-done-card"><h3 id="quit-done-title" data-i18n="quit_done_title">KeyLab kapatıldı</h3><p id="quit-done-text" role="status"></p><div id="quit-done-report" hidden><h4 data-i18n="quit_cleaned_h">Temizlendi</h4><ul id="quit-done-cleaned" class="quit-list"></ul><h4 data-i18n="quit_remains_h">Bu bilgisayarda kalanlar</h4><ul id="quit-done-remains" class="quit-list"></ul></div><pre class="mono small muted" id="quit-done-log"></pre></div>
+  <div class="quit-done-card"><h3 id="quit-done-title" data-i18n="quit_done_title">KeyLab kapatıldı</h3><ul class="quit-steps" id="quit-steps" aria-live="polite"></ul><p id="quit-done-text" role="status"></p><div id="quit-done-report" hidden><h4 data-i18n="quit_cleaned_h">Temizlendi</h4><ul id="quit-done-cleaned" class="quit-list"></ul><h4 data-i18n="quit_remains_h">Bu bilgisayarda kalanlar</h4><ul id="quit-done-remains" class="quit-list"></ul></div><pre class="mono small muted" id="quit-done-log"></pre><button class="btn primary quit-finish" id="quit-finish" type="button" hidden data-i18n="quit_finish">Kapat</button></div>
 </div>
 <div class="privacy-lock" id="privacy-lock" hidden role="dialog" aria-modal="true" aria-labelledby="privacy-lock-title">
   <div class="privacy-lock-card">

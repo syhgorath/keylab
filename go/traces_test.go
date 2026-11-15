@@ -88,6 +88,7 @@ func TestQuitRunsCleanupsBeforeExit(t *testing.T) {
 	a.addCleanup("t", func() { order = append(order, "temizlik") })
 	a.exitFn = func() { order = append(order, "çıkış"); done <- struct{}{} }
 	quitCall(a, `{}`, "POST")
+	quitFinish(t, a) // süreç yalnız "Kapat" (ya da zamanaşımı) ile kapanır
 	<-done
 	if strings.Join(order, ",") != "temizlik,çıkış" {
 		t.Fatalf("sıra: %v", order)
