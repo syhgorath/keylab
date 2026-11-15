@@ -58,6 +58,7 @@ func TestQuitResponseCarriesReportOnlyWhenPortable(t *testing.T) {
 	if strings.Join(order, ",") != "eject,ajan,tmp" {
 		t.Fatalf("sıra: %v", order)
 	}
+	quitFinish(t, a)
 	<-exited
 	// taşınabilir değil: özet yok
 	b := mk(false)
@@ -65,6 +66,7 @@ func TestQuitResponseCarriesReportOnlyWhenPortable(t *testing.T) {
 	if _, has := m["report"]; has {
 		t.Fatalf("taşınabilir olmayanda özet var: %v", m)
 	}
+	quitFinish(t, b)
 	select {
 	case <-exited:
 	case <-time.After(3 * time.Second):

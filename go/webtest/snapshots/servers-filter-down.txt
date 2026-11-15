@@ -393,6 +393,62 @@
                 <div class="hint" id="e-os">
                   "Paketlerin desteklediği profiller listelenir."
             <div aria-live="polite" id="add-preview">
+  <section class="view" hidden="" id="view-monitor">
+    <div class="mon-tiles">
+      <div class="card mon-tile">
+        <div class="mon-label">
+          "CPU"
+        <div class="mon-big" id="mon-cpu">
+          "–"
+        <div class="mon-sub small muted" id="mon-cpu-sub">
+        <svg aria-hidden="true" class="mon-spark" id="mon-cpu-spark" preserveAspectRatio="none" viewBox="0 0 120 32">
+          <polyline fill="none" points="" stroke-width="1.5" stroke="currentColor">
+      <div class="card mon-tile">
+        <div class="mon-label">
+          "RAM"
+        <div class="mon-big" id="mon-ram">
+          "–"
+        <div class="mon-sub small muted" id="mon-ram-sub">
+        <svg aria-hidden="true" class="mon-spark" id="mon-ram-spark" preserveAspectRatio="none" viewBox="0 0 120 32">
+          <polyline fill="none" points="" stroke-width="1.5" stroke="currentColor">
+      <div class="card mon-tile">
+        <div class="mon-label" data-i18n="mon_disk">
+          "Disk"
+        <div class="mon-big" id="mon-disk">
+          "–"
+        <div class="mon-sub small muted" id="mon-disk-sub">
+    <div class="small muted mon-up" id="mon-up">
+    <div class="card">
+      <div class="card-head">
+        <h2 data-i18n="mon_procs_h">
+          "Şu an çalışanlar"
+        <span class="hint" id="mon-procs-count">
+      <div class="card-body tight">
+        <table class="mon-table">
+          <thead>
+            <tr>
+              <th data-i18n="mon_th_name">
+                "Süreç"
+              <th data-i18n="mon_th_kind">
+                "Tür"
+              <th>
+                "PID"
+              <th>
+                "CPU"
+              <th>
+                "RAM"
+              <th data-i18n="mon_th_time">
+                "Süre"
+          <tbody id="mon-procs">
+    <div class="card">
+      <div class="card-head">
+        <h2 data-i18n="mon_disk_h">
+          "Diskte kapladığı yer"
+      <div class="card-body">
+        <ul class="mon-dirs" id="mon-dirs">
+    <div class="hint small muted" data-i18n="mon_note_h">
+      "Yalnızca KeyLab'ın kendisi ve başlattığı süreçler sayılır (özel ssh-agent, eylem terminalleri, ssh, Python/Ansible). Pencerenin kendisi (WebKit) macOS'un ayrı süreçleridir ve burada görünmez. CPU yüzdesi tek çekirdeğe göredir. Klasör boyutları 30 sn'de bir yenilenir."
+    <div class="small mon-note" id="mon-note" role="status">
   <section class="view" hidden="" id="view-settings">
     <div class="card">
       <div class="card-head">

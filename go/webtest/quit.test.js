@@ -19,19 +19,23 @@ test("çıkış: düğme onay penceresini açar; USB varsa adı ve anahtar silme
   assert.deepEqual(h.errors, []); h.close();
 });
 
-test("çıkış: USB yoksa USB satırı çıkmaz; onaylayınca {force:false} gider ve perde 'durduruldu' der", async () => {
-  const h = await boot({ hash: "", overrides: base({ "/api/about": about(""), "/api/quit": { ok: true, terms: 0, usb: "", ejected: false, log: "" } }) }); noclose(h);
+test("çıkış: USB yoksa USB satırı çıkmaz; onaylayınca {force:false} gider; perde 'Kapatabilirsiniz' der ve süreç YALNIZ 'Kapat'a basınca durur", async () => {
+  const h = await boot({ hash: "", overrides: base({ "/api/about": about(""), "/api/quit": { ok: true, terms: 0, usb: "", ejected: false, log: "", steps: [{ id: "terms", state: "skipped" }, { id: "keychain", state: "info", detail: "kept" }] } }) }); noclose(h);
   await h.click("#quit-btn"); assert.doesNotMatch(dlgText(h), /USB çıkarılır/);
   await h.click("#dlg-ok");
-  assert.equal(h.closed, 1, "window.close denenir"); assert.deepEqual(posts(h), [{ force: false }]); assert.ok(!h.$("#dlg").classList.contains("open"));
-  assert.equal(h.$("#quit-done").hidden, false); assert.equal(h.$("#quit-done-text").textContent, "KeyLab durduruldu. Bu pencereyi kapatabilirsiniz."); assert.equal(h.$("#quit-done-log").textContent, "");
+  assert.equal(h.closed, 0, "adımlar bitince pencere kendiliğinden kapanmaz"); assert.deepEqual(posts(h), [{ force: false }]); assert.ok(!h.$("#dlg").classList.contains("open"));
+  assert.equal(h.$("#quit-done").hidden, false); assert.equal(h.$("#quit-done-title").textContent, "Kapatabilirsiniz"); assert.equal(h.$("#quit-done-text").textContent, "Temizlik tamam. Kapat'a basınca KeyLab durur."); assert.equal(h.$("#quit-done-log").textContent, "");
+  assert.deepEqual(h.$$("#quit-steps li").map(l => l.textContent), ["–Açık terminal yoktu", "ℹ️Keychain kayıtlarına dokunulmadı (bu Mac'te kalır)"]);
+  assert.equal(h.$("#quit-finish").hidden, false); await h.click("#quit-finish"); await h.settle();
+  assert.equal(h.calls.filter(c => c.method === "POST" && c.path === "/api/quit/finish").length, 1); assert.equal(h.closed, 1, "Kapat: pencere kapatılmayı dener");
+  assert.equal(h.$("#quit-done-title").textContent, "KeyLab kapatıldı"); assert.equal(h.$("#quit-done-text").textContent, "KeyLab durduruldu. Bu pencereyi kapatabilirsiniz."); assert.equal(h.$("#quit-finish").hidden, true);
   assert.deepEqual(h.errors, []); h.close();
 });
 
 test("çıkış: USB çıkarıldı / çıkarılamadı iletisi ve günlük perdede görünür", async () => {
   let h = await boot({ hash: "", overrides: base({ "/api/about": about("test"), "/api/quit": { ok: true, usb: "test", ejected: true, log: "✅ USB çıkarıldı" } }) }); noclose(h);
   await h.click("#quit-btn"); await h.click("#dlg-ok");
-  assert.match(h.$("#quit-done-text").textContent, /^USB çıkarıldı: test\. KeyLab durduruldu/); assert.equal(h.$("#quit-done-log").textContent, "✅ USB çıkarıldı"); h.close();
+  assert.match(h.$("#quit-done-text").textContent, /^USB çıkarıldı: test\. Temizlik tamam/); assert.equal(h.$("#quit-done-log").textContent, "✅ USB çıkarıldı"); h.close();
   h = await boot({ hash: "", overrides: base({ "/api/about": about("test"), "/api/quit": { ok: true, usb: "test", ejected: false, log: "⚠️  USB çıkarılamadı" } }) }); noclose(h);
   await h.click("#quit-btn"); await h.click("#dlg-ok");
   assert.match(h.$("#quit-done-text").textContent, /^USB çıkarılamadı, elle çıkarın: test\./); h.close();
@@ -40,8 +44,27 @@ test("çıkış: USB çıkarıldı / çıkarılamadı iletisi ve günlük perded
 test("çıkış: uygulama USB'den çalışıyorsa çıkarma ertelenir; perde bunu söyler (yanlışlıkla 'çıkarıldı' denmez)", async () => {
   const h = await boot({ hash: "", overrides: base({ "/api/about": about("test"), "/api/quit": { ok: true, usb: "test", ejected: false, deferred: true, log: "📤 ertelendi" } }) }); noclose(h);
   await h.click("#quit-btn"); await h.click("#dlg-ok");
-  assert.match(h.$("#quit-done-text").textContent, /^USB uygulama kapandıktan hemen sonra çıkarılacak: test\. KeyLab durduruldu/);
+  assert.match(h.$("#quit-done-text").textContent, /^USB uygulama kapandıktan hemen sonra çıkarılacak: test\. Temizlik tamam/);
   assert.doesNotMatch(h.$("#quit-done-text").textContent, /USB çıkarıldı/); assert.deepEqual(h.errors, []); h.close();
+});
+
+test("çıkış: adımlar sürerken (POST yanıt bekler) perde açılır ve /api/quit/status ile adımlar CANLI görünür; bitince tam liste ve 'Kapat' çıkar", async () => {
+  let release; const gate = new Promise(r => { release = r; });
+  const FINAL = [{ id: "terms", state: "done", n: 2 }, { id: "agent", state: "done" }, { id: "tmp", state: "done" }, { id: "keychain", state: "info", detail: "guest" }];
+  const h = await boot({ hash: "", overrides: base({ "/api/about": about(""), "/api/quit": async () => { await gate; return { ok: true, usb: "", ejected: false, log: "", steps: FINAL }; },
+    "/api/quit/status": () => ({ state: "running", steps: [{ id: "terms", state: "done", n: 2 }, { id: "agent", state: "running" }] }) }) }); noclose(h);
+  await h.click("#quit-btn");
+  h.$("#dlg-ok").dispatchEvent(new h.win.MouseEvent("click", { bubbles: true, cancelable: true })); // POST bekler: settle çağrılmaz
+  h.timers.run(300); for (let i = 0; i < 6; i++) await new Promise(r => setImmediate(r));
+  assert.equal(h.$("#quit-done").hidden, false, "POST dönmeden perde açıldı"); assert.equal(h.$("#quit-done-title").textContent, "KeyLab kapanıyor…"); assert.equal(h.$("#quit-finish").hidden, true);
+  assert.deepEqual(h.$$("#quit-steps li").map(l => [l.dataset.state, l.textContent]), [["done", "✔2 terminal oturumu kapatıldı"], ["running", "⏳Özel ssh-agent durduruluyor…"]]);
+  release(); await h.settle();
+  assert.deepEqual(h.$$("#quit-steps li").map(l => l.dataset.state), ["done", "done", "done", "info"]);
+  assert.equal(h.$("#quit-done-title").textContent, "Kapatabilirsiniz"); assert.equal(h.$("#quit-finish").hidden, false);
+  assert.equal(h.$$("#quit-steps li")[3].textContent, "ℹ️Bu bilgisayarın Keychain'i ve ssh-agent'ı hiç kullanılmadı");
+  const polls = h.calls.filter(c => c.path === "/api/quit/status").length; h.timers.run(3000); await h.settle();
+  assert.equal(h.calls.filter(c => c.path === "/api/quit/status").length, polls, "bitince yoklama durur");
+  assert.deepEqual(h.errors, []); h.close();
 });
 
 test("çıkış: çalışan iş varsa 409 → uyarılı ikinci onay → force:true ile çıkar", async () => {

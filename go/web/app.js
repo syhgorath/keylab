@@ -14,6 +14,7 @@ import { initDialog } from "./js/ui/dialog.js";
 import { initQuit } from "./js/ui/quit.js";
 import { initVault } from "./js/ui/vault.js";
 import { initTrustedMac } from "./js/ui/trustedmac.js";
+import { initMonitor } from "./js/ui/monitor.js";
 import { initServerOps } from "./js/ui/serverops.js";
 import { initAddServer } from "./js/ui/add.js";
 import { OS_LABEL, osIcon } from "./js/lib/icons.js";
@@ -29,7 +30,8 @@ import { appState } from "./js/state.js";
   /* ---------------- Gezinme ---------------- */
   // Adres çubuğu = konum: "" (pano) · #v=<sayfa> · #s=<sunucu>&p=<sekme>. Yeni sayfa/sunucu geçmişe EKLENİR (geri/ileri çalışır);
   // aynı sunucudaki sekme değişimi ve geçmişten uygulanan gezinme geçmişi ÇOĞALTMAZ (replace).
-  const VIEWS = ["dash", "servers", "packages", "compare", "reports", "lynis", "logs", "settings", "add"];
+  const VIEWS = ["dash", "servers", "packages", "compare", "reports", "lynis", "logs", "monitor", "settings", "add"];
+  const monitor = initMonitor({ json }); // Kaynaklar sayfası (KeyLab'ın kendi CPU/RAM/disk kullanımı); yalnız sayfa açıkken ölçer
   function setHash(h, replace) {
     if (location.hash === h || (h === "" && location.hash === "")) return;
     try { (replace || appState.routing ? history.replaceState : history.pushState).call(history, null, "", h || location.pathname); } catch (e) { /* adres çubuğu güncellenemezse sayfa yine çalışır */ }
@@ -55,6 +57,7 @@ import { appState } from "./js/state.js";
     app.classList.toggle("v-wide", name !== "dash");
     app.classList.toggle("v-server", name === "server");
     $("#srvtree").hidden = name !== "server";
+    if (name === "monitor") monitor.show(); else monitor.hide(); // Kaynaklar yalnız açıkken ölçer
     if (name === "logs") logs.load();
     if (name === "lynis") lynis.load();
     if (name === "packages") packages.load();

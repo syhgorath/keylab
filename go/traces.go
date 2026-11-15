@@ -59,14 +59,23 @@ func (a *App) addCleanup(label string, f func()) {
 }
 
 // runCleanups: eklenen temizlikleri sırayla (bir kez) çalıştırır; çalıştırılanların etiketlerini döner.
-func (a *App) runCleanups() []string {
+func (a *App) runCleanups() []string { return a.runCleanupsSteps(nil, nil) }
+
+// runCleanupsSteps: runCleanups + her temizlikten önce begin(etiket), sonra end(etiket) bildirimi (çıkış adımları için).
+func (a *App) runCleanupsSteps(begin, end func(label string)) []string {
 	a.cleanMu.Lock()
 	items := a.cleanups
 	a.cleanups = nil
 	a.cleanMu.Unlock()
 	done := make([]string, 0, len(items))
 	for _, it := range items {
+		if begin != nil {
+			begin(it.label)
+		}
 		it.f()
+		if end != nil {
+			end(it.label)
+		}
 		done = append(done, it.label)
 	}
 	return done

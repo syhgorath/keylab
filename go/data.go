@@ -88,41 +88,50 @@ type LogFile struct {
 }
 
 type App struct {
-	serversDir  string
-	compDir     string
-	stateDir    string // ~/.local/share/sshpocket
-	token       string
-	host        string
-	bootTok     string     // tarayıcı açılış adresindeki TEK KULLANIMLIK jeton (?b=); gerçek jeton komut satırına yazılmaz (bkz. browser.go)
-	bootMu      sync.Mutex // bootTok'un bir kez kullanılması
-	bootUsed    bool
-	sessMu      sync.Mutex // oturum biletleri (bkz. session.go)
-	sessions    map[string]session
-	ttMu        sync.Mutex // terminal akış biletleri
-	termTickets map[string]termTicket
-	clock       func() time.Time // nil: time.Now (testte sahte saat)
-	cleanMu     sync.Mutex       // çıkış temizlikleri (bkz. traces.go)
-	cleanups    []cleanupItem
-	portableFn  func() bool      // nil: isPortableLayout (testte sahte)
-	prompt      platform.Prompt  // nil: platform.DefaultPrompt() (testte sahte)
-	volumes     platform.Volumes // nil: platform.DefaultVolumes() (testte sahte)
-	exitFn      func()           // nil: os.Exit(0)
-	mu          sync.Mutex
-	jmu         sync.Mutex // eylem işleri
-	vmu         sync.Mutex // değişken dosyası yazımı
-	vmOnce      sync.Once  // şifreli passphrase kasası yöneticisi (bkz. vaultmgr.go)
-	vm          *vaultMgr
-	jobs        map[string]*Job
-	bmu         sync.Mutex         // toplu işlem durumu
-	batch       *Batch             // son/çalışan toplu işlem
-	maxJobsN    atomic.Int32       // aynı anda çalışabilecek eylem sayısı (0: varsayılan); bkz. uisettings.go
-	batchOn     atomic.Bool        // toplu işlem sürerken tek tek iş başlatılamaz
-	up          map[string]bool    // son ölçülen erişilebilirlik (sayfa beklemeden gösterilsin)
-	conn        map[string]string  // son ölçülen bağlantı durumu: up | refused | down
-	idxDL       trust.DownloadFunc // indeks indirme (nil: HTTPS); testte değiştirilir
-	tmu         sync.Mutex         // gömülü terminal oturumları
-	topen       sync.Mutex         // terminal açılışlarını sıraya sokar
-	terms       map[string]*TermSession
+	serversDir        string
+	compDir           string
+	stateDir          string // ~/.local/share/sshpocket
+	token             string
+	host              string
+	bootTok           string     // tarayıcı açılış adresindeki TEK KULLANIMLIK jeton (?b=); gerçek jeton komut satırına yazılmaz (bkz. browser.go)
+	bootMu            sync.Mutex // bootTok'un bir kez kullanılması
+	bootUsed          bool
+	sessMu            sync.Mutex // oturum biletleri (bkz. session.go)
+	sessions          map[string]session
+	ttMu              sync.Mutex // terminal akış biletleri
+	termTickets       map[string]termTicket
+	clock             func() time.Time // nil: time.Now (testte sahte saat)
+	cleanMu           sync.Mutex       // çıkış temizlikleri (bkz. traces.go)
+	cleanups          []cleanupItem
+	portableFn        func() bool      // nil: isPortableLayout (testte sahte)
+	prompt            platform.Prompt  // nil: platform.DefaultPrompt() (testte sahte)
+	volumes           platform.Volumes // nil: platform.DefaultVolumes() (testte sahte)
+	exitFn            func()           // nil: os.Exit(0)
+	mu                sync.Mutex
+	jmu               sync.Mutex // eylem işleri
+	vmu               sync.Mutex // değişken dosyası yazımı
+	qmu               sync.Mutex // çıkış adımları (bkz. quit.go)
+	qstate            string     // "" | running | done
+	qsteps            []quitStep
+	quitPauseFn       func()        // nil: 220 ms bekle (testte no-op)
+	quitAutoExitAfter time.Duration // 0: 5 dk (testte kısa)
+	monMu             sync.Mutex    // Kaynaklar sayfası (bkz. monitor.go)
+	monDirs           map[string]dirSizeEntry
+	psFn              func() ([]platform.Proc, error) // nil: platform.ProcessTable (testte sahte)
+	dirSizeFn         func(string) int64              // nil: dirSize (testte sahte)
+	vmOnce            sync.Once                       // şifreli passphrase kasası yöneticisi (bkz. vaultmgr.go)
+	vm                *vaultMgr
+	jobs              map[string]*Job
+	bmu               sync.Mutex         // toplu işlem durumu
+	batch             *Batch             // son/çalışan toplu işlem
+	maxJobsN          atomic.Int32       // aynı anda çalışabilecek eylem sayısı (0: varsayılan); bkz. uisettings.go
+	batchOn           atomic.Bool        // toplu işlem sürerken tek tek iş başlatılamaz
+	up                map[string]bool    // son ölçülen erişilebilirlik (sayfa beklemeden gösterilsin)
+	conn              map[string]string  // son ölçülen bağlantı durumu: up | refused | down
+	idxDL             trust.DownloadFunc // indeks indirme (nil: HTTPS); testte değiştirilir
+	tmu               sync.Mutex         // gömülü terminal oturumları
+	topen             sync.Mutex         // terminal açılışlarını sıraya sokar
+	terms             map[string]*TermSession
 }
 
 func parseEnv(path string) map[string]string {
