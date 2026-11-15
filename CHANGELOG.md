@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- Python/Ansible gerektiren bir paket eylemi başlamadan önce bu bilgisayarda uygun Python var mı denetlenir (`GET /api/python`); yoksa eylem terminalde hata verene kadar beklenmez, "Önce Python kurmalısınız" penceresi bulunan sürümleri, kurulum adımlarını (python.org ya da `brew install python@3.13`) ve "Yeniden denetle" düğmesini gösterir; kurulunca eylem kaldığı yerden açılır. KeyLab Python'u ve Ansible'ı kendi içinde taşımaz (boyut ve lisans yükü) ve kendisi kurmaz.
+
 ### Değişti
 - Misafir (USB) modda gömülü pencerenin bu bilgisayarda bıraktığı WebKit verisi (`~/Library/WebKit/io.github.syhgorath.keylab`, `~/Library/Caches/io.github.syhgorath.keylab`) pencere kapanınca, Çıkış'ta ve her açılışta (Cmd+Q/çökme artıkları) silinir. Güvenilir/kurulu modda dokunulmaz.
 

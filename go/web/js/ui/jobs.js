@@ -12,6 +12,7 @@ import { TAB_LABEL } from "../lib/labels.js";
 //          openLastLog(paket, sunucu) — son günlüğü Günlükler sayfasında aç }
 export function initJobs(hooks) {
   const { load, renderServer, showView, loadPackages, checkUpdatesUI, renderAddSteps, markTaskDone, getRemoval, openLastLog } = hooks;
+  const pyGate = hooks.pyGate || (async () => true); // Python ön denetimi (js/ui/python.js): uygun Python yoksa pencere gösterir, eylem başlamaz
 
   /* ---------------- Eylem çalıştırma (salt okunur eylemler) ---------------- */
   const runm = $("#runmodal");
@@ -105,7 +106,10 @@ export function initJobs(hooks) {
   }
 
   let runMode = "exec", runUpgTo = ""; // runUpgTo: yükseltme modunda hedef sürüm (setUpgradeTo ile verilir)
-  function openRun(server, pkg, action, item) {
+  // Dışarıya açılan giriş: paket eylemleri (sunucu + paket verilmiş, "upgrade" hariç) önce Python denetiminden geçer; eski eşzamanlı davranış Python gerekmeyen/denetlenemeyen durumda aynen sürer.
+  const needsPy = (server, pkg, action) => !!(server && pkg && action !== "upgrade");
+  function gated(inner) { return (server, pkg, action, item) => { if (!needsPy(server, pkg, action)) return inner(server, pkg, action, item); if (jobBusy(server)) return; return pyGate(pkg, () => inner(server, pkg, action, item)).then(ok => ok && inner(server, pkg, action, item)); }; }
+  function openRunBase(server, pkg, action, item) {
     if (jobBusy(server)) return;
     runMode = "exec"; $("#run-log").hidden = false; $("#run-cancel").hidden = false;
     $("#run-yes").hidden = $("#run-no").hidden = true;
@@ -127,9 +131,9 @@ export function initJobs(hooks) {
      Eylem gömülü terminalde çalışır; motor aynı onayları orada yeniden ister (tek doğruluk kaynağı); arayüz onayı bunun ÖN adımıdır. */
   const EFFECT_TXT = { "installs-package": "paket kurar", "changes-config": "yapılandırmayı değiştirir", destructive: "yıkıcı" };
   let wAct = null;
-  function openWrite(server, pkg, action, item) {
+  function openWriteBase(server, pkg, action, item) {
     if (jobBusy(server)) return;
-    openRun(server, pkg, action, item);
+    openRunBase(server, pkg, action, item);
     runMode = "write";
     const p = appState.srv.packages.find(x => x.id === pkg), a = actionOf(pkg, action); wAct = a;
     const pv = (p.vars || []).filter(v => v.set);
@@ -170,9 +174,9 @@ export function initJobs(hooks) {
     if (runItem) { const it = (p.items || []).find(x => x.id === runItem); return it && it.states && it.states[action]; }
     return p.actions.find(x => x.id === action);
   }
-  function openTerm(server, pkg, action, item) {
+  function openTermBase(server, pkg, action, item) {
     if (jobBusy(server)) return;
-    openRun(server, pkg, action, item);
+    openRunBase(server, pkg, action, item);
     runMode = "term";
     $("#run-confirm-text").innerHTML = `<b>${esc(server)}</b> sunucusunda <span class="mono">${esc(action)}</span> (<b>salt okunur</b>) çalışacak. Motor <b>sudo parolası</b> isteyecek: terminal penceresinde yazarsınız; doğrudan Ansible'a iletilir, KeyLab onu saklamaz ya da günlüğe yazmaz.`;
     $("#run-go").textContent = "Çalıştır";
@@ -352,6 +356,7 @@ export function initJobs(hooks) {
   $("#run-close").addEventListener("click", closeRun);
   $("#run-cancel").addEventListener("click", async () => { $("#run-cancel").disabled = true; try { await json("/api/run/cancel", { id: runJob }); } catch (e) { toast("İptal edilemedi: " + e.message); } });
 
+  const openRun = gated(openRunBase), openWrite = gated(openWriteBase), openTerm = gated(openTermBase);
   return {
     openRun, openWrite, openTerm, jobBusy, watchJob, closeRun, openJob, adoptJob,
     setMode: m => { runMode = m; },          // openRun'dan sonra çağıran akışlar (silme, görev, yükseltme) kipi belirler
