@@ -4,6 +4,16 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [4.0.11] - 2026-11-15
+
+Uygulama içi güncelleme ve sürüm gösterimi.
+
+### Eklendi
+- **Kurulu sürüm arayüzde görünür**: kenar çubuğunda KeyLab adının altında (eskiden "yerel · taslak" yazıyordu) `v4.0.11` gibi ve Ayarlar > Güncelleme kartında.
+- **Uygulama içi güncelleme** (Ayarlar > **Güncelleme**): **"Güncellemeyi denetle"** GitHub'daki son sürümü ve **sürüm notlarını** (release-publish.sh bunları CHANGELOG'daki ilgili bölümden koyar) gösterir; yeni sürüm varsa üstbilgide **⬆ v…** rozeti çıkar ve tıklayınca Güncelleme kartı açılır. **KeyLab kendiliğinden internete çıkmaz**: yalnızca "denetle" denince GitHub'a bakılır. **"Güncelle ve yeniden başlat"** (onay penceresiyle; çalışan iş varsa ayrıca uyarı): `keylab-X.Y.Z-macos.zip` indirilir, **release anahtarıyla imzası doğrulanır** (doğrulanamazsa hiçbir şey kurulmaz), güvenli biçimde açılır (yol kaçışı/sembolik bağ/aşırı boyut reddedilir), paketteki ikili beklenen sürümü bildirmeli ve **kod imzası (`codesign`)** geçerli olmalı, sonra `.app` **bütünüyle** değiştirilir (tek ikiliyi değiştirmek paketin imza mührünü bozar), eski paket `.keylab-update-backup/` altında yedeklenir (yalnız son yedek tutulur), hata olursa eski paket geri konur; ardından KeyLab temiz kapanır (terminaller, özel ajan, geçici klasör) ve yeni sürüm kendiliğinden açılır. Sürüm notları GitHub'dan gelen metindir: yalnız DOM düğümleriyle çizilir, HTML olarak yorumlanmaz. Yeni uçlar: `GET /api/update/check`, `GET /api/update/status`, `POST /api/update/apply`.
+- **Ne zaman çalışır, ne zaman çalışmaz**: KeyLab.app olarak çalışıyorsa ve uygulamanın klasörü yazılabilirse (Uygulamalar'da ya da USB'de) tek düğmeyle güncellenir. Komut satırı ikilisinde (`keylab update` komutu eskisi gibi durur) ya da macOS uygulamayı karantina nedeniyle geçici bir konumdan çalıştırıyorsa (App Translocation: KeyLab.app'i Uygulamalar'a/USB'ye taşıyıp oradan açın) ya da klasör yazılamıyorsa düğme yerine nedeni yazar. **Güncelleyiciyi içeren ilk sürüm (bu) elle kurulur; kendini güncelleme 4.0.11'den sonraki sürümlerde çalışır.**
+- Gerçek `package-app.sh` ile üretilmiş **gerçek `.app` zip'iyle ve gerçek `codesign` ile uçtan uca denendi** (yeni paket ve yedek imzası geçerli, sürümler doğru değişti); bu denemede zip'teki AppleDouble (`._*`) yan dosyalarının düz açılınca kod imzasını bozduğu bulundu ve atlanarak düzeltildi. Yeniden başlatma yardımcısı gerçek bir süreçle sınandı (süreç yaşarken açmaz, bitince `open -n` çalıştırır). **Denenmedi:** GitHub'daki gerçek bir yayın üzerinden 4.0.10 → 4.0.11 (ilk gerçek deneme yayından sonra), gerçek bir pencerede yeniden açılış.
+
 ## [4.0.10] - 2026-11-15
 
 Önemli düzeltme: USB'den çalışırken Çıkış'ta bilgisayarın kasılması; düzgün kapanmayan oturumların artıkları açılışta temizlenir.

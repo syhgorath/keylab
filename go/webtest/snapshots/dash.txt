@@ -662,6 +662,27 @@
               <button class="btn sm" data-i18n="vault_chg_go" id="vault-chg-go" type="button">
                 "Parolayı değiştir"
         <div class="small vault-msg" id="vault-msg" role="status">
+    <div class="card" id="appupd-card">
+      <div class="card-head">
+        <h2 data-i18n="upd_card">
+          "Güncelleme"
+        <span class="hint mono" id="appupd-cur">
+          "v0.0.0-test"
+      <div class="card-body">
+        <div class="frow2">
+          <button class="btn sm" data-i18n="upd_check" id="appupd-check" type="button">
+            "Güncellemeyi denetle"
+          <span class="small muted upd-state" id="appupd-state" role="status">
+        <div hidden="" id="appupd-result">
+          <div class="upd-line" id="appupd-line">
+          <h4 class="upd-notes-h" hidden="" id="appupd-notes-h">
+          <div class="upd-notes" hidden="" id="appupd-notes" role="region" tabindex="0">
+          <div class="frow2">
+            <button class="btn primary sm" data-i18n="upd_apply" hidden="" id="appupd-apply" type="button">
+              "Güncelle ve yeniden başlat"
+          <div class="small muted" hidden="" id="appupd-why">
+        <div class="hint small muted" data-i18n="upd_hint">
+          "KeyLab kendiliğinden internete çıkmaz: yalnızca \"Güncellemeyi denetle\" dediğinizde GitHub'a bakılır. Güncelleme paketi KeyLab'ın release anahtarıyla imzalı olmalıdır; imza doğrulanamazsa hiçbir şey kurulmaz. Yalnız KeyLab.app olarak çalışıyorsanız ve uygulamanın klasörü yazılabilirse tek düğmeyle güncellenir."
     <div class="card">
       <div class="card-head">
         <h2>

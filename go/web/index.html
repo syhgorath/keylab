@@ -28,6 +28,7 @@
     <button class="job-pill" id="job-pill" type="button" hidden title="Çalışan işi aç"></button>
     <button class="icon-btn" id="lang-btn" type="button" aria-label="Dil / Language" title="Dil / Language"><span id="lang-cur" class="mono sx-15ab33">TR</span></button>
     <button class="icon-btn" id="theme-btn" aria-label="Tema: otomatik" title="Tema: otomatik (tıklayınca değişir)"><span id="theme-ico" aria-hidden="true">◐</span></button>
+    <button class="job-pill" id="appupd-badge" type="button" hidden title="Yeni sürüm var: sürüm notları ve güncelleme için tıklayın" data-i18n-title="upd_badge_title"></button>
     <button class="icon-btn" id="vault-lock-btn" type="button" hidden aria-label="Kasayı kilitle" title="Kasayı kilitle (ana parola olmadan açılmaz)" data-i18n-title="vault_lock_title_btn" data-i18n-aria="vault_lock_title_btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M14 9l2 2"/></svg></button>
     <button class="icon-btn" id="lock-btn" type="button" aria-label="Ekranı gizle (L)" title="Ekranı gizle (L)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
     <button class="icon-btn" id="shortcuts-btn" type="button" aria-label="Klavye kısayolları (?)" title="Klavye kısayolları (?)"><span class="mono sx-d17f9e" aria-hidden="true">?</span></button>
@@ -320,6 +321,20 @@
             </details>
           </div>
           <div class="small vault-msg" id="vault-msg" role="status"></div>
+        </div>
+      </div>
+      <div class="card" id="appupd-card">
+        <div class="card-head"><h2 data-i18n="upd_card">Güncelleme</h2><span class="hint mono" id="appupd-cur"></span></div>
+        <div class="card-body">
+          <div class="frow2"><button class="btn sm" id="appupd-check" type="button" data-i18n="upd_check">Güncellemeyi denetle</button><span class="small muted upd-state" id="appupd-state" role="status"></span></div>
+          <div id="appupd-result" hidden>
+            <div class="upd-line" id="appupd-line"></div>
+            <h4 class="upd-notes-h" id="appupd-notes-h" hidden></h4>
+            <div class="upd-notes" id="appupd-notes" tabindex="0" role="region" hidden></div>
+            <div class="frow2"><button class="btn primary sm" id="appupd-apply" type="button" hidden data-i18n="upd_apply">Güncelle ve yeniden başlat</button></div>
+            <div class="small muted" id="appupd-why" hidden></div>
+          </div>
+          <div class="hint small muted" data-i18n="upd_hint">KeyLab kendiliğinden internete çıkmaz: yalnızca "Güncellemeyi denetle" dediğinizde GitHub'a bakılır. Güncelleme paketi KeyLab'ın release anahtarıyla imzalı olmalıdır; imza doğrulanamazsa hiçbir şey kurulmaz. Yalnız KeyLab.app olarak çalışıyorsanız ve uygulamanın klasörü yazılabilirse tek düğmeyle güncellenir.</div>
         </div>
       </div>
       <div class="card">
