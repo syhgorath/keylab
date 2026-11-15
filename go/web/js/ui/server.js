@@ -259,6 +259,8 @@ export function initServer(hooks) {
   // Kur/Yükselt/Kaldır düğmeleri KAPALI: eylemler paket düzeyindedir ve önizleme önkoşulu öğeye özel tutulmaz;
   // öğeye özel çalıştırma (koşuya özel seçim + öğe başına kapı) gelene dek yalnız "Genel eylemler" çalışır.
   let storeFilter = "all", catVars = [], catSrv = "", catPkg = "";
+  // Katalog (uygulama mağazası) sayfası: eski `kurulum` paketi ya da `kurulum_durum` eylemini taşıyan birleşik `utility` paketi (0.2.0+). Kurulu bilgisi o eylemin `kurulu`/`portlar` anahtarlarından gelir.
+  const isKurulumCat = p => p.id === "kurulum" || (p.id === "utility" && p.actions.some(a => a.id === "kurulum_durum"));
   const LEGACY_ICONS = { docker: "🐳", nginx: "🌐", mariadb: "🗄️", redis: "⚡" };
   const LEGACY_ITEMS = [
     { id: "docker", label: "Docker Engine", description: "Konteyner çalışma ortamı ve Docker Compose eklentisi. Konteyner modundaki uygulamalar için gereklidir.", params: [], group: "Docker" },
@@ -273,7 +275,7 @@ export function initServer(hooks) {
   // Katalog öğeleri: paketin `items` alanı; yoksa yalnız eski kurulum paketi için yerleşik liste; yoksa null (katalog sayfası yok).
   function catalogItems(p) {
     if (p.items && p.items.length) return p.items.map(it => ({ id: it.id, label: it.label || it.id, description: it.description || "", params: it.params || [], group: "", actions: it.actions || [], states: it.states || {} }));
-    if (p.id === "kurulum") return LEGACY_ITEMS;
+    if (isKurulumCat(p)) return LEGACY_ITEMS;
     return null;
   }
 
@@ -285,7 +287,7 @@ export function initServer(hooks) {
 
   function catalogStore(s, p, ok, na, items) {
     const legacy = !(p.items && p.items.length);
-    const d = p.actions.find(a => a.id === "durum"), k = (d && d.keys) || {}, known = "kurulu" in k;
+    const d = p.actions.find(a => a.id === (p.id === "utility" ? "kurulum_durum" : "durum")), k = (d && d.keys) || {}, known = "kurulu" in k;
     const inst = Object.fromEntries(splitPlus(k.kurulu)), ports = Object.fromEntries(splitPlus(k.portlar));
     const dattr = d ? actBtnAttr(d, p) : "";
     const onN = items.filter(it => it.id in inst).length;
@@ -326,9 +328,9 @@ export function initServer(hooks) {
     }).join("");
     const chip = (key, label, n) => `<button class="fchip" data-sf="${key}" aria-pressed="${storeFilter === key}">${label}${n === undefined ? "" : ` <span class="muted">${n}</span>`}</button>`;
     // genel ayarlar: eski kurulum için sabit dört değişken; diğerlerinde hiçbir öğeye ait olmayan değişkenler (en çok 8)
-    const genPairs = legacy && p.id === "kurulum" ? LEGACY_GEN.map(([l, n]) => [l, n]) : catVars.filter(v => !claimed.has(v.name)).slice(0, 8).map(v => [v.name.startsWith(p.id + "_") ? v.name.slice(p.id.length + 1) : v.name, v.name]);
+    const genPairs = legacy && isKurulumCat(p) ? LEGACY_GEN.map(([l, n]) => [l, n]) : catVars.filter(v => !claimed.has(v.name)).slice(0, 8).map(v => [v.name.startsWith(p.id + "_") ? v.name.slice(p.id.length + 1) : v.name, v.name]);
     const gen = genPairs.map(([l, n]) => `<div class="kv"><span class="muted">${esc(l)}</span><span class="chip" title="${esc(n)}">${esc(catVal(n)) || "—"}</span></div>`).join("") || '<div class="small muted">Ortak ayar yok.</div>';
-    const itemVar = p.itemVar || (legacy && p.id === "kurulum" ? "kurulum_yazilim" : "");
+    const itemVar = p.itemVar || (legacy && isKurulumCat(p) ? "kurulum_yazilim" : "");
     const sub = legacy ? "Kurulum motoru" : esc(p.name || p.id);
     return `<div class="store-head"><div><h2>Uygulama kataloğu</h2><div class="small muted">${sub} <span class="mono">v${esc(p.version)}</span> · bu USB'de.${legacy ? " Docker ya da yerel paket (native) olarak kurulur." : p.description ? " " + esc(p.description) : ""}</div></div>
         <div class="fchips2">${chip("all", "Tümü", items.length)}${known ? chip("on", "Kurulu", onN) + chip("off", "Kurulabilir", items.length - onN) : ""}</div></div>
@@ -398,7 +400,8 @@ export function initServer(hooks) {
     if (!p) { $("#srv-body").innerHTML = '<div class="card"><div class="card-body small muted">Bu sunucu için paket bulunamadı.</div></div>'; return; }
     const ok = p.actions.filter(a => a.applicable), na = p.actions.filter(a => !a.applicable);
     const cat = catalogItems(p);
-    if (cat) { $("#srv-body").innerHTML = catalogStore(s, p, ok, na, cat); bindCatalog(p.id); return; }
+    // birleşik utility: katalogun altında paketin kendi kartları (bilgi, değişkenler, Son durum: saat dilimi/dil/NTP) da görünür; eylemler katalogdaki "Genel eylemler"de
+    if (cat) { $("#srv-body").innerHTML = catalogStore(s, p, ok, na, cat) + (p.id === "utility" ? `<div class="pk-top">${pkgInfoCard(p, ok)}${varsCard(p)}</div>${statusCard(p)}` : ""); bindCatalog(p.id); return; }
     $("#srv-body").innerHTML = `${p.id === "linux-hardening" ? lynisHero(s, p) : ""}<div class="pk-top">${pkgInfoCard(p, ok)}${varsCard(p)}</div>${statusCard(p)}${actionsSection(ok, na, p)}`;
     $$("#srv-body [data-actcat]").forEach(b => b.addEventListener("click", () => { actFilter = b.dataset.actcat; applyActFilter(); }));
     $("#srv-body [data-go-lynis-p]")?.addEventListener("click", () => goLynis(appState.srvName, s.lynis && s.lynis.warnings > 0 ? "uyari" : "all"));

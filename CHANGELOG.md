@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Düzeltildi
+- Birleşik `utility` paketinde (0.2.0+) kaybolan **Uygulama kataloğu** (Docker, nginx, MariaDB, Redis kartları; Kurulu/Kurulabilir süzgeci; genel ayarlar) geri geldi: `kurulum_durum` eylemi olan utility paketi için çizilir, kurulu bilgisi o eylemden okunur; paketin kendi kartları (bilgi, değişkenler, Son durum) katalogun altında görünür.
+
 ## [4.0.14] - 2026-11-15
 
 Gömülü kilitte `utility` deposu `syhgorath/utility`. İmzalı indeks de aynı repoyu gösterir; mevcut kurulumlarda kilit geçişi gerekmez.
