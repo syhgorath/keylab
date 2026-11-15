@@ -538,6 +538,18 @@
           <span class="small muted" id="set-maxjobs-st" role="status">
         <div class="hint small muted" id="set-maxjobs-hint">
           "How many actions may run at the same time on different servers (1-16, default 4). One action at a time per server, always; package installs, server removal and bulk actions run alone. Each action is an ssh/ansible process and a password prompt: keep it low for write actions. Lowering it does not stop running jobs, it only limits new ones."
+    <div class="card" hidden="" id="tm-card">
+      <div class="card-head">
+        <h2 data-i18n="tm_card">
+          "Keychain on this Mac"
+        <span class="hint" id="tm-state">
+      <div class="card-body">
+        <div class="hint small muted" data-i18n="tm_desc">
+          "When running from a USB stick, KeyLab defaults to guest mode: this computer's Keychain and ssh-agent are not used and no traces are left. Only on YOUR OWN trusted Mac can you turn this on: passphrases stay in the Keychain and keys load into the agent in one go. The marker is written to this computer, not the USB stick; if the stick is plugged into another computer, guest mode stays in effect. The encrypted vault exists only in guest mode."
+        <div class="small" id="tm-active">
+        <div class="frow2">
+          <button aria-pressed="false" class="btn sm" id="tm-toggle" type="button">
+        <div class="small muted" hidden="" id="tm-pending" role="status">
     <div class="card" hidden="" id="vault-card">
       <div class="card-head">
         <h2 data-i18n="vault_card">
