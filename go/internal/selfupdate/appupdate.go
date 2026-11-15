@@ -144,7 +144,8 @@ func topApp(dir string) (string, error) {
 	for _, e := range ents {
 		if e.IsDir() && strings.HasSuffix(e.Name(), ".app") {
 			apps = append(apps, e.Name())
-		} else if e.Name() != "__MACOSX" {
+		} else if e.Name() != "__MACOSX" && !strings.HasPrefix(e.Name(), "._") && e.Name() != ".DS_Store" {
+			// "._*" ve .DS_Store: xattr tutamayan diskte (exFAT/FAT USB) macOS, açılan her öğenin yanına kendiliğinden AppleDouble yan dosyası yazar; paketin parçası değildir
 			return "", fmt.Errorf("zipte beklenmeyen üst düzey öğe: %s", e.Name())
 		}
 	}

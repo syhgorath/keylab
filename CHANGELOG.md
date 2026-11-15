@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Düzeltildi
+- Uygulama içi güncelleme USB'den (exFAT/FAT) çalışırken "zipte beklenmeyen üst düzey öğe: ._KeyLab.app" diyerek duruyordu: xattr tutamayan diskte macOS açılan her öğenin yanına AppleDouble yan dosyası yazar; artık `._*` ve `.DS_Store` paketin parçası sayılmaz.
+
 ## [4.0.12] - 2026-11-15
 
 Paket eylemlerinde Python ön denetimi, USB'de WebKit izi temizliği ve birleşik `utility` paketi. Uygulama içi güncellemenin (4.0.11 → 4.0.12) ilk gerçek denemesi.
