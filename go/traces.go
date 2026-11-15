@@ -7,13 +7,17 @@ package main
 //   - Ayrı tarayıcı profili: Chromium'un SingletonLock sembolik bağı FAT/exFAT'ta oluşturulamaz → geçici klasör.
 //   - ssh known_hosts: USB'deki durum klasörüne (state/known_hosts): kabul edilen host key'ler bilgisayarın ~/.ssh/known_hosts'una yazılmaz.
 //
+//   - Gömülü pencerenin WebKit verisi (~/Library/WebKit ve ~/Library/Caches altında paket kimliğiyle): misafir modda pencere kapanınca ve her açılışta silinir (sweepWebKitTraces).
+//
 // Hâlâ bilgisayarda kalanlar: Keychain kayıtları (parola/knock), kullanıcının kendi ssh-agent'ına eklenen anahtarlar (Çıkış USB anahtarlarını siler),
 // macOS'un kendi izleri (Spotlight, son kullanılanlar, günlükler).
 
 import (
 	"keylab/internal/envx"
+	"keylab/internal/platform"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -80,4 +84,32 @@ func (a *App) runCleanupsSteps(begin, end func(label string)) []string {
 		done = append(done, it.label)
 	}
 	return done
+}
+
+// sweepWebKitTraces: misafir (USB) modda gömülü pencerenin bu bilgisayarda bıraktığı WebKit verisini (çerez, yerel depo, önbellek) siler. WebKit süreçleri
+// pencere kapanırken de yazdığı için pencere kapandıktan sonra ve her açılışta (Cmd+Q/çökme artıkları) çağrılır. Misafir değilse HİÇBİR ŞEY silinmez
+// (kurulu/güvenilir Mac'te bu veri kullanıcının kendi uygulama verisidir). Yalnız beklenen iki yola (ev klasörü altında, son öğe paket kimliği) bakar,
+// sembolik bağları izlemez (bağın kendisi silinir, hedefine dokunulmaz).
+func sweepWebKitTraces(guest bool, home string, remove func(string) error) int {
+	if !guest {
+		return 0
+	}
+	n := 0
+	for _, d := range platform.WebKitTraceDirs(home) {
+		if filepath.Base(d) != platform.WebKitBundleID || !strings.HasPrefix(d, filepath.Clean(home)+string(filepath.Separator)) {
+			continue
+		}
+		if _, err := os.Lstat(d); err != nil {
+			continue
+		}
+		if remove(d) == nil {
+			n++
+		}
+	}
+	return n
+}
+
+func sweepWebKitNow() {
+	home, _ := os.UserHomeDir()
+	sweepWebKitTraces(platform.GuestMode(), home, os.RemoveAll)
 }
