@@ -54,6 +54,16 @@ func (a *App) guard(next http.HandlerFunc) http.HandlerFunc {
 				return
 			}
 		}
+		// kasa kilitliyse (dosya var, açık değil) kasa uçları ve çıkış dışındaki her uç 423 verir; kullanıcı eylemleri kilidin boşta sayacını sıfırlar
+		if p := r.URL.Path; !strings.HasPrefix(p, "/api/vault") && p != "/api/quit" {
+			if a.vaultM().locked() {
+				http.Error(w, "kasa kilitli", http.StatusLocked)
+				return
+			}
+			if r.Method == http.MethodPost {
+				a.vaultM().touch()
+			}
+		}
 		next(w, r)
 	}
 }
@@ -272,6 +282,8 @@ func main() {
 	mux.HandleFunc("/api/term/resize", app.guard(app.termResizeHandler))
 	mux.HandleFunc("/api/term/close", app.guard(app.termCloseHandler))
 	mux.HandleFunc("/api/term/list", app.guard(app.termListHandler))
+	mux.HandleFunc("/api/vault", app.guard(app.vaultStatusHandler))
+	mux.HandleFunc("/api/vault/", app.guard(app.vaultActionHandler))
 	mux.HandleFunc("/api/quit", app.guard(app.quitHandler))
 	mux.HandleFunc("/api/status", app.guard(func(w http.ResponseWriter, r *http.Request) {
 		detail := r.URL.Query().Get("detail") == "1" // ayrıntı: {ad: {up, conn}}; varsayılan eski biçim {ad: up}
@@ -717,6 +729,7 @@ func main() {
 	if bm == "window" && !*noOpen {
 		// uygulamanın kendi penceresi (gömülü webview): pencere kapanınca süreç biter; terminaller ve geçici klasör/özel ajan temizlenir
 		go app.reapTerms()
+		go app.vaultIdleLoop(nil) // boşta kasa kilidi
 		wsrv := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 		go func() {
 			if err := wsrv.Serve(ln); err != nil && err != http.ErrServerClosed {
@@ -744,7 +757,8 @@ func main() {
 			fmt.Println("not: Chrome/Edge/Brave/Chromium bulunamadı; sistem tarayıcısı açıldı (eklentileriniz etkin olabilir). Ayrı profil için bunlardan birini kurun.")
 		}
 	}
-	go app.reapTerms() // boşta/bitmiş terminal oturumlarını temizler
+	go app.reapTerms()        // boşta/bitmiş terminal oturumlarını temizler
+	go app.vaultIdleLoop(nil) // boşta kasa kilidi
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 	if err := srv.Serve(ln); err != nil {
 		fmt.Fprintln(os.Stderr, err)

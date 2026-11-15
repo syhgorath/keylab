@@ -213,3 +213,22 @@ func TestGuestModeWrongPassphraseDoesNotOfferKeychain(t *testing.T) {
 		t.Errorf("misafirde Keychain sorusu çıktı: %s", errb)
 	}
 }
+
+// Kasa yolu: SSHPOCKET_ASKPASS_FILE'daki passphrase ilk çağrıda verilir ve dosya SİLİNİR; ikinci çağrı boş cevap verir (ssh-add vazgeçer).
+func TestAskpassFileIsReadOnceAndRemoved(t *testing.T) {
+	f := filepath.Join(t.TempDir(), "ap")
+	os.WriteFile(f, []byte("gizli-pass\n"), 0o600)
+	t.Setenv("SSHPOCKET_ASKPASS", "1")
+	t.Setenv("SSHPOCKET_ASKPASS_FILE", f)
+	var b1 bytes.Buffer
+	if h, code := AskpassMain(&b1); !h || code != 0 || b1.String() != "gizli-pass\n" {
+		t.Fatalf("1. çağrı: %v %d %q", h, code, b1.String())
+	}
+	if _, err := os.Stat(f); err == nil {
+		t.Fatal("passphrase dosyası silinmedi")
+	}
+	var b2 bytes.Buffer
+	if h, code := AskpassMain(&b2); !h || code != 0 || b2.String() != "\n" {
+		t.Fatalf("2. çağrı boş cevap vermedi: %v %d %q", h, code, b2.String())
+	}
+}
