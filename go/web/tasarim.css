@@ -1522,4 +1522,19 @@ body.dock-open{padding-bottom:276px}
 .quit-done-card h4{margin:14px 0 4px;font-size:13px;text-align:left}
 .quit-list{margin:0;padding-left:18px;text-align:left;font-size:13px}
 .quit-list li{margin:2px 0}
+/* şifreli passphrase kasası (js/ui/vault.js) */
+.vault-lock{position:fixed;inset:0;z-index:10000;background:var(--bg,#0b0e14);display:flex;align-items:center;justify-content:center;padding:20px}
+.vault-lock[hidden]{display:none}
+.vault-lock-card{max-width:420px;width:100%;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;box-shadow:var(--shadow-2);display:flex;flex-direction:column;align-items:center;gap:10px}
+.vault-lock-card h3{margin:4px 0 0;font-size:18px}
+.vault-lock-card p{margin:0}
+.vault-lock-field{width:100%;text-align:left}
+.vault-lock-err{min-height:1.3em;color:var(--danger,#e5484d)}
+.vault-list{list-style:none;margin:6px 0 10px;padding:0;display:flex;flex-direction:column;gap:6px}
+.vault-list li{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.vault-pp{flex:1;min-width:160px}
+.vault-chg{margin-top:10px}
+.vault-msg{min-height:1.3em;margin-top:8px}
+.vault-msg.bad{color:var(--danger,#e5484d)}
+
 [hidden]{display:none !important} /* sj-sonu: !important yardımcı sınıfların display bildirimi hidden özniteliğini ezmesin; DOSYANIN SONUNDA kalmalı */

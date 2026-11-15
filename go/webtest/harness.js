@@ -51,6 +51,7 @@ function makeRouter(overrides, calls) {
     "/api/profiles": () => fixture("profiles"), "/api/logs": () => fixture("logs"), "/api/term/list": () => [], "/api/term/ticket": () => ({ ticket: "tk-test" }),
     "/api/batch/options": () => ({ options: [], total: 0 }),
     "/api/updates": () => ({ status: 409, body: "fixture: indeks yok" }),
+    "/api/vault": () => ({ available: false }), // şifreli kasa: varsayılan kapalı (misafir mod yok); testler geçersiz kılar
   };
   return async function route(url, opts = {}) {
     const u = new URL(url, "http://127.0.0.1:7777");

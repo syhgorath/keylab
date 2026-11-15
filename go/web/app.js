@@ -12,6 +12,7 @@ import { initServer } from "./js/ui/server.js";
 import { initSettings } from "./js/ui/settings.js";
 import { initDialog } from "./js/ui/dialog.js";
 import { initQuit } from "./js/ui/quit.js";
+import { initVault } from "./js/ui/vault.js";
 import { initServerOps } from "./js/ui/serverops.js";
 import { initAddServer } from "./js/ui/add.js";
 import { OS_LABEL, osIcon } from "./js/lib/icons.js";
@@ -265,7 +266,7 @@ import { appState } from "./js/state.js";
   }
 
   async function load() {
-    try { appState.home = await json("/api/home"); appState.home.servers = appState.home.servers || []; appState.home.packages = appState.home.packages || []; render(); }
+    try { appState.home = await json("/api/home"); appState.home.servers = appState.home.servers || []; appState.home.packages = appState.home.packages || []; render(); window.dispatchEvent(new CustomEvent("keylab:homeloaded")); }
     catch (e) { $("#brand-sub").textContent = "hata: " + e.message; return; }
     refreshStatus();
   }
@@ -406,6 +407,7 @@ import { appState } from "./js/state.js";
   adoptJob();
   window.KeyLabPalette.init({ getHome: () => appState.home, showView, openServer, goLynis, goLogs, openShortcuts, reload: load });
   window.KeyLabPrivacy.init();
+  initVault({ reloadPage: () => (window.KeyLabTestReload || (() => location.reload()))(), getServers: () => ((appState.home && appState.home.servers) || []).map(s => s.name), reloadData: () => load() }); // şifreli passphrase kasası: giriş perdesi + Ayarlar kartı
   window.KeyLabReports.init({
     getHome: () => appState.home, json, toast, stateText,
     tabLabel: id => TAB_LABEL[id] || (appState.home.packages.find(p => p.id === id) || {}).name || id,

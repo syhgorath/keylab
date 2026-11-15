@@ -79,6 +79,9 @@ func (a *App) vaultActionHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		vaultJSON(w, http.StatusOK, map[string]any{"ok": true, "loaded": loaded, "failed": failed})
+	case "touch": // arayüz gerçek kullanıcı girdisini (fare/klavye) bildirir: boşta sayacı sıfırlanır (yalnız GET ile gezen kullanıcı da "etkin" sayılsın)
+		m.touch()
+		vaultJSON(w, http.StatusOK, map[string]any{"ok": true})
 	case "lock":
 		m.lock()
 		vaultJSON(w, http.StatusOK, map[string]any{"ok": true})

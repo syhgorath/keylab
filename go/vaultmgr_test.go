@@ -285,3 +285,26 @@ func TestVaultGuardAndAPI(t *testing.T) {
 		t.Fatalf("CSRF başlıksız POST: %d", ww.Code)
 	}
 }
+
+// Boşta kilit yalnız POST'larla değil, arayüzün bildirdiği gerçek kullanıcı girdisiyle de sıfırlanır (/api/vault/touch).
+func TestVaultTouchEndpointResetsIdle(t *testing.T) {
+	f := newVaultFx(t)
+	f.m.create("ana-parola-1")
+	post := func(path string) int {
+		w := httptest.NewRecorder()
+		f.a.vaultActionHandler(w, httptest.NewRequest(http.MethodPost, path, strings.NewReader("{}")))
+		return w.Code
+	}
+	f.clock = f.clock.Add(9 * time.Minute)
+	if code := post("/api/vault/touch"); code != 200 {
+		t.Fatalf("touch: %d", code)
+	}
+	f.clock = f.clock.Add(9 * time.Minute)
+	if f.m.idleTick() {
+		t.Fatal("touch sayacı sıfırlamadı: 9+9 dk sonra kilitlendi")
+	}
+	f.clock = f.clock.Add(2 * time.Minute)
+	if !f.m.idleTick() {
+		t.Fatal("touch sonrası 11 dk boşta kilitlenmedi")
+	}
+}
