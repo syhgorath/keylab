@@ -662,6 +662,27 @@
               <button class="btn sm" data-i18n="vault_chg_go" id="vault-chg-go" type="button">
                 "Change password"
         <div class="small vault-msg" id="vault-msg" role="status">
+    <div class="card" id="appupd-card">
+      <div class="card-head">
+        <h2 data-i18n="upd_card">
+          "Update"
+        <span class="hint mono" id="appupd-cur">
+          "v0.0.0-test"
+      <div class="card-body">
+        <div class="frow2">
+          <button class="btn sm" data-i18n="upd_check" id="appupd-check" type="button">
+            "Check for updates"
+          <span class="small muted upd-state" id="appupd-state" role="status">
+        <div hidden="" id="appupd-result">
+          <div class="upd-line" id="appupd-line">
+          <h4 class="upd-notes-h" hidden="" id="appupd-notes-h">
+          <div class="upd-notes" hidden="" id="appupd-notes" role="region" tabindex="0">
+          <div class="frow2">
+            <button class="btn primary sm" data-i18n="upd_apply" hidden="" id="appupd-apply" type="button">
+              "Update and restart"
+          <div class="small muted" hidden="" id="appupd-why">
+        <div class="hint small muted" data-i18n="upd_hint">
+          "KeyLab never goes online by itself: GitHub is contacted only when you press \"Check for updates\". The update package must be signed with KeyLab's release key; nothing is installed if the signature cannot be verified. One-click update works only when you run KeyLab.app and the app's folder is writable."
     <div class="card">
       <div class="card-head">
         <h2>

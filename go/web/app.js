@@ -15,6 +15,7 @@ import { initQuit } from "./js/ui/quit.js";
 import { initVault } from "./js/ui/vault.js";
 import { initTrustedMac } from "./js/ui/trustedmac.js";
 import { initMonitor } from "./js/ui/monitor.js";
+import { initUpdate } from "./js/ui/update.js";
 import { initServerOps } from "./js/ui/serverops.js";
 import { initAddServer } from "./js/ui/add.js";
 import { OS_LABEL, osIcon } from "./js/lib/icons.js";
@@ -32,6 +33,7 @@ import { appState } from "./js/state.js";
   // aynı sunucudaki sekme değişimi ve geçmişten uygulanan gezinme geçmişi ÇOĞALTMAZ (replace).
   const VIEWS = ["dash", "servers", "packages", "compare", "reports", "lynis", "logs", "monitor", "settings", "add"];
   const monitor = initMonitor({ json }); // Kaynaklar sayfası (KeyLab'ın kendi CPU/RAM/disk kullanımı); yalnız sayfa açıkken ölçer
+  const brandSub = () => (appState.version ? "v" + appState.version : "yerel · taslak"); // kenar çubuğunda KeyLab adının altında kurulu sürüm
   function setHash(h, replace) {
     if (location.hash === h || (h === "" && location.hash === "")) return;
     try { (replace || appState.routing ? history.replaceState : history.pushState).call(history, null, "", h || location.pathname); } catch (e) { /* adres çubuğu güncellenemezse sayfa yine çalışır */ }
@@ -265,7 +267,7 @@ import { appState } from "./js/state.js";
     $("#a-lynis").innerHTML = lynisCard(appState.home.servers.find(s => s.name === appState.selected));
     $("#a-tl").innerHTML = timeline();
     bindServers();
-    $("#brand-sub").textContent = "yerel · taslak";
+    $("#brand-sub").textContent = brandSub();
     if (appState.view === "compare") window.KeyLabCompare.load(false); // durum noktaları ve yeni sunucular
   }
 
@@ -304,6 +306,7 @@ import { appState } from "./js/state.js";
   /* ---------------- Ortak iletişim penceresi (js/ui/dialog.js) + yeniden adlandırma/silme (js/ui/serverops.js) ---------------- */
   const { dlg, openDlg, closeDlg } = initDialog();
   initQuit({ openDlg, closeDlg });
+  const upd = initUpdate({ getVersion: () => appState.version, openDlg, closeDlg, showView: n => showView(n) }); // uygulama içi güncelleme (elle denetim; KeyLab kendiliğinden internete çıkmaz)
   const ops = initServerOps({ openDlg, closeDlg, jobs, load: () => load(), openServer: n => openServer(n) });
   const { openRename, openDelete } = ops;
 
@@ -438,6 +441,7 @@ import { appState } from "./js/state.js";
   // guest: misafir (USB) mod — Keychain kullanılmaz; sunucu sayfası ve ekleme sihirbazı Keychain adımları yerine şifreli kasa yönlendirmesi gösterir
   json("/api/about").then(a => {
     appState.askAvail = !!a.askpass; paintAsk();
+    appState.version = a.version || ""; $("#brand-sub").textContent = brandSub(); upd.paintVersion();
     const g = !!a.guest; if (g !== !!appState.guest) { appState.guest = g; if (appState.view === "server" && appState.srv) renderServer(); }
     // önceki oturum düzgün kapanmamışsa (Cmd+Q, çökme…) açılışta temizlenen artıklar bir kez bildirilir (bkz. stale.go)
     const sc = a.staleCleaned || {};

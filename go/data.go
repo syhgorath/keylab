@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"keylab/internal/platform"
+	"keylab/internal/selfupdate"
 	"net"
 	"os"
 	"path/filepath"
@@ -120,7 +121,16 @@ type App struct {
 	psFn              func() ([]platform.Proc, error) // nil: platform.ProcessTable (testte sahte)
 	dirSizeFn         func(string) int64              // nil: dirSize (testte sahte)
 	stale             staleReport                     // açılışta temizlenen eski oturumlar (bkz. stale.go)
-	vmOnce            sync.Once                       // şifreli passphrase kasası yöneticisi (bkz. vaultmgr.go)
+	updMu             sync.Mutex                      // uygulama içi güncelleme (bkz. update_api.go)
+	updState          string
+	updStep           string
+	updErr            string
+	updBusy           atomic.Bool
+	updaterFn         func() *selfupdate.Updater // nil: gerçek (testte sahte)
+	updateTargetFn    func() (string, string)    // nil: gerçek .app yolu
+	verifyAppFn       func(string) error         // nil: platform.CodesignVerify
+	relaunchFn        func(string) error         // nil: platform.RelaunchApp
+	vmOnce            sync.Once                  // şifreli passphrase kasası yöneticisi (bkz. vaultmgr.go)
 	vm                *vaultMgr
 	jobs              map[string]*Job
 	bmu               sync.Mutex         // toplu işlem durumu
