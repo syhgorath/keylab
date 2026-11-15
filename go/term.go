@@ -238,8 +238,8 @@ func (a *App) openTerm(server string, rows, cols uint16) (*TermSession, int, err
 	// Knock (etkin değilse hiçbir şey yapmaz): süreç içinde gönderilir, kabuk kullanılmaz
 	kctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	if err := cli.SendKnock(kctx, a.serversDir, server); err != nil {
-		return nil, http.StatusBadGateway, fmt.Errorf("knock gönderilemedi: %v", err)
+	if err := cli.SendKnockWith(kctx, a.knockSecrets(), a.serversDir, server); err != nil {
+		return nil, http.StatusBadGateway, fmt.Errorf("knock gönderilemedi: %v", a.knockErr(err))
 	}
 
 	key := s.keyPath

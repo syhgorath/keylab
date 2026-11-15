@@ -6,10 +6,12 @@
    Parolalar yalnız istek gövdesinde gider; alanlar her işlemden sonra temizlenir; yanıtlar sır içermez. */
 import { $, t, toast } from "../lib/util.js";
 import { appState } from "../state.js";
+import { knockSeqOK } from "./knock.js";
 
 const post = async (path, body) => {
   const r = await fetch(path, { method: "POST", headers: { "X-Requested-With": "sshpocket" }, body: JSON.stringify(body || {}) });
-  let d = {}; try { d = await r.json(); } catch (e) { /* gövde yok */ }
+  const txt = await r.text().catch(() => ""); let d = {};
+  try { d = txt ? JSON.parse(txt) : {}; } catch (e) { d = { error: txt.trim() }; } // bazı uçlar (ör. /api/knock) düz metin hata döner
   return { ok: r.ok, status: r.status, data: d };
 };
 const get = async () => { const r = await fetch("/api/vault", { headers: { "X-Requested-With": "sshpocket" } }); if (!r.ok) throw new Error(r.status); return r.json(); };
@@ -91,13 +93,19 @@ export function initVault({ getServers = () => [], reloadPage = () => location.r
     $("#vault-state").textContent = !st.exists ? t("vault_s_none", "kasa yok") : st.unlocked ? t("vault_s_open", "açık") : t("vault_s_locked", "kilitli");
     if (!(st.exists && st.unlocked)) return;
     const ul = $("#vault-stored"); ul.textContent = "";
-    for (const n of st.stored || []) {
+    // kasadaki kayıtlar: sunucu başına passphrase ve/ya da knock dizisi (değerler asla gösterilmez)
+    const names = [...new Set([...(st.stored || []), ...(st.knock || [])])].sort();
+    for (const n of names) {
       const li = document.createElement("li");
       const nm = document.createElement("span"); nm.className = "mono"; nm.textContent = n;
-      const b = document.createElement("button"); b.type = "button"; b.className = "btn sm"; b.textContent = t("vault_rm", "Sil"); b.dataset.srv = n;
-      li.append(nm, b); ul.append(li);
+      const tags = document.createElement("span"); tags.className = "small muted";
+      tags.textContent = [(st.stored || []).includes(n) ? t("vault_tag_pp", "passphrase") : "", (st.knock || []).includes(n) ? t("vault_tag_knock", "knock") : ""].filter(Boolean).join(" + ");
+      const acts = document.createElement("span"); acts.className = "vault-acts";
+      if ((st.stored || []).includes(n)) { const b = document.createElement("button"); b.type = "button"; b.className = "btn sm"; b.textContent = t("vault_rm", "Sil"); b.dataset.srv = n; acts.append(b); }
+      if ((st.knock || []).includes(n)) { const b = document.createElement("button"); b.type = "button"; b.className = "btn sm"; b.textContent = t("vault_rm_knock", "Knock'u sil"); b.dataset.knockRm = n; acts.append(b); }
+      li.append(nm, tags, acts); ul.append(li);
     }
-    if (!(st.stored || []).length) { const li = document.createElement("li"); li.className = "muted small"; li.textContent = t("vault_none_stored", "Henüz passphrase eklenmedi."); ul.append(li); }
+    if (!names.length) { const li = document.createElement("li"); li.className = "muted small"; li.textContent = t("vault_none_stored", "Henüz passphrase eklenmedi."); ul.append(li); }
     const sel = $("#vault-srv"); const keep = sel.value; sel.textContent = "";
     for (const s of getServers()) { const o = document.createElement("option"); o.value = s.name || s; o.textContent = s.name || s; sel.append(o); }
     if (keep) sel.value = keep;
@@ -122,18 +130,40 @@ export function initVault({ getServers = () => [], reloadPage = () => location.r
     if (!r.ok) { msg(errText(r), true); return; }
     msg(t("vault_created", "Kasa oluşturuldu ve açık. Anahtar passphrase'lerini aşağıdan ekleyin."), false); await refresh();
   }
+  // Kasaya ekle: passphrase ve/ya da knock dizisi (ikisi de isteğe bağlı, biri gerekli). Passphrase önce gerçek ssh-add ile doğrulanır; knock dizisi
+  // mevcut Port knocking yoluyla (POST /api/knock) kasaya yazılır ve protokol/bekleme mevcut ayarla korunur.
   async function add() {
-    const server = $("#vault-srv").value, pp = $("#vault-pp").value;
-    if (!server || !pp) { msg(t("vault_need", "Sunucu ve passphrase gerekli."), true); return; }
-    const r = await post("/api/vault/passphrase", { server, passphrase: pp });
-    $("#vault-pp").value = "";
-    if (!r.ok) { msg(errText(r), true); return; }
-    msg(fmt(t("vault_added", "{s}: passphrase kasaya eklendi ve anahtar ajana yüklendi."), { s: server }), false); await refresh();
+    const server = $("#vault-srv").value, pp = $("#vault-pp").value, kn = $("#vault-knock").value.trim();
+    if (!server || (!pp && !kn)) { msg(t("vault_need", "Sunucu ile passphrase ve/ya da knock dizisi gerekli."), true); return; }
+    if (kn && !knockSeqOK(kn)) { msg(t("vault_knock_bad", "Knock dizisi 1-10 port olmalı: virgülle ayrılmış, her biri 1-65535, boşluksuz (örnek: 7000,8000,9000)."), true); return; }
+    const done = [];
+    if (pp) {
+      const r = await post("/api/vault/passphrase", { server, passphrase: pp });
+      $("#vault-pp").value = "";
+      if (!r.ok) { msg(errText(r), true); return; }
+      done.push(t("vault_done_pp", "passphrase eklendi ve anahtar ajana yüklendi"));
+    }
+    if (kn) {
+      let proto = "tcp", delay = "300";
+      try { const k = await (await fetch("/api/knock?name=" + encodeURIComponent(server), { headers: { "X-Requested-With": "sshpocket" } })).json(); proto = k.proto || proto; delay = k.delay || delay; } catch (e) { /* varsayılanlar */ }
+      const r = await post("/api/knock", { name: server, action: "save", proto, delay, seq: kn });
+      $("#vault-knock").value = "";
+      if (!r.ok) { msg((done.length ? done.join("; ") + " — " : "") + t("vault_knock_err", "knock dizisi kaydedilemedi") + ": " + (r.data.error || r.status), true); await refresh(); return; }
+      done.push(t("vault_done_knock", "knock dizisi eklendi"));
+    }
+    msg(`${server}: ${done.join("; ")}.`, false); await refresh();
+    window.dispatchEvent(new CustomEvent("keylab:vaultstate")); // sunucu sayfasındaki knock satırı güncellensin
   }
   async function remove(server) {
     const r = await post("/api/vault/passphrase/delete", { server });
     if (!r.ok) { msg(errText(r), true); return; }
     msg(fmt(t("vault_removed", "{s}: passphrase kasadan silindi."), { s: server }), false); await refresh();
+  }
+  async function removeKnock(server) {
+    const r = await post("/api/knock", { name: server, action: "disable" });
+    if (!r.ok) { msg(r.data.error || String(r.status), true); return; }
+    msg(fmt(t("vault_knock_removed", "{s}: knock dizisi kasadan silindi ve knock kapatıldı."), { s: server }), false); await refresh();
+    window.dispatchEvent(new CustomEvent("keylab:vaultstate"));
   }
   async function change() {
     const o = $("#vault-old-pw").value, n = $("#vault-chg-pw").value, n2 = $("#vault-chg-pw2").value;
@@ -153,7 +183,10 @@ export function initVault({ getServers = () => [], reloadPage = () => location.r
   $("#vault-add").addEventListener("click", add);
   $("#vault-chg-go").addEventListener("click", change);
   window.addEventListener("keylab:homeloaded", paint); // sunucu listesi (home) kasa durumundan sonra yüklenebilir
-  $("#vault-stored").addEventListener("click", e => { const b = e.target.closest("button[data-srv]"); if (b) remove(b.dataset.srv); });
+  $("#vault-stored").addEventListener("click", e => {
+    const b = e.target.closest("button[data-srv]"), k = e.target.closest("button[data-knock-rm]");
+    if (b) remove(b.dataset.srv); else if (k) removeKnock(k.dataset.knockRm);
+  });
   // gerçek kullanıcı girdisi (fare/klavye) boşta sayacını sıfırlar; en çok 30 sn'de bir bildirilir. Arka plan yoklamaları (GET) sayılmaz.
   let lastBeat = 0;
   const beat = () => {

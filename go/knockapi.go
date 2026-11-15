@@ -18,7 +18,7 @@ import (
 //
 // Dizi yalnızca istek gövdesinde gelir; günlüğe yazılmaz, komut satırına girmez (security -i standart girdisi).
 func (a *App) knockHandler(w http.ResponseWriter, r *http.Request) {
-	srv := &cli.Servers{Dir: a.serversDir}
+	srv := &cli.Servers{Dir: a.serversDir, Keychain: a.knockSecrets()} // misafir modda dizi şifreli kasada (bkz. vaultsecrets.go)
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	switch r.Method {
@@ -38,8 +38,8 @@ func (a *App) knockHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		switch req.Action {
 		case "save":
-			if platform.GuestMode() {
-				http.Error(w, "Port knocking dizisi taşınabilir modda kaydedilemez: bu bilgisayarın Keychain'i kullanılmıyor", http.StatusConflict)
+			if platform.GuestMode() && !a.knockSecrets().Available() { // kasa yok ya da kilitli (kilitliyken guard zaten 423 verir)
+				http.Error(w, "misafir (USB) modda knock dizisi şifreli kasada tutulur: önce Ayarlar > Şifreli passphrase kasası'ndan kasayı oluşturun ve açın", http.StatusConflict)
 				return
 			}
 			err = srv.KnockSave(req.Name, req.Proto, req.Delay, req.Seq)
@@ -48,8 +48,8 @@ func (a *App) knockHandler(w http.ResponseWriter, r *http.Request) {
 		case "send":
 			if _, serr := srv.KnockStatus(req.Name); serr != nil {
 				err = serr
-			} else if cerr := cli.SendKnock(r.Context(), a.serversDir, req.Name); cerr != nil {
-				http.Error(w, cerr.Error(), http.StatusConflict)
+			} else if cerr := cli.SendKnockWith(r.Context(), a.knockSecrets(), a.serversDir, req.Name); cerr != nil {
+				http.Error(w, a.knockErr(cerr).Error(), http.StatusConflict)
 				return
 			}
 		default:

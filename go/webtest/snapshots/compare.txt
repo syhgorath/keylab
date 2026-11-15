@@ -2987,8 +2987,10 @@
             <input aria-label="Anahtar passphrase'i" autocomplete="off" class="vault-pp" data-i18n-aria="vault_pp_ph" data-i18n-placeholder="vault_pp_ph" id="vault-pp" placeholder="Anahtar passphrase'i" spellcheck="false" type="password">
             <button class="btn sm" data-i18n="vault_add" id="vault-add" type="button">
               "Kasaya ekle"
+          <div class="frow2">
+            <input aria-label="Knock dizisi (isteğe bağlı): ör. 7000,8000,9000" autocomplete="off" class="vault-pp" data-1p-ignore="true" data-i18n-aria="vault_knock_ph" data-i18n-placeholder="vault_knock_ph" data-lpignore="true" id="vault-knock" placeholder="Knock dizisi (isteğe bağlı): ör. 7000,8000,9000" spellcheck="false" type="password">
           <div class="hint small muted" data-i18n="vault_add_hint">
-            "Eklenen passphrase önce anahtarı gerçekten açıyor mu diye denenir; yanlışsa kaydedilmez."
+            "Eklenen passphrase önce anahtarı gerçekten açıyor mu diye denenir; yanlışsa kaydedilmez. Knock dizisini de yazarsanız (sunucu SSH portunu port vuruşuyla açıyorsa) kasaya o da eklenir; ikisi de isteğe bağlıdır."
           <div class="frow2">
             <span class="small muted" id="vault-idle">
             <button class="btn sm" data-i18n="vault_lock_now" id="vault-lock-now" type="button">

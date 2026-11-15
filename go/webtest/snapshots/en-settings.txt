@@ -635,8 +635,10 @@
             <input aria-label="Key passphrase" autocomplete="off" class="vault-pp" data-i18n-aria="vault_pp_ph" data-i18n-placeholder="vault_pp_ph" id="vault-pp" placeholder="Key passphrase" spellcheck="false" type="password">
             <button class="btn sm" data-i18n="vault_add" id="vault-add" type="button">
               "Add to vault"
+          <div class="frow2">
+            <input aria-label="Knock sequence (optional): e.g. 7000,8000,9000" autocomplete="off" class="vault-pp" data-1p-ignore="true" data-i18n-aria="vault_knock_ph" data-i18n-placeholder="vault_knock_ph" data-lpignore="true" id="vault-knock" placeholder="Knock sequence (optional): e.g. 7000,8000,9000" spellcheck="false" type="password">
           <div class="hint small muted" data-i18n="vault_add_hint">
-            "A passphrase is first tested against the key; it is not saved if it is wrong."
+            "A passphrase is first tested against the key; it is not saved if it is wrong. If you also enter a knock sequence (the server opens its SSH port by port knocking) it is added to the vault too; both are optional."
           <div class="frow2">
             <span class="small muted" id="vault-idle">
             <button class="btn sm" data-i18n="vault_lock_now" id="vault-lock-now" type="button">

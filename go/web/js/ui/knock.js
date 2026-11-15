@@ -1,7 +1,8 @@
 /* KeyLab — port knocking formu (sunucu sayfası > Özet > Port knocking…). app.js'ten çıkarıldı (refaktör 2c), kod birebir.
    Dizi Keychain'dedir (bu bilgisayara özgü; USB başka bir Mac'e takılırsa orada yeniden girilmelidir). Arayüz diziyi ASLA geri okumaz.
    (app.js'teki hiçbir yerde çağrılmayan knockText yardımcısı ölü koddu; taşınmadı.) */
-import { $, esc, json, toast } from "../lib/util.js";
+import { $, t, esc, json, toast } from "../lib/util.js";
+import { appState } from "../state.js";
 
 export const knockSeqOK = v => /^[0-9]+(,[0-9]+){0,9}$/.test(v) && v.split(",").every(p => +p >= 1 && +p <= 65535);
 
@@ -11,9 +12,13 @@ export function initKnock({ openDlg, closeDlg, reloadServer }) {
     let k;
     try { k = await json("/api/knock?name=" + encodeURIComponent(name)); }
     catch (e) { toast("Okunamadı: " + e.message); return; }
+    // misafir (USB) modda dizi Keychain'de değil ŞİFRELİ KASADA tutulur (USB'de, ana parolayla şifreli); kasa açıkken kaydedilir ve kullanılır
+    const where = appState.guest ? t("kn_where_vault", "şifreli kasada") : t("kn_where_kc", "bu bilgisayarın Keychain'inde");
     const state = !k.enabled ? "" : k.hasSeq
-      ? `<div class="notice ok sj-da12f2"><span class="ico" aria-hidden="true">✔</span><div>Knock <b>açık</b>: ${esc(k.proto)}, ${esc(k.delay)} ms. Dizi bu bilgisayarın Keychain'inde kayıtlı; güvenlik için tamamı gösterilmez${k.hint ? `, yalnızca her portun ilk ve son rakamı: <span class="mono sj-eed0f8">${esc(k.hint)}</span>` : ""}. Yeni bir dizi girerseniz eskisinin yerine geçer.</div></div>`
-      : `<div class="notice warn sj-da12f2"><span class="ico" aria-hidden="true">⚠</span><div>Bu sunucuda knock <b>açık</b> görünüyor ama dizi <b>bu bilgisayarın</b> Keychain'inde yok. Dizi USB'ye değil, yazıldığı Mac'e kaydedilir; USB'yi başka bir Mac'e taktıysanız diziyi burada yeniden girin.</div></div>`;
+      ? `<div class="notice ok sj-da12f2"><span class="ico" aria-hidden="true">✔</span><div>Knock <b>açık</b>: ${esc(k.proto)}, ${esc(k.delay)} ms. Dizi ${esc(where)} kayıtlı; güvenlik için tamamı gösterilmez${k.hint ? `, yalnızca her portun ilk ve son rakamı: <span class="mono sj-eed0f8">${esc(k.hint)}</span>` : ""}. Yeni bir dizi girerseniz eskisinin yerine geçer.</div></div>`
+      : appState.guest
+        ? `<div class="notice warn sj-da12f2"><span class="ico" aria-hidden="true">⚠</span><div>${esc(t("kn_guest_missing", "Bu sunucuda knock açık görünüyor ama dizi şifreli kasada yok. Diziyi burada girin (şifreli kasa açık olmalı; yoksa Ayarlar > Şifreli passphrase kasası'ndan oluşturun)."))}</div></div>`
+        : `<div class="notice warn sj-da12f2"><span class="ico" aria-hidden="true">⚠</span><div>Bu sunucuda knock <b>açık</b> görünüyor ama dizi <b>bu bilgisayarın</b> Keychain'inde yok. Dizi USB'ye değil, yazıldığı Mac'e kaydedilir; USB'yi başka bir Mac'e taktıysanız diziyi burada yeniden girin.</div></div>`;
     openDlg({
       title: "Port knocking", sub: name,
       body: `${state}<p class="small muted sj-249d01">SSH portu kapalıyken, sunucu yöneticisinin belirlediği port sırasına "vurarak" açtırma yöntemi. Sunucuda knock kurulumu yönetici tarafından yapılmış olmalıdır.</p>

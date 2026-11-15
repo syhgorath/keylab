@@ -430,7 +430,11 @@ import { appState } from "./js/state.js";
   });
 
   /* ---------------- Başlangıç ---------------- */
-  window.addEventListener("keylab:vaultstate", () => { if (appState.view === "server" && appState.srv) renderServer(); }); // "kasada kayıtlı" rozeti
+  // kasa durumu değişti ("kasada kayıtlı" rozeti, knock dizisi): açık sunucu sayfası yeniden okunup çizilir (knock durumu sunucu verisindedir)
+  window.addEventListener("keylab:vaultstate", () => {
+    if (appState.view !== "server" || !appState.srvName) return;
+    json("/api/server?name=" + encodeURIComponent(appState.srvName)).then(r => { appState.srv = r; renderServer(); }).catch(() => { if (appState.srv) renderServer(); });
+  });
   // guest: misafir (USB) mod — Keychain kullanılmaz; sunucu sayfası ve ekleme sihirbazı Keychain adımları yerine şifreli kasa yönlendirmesi gösterir
   json("/api/about").then(a => {
     appState.askAvail = !!a.askpass; paintAsk();
