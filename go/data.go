@@ -119,6 +119,7 @@ type App struct {
 	monDirs           map[string]dirSizeEntry
 	psFn              func() ([]platform.Proc, error) // nil: platform.ProcessTable (testte sahte)
 	dirSizeFn         func(string) int64              // nil: dirSize (testte sahte)
+	stale             staleReport                     // açılışta temizlenen eski oturumlar (bkz. stale.go)
 	vmOnce            sync.Once                       // şifreli passphrase kasası yöneticisi (bkz. vaultmgr.go)
 	vm                *vaultMgr
 	jobs              map[string]*Job

@@ -10,7 +10,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 )
 
 var executablePath = os.Executable // testte değiştirilir
@@ -33,13 +35,22 @@ func selfOnVolume(usb string) bool {
 // WillDefer: Run bu USB için çıkarmayı ertelenecek mi (çalışan ikili o USB'den mi)? Arayüz iletisi için.
 func WillDefer(usb string) bool { return selfOnVolume(usb) }
 
-// deferScript: süreç bitsin diye bekler, normal çıkarmayı dener; olmazsa (artık meşgul değil) zorla unmount.
-const deferScript = `sleep 2; diskutil eject "$1" >/dev/null 2>&1 || { diskutil unmount force "$1" >/dev/null 2>&1; }`
+// deferScript: $1 = USB, $2 = uygulamanın (çağıran sürecin) PID'i, $3 = en çok kaç yarım saniye beklenecek. Süreç BİTENE dek bekler; bitmeden ASLA
+// çıkarma ya da zorla unmount yapmaz (süreç hâlâ diskteyken birimi çekmek onu %400+ CPU'luk döngüye sokar). Bekleme süresi dolarsa hiçbir şey yapmadan
+// çıkar (USB'yi elle çıkarmak güvenli; zorla çıkarmak değil). Süreç bittikten sonra normal çıkarma, olmazsa (artık süreç yok, birim meşgul) zorla unmount.
+const deferScript = `i=0; while kill -0 "$2" 2>/dev/null; do i=$((i+1)); [ "$i" -gt "$3" ] && exit 0; sleep 0.5; done; sleep 1; diskutil eject "$1" >/dev/null 2>&1 || { diskutil unmount force "$1" >/dev/null 2>&1; }`
 
-// runDeferred: çıkarmayı ayrı bir yardımcı süreçle KeyLab kapandıktan sonra yapar. Çağıran sürecin kısa süre içinde bitmesi gerekir
-// (arayüzde Çıkış zaten 0,5 sn sonra, CLI komutu hemen biter).
+var (
+	// parentPID: yardımcının bitmesini bekleyeceği süreç (uygulamanın kendisi); testte değiştirilir.
+	parentPID = os.Getpid
+	// deferMaxWait: yardımcının uygulamanın bitmesini en çok ne kadar bekleyeceği (arayüzde "Kapat" gelmese bile uygulama 5 dk sonra kendiliğinden kapanır).
+	deferMaxWait = 10 * time.Minute
+)
+
+// runDeferred: çıkarmayı ayrı bir yardımcı süreçle KeyLab kapandıktan sonra yapar. Yardımcı çağıran sürecin PID'ini izler: süreç ne zaman biterse
+// (arayüzde "Kapat"a basınca, 5 dk sonra ya da CLI komutu bitince) ondan SONRA çıkarır.
 func runDeferred(w io.Writer, usb string) int {
-	cmd := exec.Command("/bin/sh", "-c", deferScript, "sh", usb)
+	cmd := exec.Command("/bin/sh", "-c", deferScript, "sh", usb, strconv.Itoa(parentPID()), strconv.Itoa(int(deferMaxWait/(500*time.Millisecond))))
 	detach(cmd)
 	if err := cmd.Start(); err != nil {
 		fmt.Fprintln(w, "⚠️  USB çıkarma yardımcısı başlatılamadı; KeyLab kapandıktan sonra USB'yi elle çıkarın")

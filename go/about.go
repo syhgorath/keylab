@@ -22,7 +22,7 @@ func (a *App) aboutInfo() map[string]any {
 			conf[k] = v
 		}
 	}
-	return map[string]any{"version": ver, "root": root, "serversDir": a.serversDir, "componentsDir": a.compDir, "stateDir": a.stateDir,
+	return map[string]any{"version": ver, "root": root, "serversDir": a.serversDir, "componentsDir": a.compDir, "stateDir": a.stateDir, "staleCleaned": a.stale,
 		"conf": conf, "platform": runtime.GOOS + "/" + runtime.GOARCH, "go": runtime.Version(), "askpass": a.promptOS().Available(), "guest": platform.GuestMode(), "usb": usbName(a.volumesOS().MountRoot(a.serversDir))}
 }
 

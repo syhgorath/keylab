@@ -225,6 +225,11 @@ func main() {
 	if st == "" {
 		st = stateDirFor(sd, selfExe())
 	}
+	// eski (düzgün kapanmamış: Cmd+Q, çökme…) oturumların artıkları: yetim özel ssh-agent'lar ve geçici klasörler (bkz. stale.go)
+	stale := cleanStaleSessions(staleEnv{root: os.TempDir(), self: os.Getpid(), procs: platform.ProcessCommands, kill: platform.Terminate, owned: ownedByUs})
+	if stale.Dirs+stale.Agents > 0 {
+		fmt.Printf("önceki oturum düzgün kapanmamıştı: %d geçici klasör silindi, %d özel ssh-agent durduruldu\n", stale.Dirs, stale.Agents)
+	}
 	var traceCleanup, agentStop func()
 	traceProf := ""
 	if isPortableLayout(sd, selfExe()) { // taşınabilir mod: venv/tarayıcı profili geçici klasörde (çıkışta silinir), known_hosts USB'de
@@ -257,6 +262,7 @@ func main() {
 	bb := make([]byte, 24)
 	_, _ = rand.Read(bb)
 	app := &App{serversDir: sd, compDir: cd, stateDir: st, token: hex.EncodeToString(tb), bootTok: hex.EncodeToString(bb), host: ln.Addr().String(), up: map[string]bool{}, conn: map[string]string{}, jobs: map[string]*Job{}}
+	app.stale = stale
 	app.loadUISettings()
 	app.addCleanup("agent", agentStop) // önce özel ajanı kapat, sonra geçici klasörü sil
 	app.addCleanup("tmp", traceCleanup)
