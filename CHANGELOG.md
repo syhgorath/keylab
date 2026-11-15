@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [4.0.16] - 2026-11-15
+
+Utility sayfasında Saat ve NTP kartı; Genel eylemler açık kalır.
+
 ### Eklendi
 - Birleşik `utility` sayfasının en üstünde **Saat ve NTP** kartı: "NTP durumunu oku" ve "NTP ayarla" düğmeleri ile `utility_ntp_*` değişkenleri tek bakışta (eylemler ayrıca "Genel eylemler"de de durur).
 
