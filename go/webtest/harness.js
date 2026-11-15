@@ -53,6 +53,7 @@ function makeRouter(overrides, calls) {
     "/api/updates": () => ({ status: 409, body: "fixture: indeks yok" }),
     "/api/quit/status": () => ({ state: "", steps: [] }), // çıkış adımları: başlamadı; çıkış testleri geçersiz kılar
     "/api/quit/finish": () => ({ ok: true }),
+    "/api/python": () => ({ needed: true, ok: true, range: ">=3.12", found: [], stub: false, guide: "" }), // paket eylemi öncesi Python denetimi
     "/api/monitor": () => ({ pid: 1, uptimeSec: 65, cores: 8, memTotalMB: 16384, cpu: 12.5, rssMB: 120, selfRssMB: 80, goroutines: 20, heapMB: 5, terms: 1, tasks: 0, procs: [{ pid: 1, name: "keylab", kind: "self", cpu: 2.5, rssMB: 80, elapsedSec: 65 }], dirs: [{ id: "servers", path: "/x/servers", bytes: 2048, temp: false }], volume: { path: "/x/servers", totalBytes: 1000000000000, freeBytes: 400000000000 } }), // Kaynaklar sayfası
     "/api/trusted-mac": () => ({ portable: false }), // taşınabilir değil: kart gizli; testler geçersiz kılar
     "/api/vault": () => ({ available: false }), // şifreli kasa: varsayılan kapalı (misafir mod yok); testler geçersiz kılar

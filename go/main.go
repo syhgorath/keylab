@@ -298,6 +298,7 @@ func main() {
 	mux.HandleFunc("/api/vault", app.guard(app.vaultStatusHandler))
 	mux.HandleFunc("/api/vault/", app.guard(app.vaultActionHandler))
 	mux.HandleFunc("/api/monitor", app.guard(app.monitorHandler))
+	mux.HandleFunc("/api/python", app.guard(app.pythonHandler))
 	mux.HandleFunc("/api/update/check", app.guard(app.updateCheckHandler))
 	mux.HandleFunc("/api/update/status", app.guard(app.updateStatusHandler))
 	mux.HandleFunc("/api/update/apply", app.guard(app.updateApplyHandler))

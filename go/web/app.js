@@ -16,6 +16,7 @@ import { initVault } from "./js/ui/vault.js";
 import { initTrustedMac } from "./js/ui/trustedmac.js";
 import { initMonitor } from "./js/ui/monitor.js";
 import { initUpdate } from "./js/ui/update.js";
+import { initPython } from "./js/ui/python.js";
 import { initServerOps } from "./js/ui/serverops.js";
 import { initAddServer } from "./js/ui/add.js";
 import { OS_LABEL, osIcon } from "./js/lib/icons.js";
@@ -293,7 +294,9 @@ import { appState } from "./js/state.js";
   const { open: openVars, close: closeVars, cur: varCur } = initVars({ renderServer: () => renderServer(), resetCatalog: () => serverPage.resetCatalog() });
 
   /* ---------------- İş izleyici + çalıştırma penceresi (js/ui/jobs.js) ---------------- */
+  let pyGate = async () => true; // initDialog'dan sonra gerçek denetimle değişir
   const jobs = initJobs({
+    pyGate: (p, again) => pyGate(p, again),
     load: () => load(), renderServer: () => renderServer(), showView: n => showView(n), loadPackages: () => packages.load(), checkUpdatesUI: () => packages.checkUpdates(),
     renderAddSteps: () => renderAddSteps(), markTaskDone: k => add.markTaskDone(k), getRemoval: () => ops.getRemoval(), openLastLog: (p, sv) => logs.openLast(p, sv),
   });
@@ -306,6 +309,7 @@ import { appState } from "./js/state.js";
   /* ---------------- Ortak iletişim penceresi (js/ui/dialog.js) + yeniden adlandırma/silme (js/ui/serverops.js) ---------------- */
   const { dlg, openDlg, closeDlg } = initDialog();
   initQuit({ openDlg, closeDlg });
+  pyGate = initPython({ openDlg, closeDlg }); // paket eylemi öncesi Python denetimi
   const upd = initUpdate({ getVersion: () => appState.version, openDlg, closeDlg, showView: n => showView(n) }); // uygulama içi güncelleme (elle denetim; KeyLab kendiliğinden internete çıkmaz)
   const ops = initServerOps({ openDlg, closeDlg, jobs, load: () => load(), openServer: n => openServer(n) });
   const { openRename, openDelete } = ops;

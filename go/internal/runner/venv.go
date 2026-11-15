@@ -115,6 +115,27 @@ func PythonIsStub(path string) bool {
 	return exec.Command(xs, "-p").Run() != nil
 }
 
+// PythonScan: aday yorumlayıcılardan çalışanların sürümleri (yinelenmeden) ve macOS saplamasının görülüp görülmediği.
+func PythonScan() (found []string, stub bool) {
+	found = []string{}
+	seen := map[string]bool{}
+	for _, cand := range PythonCandidates() {
+		p, err := exec.LookPath(cand)
+		if err != nil {
+			continue
+		}
+		if PythonIsStub(p) {
+			stub = true
+			continue
+		}
+		if v := PythonVersion(p); v != "" && !seen[v] {
+			seen[v] = true
+			found = append(found, v)
+		}
+	}
+	return
+}
+
 // PythonMissingGuide: paket eylemi için uygun Python yokken kullanıcıya gösterilen rehber (ne bulundu, nasıl kurulur). KeyLab Python'u
 // ya da Homebrew'u kendisi KURMAZ (yönetici izni ve indirilen betik gerektirir); kullanıcı kurar, eylemi yeniden başlatır.
 func PythonMissingGuide(rng string) string {
