@@ -9,6 +9,7 @@ export const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;"
 export async function api(path, body) {
   const r = await fetch(path, { method: body ? "POST" : "GET", headers: { "X-Requested-With": "sshpocket" }, body: body ? JSON.stringify(body) : undefined });
   if (r.status === 401) throw new Error("oturum yok ya da süresi doldu: terminalde yazılan adresi açın");
+  if (r.status === 423) { window.dispatchEvent(new CustomEvent("keylab:vaultlocked")); throw new Error("kasa kilitli: ana parolayı yazın"); } // şifreli kasa kilitlendi (bkz. js/ui/vault.js)
   if (!r.ok) throw new Error((await r.text()).trim() || r.status);
   return r;
 }

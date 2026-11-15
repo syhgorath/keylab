@@ -538,6 +538,60 @@
           <span class="small muted" id="set-maxjobs-st" role="status">
         <div class="hint small muted" id="set-maxjobs-hint">
           "Farklı sunucularda aynı anda çalışabilecek eylem sayısı (1-16, varsayılan 4). Aynı sunucuda her zaman tek eylem çalışır; paket kurulumu, sunucu silme ve toplu işlem tek başına çalışır. Her eylem bir ssh/ansible süreci ve bir parola penceresi demektir: yazan eylemlerde düşük tutmanız önerilir. Düşürmek çalışan işleri durdurmaz, yalnız yenilerinin başlamasını sınırlar."
+    <div class="card" hidden="" id="vault-card">
+      <div class="card-head">
+        <h2 data-i18n="vault_card">
+          "Şifreli passphrase kasası"
+        <span class="hint" id="vault-state">
+      <div class="card-body">
+        <div class="hint small muted" data-i18n="vault_card_desc">
+          "SSH anahtar passphrase'leri bu USB'de, ana parolayla şifreli bir kasada durur (AES-256-GCM). Açılışta ana parolayı yazarsınız; anahtarlar yalnızca bu oturumun özel ajanına yüklenir, eylemler parola sormaz. Ana parolayı unutursanız kasa açılamaz (kurtarma yolu yok)."
+        <div hidden="" id="vault-new">
+          <div class="field">
+            <label data-i18n="vault_pw" for="vault-new-pw">
+              "Ana parola"
+            <input autocomplete="new-password" id="vault-new-pw" spellcheck="false" type="password">
+          <div class="field">
+            <label data-i18n="vault_pw2" for="vault-new-pw2">
+              "Ana parola (tekrar)"
+            <input autocomplete="new-password" id="vault-new-pw2" spellcheck="false" type="password">
+          <div class="frow2">
+            <button class="btn primary sm" data-i18n="vault_create" id="vault-create" type="button">
+              "Kasa oluştur"
+        <div hidden="" id="vault-open">
+          <div class="flabel" data-i18n="vault_stored_h">
+            "Kasadaki passphrase'ler"
+          <ul class="vault-list" id="vault-stored">
+          <div class="frow2">
+            <select aria-label="Sunucu" data-i18n-aria="vault_srv" id="vault-srv">
+            <input aria-label="Anahtar passphrase'i" autocomplete="off" class="vault-pp" data-i18n-aria="vault_pp_ph" data-i18n-placeholder="vault_pp_ph" id="vault-pp" placeholder="Anahtar passphrase'i" spellcheck="false" type="password">
+            <button class="btn sm" data-i18n="vault_add" id="vault-add" type="button">
+              "Kasaya ekle"
+          <div class="hint small muted" data-i18n="vault_add_hint">
+            "Eklenen passphrase önce anahtarı gerçekten açıyor mu diye denenir; yanlışsa kaydedilmez."
+          <div class="frow2">
+            <span class="small muted" id="vault-idle">
+            <button class="btn sm" data-i18n="vault_lock_now" id="vault-lock-now" type="button">
+              "Şimdi kilitle"
+          <details class="vault-chg">
+            <summary data-i18n="vault_chg">
+              "Ana parolayı değiştir"
+            <div class="field">
+              <label data-i18n="vault_old" for="vault-old-pw">
+                "Mevcut ana parola"
+              <input autocomplete="current-password" id="vault-old-pw" spellcheck="false" type="password">
+            <div class="field">
+              <label data-i18n="vault_new" for="vault-chg-pw">
+                "Yeni ana parola"
+              <input autocomplete="new-password" id="vault-chg-pw" spellcheck="false" type="password">
+            <div class="field">
+              <label data-i18n="vault_pw2" for="vault-chg-pw2">
+                "Ana parola (tekrar)"
+              <input autocomplete="new-password" id="vault-chg-pw2" spellcheck="false" type="password">
+            <div class="frow2">
+              <button class="btn sm" data-i18n="vault_chg_go" id="vault-chg-go" type="button">
+                "Parolayı değiştir"
+        <div class="small vault-msg" id="vault-msg" role="status">
     <div class="card">
       <div class="card-head">
         <h2>

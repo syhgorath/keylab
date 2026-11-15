@@ -538,6 +538,60 @@
           <span class="small muted" id="set-maxjobs-st" role="status">
         <div class="hint small muted" id="set-maxjobs-hint">
           "How many actions may run at the same time on different servers (1-16, default 4). One action at a time per server, always; package installs, server removal and bulk actions run alone. Each action is an ssh/ansible process and a password prompt: keep it low for write actions. Lowering it does not stop running jobs, it only limits new ones."
+    <div class="card" hidden="" id="vault-card">
+      <div class="card-head">
+        <h2 data-i18n="vault_card">
+          "Encrypted passphrase vault"
+        <span class="hint" id="vault-state">
+      <div class="card-body">
+        <div class="hint small muted" data-i18n="vault_card_desc">
+          "SSH key passphrases are kept on this USB in a vault encrypted with a master password (AES-256-GCM). You type the master password at startup; keys are loaded only into this session's private agent and actions do not ask for passphrases. If you forget the master password the vault cannot be opened (no recovery)."
+        <div hidden="" id="vault-new">
+          <div class="field">
+            <label data-i18n="vault_pw" for="vault-new-pw">
+              "Master password"
+            <input autocomplete="new-password" id="vault-new-pw" spellcheck="false" type="password">
+          <div class="field">
+            <label data-i18n="vault_pw2" for="vault-new-pw2">
+              "Master password (again)"
+            <input autocomplete="new-password" id="vault-new-pw2" spellcheck="false" type="password">
+          <div class="frow2">
+            <button class="btn primary sm" data-i18n="vault_create" id="vault-create" type="button">
+              "Create vault"
+        <div hidden="" id="vault-open">
+          <div class="flabel" data-i18n="vault_stored_h">
+            "Passphrases in the vault"
+          <ul class="vault-list" id="vault-stored">
+          <div class="frow2">
+            <select aria-label="Server" data-i18n-aria="vault_srv" id="vault-srv">
+            <input aria-label="Key passphrase" autocomplete="off" class="vault-pp" data-i18n-aria="vault_pp_ph" data-i18n-placeholder="vault_pp_ph" id="vault-pp" placeholder="Key passphrase" spellcheck="false" type="password">
+            <button class="btn sm" data-i18n="vault_add" id="vault-add" type="button">
+              "Add to vault"
+          <div class="hint small muted" data-i18n="vault_add_hint">
+            "A passphrase is first tested against the key; it is not saved if it is wrong."
+          <div class="frow2">
+            <span class="small muted" id="vault-idle">
+            <button class="btn sm" data-i18n="vault_lock_now" id="vault-lock-now" type="button">
+              "Lock now"
+          <details class="vault-chg">
+            <summary data-i18n="vault_chg">
+              "Change master password"
+            <div class="field">
+              <label data-i18n="vault_old" for="vault-old-pw">
+                "Current master password"
+              <input autocomplete="current-password" id="vault-old-pw" spellcheck="false" type="password">
+            <div class="field">
+              <label data-i18n="vault_new" for="vault-chg-pw">
+                "New master password"
+              <input autocomplete="new-password" id="vault-chg-pw" spellcheck="false" type="password">
+            <div class="field">
+              <label data-i18n="vault_pw2" for="vault-chg-pw2">
+                "Master password (again)"
+              <input autocomplete="new-password" id="vault-chg-pw2" spellcheck="false" type="password">
+            <div class="frow2">
+              <button class="btn sm" data-i18n="vault_chg_go" id="vault-chg-go" type="button">
+                "Change password"
+        <div class="small vault-msg" id="vault-msg" role="status">
     <div class="card">
       <div class="card-head">
         <h2>

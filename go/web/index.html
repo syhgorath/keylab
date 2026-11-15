@@ -28,6 +28,7 @@
     <button class="job-pill" id="job-pill" type="button" hidden title="Çalışan işi aç"></button>
     <button class="icon-btn" id="lang-btn" type="button" aria-label="Dil / Language" title="Dil / Language"><span id="lang-cur" class="mono sx-15ab33">TR</span></button>
     <button class="icon-btn" id="theme-btn" aria-label="Tema: otomatik" title="Tema: otomatik (tıklayınca değişir)"><span id="theme-ico" aria-hidden="true">◐</span></button>
+    <button class="icon-btn" id="vault-lock-btn" type="button" hidden aria-label="Kasayı kilitle" title="Kasayı kilitle (ana parola olmadan açılmaz)" data-i18n-title="vault_lock_title_btn" data-i18n-aria="vault_lock_title_btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M14 9l2 2"/></svg></button>
     <button class="icon-btn" id="lock-btn" type="button" aria-label="Ekranı gizle (L)" title="Ekranı gizle (L)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
     <button class="icon-btn" id="shortcuts-btn" type="button" aria-label="Klavye kısayolları (?)" title="Klavye kısayolları (?)"><span class="mono sx-d17f9e" aria-hidden="true">?</span></button>
     <button class="icon-btn" id="quit-btn" type="button" aria-label="Çıkış" title="Çıkış (terminalleri kapatır; USB'den çalışıyorsa USB'yi çıkarır)" data-i18n-title="quit_btn_title" data-i18n-aria="quit_btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v9"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button>
@@ -260,6 +261,31 @@
         <div class="card-body">
           <div class="frow2"><label class="flabel sx-607468" for="set-maxjobs">Aynı anda en çok</label><input type="number" id="set-maxjobs" class="num-in" min="1" max="16" step="1" inputmode="numeric" aria-describedby="set-maxjobs-hint"><span class="small muted" id="set-maxjobs-st" role="status"></span></div>
           <div class="hint small muted" id="set-maxjobs-hint">Farklı sunucularda aynı anda çalışabilecek eylem sayısı (1-16, varsayılan 4). Aynı sunucuda her zaman tek eylem çalışır; paket kurulumu, sunucu silme ve toplu işlem tek başına çalışır. Her eylem bir ssh/ansible süreci ve bir parola penceresi demektir: yazan eylemlerde düşük tutmanız önerilir. Düşürmek çalışan işleri durdurmaz, yalnız yenilerinin başlamasını sınırlar.</div>
+        </div>
+      </div>
+      <div class="card" id="vault-card" hidden>
+        <div class="card-head"><h2 data-i18n="vault_card">Şifreli passphrase kasası</h2><span class="hint" id="vault-state"></span></div>
+        <div class="card-body">
+          <div class="hint small muted" data-i18n="vault_card_desc">SSH anahtar passphrase'leri bu USB'de, ana parolayla şifreli bir kasada durur (AES-256-GCM). Açılışta ana parolayı yazarsınız; anahtarlar yalnızca bu oturumun özel ajanına yüklenir, eylemler parola sormaz. Ana parolayı unutursanız kasa açılamaz (kurtarma yolu yok).</div>
+          <div id="vault-new" hidden>
+            <div class="field"><label for="vault-new-pw" data-i18n="vault_pw">Ana parola</label><input type="password" id="vault-new-pw" autocomplete="new-password" spellcheck="false"></div>
+            <div class="field"><label for="vault-new-pw2" data-i18n="vault_pw2">Ana parola (tekrar)</label><input type="password" id="vault-new-pw2" autocomplete="new-password" spellcheck="false"></div>
+            <div class="frow2"><button class="btn primary sm" id="vault-create" type="button" data-i18n="vault_create">Kasa oluştur</button></div>
+          </div>
+          <div id="vault-open" hidden>
+            <div class="flabel" data-i18n="vault_stored_h">Kasadaki passphrase'ler</div>
+            <ul class="vault-list" id="vault-stored"></ul>
+            <div class="frow2"><select id="vault-srv" aria-label="Sunucu" data-i18n-aria="vault_srv"></select><input type="password" id="vault-pp" class="vault-pp" autocomplete="off" spellcheck="false" placeholder="Anahtar passphrase'i" data-i18n-placeholder="vault_pp_ph" aria-label="Anahtar passphrase'i" data-i18n-aria="vault_pp_ph"><button class="btn sm" id="vault-add" type="button" data-i18n="vault_add">Kasaya ekle</button></div>
+            <div class="hint small muted" data-i18n="vault_add_hint">Eklenen passphrase önce anahtarı gerçekten açıyor mu diye denenir; yanlışsa kaydedilmez.</div>
+            <div class="frow2"><span class="small muted" id="vault-idle"></span><button class="btn sm" id="vault-lock-now" type="button" data-i18n="vault_lock_now">Şimdi kilitle</button></div>
+            <details class="vault-chg"><summary data-i18n="vault_chg">Ana parolayı değiştir</summary>
+              <div class="field"><label for="vault-old-pw" data-i18n="vault_old">Mevcut ana parola</label><input type="password" id="vault-old-pw" autocomplete="current-password" spellcheck="false"></div>
+              <div class="field"><label for="vault-chg-pw" data-i18n="vault_new">Yeni ana parola</label><input type="password" id="vault-chg-pw" autocomplete="new-password" spellcheck="false"></div>
+              <div class="field"><label for="vault-chg-pw2" data-i18n="vault_pw2">Ana parola (tekrar)</label><input type="password" id="vault-chg-pw2" autocomplete="new-password" spellcheck="false"></div>
+              <div class="frow2"><button class="btn sm" id="vault-chg-go" type="button" data-i18n="vault_chg_go">Parolayı değiştir</button></div>
+            </details>
+          </div>
+          <div class="small vault-msg" id="vault-msg" role="status"></div>
         </div>
       </div>
       <div class="card">
@@ -568,6 +594,17 @@
     <p class="small muted">Bu bir gizlilik perdesidir, parola kilidi değil.</p>
     <button class="btn primary" id="privacy-unlock" type="button">Ekranı göster</button>
   </div>
+</div>
+
+<div class="vault-lock" id="vault-lock" hidden role="dialog" aria-modal="true" aria-labelledby="vault-lock-h">
+  <form class="vault-lock-card" id="vault-lock-form" autocomplete="off">
+    <div class="privacy-lock-ico" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M14 9l2 2"/></svg></div>
+    <h3 id="vault-lock-h" data-i18n="vault_lock_h">KeyLab kilitli</h3>
+    <p class="small muted" data-i18n="vault_lock_sub">Devam etmek için ana parolayı yazın. Anahtar passphrase'leri bu parolayla şifreli kasada durur.</p>
+    <div class="field vault-lock-field"><label for="vault-lock-pw" data-i18n="vault_pw">Ana parola</label><input type="password" id="vault-lock-pw" autocomplete="current-password" spellcheck="false"></div>
+    <div class="small vault-lock-err" id="vault-lock-err" role="alert"></div>
+    <button class="btn primary" id="vault-lock-go" type="submit" data-i18n="vault_unlock">Kilidi aç</button>
+  </form>
 </div>
 
 <footer class="wb-dock collapsed" id="wb-dock" aria-label="Görevler ve açık terminaller">
