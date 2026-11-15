@@ -256,26 +256,13 @@ test("günlük: 'changed:' satırları da yeşil (ok) sınıfı alır", async ()
   assert.deepEqual(h.errors, []); h.close();
 });
 
-test("yazan eylem terminalde başladıktan sonra çalıştırma penceresini Kapat eylemi KESMEZ (görev sekmesi çalışmaya devam eder)", async () => {
+test("yazan eylem terminalde başlayınca çalıştırma penceresi KENDİLİĞİNDEN kapanır; görev sekmesi çalışmaya devam eder (kapanış eylemi kesmez)", async () => {
   const tasks = []; const h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov(taskOv(tasks)) });
   await h.click('#srv-body [data-write="linux-hardening|audit"]'); await h.click("#w-snap"); await h.click("#w-yes"); await h.click("#run-go");
   assert.deepEqual(tasks.map(p => `${p.server}/${p.action}`), ["web1/audit"]); assert.ok(h.$("#termmodal").classList.contains("open"));
-  assert.equal(h.$("#run-close").hidden, false); await h.click("#run-close");
-  assert.ok(!isOpen(h, "#runmodal"), "çalıştırma penceresi kapandı");
+  assert.ok(!isOpen(h, "#runmodal"), "çalıştırma penceresi kendiliğinden kapandı");
   assert.equal(h.calls.filter(c => c.path === "/api/term/close").length, 0, "görev oturumu sonlandırılmadı");
   assert.equal(h.$$("#term-dock .term-chip").length, 1); assert.deepEqual(h.errors, []); h.close();
-});
-
-test("terminal + yazan eylem: sonuç gelince ilerleme günlüğü yoklaması DURUR", async () => {
-  let phase = 0;
-  const h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov({ ...taskOv([]), "/api/log": { status: 200, body: "SSHPOCKET_PROGRESS alan=a sira=1/2 durum=bitti", headers: { "X-Log-Mtime": new Date(Date.UTC(2026, 10, 14, 10, 0, 1)).toUTCString() } },
-    "/api/server": u => { const d = fixture("server-" + u.searchParams.get("name")); if (phase) { const a = d.packages.find(p => p.id === "linux-hardening").actions.find(x => x.id === "audit"); a.lastTime = "2026-11-14T10:00:09Z"; a.lastResult = "ok"; } return d; } }) });
-  await h.click('#srv-body [data-write="linux-hardening|audit"]'); await h.click("#w-snap"); await h.click("#w-yes"); await h.click("#run-go");
-  h.timers.run(2000); await h.settle(); const logCalls = () => h.calls.filter(c => c.path.startsWith("/api/log?")).length; assert.ok(logCalls() >= 1, "ilerleme yoklanıyor");
-  phase = 1; h.timers.run(3000); await h.settle(); assert.match(text(h, "#run-state"), /✔ tamamlandı/);
-  const n = logCalls(); h.timers.run(10000); await h.settle();
-  assert.equal(logCalls(), n, "sonuç geldikten sonra günlük yoklaması sürmemeli");
-  assert.deepEqual(h.errors, []); h.close();
 });
 
 test("görev modu + Sunucu ekle sihirbazı: bitince adım ✔ olur (markTaskDone + renderAddSteps bağlantısı); başarısızsa olmaz", async () => {
