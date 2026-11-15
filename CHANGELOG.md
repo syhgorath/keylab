@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [4.0.13] - 2026-11-15
+
+Uygulama içi güncelleme USB'den (exFAT/FAT) çalışırken düzeldi. Bu düzeltme kurulu sürümün koduyla çalıştığı için 4.0.12'den güncelleme yine takılır: 4.0.13 bir kez elle kurulmalı, sonraki güncellemeler Ayarlar > Güncelleme'den çalışmalı.
+
 ### Düzeltildi
 - Uygulama içi güncelleme USB'den (exFAT/FAT) çalışırken "zipte beklenmeyen üst düzey öğe: ._KeyLab.app" diyerek duruyordu: xattr tutamayan diskte macOS açılan her öğenin yanına AppleDouble yan dosyası yazar; artık `._*` ve `.DS_Store` paketin parçası sayılmaz.
 
