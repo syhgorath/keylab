@@ -4,6 +4,12 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- Birleşik `utility` sayfasının en üstünde **Saat ve NTP** kartı: "NTP durumunu oku" ve "NTP ayarla" düğmeleri ile `utility_ntp_*` değişkenleri tek bakışta (eylemler ayrıca "Genel eylemler"de de durur).
+
+### Düzeltildi
+- Katalog sayfasındaki "Genel eylemler" bölümü açıkken sayfa yenilenince (ya da sekmeye dönünce) kendiliğinden kapanıyordu; açık durumu artık korunur.
+
 ## [4.0.15] - 2026-11-15
 
 Birleşik `utility` paketinde Uygulama kataloğu geri geldi.

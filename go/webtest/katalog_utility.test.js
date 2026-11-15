@@ -34,3 +34,24 @@ test("birleşik olmayan utility (kurulum_durum yok): katalog çizilmez, normal p
   const h = await open(null);
   assert.equal(h.$("#store-grid"), null); assert.ok(h.$(".pk-info")); h.close();
 });
+
+const withNtp = d => {
+  merged(d); const u = pkg(d, "utility"), dur = u.actions.find(a => a.id === "kurulum_durum");
+  for (const id of ["ntp_durum", "ntp_ayarla"]) u.actions.push({ ...JSON.parse(JSON.stringify(dur)), id, keys: {}, applicable: true, runnable: id === "ntp_durum", write: id === "ntp_ayarla" });
+};
+
+test("birleşik utility: sayfanın en üstünde 'Saat ve NTP' kartı, NTP durum/ayarla düğmeleri ve değişkenleri", async () => {
+  const h = await open(withNtp);
+  const first = h.$("#srv-body").firstElementChild; assert.ok(first.classList.contains("ntp-card"), "katalogdan önce, en üstte");
+  assert.deepEqual([...first.querySelectorAll(".ntp-btns .btn")].map(b => b.textContent), ["NTP durumunu oku", "NTP ayarla"]);
+  assert.ok(first.querySelector('[data-run="utility|ntp_durum"]')); assert.ok(first.querySelector('[data-write="utility|ntp_ayarla"]'));
+  assert.deepEqual(h.errors, []); h.close();
+});
+
+test("'Genel eylemler' açıksa sayfa yeniden çizilince (başka sekmeye gidip dönünce) açık kalır", async () => {
+  const h = await open(withNtp);
+  const det = () => h.$("#srv-body .store-actions");
+  assert.equal(det().open, false); det().open = true; det().dispatchEvent(new h.win.Event("toggle"));
+  await h.click('#srv-tabs [data-p="linux-hardening"]'); await h.click('#srv-tabs [data-p="utility"]');
+  assert.equal(det().open, true, "açık durum korunur"); h.close();
+});
