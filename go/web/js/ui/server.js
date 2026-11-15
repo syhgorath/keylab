@@ -258,7 +258,7 @@ export function initServer(hooks) {
   // ("kimlik:port+…") anahtarlarından gelir. Uyumluluk: `items` bildirmeyen kurulum 0.1.0 için LEGACY_ITEMS kullanılır.
   // Kur/Yükselt/Kaldır düğmeleri KAPALI: eylemler paket düzeyindedir ve önizleme önkoşulu öğeye özel tutulmaz;
   // öğeye özel çalıştırma (koşuya özel seçim + öğe başına kapı) gelene dek yalnız "Genel eylemler" çalışır.
-  let storeFilter = "all", catVars = [], catSrv = "", catPkg = "";
+  let storeFilter = "all", catVars = [], catSrv = "", catPkg = "", storeActOpen = false; // storeActOpen: "Genel eylemler" açık mı (sayfa yenilenince kapanmasın)
   // Katalog (uygulama mağazası) sayfası: eski `kurulum` paketi ya da `kurulum_durum` eylemini taşıyan birleşik `utility` paketi (0.2.0+). Kurulu bilgisi o eylemin `kurulu`/`portlar` anahtarlarından gelir.
   const isKurulumCat = p => p.id === "kurulum" || (p.id === "utility" && p.actions.some(a => a.id === "kurulum_durum"));
   const LEGACY_ICONS = { docker: "🐳", nginx: "🌐", mariadb: "🗄️", redis: "⚡" };
@@ -339,12 +339,23 @@ export function initServer(hooks) {
       <div class="card gen-card"><div class="oz-top"><span class="oz-title">Genel ayarlar</span><span class="oz-tag">tüm uygulamalar</span></div>
         <div class="gen-grid">${gen}</div>
         <div class="oz-foot oz-foot-row"><span>${known && dattr ? `<button class="link" ${dattr}>Durumu yenile</button> · ` : ""}Son durum: ${d && d.lastTime ? esc(ago(d.lastTime)) + " önce" : "okunmadı"}</span><button class="link" data-kvars-all>Tüm değişkenler…</button></div></div>
-      <details class="card store-actions"><summary><b>Genel eylemler</b> <span class="small muted">durum, preview, kur, yukselt, kaldir${itemVar ? ` · <span class="mono">${esc(itemVar)}</span> seçimine göre çalışır` : ""}</span></summary>${actionsSection(ok, na, p)}</details>`;
+      <details class="card store-actions"${storeActOpen ? " open" : ""}><summary><b>Genel eylemler</b> <span class="small muted">durum, preview, kur, yukselt, kaldir${itemVar ? ` · <span class="mono">${esc(itemVar)}</span> seçimine göre çalışır` : ""}</span></summary>${actionsSection(ok, na, p)}</details>`;
   }
 
   function applyStoreFilter() {
     $$("#store-grid .app-card").forEach(el => { el.hidden = storeFilter !== "all" && el.dataset.st !== storeFilter; });
     $$("#srv-body [data-sf]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.sf === storeFilter)));
+  }
+
+  // "Saat ve NTP" kartı (birleşik utility sayfasının en üstünde): NTP durumunu okuma ve ayarlama eylemleri ile utility_ntp_* değişkenleri tek bakışta; eylemler ayrıca "Genel eylemler"de de durur
+  function ntpCard(p) {
+    const byId = id => p.actions.find(a => a.id === id); if (!byId("ntp_durum") && !byId("ntp_ayarla")) return "";
+    const btn = (a, label, cls) => { if (!a) return ""; const at = actBtnAttr(a, p); return at ? `<button class="btn sm ${cls}" ${at}>${label}</button>` : `<button class="btn sm" disabled title="${esc(a.reason || "şimdi çalıştırılamaz")}">${label}</button>`; };
+    const vars = catVars.filter(v => v.name.startsWith("utility_ntp_")).map(v => `<span class="chip" title="${esc(v.name)}">${esc(v.name.slice("utility_".length))}: ${esc(varCur(v)) || "—"}</span>`).join("");
+    return `<div class="card ntp-card"><div class="card-body"><div class="oz-top"><span class="oz-title">Saat ve NTP</span><span class="oz-tag">${esc(p.id)}</span></div>
+      <div class="small muted">Sunucunun zaman eşitlemesi: durumu okuyun ya da NTP sunucularını ayarlayın.</div>
+      <div class="chips ntp-vars">${vars}${vars ? "" : '<span class="small muted">Değişkenler yükleniyor…</span>'}</div>
+      <div class="app-btns ntp-btns">${btn(byId("ntp_durum"), "NTP durumunu oku", "")}${btn(byId("ntp_ayarla"), "NTP ayarla", "warnbtn")}<button class="link" data-kvars="">Değişkenleri düzenle…</button></div></div></div>`;
   }
 
   function bindCatalog(pkg) {
@@ -355,6 +366,7 @@ export function initServer(hooks) {
     $("#srv-body [data-kvars-all]")?.addEventListener("click", () => openVars(appState.srvName, pkg));
     $$("#srv-body [data-actcat]").forEach(b => b.addEventListener("click", () => { actFilter = b.dataset.actcat; applyActFilter(); }));
     if (!$$("#srv-body [data-sf]").some(b => b.dataset.sf === storeFilter)) storeFilter = "all";
+    $("#srv-body .store-actions")?.addEventListener("toggle", e => { storeActOpen = e.target.open; });
     applyStoreFilter(); applyActFilter();
     if (catSrv !== appState.srvName || catPkg !== pkg) loadCatVars(pkg);
   }
@@ -401,7 +413,7 @@ export function initServer(hooks) {
     const ok = p.actions.filter(a => a.applicable), na = p.actions.filter(a => !a.applicable);
     const cat = catalogItems(p);
     // birleşik utility: katalogun altında paketin kendi kartları (bilgi, değişkenler, Son durum: saat dilimi/dil/NTP) da görünür; eylemler katalogdaki "Genel eylemler"de
-    if (cat) { $("#srv-body").innerHTML = catalogStore(s, p, ok, na, cat) + (p.id === "utility" ? `<div class="pk-top">${pkgInfoCard(p, ok)}${varsCard(p)}</div>${statusCard(p)}` : ""); bindCatalog(p.id); return; }
+    if (cat) { $("#srv-body").innerHTML = (p.id === "utility" ? ntpCard(p) : "") + catalogStore(s, p, ok, na, cat) + (p.id === "utility" ? `<div class="pk-top">${pkgInfoCard(p, ok)}${varsCard(p)}</div>${statusCard(p)}` : ""); bindCatalog(p.id); return; }
     $("#srv-body").innerHTML = `${p.id === "linux-hardening" ? lynisHero(s, p) : ""}<div class="pk-top">${pkgInfoCard(p, ok)}${varsCard(p)}</div>${statusCard(p)}${actionsSection(ok, na, p)}`;
     $$("#srv-body [data-actcat]").forEach(b => b.addEventListener("click", () => { actFilter = b.dataset.actcat; applyActFilter(); }));
     $("#srv-body [data-go-lynis-p]")?.addEventListener("click", () => goLynis(appState.srvName, s.lynis && s.lynis.warnings > 0 ? "uyari" : "all"));
