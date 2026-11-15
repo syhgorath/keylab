@@ -13,6 +13,7 @@ import { initSettings } from "./js/ui/settings.js";
 import { initDialog } from "./js/ui/dialog.js";
 import { initQuit } from "./js/ui/quit.js";
 import { initVault } from "./js/ui/vault.js";
+import { initTrustedMac } from "./js/ui/trustedmac.js";
 import { initServerOps } from "./js/ui/serverops.js";
 import { initAddServer } from "./js/ui/add.js";
 import { OS_LABEL, osIcon } from "./js/lib/icons.js";
@@ -407,6 +408,7 @@ import { appState } from "./js/state.js";
   adoptJob();
   window.KeyLabPalette.init({ getHome: () => appState.home, showView, openServer, goLynis, goLogs, openShortcuts, reload: load });
   window.KeyLabPrivacy.init();
+  initTrustedMac(); // "bu Mac'e güveniyorum": taşınabilir modda Keychain seçeneği
   initVault({ reloadPage: () => (window.KeyLabTestReload || (() => location.reload()))(), getServers: () => ((appState.home && appState.home.servers) || []).map(s => s.name), reloadData: () => load() }); // şifreli passphrase kasası: giriş perdesi + Ayarlar kartı
   window.KeyLabReports.init({
     getHome: () => appState.home, json, toast, stateText,

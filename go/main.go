@@ -232,7 +232,11 @@ func main() {
 		traceProf, traceCleanup, terr = setupPortableTraces(st)
 		if terr != nil {
 			fmt.Fprintln(os.Stderr, "uyarı: geçici klasör oluşturulamadı; önbellek ve tarayıcı profili bu bilgisayarın varsayılan yerlerinde tutulacak:", terr)
-		} else if envx.Get("GUEST") != "0" { // misafir mod: özel ssh-agent, Keychain yok (KEYLAB_GUEST=0 ile kapatılır)
+		} else if !wantGuestMode(envx.Get("GUEST"), trustedMac()) {
+			if envx.Get("GUEST") == "" { // ortam değişkeni vermeden: işaret dosyası belirledi
+				fmt.Println("taşınabilir mod: bu bilgisayar güvenilir olarak işaretli; Keychain ve kendi ssh-agent'ınız kullanılıyor (Ayarlar > Bu Mac'te Keychain)")
+			}
+		} else { // misafir mod: özel ssh-agent, Keychain yok (KEYLAB_GUEST=0 ya da güvenilir Mac işaretiyle kapatılır)
 			if sock, stop, aerr := platform.StartPrivateAgent(traceProf); aerr != nil {
 				fmt.Fprintln(os.Stderr, "uyarı: özel ssh-agent başlatılamadı; misafir mod kapalı (bu bilgisayarın ssh-agent'ı ve Keychain'i kullanılacak):", aerr)
 			} else {
@@ -282,6 +286,7 @@ func main() {
 	mux.HandleFunc("/api/term/resize", app.guard(app.termResizeHandler))
 	mux.HandleFunc("/api/term/close", app.guard(app.termCloseHandler))
 	mux.HandleFunc("/api/term/list", app.guard(app.termListHandler))
+	mux.HandleFunc("/api/trusted-mac", app.guard(app.trustedMacHandler))
 	mux.HandleFunc("/api/vault", app.guard(app.vaultStatusHandler))
 	mux.HandleFunc("/api/vault/", app.guard(app.vaultActionHandler))
 	mux.HandleFunc("/api/quit", app.guard(app.quitHandler))

@@ -263,6 +263,15 @@
           <div class="hint small muted" id="set-maxjobs-hint">Farklı sunucularda aynı anda çalışabilecek eylem sayısı (1-16, varsayılan 4). Aynı sunucuda her zaman tek eylem çalışır; paket kurulumu, sunucu silme ve toplu işlem tek başına çalışır. Her eylem bir ssh/ansible süreci ve bir parola penceresi demektir: yazan eylemlerde düşük tutmanız önerilir. Düşürmek çalışan işleri durdurmaz, yalnız yenilerinin başlamasını sınırlar.</div>
         </div>
       </div>
+      <div class="card" id="tm-card" hidden>
+        <div class="card-head"><h2 data-i18n="tm_card">Bu Mac'te Keychain</h2><span class="hint" id="tm-state"></span></div>
+        <div class="card-body">
+          <div class="hint small muted" data-i18n="tm_desc">USB'den çalışırken varsayılan misafir moddur: bu bilgisayarın Keychain'i ve ssh-agent'ı kullanılmaz, iz kalmaz. Yalnızca KENDİ, güvendiğiniz Mac'inizde bunu açabilirsiniz: passphrase Keychain'de durur ve anahtarlar tek tıkla ajana girer. İşaret USB'ye değil bu bilgisayara yazılır; USB başka bir bilgisayara takılınca misafir mod geçerli kalır. Şifreli kasa yalnız misafir modda vardır.</div>
+          <div class="small" id="tm-active"></div>
+          <div class="frow2"><button class="btn sm" id="tm-toggle" type="button" aria-pressed="false"></button></div>
+          <div class="small muted" id="tm-pending" role="status" hidden></div>
+        </div>
+      </div>
       <div class="card" id="vault-card" hidden>
         <div class="card-head"><h2 data-i18n="vault_card">Şifreli passphrase kasası</h2><span class="hint" id="vault-state"></span></div>
         <div class="card-body">
