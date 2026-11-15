@@ -4,6 +4,13 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [4.0.8] - 2026-11-15
+
+Düzeltme sürümü.
+
+### Düzeltildi
+- **Paket eylemi terminalde başlayınca arkada sayfayı kilitleyen "çalıştırma" penceresi kalmıyordu**: sudo gerektiren (term) ve değişiklik yapan (yazar) eylemler gömülü terminalde çalışırken eylem penceresi (modal) arkada açık kalıyor, terminal penceresi küçültülünce sayfada başka yere tıklanamıyordu; ayrıca günlük akışı ikinci bir iş çalışıyormuş izlenimi veriyordu. Artık eylem terminalde başlar başlamaz pencere **hemen kapanır** ve "<sunucu>: <eylem> terminalde çalışıyor — parola ve onayları orada yazın" bildirimi çıkar; parola, onay ve ilerleme yalnız terminaldedir. Eylem bitince sonuç kartları yenilenir ve "✔ tamamlandı" ya da "✖ başarısız (çıkış kodu n); ayrıntı terminal sekmesinde" bildirimi çıkar (bu artık pencere gerektirmez). Eylemin kendisi (tek `keylab run` süreci terminalde) değişmedi. **Kaldırıldı:** hardening eylemlerinde pencerede görünen "n / m alan tamam" ilerleme çubuğu ve günlük aynası (aynı bilgi terminal çıktısında). exec/yükseltme/görev kipindeki pencere olduğu gibi duruyor. jsdom testleri ve mutasyon kontrolüyle doğrulandı; gerçek bir sunucuda eylem çalıştırılarak denenmedi.
+
 ## [4.0.7] - 2026-11-15
 
 Şifreli passphrase kasası ve güvenilir Mac sürümü (4.0.6 yayınlanmadan 4.0.7 ile birleştirildi).

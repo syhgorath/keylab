@@ -104,7 +104,7 @@ export function initJobs(hooks) {
     bg.delete(id); attachUi(w); showRunModal();
   }
 
-  let runMode = "exec", termTimer = 0, termOnExit = null, runUpgTo = ""; // runUpgTo: yükseltme modunda hedef sürüm (setUpgradeTo ile verilir)
+  let runMode = "exec", runUpgTo = ""; // runUpgTo: yükseltme modunda hedef sürüm (setUpgradeTo ile verilir)
   function openRun(server, pkg, action, item) {
     if (jobBusy(server)) return;
     runMode = "exec"; $("#run-log").hidden = false; $("#run-cancel").hidden = false;
@@ -121,12 +121,12 @@ export function initJobs(hooks) {
     $("#run-close").hidden = false; $("#run-close").textContent = "Vazgeç";
     runm.classList.add("open"); setTimeout(() => $("#run-go").focus(), 40);
   }
-  function closeRun() { if (runBusy()) return; clearInterval(termTimer); termTimer = 0; runm.classList.remove("open"); pill = null; renderPill(); }
+  function closeRun() { if (runBusy()) return; runm.classList.remove("open"); pill = null; renderPill(); }
 
   /* değişiklik yapan eylem: plan → snapshot + onay → Terminal (sudo parolası orada) → canlı ilerleme.
      Eylem gömülü terminalde çalışır; motor aynı onayları orada yeniden ister (tek doğruluk kaynağı); arayüz onayı bunun ÖN adımıdır. */
   const EFFECT_TXT = { "installs-package": "paket kurar", "changes-config": "yapılandırmayı değiştirir", destructive: "yıkıcı" };
-  let wAct = null, logSince = 0;
+  let wAct = null;
   function openWrite(server, pkg, action, item) {
     if (jobBusy(server)) return;
     openRun(server, pkg, action, item);
@@ -160,30 +160,8 @@ export function initJobs(hooks) {
     ["#w-snap", "#w-destr", "#w-confirm", "#w-yes"].forEach(id => { const e = $(id); if (e) { e.addEventListener("input", check); e.addEventListener("change", check); } });
   }
 
-  // last-run.log'u izle: SSHPOCKET_PROGRESS satırlarından alan alan ilerleme, geri alma güvenlik ağı durumu
   // ilerleme çubuğu genişliği: satır içi stil özniteliği yerine data-w + CSSOM (CSP style-src-attr 'none' ile uyumlu)
   const applyBars = root => $$("i[data-w]", root).forEach(i => { i.style.width = (parseInt(i.dataset.w, 10) || 0) + "%"; });
-  async function pollProgress(pkg, server, since) {
-    try {
-      const q = new URLSearchParams({ package: pkg, server, file: "last-run.log" });
-      const r = await api("/api/log?" + q);
-      const m = Date.parse(r.headers.get("X-Log-Mtime") || "");
-      if (!m || m < since - 3000) return; // önceki çalıştırmanın günlüğü: yok say
-      const txt = await r.text();
-      const prog = [...txt.matchAll(/SSHPOCKET_PROGRESS alan=(\S+) sira=(\d+)\/(\d+) durum=(\S+)/g)];
-      let total = 0, done = new Set(), cur = "";
-      prog.forEach(x => { total = +x[3]; if (x[4] === "bitti") done.add(x[1]); else cur = x[1]; });
-      if (done.has(cur)) cur = "";
-      const armed = /TASK \[hardening_rollback : Arm[^\]]*\][^\n]*\n(ok|changed):/.test(txt), disarmed = /TASK \[hardening_rollback : Disarm[^\]]*\][^\n]*\n(ok|changed):/.test(txt);
-      const tail = txt.trimEnd().split("\n").slice(-6).map(esc).join("\n");
-      $("#run-result").innerHTML = (total ? `<div class="run-meta"><span>${done.size} / ${total} alan tamam${cur ? ` · şu an: <b>${esc(cur)}</b>` : ""}</span></div>
-          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done.size}"><i data-w="${Math.round(done.size / total * 100)}"></i></div>` : '<div class="small muted">Motor başlıyor…</div>') +
-        (armed && !disarmed ? '<div class="notice sj-d2c171"><span class="ico" aria-hidden="true">⏱</span><div><b>Geri alma güvenlik ağı devrede.</b> Erişim doğrulanınca kaldırılır; doğrulanamazsa önceki hâl geri yüklenir.</div></div>' : "") +
-        (disarmed ? '<div class="small muted sj-8a77e5">Geri alma güvenlik ağı kaldırıldı (erişim doğrulandı).</div>' : "") +
-        `<pre class="mono small sj-b12f21">${tail}</pre>`;
-      applyBars($("#run-result"));
-    } catch (e) { /* günlük henüz yok ya da okunamadı: bir sonraki turda */ }
-  }
 
   /* sudo gerektiren salt okunur eylem: gömülü terminalde sshpocket motoru; parolayı kullanıcı terminalde yazar */
   // runItem doluysa eylem durumu O ÖĞENİN kapsamında hesaplanmış olandır (önkoşul, son sonuç); yoksa paketin şimdiki seçimine göre.
@@ -210,39 +188,26 @@ export function initJobs(hooks) {
     const body = { server: runSrv, package: runPkg, action: runAct };
     if (runItem) body.item = runItem;
     if (runMode === "write") { body.snapshot = $("#w-snap").checked; body.ackDestructive = !!($("#w-destr") && $("#w-destr").checked); body.confirm = $("#w-confirm") ? $("#w-confirm").value : $("#w-yes").checked ? "evet" : ""; }
-    logSince = Date.now();
     const started = await window.KeyLabTerminal.openTask(body); // → /api/term/task; terminal penceresi açılır
     if (!started.ok) { $("#run-go").disabled = false; toast("Eylem başlatılamadı: " + started.error); return; }
-    $("#run-confirm").hidden = true; $("#run-live").hidden = false; $("#run-go").hidden = true; $("#run-close").hidden = false; $("#run-close").textContent = "Kapat";
-    $("#run-log").hidden = true; $("#run-cancel").hidden = true; $("#run-result").innerHTML = "";
-    const t0 = Date.now();
-    const tick = () => { $("#run-state").innerHTML = `<span class="spinner" aria-hidden="true"></span> Terminal penceresinde çalışıyor… parolayı ve onayları orada yazın · ${Math.round((Date.now() - t0) / 1000)} sn`; };
-    tick();
-    clearInterval(termTimer);
-    let prgTimer = 0;
-    if (runMode === "write") { prgTimer = setInterval(() => pollProgress(runPkg, runSrv, logSince), 2000); }
-    const check = async () => {
-      if (!termTimer) return; // sonuç zaten alındı
-      tick();
-      if (Date.now() - t0 > (runMode === "write" ? 40 : 10) * 60 * 1000) { clearInterval(termTimer); clearInterval(prgTimer); $("#run-state").textContent = "Sonuç beklenirken süre doldu; sayfa yine de sonucu gösterecek."; return; }
-      try {
-        const r = await json("/api/server?name=" + encodeURIComponent(runSrv));
-        const a1 = r.packages.find(x => x.id === runPkg)?.actions.find(x => x.id === runAct);
-        if (a1 && (a1.lastTime || "") !== base) {
-          clearInterval(termTimer); termTimer = 0; clearInterval(prgTimer); appState.srv = r; if (appState.view === "server") renderServer(); load();
-          $("#run-state").innerHTML = a1.lastResult === "ok" ? '<span class="res ok">✔ tamamlandı</span> · sonuç kartta güncellendi' : '<span class="res fail">✖ başarısız</span> · ayrıntı için Terminal penceresine ve Günlükler sayfasına bakın';
-          $("#run-result").innerHTML = (a1.keys ? `<div class="chips">${Object.entries(a1.keys).map(([k, v]) => `<span class="chip">${esc(k)}=${esc(v)}</span>`).join("")}</div>` : "") +
-            `<div class="sj-d2c171"><button class="btn sm" id="run-open-log">Çıktıyı aç (son çalıştırma günlüğü)</button></div>`;
-          $("#run-open-log").addEventListener("click", () => { const pk = runPkg, sv = runSrv; closeRun(); openLastLog(pk, sv); });
-        }
-      } catch (e) { /* bir sonraki turda yeniden denenir */ }
-    };
-    termTimer = setInterval(check, 3000);
-    // eylem bitince (görev terminalinin "exit" olayı) sonuç 3 sn'lik yoklamayı beklemeden hemen alınır
-    if (termOnExit) window.removeEventListener("keylab:taskexit", termOnExit);
-    termOnExit = e => { const d = e.detail || {}; if (d.server === runSrv && d.pkg === runPkg && d.action === runAct) check(); };
-    window.addEventListener("keylab:taskexit", termOnExit);
+    // eylem artık terminalde çalışıyor: modal HEMEN kapanır (terminal penceresi küçültülünce arkada sayfayı kilitleyen bir modal kalmasın);
+    // ilerleme/parola/onay terminalde, sonuç bitince sayfada ve bildirimde (aşağıdaki "keylab:taskexit" dinleyicisi)
+    const label = `${runAct} · ${TAB_LABEL[runPkg] || runPkg}`;
+    closeRun();
+    toast(`${runSrv}: ${label} terminalde çalışıyor — parola ve onayları orada yazın`);
   }
+
+  // görev terminali bitince (paket eylemi): sonuç kartları yenilenir ve sonuç bildirilir; modal gerekmez
+  window.addEventListener("keylab:taskexit", async e => {
+    const d = e.detail || {}; if (!d.server || !d.pkg || !d.action) return;
+    try {
+      const r = await json("/api/server?name=" + encodeURIComponent(d.server));
+      if (appState.view === "server" && appState.srvName === d.server) { appState.srv = r; renderServer(); }
+      load();
+    } catch (err) { /* sunucu yanıt vermezse sayfa bir sonraki yenilemede toparlanır */ }
+    const label = `${d.action} · ${TAB_LABEL[d.pkg] || d.pkg}`;
+    toast(d.code === 0 ? `${d.server}: ✔ ${label} tamamlandı` : `${d.server}: ✖ ${label} başarısız (çıkış kodu ${d.code}); ayrıntı terminal sekmesinde`);
+  });
 
   // ham terminal çıktısı → okunur metin: ANSI kaçışlarını at, "\r" ile satır başına dönmeyi uygula
   function cleanTerm(t) {

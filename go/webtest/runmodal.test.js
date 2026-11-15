@@ -39,12 +39,12 @@ test("yazan eylem: onay penceresi (başlık, etki, uyarılar), onaylar tamamlanm
   assert.deepEqual(h.errors, []); h.close();
 });
 
-test("yazan eylem: onay verilince /api/term/task'a (snapshot, onay, yıkıcı değil) gider; terminal penceresinde görev sekmesi açılır, pencere sonuç beklemeye geçer", async () => {
+test("yazan eylem: onay verilince /api/term/task'a (snapshot, onay, yıkıcı değil) gider; terminal penceresinde görev sekmesi açılır, modal HEMEN kapanır", async () => {
   const tasks = []; const h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov(taskOv(tasks)) });
   await h.click(WRITE); await h.click("#w-snap"); await h.click("#w-yes"); await h.click("#run-go");
   assert.deepEqual(tasks, [{ server: "web1", package: "linux-hardening", action: "audit", snapshot: true, ackDestructive: false, confirm: "evet", ...SZ }]);
-  assert.ok(!h.$("#run-live").hidden); assert.ok(h.$("#run-confirm").hidden); assert.ok(h.$("#termmodal").classList.contains("open"), "terminal penceresi açıldı");
-  assert.equal(h.$("#term-title").textContent, "⚙ linux-hardening · audit");
+  assert.ok(!isOpen(h, "#runmodal"), "çalıştırma penceresi kapandı: terminal küçültülünce arkada sayfayı kilitleyen modal kalmaz"); assert.ok(h.$("#termmodal").classList.contains("open"), "terminal penceresi açıldı");
+  assert.equal(h.$("#term-title").textContent, "⚙ linux-hardening · audit"); assert.match(h.$("#toast").textContent, /web1: audit · Hardening terminalde çalışıyor — parola ve onayları orada yazın/);
   assert.deepEqual(h.errors, []); h.close();
 });
 
@@ -99,75 +99,51 @@ test("yazan eylem: uyarı/etki metinleri HTML olarak yorumlanmaz (kaçışlı)",
 const TERM = '#srv-body [data-term="linux-hardening|rollback_status"]';
 const withResult = (lastTime, lastResult, keys) => serverOv(d => { const a = act(d, "linux-hardening", "rollback_status"); a.lastTime = lastTime; a.lastResult = lastResult; if (keys) a.keys = keys; });
 
-test("terminal modu: pencere sudo parolasını anlatır; 'Çalıştır' /api/term/task'a gider (terminal penceresinde görev) ve sonuç gelene kadar yoklar", async () => {
+test("terminal modu: pencere sudo parolasını anlatır; 'Çalıştır' /api/term/task'a gider, modal kapanır; görev bitince sonuç kartı yenilenir ve bildirim çıkar", async () => {
   let phase = 0;
-  const h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov({ ...taskOv([]), "/api/server": u => { const d = fixture("server-" + u.searchParams.get("name")); if (phase) { const a = act(d, "linux-hardening", "rollback_status"); a.lastTime = "2026-11-14T10:00:05Z"; a.lastResult = "ok"; a.keys = { skor: "74" }; } return d; } }) });
-  await h.click(TERM);
+  const h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov({ ...taskOv([]), "/api/server": u => { const d = fixture("server-" + u.searchParams.get("name")); if (phase) { const a = act(d, "linux-hardening", "rollback_status"); a.lastTime = "2026-11-14T10:00:05Z"; a.lastResult = "ok"; a.keys = { zzz_sonuc: "74" }; } return d; } }) });
+  await h.click(TERM); assert.doesNotMatch(text(h, "#srv-body"), /zzz_sonuc/, "eylem çalışmadan sonuç anahtarı yok");
   assert.ok(isOpen(h, "#runmodal")); assert.match(text(h, "#run-confirm-text"), /sudo parolası/); assert.equal(text(h, "#run-go"), "Çalıştır"); assert.match(text(h, "#run-confirm-text"), /terminal penceresinde yazarsınız/);
   await h.click("#run-go");
   assert.deepEqual(h.calls.filter(c => c.path === "/api/term/task").map(c => c.body), [{ server: "web1", package: "linux-hardening", action: "rollback_status", ...SZ }]); assert.ok(h.$("#termmodal").classList.contains("open"), "terminal penceresi açıldı");
-  assert.ok(h.$("#run-confirm").hidden); assert.ok(!h.$("#run-live").hidden); assert.ok(h.$("#run-log").hidden); assert.ok(h.$("#run-cancel").hidden);
-  assert.match(text(h, "#run-state"), /Terminal penceresinde çalışıyor… parolayı ve onayları orada yazın/);
-  h.timers.run(3000); await h.settle(); assert.match(text(h, "#run-state"), /Terminal penceresinde çalışıyor/, "sonuç yokken beklemeye devam eder");
-  phase = 1; h.timers.run(3000); await h.settle();
-  assert.match(text(h, "#run-state"), /✔ tamamlandı · sonuç kartta güncellendi/); assert.match(text(h, "#run-result"), /skor=74/); assert.ok(h.$("#run-open-log"));
-  const homeBefore = h.calls.filter(c => c.path === "/api/home").length;
-  await h.click("#run-open-log");
-  assert.ok(!isOpen(h, "#runmodal")); assert.equal(h.$(".view:not([hidden])").id, "view-logs");
+  assert.ok(!isOpen(h, "#runmodal"), "modal kapandı"); assert.match(h.$("#toast").textContent, /rollback_status · Hardening terminalde çalışıyor/);
+  const srvCalls = () => h.calls.filter(c => c.path === "/api/server?name=web1").length; const before = srvCalls();
+  h.timers.run(10000); await h.settle(); assert.equal(h.calls.filter(c => c.path.startsWith("/api/log?")).length, 0, "modal yok: günlük aynası yoklanmaz");
+  phase = 1; h.win.__esObj[0].emit("exit", "0"); await h.settle();
+  assert.ok(srvCalls() > before, "görev bitince sunucu sonucu yeniden okunur"); assert.match(h.$("#toast").textContent, /web1: ✔ rollback_status · Hardening tamamlandı/);
+  assert.match(text(h, "#srv-body"), /zzz_sonuc=74/, "sonuç kartı (anahtar değerler) sayfada yenilendi");
   assert.deepEqual(h.errors, []); h.close();
 });
 
-test("terminal modu: başarısız sonuç, açılamama hatası ve zaman aşımı", async () => {
-  // başarısız sonuç
-  let phase = 0;
-  let h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov({ ...taskOv([]), "/api/server": u => { const d = fixture("server-" + u.searchParams.get("name")); if (phase) { const a = act(d, "linux-hardening", "rollback_status"); a.lastTime = "2026-11-14T10:00:09Z"; a.lastResult = "fail"; } return d; } }) });
-  await h.click(TERM); await h.click("#run-go"); phase = 1; h.timers.run(3000); await h.settle();
-  assert.match(text(h, "#run-state"), /✖ başarısız · ayrıntı için Terminal penceresine/); assert.deepEqual(h.errors, []); h.close();
+test("terminal modu: başarısız sonuç bildirimi ve açılamama hatası", async () => {
+  // başarısız sonuç: çıkış kodu sıfır değil
+  let h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov({ ...taskOv([]) }) });
+  await h.click(TERM); await h.click("#run-go"); h.win.__esObj[0].emit("exit", "3"); await h.settle();
+  assert.match(h.$("#toast").textContent, /web1: ✖ rollback_status · Hardening başarısız \(çıkış kodu 3\); ayrıntı terminal sekmesinde/); assert.deepEqual(h.errors, []); h.close();
   // Terminal açılamadı
   h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov({ "/api/term/task": { status: 409, body: "bu sunucuda zaten çalışan bir eylem var" } }) });
   await h.click(TERM); await h.click("#run-go");
   assert.equal(h.$("#run-toast"), null); assert.equal(h.$("#toast").textContent, "Eylem başlatılamadı: bu sunucuda zaten çalışan bir eylem var"); assert.equal(h.$("#run-go").disabled, false); assert.ok(!h.$("#run-confirm").hidden); assert.ok(!h.$("#termmodal").classList.contains("open"), "başlamayan görev için boş terminal penceresi kalmaz");
+  assert.ok(isOpen(h, "#runmodal"), "başlamadıysa modal açık kalır (yeniden denenebilsin)");
   assert.deepEqual(h.errors, []); h.close();
-  // zaman aşımı (salt okunur terminal: 10 dk)
-  h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov({ ...taskOv([]) }) });
-  await h.click(TERM); await h.click("#run-go");
-  const realNow = h.win.Date.now; let t = realNow(); h.win.Date.now = () => t;     // sahte saat ilerletilir (zaman aşımı süre farkına bakar)
-  t += 11 * 60 * 1000; h.timers.run(3000); await h.settle();
-  assert.match(text(h, "#run-state"), /Sonuç beklenirken süre doldu/); assert.deepEqual(h.errors, []); h.close();
 });
 
-test("terminal modu + YAZAN eylem: onay gövdeyle gider; ilerleme günlüğü (alan sayacı, çubuk, güvenlik ağı) 2 sn'de bir yoklanır", async () => {
-  const log = [
-    "SSHPOCKET_PROGRESS alan=ssh sira=1/4 durum=bitti", "SSHPOCKET_PROGRESS alan=ufw sira=2/4 durum=bitti", "SSHPOCKET_PROGRESS alan=kernel sira=3/4 durum=basladi",
-    "TASK [hardening_rollback : Arm timer] *****", "ok: [web1]",
-  ].join("\n");
-  const h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov({ ...taskOv([]), "/api/log": { status: 200, body: log, headers: { "X-Log-Mtime": new Date(h0()).toUTCString() } } }) });
-  function h0() { return Date.UTC(2026, 10, 14, 10, 0, 1); }
+test("terminal modu + YAZAN eylem: onay gövdeyle gider; modal kapanır ve ilerleme günlüğü AYNALANMAZ (ilerleme terminalde)", async () => {
+  const h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov({ ...taskOv([]) }) });
   await h.click(WRITE); await h.click("#w-snap"); await h.click("#w-yes"); await h.click("#run-go");
   assert.deepEqual(h.calls.find(c => c.path === "/api/term/task").body, { server: "web1", package: "linux-hardening", action: "audit", snapshot: true, ackDestructive: false, confirm: "evet", ...SZ });
-  h.timers.run(2000); await h.settle();
-  const q = h.calls.find(c => c.path.startsWith("/api/log?")); assert.ok(q && /package=linux-hardening/.test(q.path) && /server=web1/.test(q.path) && /file=last-run\.log/.test(q.path));
-  assert.match(text(h, "#run-result"), /2 \/ 4 alan tamam · şu an: kernel/); const bar = h.$("#run-result .progress i"); assert.ok(bar);
-  assert.equal(bar.dataset.w, "50"); assert.equal(bar.style.width, "50%", "CSSOM ile genişlik (satır içi stil özniteliği değil)"); assert.equal(h.$("#run-result .progress").getAttribute("aria-valuenow"), "2");
-  assert.match(text(h, "#run-result"), /Geri alma güvenlik ağı devrede/);
+  assert.ok(!isOpen(h, "#runmodal")); h.timers.run(10000); await h.settle();
+  assert.equal(h.calls.filter(c => c.path.startsWith("/api/log?")).length, 0, "günlük yoklanmaz: ikinci bir ilerleme görünümü yok");
   assert.deepEqual(h.errors, []); h.close();
 });
 
-test("terminal modu: görev terminali bitince ('keylab:taskexit') sonuç 3 sn'lik yoklamayı BEKLEMEDEN hemen gelir; başka eylemin olayı yok sayılır", async () => {
+test("terminal modu: görev terminali bitince ('keylab:taskexit') sonuç hemen yenilenir; olay alanları eksikse yok sayılır", async () => {
   let phase = 0;
   const h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov({ ...taskOv([]), "/api/server": u => { const d = fixture("server-" + u.searchParams.get("name")); if (phase) { const a = act(d, "linux-hardening", "rollback_status"); a.lastTime = "2026-11-14T10:00:05Z"; a.lastResult = "ok"; } return d; } }) });
   await h.click(TERM); await h.click("#run-go");
-  assert.match(text(h, "#run-state"), /Terminal penceresinde çalışıyor/);
-  // başka eylemin bitişi bu pencereyi bitirmez (sonuç hazır OLSA bile bu olay yoklamayı tetiklememeli)
-  phase = 1;
-  h.win.dispatchEvent(new h.win.CustomEvent("keylab:taskexit", { detail: { server: "db1", pkg: "linux-hardening", action: "rollback_status", code: 0 } })); await h.settle();
-  assert.match(text(h, "#run-state"), /Terminal penceresinde çalışıyor/);
-  h.win.__esObj[0].emit("exit", "0"); await h.settle(); // zamanlayıcı İLERLETİLMEDİ
-  assert.match(text(h, "#run-state"), /✔ tamamlandı · sonuç kartta güncellendi/); assert.deepEqual(h.errors, []); h.close();
-});
-
-test("ilerleme günlüğü: önceki çalıştırmanın eski günlüğü yok sayılır", async () => {
-  const h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov({ ...taskOv([]), "/api/log": { status: 200, body: "SSHPOCKET_PROGRESS alan=a sira=1/2 durum=bitti", headers: { "X-Log-Mtime": new Date(Date.UTC(2020, 0, 1)).toUTCString() } } }) });
-  await h.click(WRITE); await h.click("#w-snap"); await h.click("#w-yes"); await h.click("#run-go"); h.timers.run(2000); await h.settle();
-  assert.equal(h.$("#run-result .progress"), null); assert.deepEqual(h.errors, []); h.close();
+  const srvCalls = () => h.calls.filter(c => c.path === "/api/server?name=web1").length;
+  const n0 = srvCalls(); h.win.dispatchEvent(new h.win.CustomEvent("keylab:taskexit", { detail: { server: "web1" } })); await h.settle();
+  assert.equal(srvCalls(), n0, "eksik alanlı olay yok sayılır");
+  phase = 1; h.win.__esObj[0].emit("exit", "0"); await h.settle(); // zamanlayıcı İLERLETİLMEDİ: yoklama yok, olayla hemen
+  assert.ok(srvCalls() > n0); assert.match(h.$("#toast").textContent, /✔ rollback_status · Hardening tamamlandı/); assert.deepEqual(h.errors, []); h.close();
 });
