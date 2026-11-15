@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [4.0.14] - 2026-11-15
+
+Gömülü kilitte `utility` deposu `syhgorath/utility`. İmzalı indeks de aynı repoyu gösterir; mevcut kurulumlarda kilit geçişi gerekmez.
+
 ### Değişti
 - Gömülü kilitte `utility` paketinin deposu `syhgorath/utility` oldu (kurulum reposu GitHub'da `utility` adını aldı; eski utility reposu `utility-old` olarak arşivlendi). Eski kilitlerde de bu ad yazdığı için mevcut kurulumlarda kilit geçişi gerekmez.
 
