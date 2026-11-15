@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Eklendi
+- **Dahili: şifreli sır kasası çekirdeği** (`internal/vault`; henüz arayüze/ajana bağlı DEĞİL, kullanıcıya görünür değişiklik yok): ana parolayla şifrelenen küçük kasa (SSH anahtar passphrase'leri için, USB'de durur). PBKDF2-HMAC-SHA256 (600k tur, rastgele tuz) + AES-256-GCM; başlık kimlik doğrulamasına dahil (kurcalanan dosya açılmaz), her kayıtta yeni nonce, düz metin 1 KiB katlarına doldurulur, dosya 0600 ve atomik yazılır, kilitlenince anahtar sıfırlanır; ana parola değiştirilebilir. Yeni bağımlılık yok (standart kütüphane). Sonraki dilimler: açılışta ana parola (giriş) ve anahtarların özel ajana yüklenmesi, Ayarlar'da "güvendiğim Mac'te Keychain" seçeneği. 11 test + mutasyon kontrolü.
+
 ## [4.0.5] - 2026-11-15
 
 Yayın sadeleştirmesi.
