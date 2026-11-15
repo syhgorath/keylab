@@ -439,6 +439,9 @@ import { appState } from "./js/state.js";
   json("/api/about").then(a => {
     appState.askAvail = !!a.askpass; paintAsk();
     const g = !!a.guest; if (g !== !!appState.guest) { appState.guest = g; if (appState.view === "server" && appState.srv) renderServer(); }
+    // önceki oturum düzgün kapanmamışsa (Cmd+Q, çökme…) açılışta temizlenen artıklar bir kez bildirilir (bkz. stale.go)
+    const sc = a.staleCleaned || {};
+    if (sc.dirs || sc.agents) toast(t("stale_cleaned", "Önceki oturum düzgün kapanmamıştı: {d} geçici klasör silindi, {a} özel ssh-agent durduruldu (anahtarlar bellekten silindi).").split("{d}").join(String(sc.dirs || 0)).split("{a}").join(String(sc.agents || 0)));
   }).catch(() => {});
   const startHash = new URLSearchParams(location.hash.slice(1)); // showView adres çubuğundaki #s=… kısmını siler: ÖNCE oku
   appState.routing = true; showView(VIEWS.includes(startHash.get("v")) ? startHash.get("v") : "dash"); appState.routing = false;

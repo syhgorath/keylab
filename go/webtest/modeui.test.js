@@ -50,6 +50,15 @@ test("moda duyarlı: İngilizce arayüzde misafir metinleri çevrilir", async ()
   assert.equal(h.$("#srv-body [data-go-settings]").textContent, "Go to the vault"); h.close();
 });
 
+test("eski oturum: önceki kapanış düzgün değilse temizlenenler açılışta bir kez bildirilir; temizlenen yoksa bildirim çıkmaz", async () => {
+  let h = await boot({ hash: "", overrides: base(false, { "/api/about": () => ({ ...fixture("about"), guest: false, staleCleaned: { dirs: 2, agents: 1 } }) }) });
+  assert.match(h.$("#toast").textContent, /Önceki oturum düzgün kapanmamıştı: 2 geçici klasör silindi, 1 özel ssh-agent durduruldu/); assert.deepEqual(h.errors, []); h.close();
+  h = await boot({ hash: "", overrides: base(false, { "/api/about": () => ({ ...fixture("about"), guest: false, staleCleaned: { dirs: 0, agents: 0 } }) }) });
+  assert.doesNotMatch(h.$("#toast").textContent, /düzgün kapanmamıştı/); h.close();
+  h = await boot({ hash: "", lang: "en", overrides: base(false, { "/api/about": () => ({ ...fixture("about"), guest: false, staleCleaned: { dirs: 1, agents: 0 } }) }) });
+  assert.match(h.$("#toast").textContent, /The previous session was not closed properly: 1 temporary folder\(s\) deleted, 0 private ssh-agent\(s\) stopped/); h.close();
+});
+
 /* ---- knock dizisi misafir modda şifreli kasada ---- */
 const vaultSt = (o = {}) => ({ available: true, exists: true, unlocked: true, retryAfter: 0, idleMin: 15, stored: [], knock: [], ...o });
 const knockPosts = h => h.calls.filter(c => c.method === "POST" && c.path === "/api/knock").map(c => c.body);

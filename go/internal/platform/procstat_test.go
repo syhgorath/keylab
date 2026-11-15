@@ -57,3 +57,16 @@ func TestProcessTableSeesOurOwnProcess(t *testing.T) {
 		t.Fatalf("disk: %d %d %v", total, free, ok)
 	}
 }
+
+func TestParsePSCommands(t *testing.T) {
+	out := `  101 /sbin/launchd
+ 4242 /Applications/KeyLab.app/Contents/MacOS/KeyLab -no-open
+ 9001 ssh-agent -D -a /var/folders/x/T/keylab-615138838/agent.sock
+ bozuk
+   77
+`
+	m := ParsePSCommands(out)
+	if len(m) != 3 || m[9001] != "ssh-agent -D -a /var/folders/x/T/keylab-615138838/agent.sock" || m[4242] != "/Applications/KeyLab.app/Contents/MacOS/KeyLab -no-open" {
+		t.Fatalf("ayrıştırma: %v", m)
+	}
+}

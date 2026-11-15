@@ -30,6 +30,7 @@ func setupPortableTraces(stateDir string) (profBase string, cleanup func(), err 
 		return "", nil, err
 	}
 	_ = os.Chmod(tmp, 0o700)
+	writeOwner(tmp) // sahibi (bu süreç): düzgün kapanmazsa sonraki açılışta eski oturum olarak tanınır (bkz. stale.go)
 	if envx.Get("CACHE_DIR") == "" {
 		os.Setenv("KEYLAB_CACHE_DIR", filepath.Join(tmp, "cache"))
 	}

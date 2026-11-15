@@ -65,3 +65,23 @@ func parseEtime(s string) (int64, bool) {
 	}
 	return days*86400 + total, true
 }
+
+// ParsePSCommands: `ps -axo pid=,command=` çıktısını pid → tam komut satırı olarak ayrıştırır (ajan soket yolunu görmek için); bozuk satırlar atlanır.
+func ParsePSCommands(out string) map[int]string {
+	m := map[int]string{}
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimLeft(line, " \t")
+		i := strings.IndexAny(line, " \t")
+		if i <= 0 {
+			continue
+		}
+		pid, err := strconv.Atoi(line[:i])
+		if err != nil {
+			continue
+		}
+		if cmd := strings.TrimSpace(line[i:]); cmd != "" {
+			m[pid] = cmd
+		}
+	}
+	return m
+}

@@ -20,6 +20,18 @@ func ProcessTable() ([]Proc, error) {
 	return ParsePS(string(out)), nil
 }
 
+// ProcessCommands: pid → tam komut satırı (macOS ve Linux'ta `ps`). Eski oturum temizliği, özel ssh-agent'ın soket yolundan hangi klasöre ait olduğunu bulur.
+func ProcessCommands() (map[int]string, error) {
+	out, err := exec.Command("ps", "-axo", "pid=,command=").Output()
+	if err != nil {
+		return nil, err
+	}
+	return ParsePSCommands(string(out)), nil
+}
+
+// Terminate: sürece SIGTERM gönderir (yoksa/izin yoksa hata).
+func Terminate(pid int) error { return syscall.Kill(pid, syscall.SIGTERM) }
+
 // DiskUsage: path'in bulunduğu birimin toplam ve boş bayt sayısı.
 func DiskUsage(path string) (total, free uint64, ok bool) {
 	var st syscall.Statfs_t
