@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+## [4.0.15] - 2026-11-15
+
+Birleşik `utility` paketinde Uygulama kataloğu geri geldi.
+
 ### Düzeltildi
 - Birleşik `utility` paketinde (0.2.0+) kaybolan **Uygulama kataloğu** (Docker, nginx, MariaDB, Redis kartları; Kurulu/Kurulabilir süzgeci; genel ayarlar) geri geldi: `kurulum_durum` eylemi olan utility paketi için çizilir, kurulu bilgisi o eylemden okunur; paketin kendi kartları (bilgi, değişkenler, Son durum) katalogun altında görünür.
 
