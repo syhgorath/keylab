@@ -1,7 +1,7 @@
 /* KeyLab — Sunucu sayfası: başlık düğmeleri, sekmeler, Özet (durum, Lynis, hazırlık), paket sekmesi (Lynis kahramanı, Son durum,
    değişken kartı, eylem kartları + süzgeç), yazılım kataloğu (`items`), adres düzenleme, port knocking bağlantısı, openServer.
    app.js'ten çıkarıldı (refaktör 5d), kod BİREBİR; dış bağlantılar hooks ile. Testler: go/webtest/server1-3.test.js + sayfa görüntüleri */
-import { $, $$, esc, json, toast, ago, localTime, isOk } from "../lib/util.js";
+import { $, $$, t, esc, json, toast, ago, localTime, isOk } from "../lib/util.js";
 import { appState } from "../state.js";
 import { TAB_LABEL } from "../lib/labels.js";
 import { OS_LABEL, osIcon } from "../lib/icons.js";
@@ -82,11 +82,13 @@ export function initServer(hooks) {
   function renderOzet(s, pk) {
     const k = (appState.srv && appState.srv.knock) || {}, pr = (appState.srv && appState.srv.prep) || {};
     const knockOn = !!k.enabled;
+    // MİSAFİR MOD (USB): Keychain kullanılmaz → "Keychain parolası" adımı yerine şifreli kasa yönlendirmesi; knock dizisi saklanamaz (bkz. Ayarlar > Bu Mac'te Keychain)
+    const guest = !!appState.guest, inVault = (appState.vaultStored || []).includes(appState.srvName);
     // adım durumları (yalnızca bu bilgisayarda bilinenler; "sunucuya gönderildi mi" bağlanmadan bilinemez)
     const steps = [
       ["keygen", s.hasKey ? "ok" : "todo"],
       ["sshadd", !s.hasKey ? "idle" : pr.agent ? "ok" : "todo"],
-      ["keychain", !s.hasKey ? "idle" : pr.passphrase ? "ok" : "todo"],
+      guest ? ["vault", !s.hasKey ? "idle" : inVault ? "ok" : "idle"] : ["keychain", !s.hasKey ? "idle" : pr.passphrase ? "ok" : "todo"],
       ...(knockOn ? [["knock", k.hasSeq ? "ok" : "warn"]] : []),
     ];
     const done = steps.filter(x => x[1] === "ok").length;
@@ -94,9 +96,11 @@ export function initServer(hooks) {
     const prep = [
       prepRow(1, s.hasKey ? "ok" : "todo", "SSH anahtarı", s.hasKey ? "var" : "", s.hasKey ? "Anahtar bu sunucunun klasöründe mevcut." : "Yeni bir ed25519 anahtarı üretir (var olan anahtarın üzerine yazılmaz).", s.hasKey ? "" : btn("keygen", "Anahtar üret")),
       prepRow(2, "idle", "Anahtarı sunucuya gönder", "", 'Genel anahtarı sunucudaki <span class="mono">authorized_keys</span> dosyasına ekler (ssh-copy-id). Sunucuda olup olmadığı bağlanmadan bilinemez.', s.hasKey ? btn("keycopy", "Gönder…") : ""),
-      prepRow(3, steps[1][1], "ssh-agent'a ekle", pr.agent ? "ajanda" : "", "Eylemlerin parola sormadan bağlanması için anahtarı ajana yükler (macOS Keychain).", s.hasKey ? btn("sshadd", pr.agent ? "Yeniden ekle…" : "Ekle…") : ""),
-      prepRow(4, steps[2][1], "Keychain parolası", pr.passphrase ? "bu Mac'te kayıtlı" : "", "Anahtarın passphrase'ini Keychain'e kaydeder, günceller ya da siler (parolasız anahtarda gerekmez).", s.hasKey ? btn("keychain", "Ayarla…") : ""),
-      prepRow(5, knockOn ? (k.hasSeq ? "ok" : "warn") : "idle", "Port knocking", knockOn ? (k.hasSeq ? esc(k.hint || "dizi kayıtlı") : "bu Mac'te dizi yok") : "", knockOn ? (k.hasSeq ? `Açık · ${esc(k.proto)}, ${esc(k.delay)} ms. Bağlanmadan önce otomatik gönderilir.` : "Knock açık ama dizi bu bilgisayarın Keychain'inde yok; yeniden girin.") : "Sunucu SSH portunu knock dizisiyle açıyorsa (isteğe bağlı).", btn("knock", knockOn ? "Değiştir…" : "Ayarla…")),
+      prepRow(3, steps[1][1], "ssh-agent'a ekle", pr.agent ? "ajanda" : "", guest ? t("srv_sshadd_guest", "Eylemlerin parola sormadan bağlanması için anahtarı bu oturumun özel ajanına yükler. Passphrase terminalde sorulur; şifreli kasaya eklediyseniz açılışta kendiliğinden yüklenir.") : "Eylemlerin parola sormadan bağlanması için anahtarı ajana yükler (macOS Keychain).", s.hasKey ? btn("sshadd", pr.agent ? "Yeniden ekle…" : "Ekle…") : ""),
+      guest
+        ? prepRow(4, steps[2][1], t("srv_vault_title", "Passphrase (şifreli kasa)"), inVault ? t("srv_vault_in", "kasada kayıtlı") : "", t("srv_vault_desc", "Misafir (USB) modda Keychain kullanılmaz. Passphrase'i Ayarlar > Şifreli passphrase kasası'ndan ekleyin: açılışta ana parolayı yazınca anahtar kendiliğinden ajana yüklenir. Keychain'i kendi güvendiğiniz Mac'inizde Ayarlar > Bu Mac'te Keychain ile açabilirsiniz."), `<button class="btn sm" data-go-settings>${esc(t("srv_vault_go", "Kasaya git"))}</button>`)
+        : prepRow(4, steps[2][1], "Keychain parolası", pr.passphrase ? "bu Mac'te kayıtlı" : "", "Anahtarın passphrase'ini Keychain'e kaydeder, günceller ya da siler (parolasız anahtarda gerekmez).", s.hasKey ? btn("keychain", "Ayarla…") : ""),
+      prepRow(5, knockOn ? (k.hasSeq ? "ok" : "warn") : "idle", "Port knocking", knockOn ? (k.hasSeq ? esc(k.hint || "dizi kayıtlı") : "bu Mac'te dizi yok") : "", guest ? t("srv_knock_guest", "Misafir (USB) modda knock dizisi saklanamaz (Keychain yok): knock gerektiren sunucuya bağlanmak için Ayarlar > Bu Mac'te Keychain ile güvendiğiniz Mac'te Keychain'i açın.") : knockOn ? (k.hasSeq ? `Açık · ${esc(k.proto)}, ${esc(k.delay)} ms. Bağlanmadan önce otomatik gönderilir.` : "Knock açık ama dizi bu bilgisayarın Keychain'inde yok; yeniden girin.") : "Sunucu SSH portunu knock dizisiyle açıyorsa (isteğe bağlı).", guest ? "" : btn("knock", knockOn ? "Değiştir…" : "Ayarla…")),
     ].join("");
     const test = pk.some(p => p.id === "utility") ? `<div class="prep-test"><div class="prep-dot test" aria-hidden="true">⚡</div><div class="prep-txt"><div class="prep-title">Bağlantıyı dene</div><div class="small muted">Salt okunur <span class="mono">utility durum</span> çalıştırır: ssh bağlantısı, platform ve saat denetlenir.</div></div><button class="btn primary" data-test ${s.valid && s.hasKey ? "" : "disabled"}>Dene ve doğrula</button></div>` : "";
 
@@ -117,10 +121,11 @@ export function initServer(hooks) {
       <div class="card oz-card"><div class="oz-top"><span class="oz-title">Son işlemler</span></div><div class="oz-body">${rec}</div>
         <div class="oz-foot oz-foot-row"><span></span><button class="link" data-go-logs>Bu sunucunun günlükleri →</button></div></div>
     </div>
-    <div class="card prep-card"><div class="prep-head"><div><h2>Bağlantı hazırlığı</h2><div class="small muted">Her adım isteğe bağlıdır ve yeniden yapılabilir.</div></div><span class="prep-count" title="Anahtar, ajan, Keychain parolası${knockOn ? " ve knock" : ""} sayılır; ssh-copy-id sayılmaz">${done}/${steps.length} adım hazır</span></div>
+    <div class="card prep-card"><div class="prep-head"><div><h2>Bağlantı hazırlığı</h2><div class="small muted">Her adım isteğe bağlıdır ve yeniden yapılabilir.</div></div><span class="prep-count" title="${guest ? "Anahtar, ajan ve şifreli kasadaki passphrase" : "Anahtar, ajan, Keychain parolası"}${knockOn ? " ve knock" : ""} sayılır; ssh-copy-id sayılmaz">${done}/${steps.length} adım hazır</span></div>
       <div class="prep-list">${prep}${test}</div></div>`;
 
     $$("#srv-body [data-goto]").forEach(b => b.addEventListener("click", () => { appState.srvTab = b.dataset.goto; history.replaceState(null, "", `#s=${encodeURIComponent(appState.srvName)}&p=${encodeURIComponent(appState.srvTab)}`); renderServer(); }));
+    $("#srv-body [data-go-settings]")?.addEventListener("click", () => showView("settings"));
     $("#srv-body [data-go-logs]")?.addEventListener("click", () => goLogs(appState.srvName));
     $("#srv-body [data-go-lynis]")?.addEventListener("click", () => goLynis(appState.srvName, s.lynis && s.lynis.warnings > 0 ? "uyari" : "all"));
     $$("#srv-body [data-task]").forEach(b => b.addEventListener("click", () => (b.dataset.task === "knock" ? openKnock(appState.srvName) : openTask(appState.srvName, b.dataset.task))));

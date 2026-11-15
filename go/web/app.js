@@ -430,7 +430,12 @@ import { appState } from "./js/state.js";
   });
 
   /* ---------------- Başlangıç ---------------- */
-  json("/api/about").then(a => { appState.askAvail = !!a.askpass; paintAsk(); }).catch(() => {});
+  window.addEventListener("keylab:vaultstate", () => { if (appState.view === "server" && appState.srv) renderServer(); }); // "kasada kayıtlı" rozeti
+  // guest: misafir (USB) mod — Keychain kullanılmaz; sunucu sayfası ve ekleme sihirbazı Keychain adımları yerine şifreli kasa yönlendirmesi gösterir
+  json("/api/about").then(a => {
+    appState.askAvail = !!a.askpass; paintAsk();
+    const g = !!a.guest; if (g !== !!appState.guest) { appState.guest = g; if (appState.view === "server" && appState.srv) renderServer(); }
+  }).catch(() => {});
   const startHash = new URLSearchParams(location.hash.slice(1)); // showView adres çubuğundaki #s=… kısmını siler: ÖNCE oku
   appState.routing = true; showView(VIEWS.includes(startHash.get("v")) ? startHash.get("v") : "dash"); appState.routing = false;
   load().then(() => {
