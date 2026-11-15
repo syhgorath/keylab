@@ -110,6 +110,8 @@ type App struct {
 	mu          sync.Mutex
 	jmu         sync.Mutex // eylem işleri
 	vmu         sync.Mutex // değişken dosyası yazımı
+	vmOnce      sync.Once  // şifreli passphrase kasası yöneticisi (bkz. vaultmgr.go)
+	vm          *vaultMgr
 	jobs        map[string]*Job
 	bmu         sync.Mutex         // toplu işlem durumu
 	batch       *Batch             // son/çalışan toplu işlem

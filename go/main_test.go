@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"keylab/internal/runner"
 )
 
 func TestClassify(t *testing.T) {
@@ -590,6 +592,9 @@ func TestAuthorizeDestructive(t *testing.T) {
 
 // Alt komutlar (keycopy, server-remove) test ikilisinin kendisiyle pty altında çalışır.
 func TestMain(m *testing.M) {
+	if handled, code := runner.AskpassMain(os.Stdout); handled { // test ikilisi SSH_ASKPASS olarak çağrılabilir (kasa uçtan uca testi)
+		os.Exit(code)
+	}
 	if code, ok := subcommand(os.Args[1:]); ok {
 		os.Exit(code)
 	}

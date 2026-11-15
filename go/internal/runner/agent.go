@@ -205,6 +205,17 @@ func AskpassMain(stdout io.Writer) (handled bool, code int) {
 	if os.Getenv("SSHPOCKET_ASKPASS") != "1" {
 		return false, 0
 	}
+	// kasa yolu: passphrase 0600 geçici dosyada (KeyLab yazar); ilk çağrıda okunur ve SİLİNİR, sonraki çağrılar boş cevap verir (ssh-add vazgeçer)
+	if f := os.Getenv("SSHPOCKET_ASKPASS_FILE"); f != "" {
+		b, err := os.ReadFile(f)
+		_ = os.Remove(f)
+		if err != nil {
+			fmt.Fprintln(stdout)
+			return true, 0
+		}
+		fmt.Fprintln(stdout, strings.TrimRight(string(b), "\r\n"))
+		return true, 0
+	}
 	if st := os.Getenv(askpassEnv); st != "" {
 		if _, err := os.Lstat(st); err == nil {
 			fmt.Fprintln(stdout)

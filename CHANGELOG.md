@@ -5,6 +5,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Eklendi
+- **Dahili: kasa yöneticisi ve API'si** (arayüzü sonraki dilimde; şimdilik kasa oluşturan bir ekran olmadığı için kullanıcıya görünür değişiklik yok): yalnız taşınabilir/misafir modda etkin. `GET /api/vault` (durum; sır içermez), `POST /api/vault/{create,unlock,lock,passphrase,passphrase/delete,password}`. Ana parola kasayı açar ve kasadaki passphrase'ler **özel ssh-agent'a** yüklenir (eylemler anahtarı ajanda bulur); kilitlenince (elle ya da boşta, varsayılan 15 dk, `KEYLAB_VAULT_IDLE_MIN`, 0 = kapalı) kasa belleği sıfırlanır ve özel ajandaki anahtarlar silinir; çalışan görevler öldürülmez. Yanlış ana parola denemeleri artan beklemeyle yavaşlatılır (1, 2, 4 … 30 sn; beklemede doğru parola bile reddedilir). Kasa dosyası var ve kilitliyse tüm uçlar 423 verir (kasa uçları ve çıkış hariç). Kasaya eklenen passphrase önce gerçek `ssh-add` ile doğrulanır (yanlışsa kaydedilmez). Passphrase `ssh-add`'e SSH_ASKPASS ile 0600 geçici dosyadan, tek okumalık ve hemen silinerek verilir (komut satırında/ortamda yok). Gerçek `ssh-keygen`/`ssh-agent`/`ssh-add` ile uçtan uca test edildi; gerçek sunucu ve USB ile denenmedi.
+
+### Eklendi
 - **Dahili: şifreli sır kasası çekirdeği** (`internal/vault`; henüz arayüze/ajana bağlı DEĞİL, kullanıcıya görünür değişiklik yok): ana parolayla şifrelenen küçük kasa (SSH anahtar passphrase'leri için, USB'de durur). PBKDF2-HMAC-SHA256 (600k tur, rastgele tuz) + AES-256-GCM; başlık kimlik doğrulamasına dahil (kurcalanan dosya açılmaz), her kayıtta yeni nonce, düz metin 1 KiB katlarına doldurulur, dosya 0600 ve atomik yazılır, kilitlenince anahtar sıfırlanır; ana parola değiştirilebilir. Yeni bağımlılık yok (standart kütüphane). Sonraki dilimler: açılışta ana parola (giriş) ve anahtarların özel ajana yüklenmesi, Ayarlar'da "güvendiğim Mac'te Keychain" seçeneği. 11 test + mutasyon kontrolü.
 
 ## [4.0.5] - 2026-11-15
