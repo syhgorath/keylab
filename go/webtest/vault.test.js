@@ -107,7 +107,7 @@ test("kasa: Ayarlar kartı açıkken passphrase ekler/siler, kilitler; yanıt ha
   assert.match(h.$("#vault-msg").textContent, /kaydedilmedi/); assert.equal(h.$("#vault-pp").value, ""); assert.equal(h.$("#vault-msg").classList.contains("bad"), true);
   await fill(h, "#vault-pp", "doğru"); await h.click("#vault-add"); await h.settle();
   assert.deepEqual(posts(h, "/api/vault/passphrase").map(b => [b.server, b.passphrase]), [[srv, "yanlış"], [srv, "doğru"]]);
-  assert.match(h.$("#vault-msg").textContent, /kasaya eklendi/); assert.equal(h.$("#vault-stored").textContent.includes(srv), true);
+  assert.match(h.$("#vault-msg").textContent, /passphrase eklendi ve anahtar ajana yüklendi/); assert.equal(h.$("#vault-stored").textContent.includes(srv), true);
   await h.click('#vault-stored button[data-srv]'); await h.settle();
   assert.deepEqual(posts(h, "/api/vault/passphrase/delete"), [{ server: srv }]); assert.match(h.$("#vault-msg").textContent, /silindi/);
   await h.click("#vault-lock-btn"); await h.settle();

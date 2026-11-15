@@ -432,12 +432,17 @@ func (s *Servers) KeychainManage(name string) int {
 	return 0
 }
 
-// SendKnock: bağlanmadan önce knock gönderir (etkin değilse hiçbir şey yapmaz).
+// SendKnock: bağlanmadan önce knock gönderir (etkin değilse hiçbir şey yapmaz). Dizi platform.Default() deposundadır (Keychain).
 func SendKnock(ctx context.Context, serversDir, name string) error {
+	return SendKnockWith(ctx, platform.Default(), serversDir, name)
+}
+
+// SendKnockWith: SendKnock, ama dizi verilen depodan okunur (misafir modda şifreli kasa).
+func SendKnockWith(ctx context.Context, kc platform.Secrets, serversDir, name string) error {
 	if !servers.NameValid(name) {
 		return fmt.Errorf("geçersiz sunucu adı")
 	}
 	dir := filepath.Join(serversDir, name)
 	ip, _ := servers.Get(dir, "IP")
-	return servers.PreConnect(ctx, platform.Default(), dir, servers.Prefix(name), ip)
+	return servers.PreConnect(ctx, kc, dir, servers.Prefix(name), ip)
 }

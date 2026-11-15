@@ -309,7 +309,8 @@
             <div class="flabel" data-i18n="vault_stored_h">Kasadaki passphrase'ler</div>
             <ul class="vault-list" id="vault-stored"></ul>
             <div class="frow2"><select id="vault-srv" aria-label="Sunucu" data-i18n-aria="vault_srv"></select><input type="password" id="vault-pp" class="vault-pp" autocomplete="off" spellcheck="false" placeholder="Anahtar passphrase'i" data-i18n-placeholder="vault_pp_ph" aria-label="Anahtar passphrase'i" data-i18n-aria="vault_pp_ph"><button class="btn sm" id="vault-add" type="button" data-i18n="vault_add">Kasaya ekle</button></div>
-            <div class="hint small muted" data-i18n="vault_add_hint">Eklenen passphrase önce anahtarı gerçekten açıyor mu diye denenir; yanlışsa kaydedilmez.</div>
+            <div class="frow2"><input type="password" id="vault-knock" class="vault-pp" autocomplete="off" spellcheck="false" placeholder="Knock dizisi (isteğe bağlı): ör. 7000,8000,9000" data-i18n-placeholder="vault_knock_ph" aria-label="Knock dizisi" data-i18n-aria="vault_knock_ph" data-lpignore="true" data-1p-ignore="true"></div>
+            <div class="hint small muted" data-i18n="vault_add_hint">Eklenen passphrase önce anahtarı gerçekten açıyor mu diye denenir; yanlışsa kaydedilmez. Knock dizisini de yazarsanız (sunucu SSH portunu port vuruşuyla açıyorsa) kasaya o da eklenir; ikisi de isteğe bağlıdır.</div>
             <div class="frow2"><span class="small muted" id="vault-idle"></span><button class="btn sm" id="vault-lock-now" type="button" data-i18n="vault_lock_now">Şimdi kilitle</button></div>
             <details class="vault-chg"><summary data-i18n="vault_chg">Ana parolayı değiştir</summary>
               <div class="field"><label for="vault-old-pw" data-i18n="vault_old">Mevcut ana parola</label><input type="password" id="vault-old-pw" autocomplete="current-password" spellcheck="false"></div>

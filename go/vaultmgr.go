@@ -83,6 +83,7 @@ type vaultStatus struct {
 	Unlocked   bool     `json:"unlocked"`
 	RetryAfter int      `json:"retryAfter"`
 	Stored     []string `json:"stored,omitempty"` // passphrase'i kasada olan sunucular (yalnız açıkken; değerler asla)
+	Knock      []string `json:"knock,omitempty"`  // knock dizisi kasada olan sunucular (yalnız açıkken; dizi asla)
 	IdleMin    int      `json:"idleMin"`
 }
 
@@ -102,6 +103,9 @@ func (m *vaultMgr) status() vaultStatus {
 		for _, n := range servers.Names(m.serversDir) {
 			if _, ok := m.v.Get(servers.PassphraseAccount(servers.Prefix(n))); ok {
 				st.Stored = append(st.Stored, n)
+			}
+			if _, ok := m.v.Get(servers.KnockAccount(servers.Prefix(n))); ok {
+				st.Knock = append(st.Knock, n)
 			}
 		}
 	}

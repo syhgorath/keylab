@@ -1,6 +1,6 @@
 package main
 
-// Misafir (taşınabilir) mod: Keychain kullanılmaz; knock dizisi kaydedilemez (anlaşılır hata), /api/about modu bildirir, hiçbir `security` çağrılmaz.
+// Misafir (taşınabilir) mod: Keychain kullanılmaz; knock dizisi şifreli kasada tutulur (kasa yokken anlaşılır hata, Keychain'e yazılmaz), /api/about modu bildirir, hiçbir `security` çağrılmaz.
 
 import (
 	"os"
@@ -11,13 +11,13 @@ import (
 	"keylab/internal/platform"
 )
 
-func TestKnockSaveRefusedInGuestMode(t *testing.T) {
+func TestKnockSaveNeedsVaultInGuestMode(t *testing.T) {
 	app, kc := knockApp(t, "IP=192.0.2.9\nUSER=u\nPORT=22\n")
 	platform.SetGuestMode(true)
 	t.Cleanup(func() { platform.SetGuestMode(false) })
 
 	w := call(app, "POST", "/api/knock", `{"name":"kn","action":"save","proto":"tcp","delay":"300","seq":"7001,7002,7003"}`, xhr)
-	if w.Code != 409 || !strings.Contains(w.Body.String(), "taşınabilir modda kaydedilemez") {
+	if w.Code != 409 || !strings.Contains(w.Body.String(), "şifreli kasada tutulur") {
 		t.Fatalf("misafirde knock kaydı: %d %s", w.Code, w.Body)
 	}
 	if b, _ := os.ReadFile(kc); len(b) != 0 {
