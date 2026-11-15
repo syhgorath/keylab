@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- Gömülü kilitte `utility` paketinin deposu `syhgorath/utility` oldu (kurulum reposu GitHub'da `utility` adını aldı; eski utility reposu `utility-old` olarak arşivlendi). Eski kilitlerde de bu ad yazdığı için mevcut kurulumlarda kilit geçişi gerekmez.
+
 ## [4.0.13] - 2026-11-15
 
 Uygulama içi güncelleme USB'den (exFAT/FAT) çalışırken düzeldi. Bu düzeltme kurulu sürümün koduyla çalıştığı için 4.0.12'den güncelleme yine takılır: 4.0.13 bir kez elle kurulmalı, sonraki güncellemeler Ayarlar > Güncelleme'den çalışmalı.
