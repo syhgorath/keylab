@@ -247,6 +247,7 @@ func main() {
 			} else {
 				os.Setenv("SSH_AUTH_SOCK", sock)
 				platform.SetGuestMode(true)
+				sweepWebKitNow() // önceki oturumdan (Cmd+Q/çökme) kalan pencere verisi
 				agentStop = stop
 				fmt.Println("taşınabilir mod: özel ssh-agent (anahtarlar yalnız bu oturumda), Keychain kullanılmıyor")
 			}
@@ -272,6 +273,7 @@ func main() {
 		<-sigc
 		app.killAllTerms()
 		app.runCleanups()
+		sweepWebKitNow()
 		os.Exit(130)
 	}()
 
@@ -757,6 +759,7 @@ func main() {
 		runWindow(fmt.Sprintf("http://%s/?b=%s", app.host, app.bootTok), "KeyLab") // ana iş parçacığında bloklar; pencere kapanınca döner
 		app.killAllTerms()
 		app.runCleanups()
+		sweepWebKitNow() // pencere kapandı: WebKit'in yazdığı veri artık silinebilir
 		os.Exit(0)
 	}
 	if !*noOpen && platform.DefaultBrowser().Supported() {

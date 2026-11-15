@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- Misafir (USB) modda gömülü pencerenin bu bilgisayarda bıraktığı WebKit verisi (`~/Library/WebKit/io.github.syhgorath.keylab`, `~/Library/Caches/io.github.syhgorath.keylab`) pencere kapanınca, Çıkış'ta ve her açılışta (Cmd+Q/çökme artıkları) silinir. Güvenilir/kurulu modda dokunulmaz.
+
 ## [4.0.11] - 2026-11-15
 
 Uygulama içi güncelleme ve sürüm gösterimi.

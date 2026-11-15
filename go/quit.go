@@ -220,6 +220,9 @@ func (a *App) quitPause() {
 
 func (a *App) exitNow() {
 	a.runCleanups() // (adımlarda zaten çalıştı; sinyalle gelen çıkışlar için güvence)
+	if a.exitFn == nil {
+		sweepWebKitNow() // süreç bitmeden hemen önce: pencere verisi (misafir modda)
+	}
 	if a.exitFn != nil {
 		a.exitFn()
 		return
