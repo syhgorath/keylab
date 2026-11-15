@@ -8,15 +8,9 @@
 # signers = sshpocket-component namespaces="sshpocket-component" ssh-ed25519 <açık anahtar>
 
 [utility]
-repo = syhgorath/utility
-version = 0.1.0
-sha256 = a10e7c3d85ab14a1372ab94e2b2a7b0815613fa28f3d3cc64eb0dd9db8f3789d
-signers = sshpocket-component namespaces="sshpocket-component" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKVJS3mGlCaOT/l8XfR0TxuKxqLUs6PpVDa9TYqm0fLn
-
-[kurulum]
 repo = syhgorath/kurulum
-version = 0.1.0
-sha256 = 997ee2088c8566f8111d37afe537fee675a10eb24ca986aa0dfbb674b3eee3b3
+version = 0.2.0
+sha256 = 680469ce7d1c4828044de308115b6893a07abd4deac56470d6f7f5c9b4da4423
 signers = sshpocket-component namespaces="sshpocket-component" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKVJS3mGlCaOT/l8XfR0TxuKxqLUs6PpVDa9TYqm0fLn
 
 [linux-hardening]
