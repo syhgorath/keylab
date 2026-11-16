@@ -1,0 +1,23 @@
+kimlik	risk	tur	aciklama	ayrinti	oneri	alan	deger	kapanir_varsayilan	platform
+DEB-0810	bilinmiyor	oneri	Install apt-listbugs to display a list of critical bugs prior to each APT installation.						hepsi
+DEB-0831	bilinmiyor	oneri	Install needrestart, alternatively to debian-goodies, so that you can run needrestart after upgrades to determine which daemons are using old versions of libraries and need restarting.						hepsi
+BOOT-5180	bilinmiyor	oneri	Determine runlevel and services at startup						hepsi
+BOOT-5264	bilinmiyor	oneri	Consider hardening system services	Run '/usr/bin/systemd-analyze security SERVICE' for each service					hepsi
+KRNL-5788	bilinmiyor	oneri	Determine why /vmlinuz or /boot/vmlinuz is missing on this Debian/Ubuntu system.	/vmlinuz or /boot/vmlinuz					hepsi
+AUTH-9284	bilinmiyor	oneri	Look at the locked accounts and consider removing them						hepsi
+FILE-6310	bilinmiyor	oneri	To decrease the impact of a full /home file system, place /home on a separate partition						hepsi
+FILE-6310	bilinmiyor	oneri	To decrease the impact of a full /var file system, place /var on a separate partition						hepsi
+NAME-4028	bilinmiyor	oneri	Check DNS configuration for the dns domain name						hepsi
+PKGS-7388	bilinmiyor	uyari	Can't find any security repository in /etc/apt/sources.list or sources.list.d directory						hepsi
+PKGS-7392	bilinmiyor	uyari	Found one or more vulnerable packages.			base	hardening_apt_upgrade=true	hayir	hepsi
+PKGS-7392	bilinmiyor	oneri	Update your system with apt-get update, apt-get upgrade, apt-get dist-upgrade and/or unattended-upgrades			base	hardening_apt_upgrade=true	hayir	hepsi
+FIRE-4513	bilinmiyor	oneri	Check iptables rules to see which rules are currently not used						hepsi
+SSH-7408	bilinmiyor	oneri	Consider hardening SSH configuration	MaxSessions (set 4 to 2)					hepsi
+SSH-7408	bilinmiyor	oneri	Consider hardening SSH configuration	Port (set 22 to )					hepsi
+LOGG-2154	bilinmiyor	oneri	Enable logging to an external logging host for archiving purposes and additional protection						hepsi
+ACCT-9626	bilinmiyor	oneri	Enable sysstat to collect accounting (no results)						hepsi
+ACCT-9628	bilinmiyor	oneri	Enable auditd to collect audit information						hepsi
+FINT-4402	bilinmiyor	oneri	Use SHA256 or SHA512 to create checksums in AIDE						hepsi
+TOOL-5002	bilinmiyor	oneri	Determine if automation tools are present for system management						hepsi
+KRNL-6000	bilinmiyor	oneri	One or more sysctl values differ from the scan profile and could be tweaked		Change sysctl value or disable test (skip-test=KRNL-6000:<sysctl-key>)				hepsi
+HRDN-7230	bilinmiyor	oneri	Harden the system by installing at least one malware scanner, to perform periodic file system scans		Install a tool like rkhunter, chkrootkit, OSSEC, Wazuh	base	hardening_malware_scanner=rkhunter	hayir	hepsi
