@@ -1,5 +1,7 @@
 # Tasarım: kilit kanalı (paket sürümü için sshpocket sürümü gerekmesin)
 
+> **Güncel durum (2026-11-15): UYGULANDI.** Bu tasarım imzalı paket indeksi olarak hayata geçti: `syhgorath/sshpocket-index` deposu ve KeyLab'ın indeks istemcisi (bkz. [package-index.md](package-index.md)). Paket sürümü artık yeni bir sshpocket/KeyLab sürümü gerektirmez (repo adresi değişmedikçe; kilit bir paketi bir repoya sabitler). Aşağıdaki metin tasarım tarihçesidir.
+>
 > **Durum (2026-10-17): TASARIM, §9 kararları ALINDI, kod yok.** Kodlama zamanı ayrıca kararlaştırılır (§11 sırasıyla, küçük PR'lar).
 
 ## 1. Sorun

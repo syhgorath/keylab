@@ -1,8 +1,8 @@
 # sshpocket GUI standardı (Go denemesi)
 
-Durum: **taslak v0.1**, yalnızca yerelde (`go/` klasörü GitHub dışında). Bu belge, GUI'ye eklenecek her ekranın uyacağı kuralları yazar. "ZORUNLU" olanlar pazarlık konusu değildir; "ÖNERİ" olanlar gerekçeyle esnetilebilir.
+Durum: **v0.1, yaşayan belge**; `go/` klasörü depodadır (KeyLab 4.x'in kaynağı). Arayüz ES modüllerine bölünmüştür (`web/js/`; `app.js` bunları birleştirir); CSP gereği satır içi stil yoktur (`style-src-attr 'none'`). Bu belge, GUI'ye eklenecek her ekranın uyacağı kuralları yazar. "ZORUNLU" olanlar pazarlık konusu değildir; "ÖNERİ" olanlar gerekçeyle esnetilebilir.
 
-Kod haritası: `main.go` (arka uç, salt okunur API) · `web/index.html` (iskelet) · `web/app.js` (çizim ve etkileşim) · `web/tasarim.css` (tasarım jetonları ve bileşenler).
+Kod haritası: `main.go` (arka uç ve API; temalara bölünmüş `*.go` dosyaları) · `web/index.html` (iskelet) · `web/app.js` + `web/js/` (çizim ve etkileşim, ES modülleri) · `web/tasarim.css` (tasarım jetonları ve bileşenler; `[hidden]{display:none !important}` kuralı dosyanın EN SONUNDA kalır) · `internal/platform` (işletim sistemine özgü kod yalnız burada) · testler: `go test ./...` ve `go/webtest` (jsdom, `npm test`).
 
 ---
 

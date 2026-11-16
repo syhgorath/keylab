@@ -12,7 +12,9 @@ sshpocket'in hangi ortamlarda **gerçekten** denendiğini ve neyin denenmediğin
 | Hedef sunucu: Ubuntu 26.04.1 (linux-hardening) | ✅ gerçek VM'de taze kurulum: Lynis 58 → 76, ikinci koşu `changed=0`, parolalı sudo-rs |
 | Hedef sunucu: Proxmox VE 9 (Debian 13, bir VM içinde; linux-hardening `proxmox-host` platformu) | ✅ `apply` ve `audit` (Lynis 82–84), `pve_firewall_preview` / `pve_firewall_apply` (geri alma güvenlik ağı kuruldu → yeni ssh bağlantısı ve web arayüzü doğrulandı → kapatıldı; ikinci önizleme `changed=0`), web arayüzü ve CT oluşturma sorunsuz. ⚠️ Kümeli Proxmox, gerçek donanım denenmedi; Raspberry Pi denenmedi |
 
-Apple Silicon'da veya yeni macOS'ta bir sorun görürseniz lütfen issue açın (macOS sürümü, `uname -m` ve `bash --version` çıktısıyla).
+> Yukarıdaki satırlar (bash, Intel, `--doctor`, `start.command`, fzf menüsü) **kabuk dönemine (4.0 öncesi)** aittir; tarihçe olarak durur. Güncel Go sürümü (KeyLab 4.x) yalnızca macOS 27 / Apple Silicon hedefler.
+
+Apple Silicon'da veya yeni macOS'ta bir sorun görürseniz lütfen issue açın (macOS sürümü ve `uname -m` çıktısıyla).
 
 ## KeyLab uygulaması (4.0.x): gerçek ortamda neler denenmedi
 

@@ -1,5 +1,7 @@
 # Tasarım: arayüz (UI), fzf ve teknoloji alternatifleri
 
+> **Güncel durum (2026-11-15): bu belge kabuk dönemine (3.x) aittir ve tarihçe olarak durur.** Terminal menüsü (fzf dâhil) Go sürümüne bilerek taşınmadı; KeyLab 4.x arayüzü yerel web arayüzüdür (gömülü pencere). Güncel arayüz kuralları: `go/STANDART.md`.
+>
 > **Durum (2026-10-17): UYGULANDI** (3.1-3.6): başlık/ekmek kırıntısı/ipucu, ok tuşlu seçici, ⚙️ Ayarlar, durum göstergesi varsayılan açık, `q` = geri,
 > menü açıklamaları, **sistemdeki fzf** arka ucu ve (3.6) sunucu menüsünde **🛡️ Paketler** (Hazırlık bloğu, Değişkenler, ağ editörü, Geçmiş; aynı seçici ve açıklama satırlarıyla;
 > ok tuşlu ve numaralı mod Docker LAB'ında gerçek `Main.sh` ile gezildi). **Kalan:** fzf'i USB'ye gömme (aşağıdaki §5 'USB ikilisi' maddeleri hâlâ geçerli, indirme + sha256 sabitleme +
