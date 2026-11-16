@@ -1,5 +1,7 @@
 # Taslak: `utility` paketi (saat dilimi, locale, NTP)
 
+> **GÜNCEL DURUM (2026-11-15): bu belge tarihsel bir taslaktır.** Paket yazıldı ve eski `kurulum` paketiyle **birleşti**: kimlik `utility`, v0.2.0 (saat dilimi, locale, NTP + `ntp_durum`/`ntp_ayarla` + uygulama kurulumu). Proxmox'ta yazan eylemler reddedilir (`ntp_durum` yalnız okur). Güncel sözleşme: [package-standard.md](package-standard.md).
+
 > **Durum: TASLAK, kararlar verildi (2026-11-05, kullanıcı), kod yok.** Hazırlayan: sshpocket oturumu; linux-hardening tarafının görüşü koordinatör oturumu üzerinden alındı.
 > Kararlar §10'da; yazım işi ayrı bir oturuma verilir (bkz. `utility-yeni-oturum-brief.md`). Standart: [package-standard.md](package-standard.md) (§12 kontrol listesi bölüm 9'da eşlenmiştir).
 

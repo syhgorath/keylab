@@ -1,5 +1,7 @@
 # Öneri: `kurulum` paketine `items` bildirimi (0.1.1)
 
+> **GÜNCEL DURUM (2026-11-15): öneri hâlâ geçerli, ama uygulanmadı.** `kurulum` artık ayrı bir paket değil; içeriği `utility` (0.2.0) içinde. Bu `items` bloğu **`utility`** paketine eklenmelidir (öğe eylemleri `kurulum_onizle`/`kur`/`yukselt`/`kaldir`, durum eylemi `kurulum_durum`); eklenene dek arayüz yerleşik dört uygulama listesini kullanır ve kart düğmeleri kapalıdır (bkz. package-standard.md, katalog uyumluluk notu).
+
 Arayüzün genel katalog sayfası (bkz. `docs/package-standard.md`, "Katalog sayfası") `kurulum` için şimdilik yerleşik bir listeyle çalışır.
 Paket `items` bildirince yerleşik liste devre dışı kalır ve kartlar manifestten gelir. Aşağıdaki alanlar `component.json`'a **üst düzeyde** eklenir
 (`vars`/`actions` değişmez, `sshpocket_api` artmaz). Bu blok kurulum 0.1.0'ın kopyasında `keylab components validate` ile denendi: **✅ uyumlu**.

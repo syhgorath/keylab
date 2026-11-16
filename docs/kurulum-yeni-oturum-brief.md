@@ -1,5 +1,7 @@
 # İş tarifi: `kurulum` paketini yaz (Kurulum merkezi, v0.x)
 
+> **GÜNCEL DURUM (2026-11-15): tarihsel iş tarifi; iş bitti.** `kurulum` paketi yazıldı, sonra `utility` ile birleşip kimliği `utility` oldu (v0.2.0). Yeni iş için bu belgeyi yönerge olarak kullanmayın.
+
 > Bu belge kendi başına yeter. **Önce kullanıcı onayı gerekir** (taslak §9 açık soruları); onaydan sonra yeni oturum için yazıldı (2026-11-05).
 > Karar sahibi: kullanıcı (Ziya, Türkçe çalışır; kısa, tablolu yanıt; komutlar ayrı kod bloklarında). Köprü: **sshpocket koordinatör** oturumu (sshpocket ve linux-hardening oturumlarıyla seni o bağlar).
 
