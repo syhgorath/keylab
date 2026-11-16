@@ -1,6 +1,6 @@
 # Paket indeksi (şartname, 1. aşama)
 
-> Durum: **şartname**; istemci ve betikler henüz yok. Hedef sürüm: sshpocket **3.7.0**.
+> **Durum (2026-11-15): uygulandı ve kullanımda.** Şartname metni aşağıda tarihçe olarak durur. İmzalı indeks `syhgorath/sshpocket-index` deposunda yaşar (`index.json` + `index.json.sig`; yayın betiği `scripts/index-publish.sh add|sign`, ardından push); istemci KeyLab'dadır (`internal/trust`: `Eval` kararları `install | upgrade | current | below-floor | other-repo | conflict | yanked | needs-sshpocket`). İndeks bir paketin repo adresini kilitten farklı gösterirse karar `other-repo` olur ve kurulmaz. Güncel sözleşme: [package-standard.md](package-standard.md) §3.
 > İlgili: `docs/package-standard.md` (paket, kilit, imza), `docs/guncelleme.md` (sshpocket güncellemesi).
 
 ## 1. Amaç ve ilke

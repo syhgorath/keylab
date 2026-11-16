@@ -2,7 +2,7 @@
 
 > **GÜNCEL DURUM (2026-11-08)** — aşağıdaki kronolojik kayıt bu özetin ayrıntısıdır.
 > - Dilimler 0–6 bitti (manifest, trust, runner, servers, cli, report, findings, selfupdate, eject, doctor, settings); `main.go` temalara bölündü.
-> - Yayın biçimi: imzalı tek ikili (macOS universal). Bkz. `YAYIN.md`, `scripts/build-release.sh`.
+> - Yayın biçimi: imzalı tek ikili + `KeyLab.app` zip'i (4.0.5'ten itibaren yalnız macOS 27+ Apple Silicon/arm64; universal/Intel yayımlanmaz). Bkz. `YAYIN.md`, `scripts/build-release.sh`, `scripts/release-publish.sh`.
 > - Arayüz eylemleri varsayılan olarak Go yürütücüyle çalışır (`SSHPOCKET_SHELL_RUN=1` kabuğa döner).
 > - Kabuk motoru ve Bats testleri depodan KALDIRILDI (2026-11-12, K3); Go testleri kabuğun kaydedilmiş çıktılarını (`testdata/*.json`) oynatır. Eski motor `kabuk-referansi` etiketinde durur.
 > - Taşınmayanlar (bilinçli): terminal menüsü (fzf dâhil), `--migrate` ve eski `sistem/Modules` düzeni.

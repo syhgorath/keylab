@@ -1,5 +1,7 @@
 # Tasarım: `servers/` veri ayrımı ve bileşen (component) modeli
 
+> **Güncel durum (2026-11-15):** bu belge tasarım tarihçesidir. Model uygulandı ve Go'ya (KeyLab 4.x) taşındı; paketler `linux-hardening` ve `utility` (eski `kurulum` ile birleşti, v0.2.0); paket sürümleri imzalı indeksten gelir ([package-index.md](package-index.md)); güncel sözleşme [package-standard.md](package-standard.md). Aşağıdaki "Sırada" ve `--doctor`/`--components` anlatımı kabuk dönemine aittir.
+>
 > **Durum (2026-10-17):** Aşama 1 (veri ayrımı), Aşama 2 (paket altyapısı: kilit, imza, kurulum, bildirim, venv, `--doctor`, `--components`) ve
 > **Aşama 3 (🛡️ Hardening: `--components run`, çalıştırma öncesi kapılar, sunucu menüsünde Paketler/Değişkenler/Geçmiş)** **uygulandı** ve sshpocket **3.6.0**'da.
 > `linux-hardening 0.2.0` ve (2026-10-18) **0.3.0** gerçek bir Ubuntu 26.04 sunucusunda ve Docker LAB'ında `preview` + `apply` ile denendi. **Sırada:** Aşama 4 (🧰 Araçlar, `runner: script`),

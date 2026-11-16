@@ -1,5 +1,7 @@
 # Paket bildirimi: `sections` alanı (TASLAK — onaylanmadı)
 
+> **Güncel durum (2026-11-15):** `sections` önerisi uygulanmadı. Uygulama kartları için bunun yerine standarttaki **`items`** (+ `item_var`) alanı ve arayüzün genel "Uygulama kataloğu" sayfası kullanılıyor (bkz. `docs/package-standard.md`, katalog bölümü). Bu belge tasarım tarihçesidir.
+
 Amaç: arayüz paket sayfasını "uygulama kartları" olarak çizebilsin. Her kart: **ne kurulur / değişir**, **neden**, kartın **kendi değişkenleri**, kartın **önizleme sonucu**.
 Bu belge standarda (`docs/package-standard.md`) EKLENMEDİ; onaylanınca §4/§6'ya işlenir.
 
