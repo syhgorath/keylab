@@ -41,3 +41,8 @@ sshpocket.conf
 
 # arayüz testleri: yalnız geliştirme aracı
 go/webtest/node_modules/
+
+# Yerel araç yapılandırması ve kişisel/geçici dosyalar (repoya girmez)
+.mcp.json
+img/logoyeni.jpg
+referans/
