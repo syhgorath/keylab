@@ -14,7 +14,7 @@
 
 A **single-file** SSH server manager for macOS that you can carry on a USB drive (or run from any folder): a local web UI plus a command line.
 Every server is a folder under `servers/<name>/`; the passphrase stays in the macOS Keychain.
-Signed **packages** (currently server hardening, time zone/locale setup and installation) can manage the server.
+Signed **packages** (currently **linux-hardening**: server hardening; **utility**: time zone/language/NTP setup and installing applications such as Docker, nginx, MariaDB and Redis) can manage the server.
 
 > **Since version 4, sshpocket (now KeyLab) is rewritten in Go.** The original bash engine has been removed from the repository; its last state lives in git history and the `kabuk-referansi` tag.
 > The Go version was verified against it with side-by-side differential tests; the engine's recorded outputs are kept as golden files under `testdata/`.
@@ -36,7 +36,7 @@ Signed **packages** (currently server hardening, time zone/locale setup and inst
 |---|---|
 | macOS 27 or later, Apple Silicon (arm64) | Only current macOS and Apple Silicon are supported; no Intel or older-macOS builds are published |
 | `ssh`, `ssh-keygen`, `ssh-add`, `ssh-copy-id`, `security`, `osascript`, `diskutil` | All ship with macOS; `./sshpocket doctor` tells you what is missing (it installs nothing) |
-| **Python ≥ 3.12** | Only for **packages** (Ansible); `brew install python@3.13`. sshpocket creates the virtual environment it needs |
+| **Python ≥ 3.12** | Only for **packages** (Ansible); `brew install python@3.13`. sshpocket creates the virtual environment it needs. If no suitable Python is found, KeyLab shows a window before starting a package action telling you what to install; it neither installs nor bundles Python or Ansible |
 
 Signature verification, downloading, archive handling and port probing are built into the binary; `curl`, `tar`, `shasum`, `nc` and `bash` are not needed.
 
@@ -70,7 +70,7 @@ servers/<name>/    server.env + id_ed25519_<name>   (user data, never committed)
 - **One folder per server**, passphrase in the Keychain (never written to disk), adding the key to the agent with the Keychain passphrase (asks to re-save it if it is wrong).
 - **Sending the key to the server** (`ssh-copy-id`): does nothing if the key is already authorised; the password is typed only into ssh's own prompt; `PasswordAuthentication no` is deliberately not automatic.
 - **Packages:** signed and locked (`components.lock`). Every action passes preview, prerequisite and confirmation gates; the sudo password comes from Ansible's own prompt; logs are `0600` and archived with secrets masked. Details: [docs/en/packages.md](docs/en/packages.md) · hardening (Turkish): [docs/hardening-kullanim.md](docs/hardening-kullanim.md).
-- **Updates:** `./sshpocket update` (see below) and `components update | upgrade` for packages.
+- **Updates:** **Settings > Update > "Check for updates"** (KeyLab never goes online by itself; you start it) shows the new version and its GitHub release notes; "Update and restart" downloads the package, **verifies its signature**, replaces `KeyLab.app` as a whole (the old one is backed up under `.keylab-update-backup/`) and relaunches. The app's folder must be writable and it must run as an `.app`; if not, the card says why. Updating from USB (exFAT/FAT) is supported from 4.0.13 on; older versions need one manual switch. Also `./sshpocket update` (see below) for the bare binary and `components update | upgrade` for packages.
 - **Report:** `components report` shows "what changed and which of my servers is affected" after a package version change.
 - **Eject:** `./sshpocket eject` (removes the USB's keys from the agent, then ejects).
 - **Tested:** [docs/en/tested-environments.md](docs/en/tested-environments.md) lists what was tried **and what was not**.
@@ -86,7 +86,10 @@ servers/<name>/    server.env + id_ed25519_<name>   (user data, never committed)
 - **Job monitor:** a running action can be sent to the background; the job button in the top bar shows time/result and re-attaches to the running job even after a page reload. No other action can be started while one runs.
 - **Privacy lock:** the `L` key or an idle timeout in Settings hides the screen. It is NOT a password lock, only a screen to keep a neighbour from reading it; off by default.
 - **Accent color:** 8 accent colors in Settings (WCAG AA contrast verified in light and dark).
-- **Application catalog:** for packages that declare `items` (e.g. kurulum) the server page shows application cards with per-item Preview/Install/Upgrade/Remove; the prerequisite gate is scoped per item and mode (docs/package-standard.md).
+- **Application catalog:** in the `utility` package (and packages that declare `items`) the server page shows application cards (Docker, nginx, MariaDB, Redis; installed/installable filter); installing is done from "General actions"; a **Time and NTP** card on top reads/sets NTP. For packages that declare `items`, per-item Preview/Install/Upgrade/Remove work and the prerequisite gate is scoped per item and mode (docs/package-standard.md); utility's card buttons are still disabled.
+- **Encrypted vault:** opened with a master password (PBKDF2-HMAC-SHA256 + AES-256-GCM); holds key passphrases and the port-knocking sequence and loads them into the private ssh-agent. Login screen on start, locks when idle (default 15 min, `KEYLAB_VAULT_IDLE_MIN`) or by hand; wrong passwords are throttled. **Trust this Mac** (Settings): with the marker file `~/.keylab/keychain-ok`, even a portable run uses the Keychain and your own ssh-agent.
+- **Guest mode (portable runs, automatic):** KeyLab starts its own ssh-agent and does not touch this computer's Keychain or your ssh-agent; the embedded window's WebKit data under `~/Library/WebKit/…` and `~/Library/Caches/…` is deleted when the window closes and on every start.
+- **Resources page:** KeyLab's own CPU/RAM/disk use and running processes (like Activity Monitor, KeyLab only).
 - **Language:** the UI is available in Turkish and English (TR/EN button in the top bar).
 
 ### Not in the Go version (the shell reference had them)
