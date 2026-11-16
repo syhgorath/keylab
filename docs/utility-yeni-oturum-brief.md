@@ -1,5 +1,7 @@
 # İş tarifi: `utility` paketini yaz (v0.1)
 
+> **GÜNCEL DURUM (2026-11-15): tarihsel iş tarifi; iş bitti.** `utility` yazıldı (0.1.x), sonra eski `kurulum` paketiyle birleşti (v0.2.0). Yeni iş için bu belgeyi yönerge olarak kullanmayın.
+
 > Bu belge kendi başına yeter. Yeni oturum için yazıldı (2026-11-05). Karar sahibi: kullanıcı (Ziya, Türkçe çalışır; kısa, tablolu yanıt; komutlar ayrı kod bloklarında). Köprü: **sshpocket koordinatör** oturumu (sshpocket ve linux-hardening oturumlarıyla seni o bağlar).
 
 ## 1. Görev

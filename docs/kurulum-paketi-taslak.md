@@ -1,5 +1,7 @@
 # Taslak: `kurulum` paketi (Kurulum merkezi: Docker, nginx, MariaDB, Redis…)
 
+> **GÜNCEL DURUM (2026-11-15): bu belge tarihsel bir taslaktır.** Paket yazıldı ve yayımlandı; `kurulum` kimliği **kalktı**: içeriği `utility` paketiyle birleşti (kimlik `utility`, v0.2.0, repo `syhgorath/utility`). Docker/nginx/MariaDB/Redis eylemleri artık `utility` içinde `kurulum_durum`, `kurulum_onizle`, `kur`, `yukselt`, `kaldir` adlarıyla durur. Güncel sözleşme: [package-standard.md](package-standard.md).
+
 > **Durum: TASLAK, kod yok, kullanıcı onayı bekliyor** (2026-11-05). Hazırlayan: sshpocket oturumu. Kararlar (§1) kullanıcı ile koordinatör arasında verildi;
 > linux-hardening görüşü koordinatör üzerinden alındı (§8, hiçbiri hardening'li VM'de uçtan uca **denenmedi**). Standart: [package-standard.md](package-standard.md).
 > Yazım işi ayrı oturuma verilir: `kurulum-yeni-oturum-brief.md`.
