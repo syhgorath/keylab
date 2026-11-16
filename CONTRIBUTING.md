@@ -11,57 +11,38 @@ The project is young and open to all kinds of contributions (bugs, tests, docs, 
 
 ## Geliştirme ortamı
 
+KeyLab Go'da yazılmıştır (sürüm 4'ten beri; eski kabuk/bash motoru depodan kaldırıldı, `kabuk-referansi` etiketinde durur). Gerekenler: Go (`go/go.mod` sürümü), Node.js (arayüz testleri için) ve `ssh-keygen`.
+
 ```bash
-brew install shellcheck bats-core
-shellcheck -x -s bash start.sh start.command sistem/*.sh sistem/Helpers/*.sh
-bats test
+cd go
+gofmt -l .                 # çıktı boş olmalı
+go vet ./...
+go test ./... -short       # hızlı; uzun karşılaştırmalı testler -short ile atlanır, CI de böyle çalışır
+cd webtest && npm ci --ignore-scripts && npm test    # arayüz (jsdom) testleri
 ```
 
-PR açmadan önce ikisi de temiz olmalı (CI aynısını çalıştırır; CI'daki ShellCheck bazen yerelden
-eski olabilir, o yüzden `info` seviyesindeki uyarıları da düzeltin).
+PR açmadan önce bunlar temiz olmalı (CI aynısını çalıştırır: `go vet`, `gofmt`, `go test ./... -short`, tek ikili derlemesi, `-tags webview` ile macOS pencere derlemesi, arayüz testleri, Linux/Windows çapraz derleme ve betikler için ShellCheck).
+
+- Pencereli uygulama (gömülü webview) için CGO ve `-tags webview` gerekir; yerelde denemek için `bash go/scripts/keylabtest.sh --pencere`.
+- Gerçek `KeyLab.app` + `codesign` ile güncelleme testi isteğe bağlıdır: `KEYLAB_REAL_APP_TEST=1 go test ./internal/selfupdate`.
+- **Gömülü güven dosyaları:** köktekileri (`release_signers`, `index_signers`, `components.lock`) değiştirirseniz `bash go/scripts/sync-embedded.sh` çalıştırıp `go/embedded/` kopyalarını da commit'leyin; `go test` farklıysa durur.
 
 ## Uçtan uca testler (isteğe bağlı, Docker gerekir)
 
-Gerçek bir `sshd`'ye karşı (yerel bir Ubuntu konteyneri, yalnızca `127.0.0.1`) `ssh-copy-id` ve key akışlarını dener:
-
-```bash
-./test/e2e/up.sh      # konteyneri kurar; rastgele test şifresi test/e2e/.secrets içinde (git'e girmez)
-bats test/e2e
-./test/e2e/down.sh    # kaldırır (--clean: şifre, host key ve known_hosts kaydını da siler)
-```
-
-Varsayılan `bats test` bu klasörü çalıştırmaz; CI'da da yoktur. ssh, `~/.ssh/known_hosts`'a
-`[127.0.0.1]:2222` kaydı ekler; `down.sh --clean` temizler.
-
-**Paket akışı için Docker LAB'ı.** `linux-hardening` paketinin tam akışını (`preview` → `apply`, erişim ağı tuzağı, hata yolları) gerçek bir
-**systemd'li Ubuntu 26.04** konteynerine karşı dener; kullanıcının `known_hosts` ve sshpocket durumuna dokunmaz:
-
-```bash
-./test/e2e/lab/up.sh && bats test/e2e/components.bats && ./test/e2e/lab/down.sh
-```
-
-Gerekenler, sınırlar (çekirdek paylaşılır, auditd taklit edilir) ve Colima/antivirüs notları: [test/e2e/lab/README.md](test/e2e/lab/README.md).
+Paket akışları gerçek bir `sshd`'ye karşı (yerel Ubuntu konteyneri, yalnızca `127.0.0.1`) paketlerin kendi LAB'larında denenir; paket repolarında (`linux-hardening`, `utility`) `test/e2e/` altındadır. Bu depodaki Go testleri gerçek sunucuya, Keychain'e ya da `~/.ssh`'e dokunmaz.
 
 ## Sürüm çıkarma
 
 Yalnızca bakımcı: bkz. [RELEASING.md](RELEASING.md). Güncelleme/imza koduna dokunan PR'lar özellikle dikkatle incelenir;
-`test/update.bats` ve `test/release.bats` saldırı senaryolarını (sahte imza, `..`, symlink, eski sürüm sunma) kapsar.
-
-> **macOS'ta test notu (iki geçiş):** macOS'un varsayılan bash'i **3.2**'dir ve bu sürümde bir testin ortasında başarısız olan
-> `[[ ... ]]` doğrulaması testi **düşürmez**. Ubuntu CI'daki bash 5 ise düşürür. Bu yüzden iki kez çalıştırın:
-> 1. **Katı doğrulama (CI ile aynı):** `brew install bash` sonrası `bats test`. `bats`, `env bash` ile bash 5'i bulur.
-> 2. **bash 3.2 uyumluluğu:** `PATH=/bin:$PATH bats test`. Betikler macOS'un kendi bash'inde de çalışmalıdır; burada ara `[[ ]]`
->    doğrulamaları gevşektir ama sözdizimi/çalışma hataları yine görünür.
+Saldırı senaryoları (sahte imza, `..`, symlink, eski sürüm sunma) Go testlerindedir (aşağıya bakın).
 
 ## Kod kuralları
 
-- **bash 3.2 uyumlu** olun (macOS varsayılanı): `declare -A`, `mapfile`, `${var,,}` kullanmayın.
-- Dışarıdan gelen her değeri (`.env`, `~/.ssh/config`, kullanıcı girdisi) kabuğa vermeden önce doğrulayın
-  (`sistem/Helpers/Validate.sh`). `eval` kullanmayın.
-- Gizli bilgiyi diske, log'a veya komut satırına yazmayın (Keychain kullanın).
-- Yeni davranış için Bats testi ekleyin (`test/`). Testler gerçek sunucuya, Keychain'e veya
-  `~/.ssh`'e dokunmamalı; geçici klasör ve sahte komutlar kullanın (bkz. `test/integration.bats`).
-- Yeni modül mantığı `sistem/Helpers/SSHModule.sh` içinde yaşar; modül dosyaları ince kalmalı.
+- Dışarıdan gelen her değeri (`server.env`, `~/.ssh/config`, kullanıcı girdisi, paket bildirimi) kullanmadan önce doğrulayın; kabuğa komut dizesi olarak vermeyin (komut adı ve argümanlar ayrı parametre).
+- Gizli bilgiyi diske, log'a veya komut satırına yazmayın (Keychain ya da şifreli kasa kullanın; parola ortam değişkeni/komut satırı olarak taşınmaz).
+- **İşletim sistemine özgü kod yalnız `go/internal/platform` içinde** yaşar; `runtime.GOOS` ve macOS araç çağrıları başka yerde yasaktır (`platform_gate_test.go` denetler).
+- **Arayüz:** `go/web/js/` altında ES modülleri; **satır içi stil yok** (CSP `style-src-attr 'none'`: genişlik gibi değerler `data-*` + CSSOM ile); yeni CSS `tasarim.css` içinde en sondaki `[hidden]{display:none !important}` kuralından ÖNCE gelir; metinler `t()` ve `i18n.js` üzerinden (TR/EN).
+- Yeni davranış için test ekleyin (Go testi ve/veya `go/webtest`). Testler gerçek sunucuya, Keychain'e veya `~/.ssh`'e dokunmamalı; geçici klasör ve sahte komutlar kullanın.
 
 ## PR süreci
 
@@ -72,8 +53,7 @@ Yalnızca bakımcı: bkz. [RELEASING.md](RELEASING.md). Güncelleme/imza koduna 
 Yapay zekâ yardımıyla yazılmış katkılar kabul edilir; gönderdiğiniz kodu okuyup anladığınızdan
 ve test ettiğinizden emin olun.
 
-### Test yazarken tuzaklar
-- **`! komut` testi düşürmez.** Bats'ta (bash'in `errexit` kuralı gereği) bir satır `!` ile başlıyorsa başarısız olsa bile test geçer.
-  Olumsuz iddia için `run ! komut` kullanın (`test/repo_hygiene.bats` bunu denetler). Boru hattı için `[ -z "$(... | grep ...)" ]`.
-- bash 3.2'de testin ortasındaki `[[ ]]` başarısızlığı testi düşürmez; ara doğrulamalarda `[ ]`/`grep -q` kullanın.
-- Mutasyonla sınayın: korumayı bozup testin kırmızıya döndüğünü görmeden "güvenli" saymayın.
+### Test yazarken
+- **Mutasyonla sınayın:** korumayı ya da düzeltmeyi geçici bozup testin kırmızıya döndüğünü görmeden "güvenli" saymayın; sonra geri alın.
+- Arayüz testleri (`go/webtest`) `npm test` ile çalışır; `node --test` tek başına ES modül bayrağı olmadan çalışmaz (`--experimental-vm-modules` gerekir, `npm test` bunu verir). Anlık görüntüler: `UPDATE_SNAPSHOTS=1 npm test`.
+- Güncelleme/imza koduna dokunan PR'lar özellikle dikkatle incelenir; `go/internal/selfupdate` ve `go/internal/trust` testleri saldırı senaryolarını (sahte imza, `..`, symlink, eski sürüm sunma, zip-slip) kapsar.
