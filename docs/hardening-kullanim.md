@@ -7,7 +7,7 @@
 
 ## Akış
 
-| Adım | Komut (ya da menü: sunucu › 🛡️ Paketler) | Sunucuyu değiştirir mi? |
+| Adım | Komut (ya da arayüz: sunucu sayfası › linux-hardening sekmesi) | Sunucuyu değiştirir mi? |
 |---|---|---|
 | Durum | `./sshpocket components run linux-hardening rollback_status <sunucu>` | Hayır |
 | Önizleme | `... run linux-hardening preview <sunucu>` | Hayır (`--check`); ufw ve servis durumunu göstermez |
@@ -64,20 +64,19 @@ Hata metni sunucudan gelebileceği için denetim karakterleri temizlenir, 160 ka
 bağlantı kaybolursa sunucu `hardening_rollback_timeout` (varsayılan 300 sn) sonra **SSH drop-in'ini ve ufw'yi** önceki duruma döndürür; o sürede erişim
 olmayabilir. Paketler, sysctl, auditd, fail2ban ve AIDE geri alınmaz.
 
-**İki durum, Docker LAB'ında gerçek `systemd` ile denendi** (`bats test/e2e/components.bats`; LAB'da süre 30 sn):
+**İki durum, Docker LAB'ında gerçek `systemd` ile denendi** (`linux-hardening` paket reposundaki `test/e2e/` LAB'ı; LAB'da süre 30 sn):
 
 | Durum | Ne olur |
 |---|---|
 | Yeni bağlantı doğrulaması **başarısız** (örn. kural bağlantınızı kesti) | Playbook hemen yedekten geri yükler (`ROLLBACK - restore previous state`) ve durur; sunucu hardening öncesi hâlinde, `apply` kaydı `fail` |
 | **Denetleyici kaybolur** (bilgisayar kapanır, VPN düşer; playbook ortada ölür) | Sunucu `armed` kalır; `hardening_rollback_timeout` sn sonra zamanlayıcı SSH drop-in'ini siler ve ufw'yi eski hâline getirir (`armed=no`). Kurtarılana kadar bekleyin, ardından yeniden bağlanın |
 
-Durumu görmek için `rollback_status` eylemi (`installed`, `armed`, `timer`, `remaining_seconds`) ya da menüdeki Hazırlık bloğu.
+Durumu görmek için `rollback_status` eylemi (`installed`, `armed`, `timer`, `remaining_seconds`) ya da arayüzde sunucu sayfasındaki linux-hardening "Son durum" kartı.
 
 ## Denemek için güvenli laboratuvar (Docker)
 
 Gerçek bir sunucuyu riske atmadan akışı (`preview` → `apply`, erişim ağı tuzağı, hata yolları) denemek için tek kullanımlık, systemd'li bir **Ubuntu 26.04
-Docker LAB'ı** vardır: `./test/e2e/lab/up.sh && bats test/e2e/components.bats`. Sınırları (çekirdek paylaşılır, `auditd` taklit edilir) ve kurulum için
-[test/e2e/lab/README.md](../test/e2e/lab/README.md). Gerçek bir VM'de son doğrulama yine önerilir.
+Docker LAB'ı** vardır; `linux-hardening` paketinin kendi deposunda (`test/e2e/lab/`: `up.sh`, `bats test/e2e/...`, kendi README'siyle) durur, bu depoda değildir. Sınırları (çekirdek paylaşılır, `auditd` taklit edilir) o README'dedir. Gerçek bir VM'de son doğrulama yine önerilir.
 
 ## Platformlar: Ubuntu, Proxmox VE, Raspberry Pi
 - **Profil kapısı (sshpocket):** sunucunun `os-release` `ID-VERSION_ID` değeri paketin `supported` profillerinden biri olmalı. Paket **0.6.0** ile `ubuntu-26.04` ve `debian-13` desteklenir.
