@@ -33,6 +33,15 @@ Sıra bağlayıcı değildir; fikir ve PR'lara açıktır.
 ### Dağıtım
 - ~~**Kilit kanalı:**~~ **TAMAMLANDI:** paket sürümleri için KeyLab sürümü beklenmez; imzalı paket indeksi (`syhgorath/sshpocket-index`) kullanılır ([docs/package-index.md](docs/package-index.md), tasarım tarihçesi [docs/kilit-kanali.md](docs/kilit-kanali.md)). Bir paketin repo adresi değişirse kilit ve indeks aynı repoyu göstermelidir.
 - Homebrew formülü / kurulum betiği.
+- **Apple Developer ID / noter onayı** (ücretli): ilk açılıştaki Gatekeeper uyarısını ve App Translocation sürtünmesini kaldırır; karar bakımcıda.
+- **Python/Ansible'ı USB'ye gömme: şimdilik yapılmıyor** (karar, 2026-11-15). Python'un lisansı (PSF) serbesttir ama Ansible GPL-3.0'dır (dağıtırsak kaynak sunma ve lisans yükü) ve paket 150–300 MB büyür; yerine paket eyleminden önce "önce Python kurun" uyarı penceresi var. Tamamen çevrimdışı çalışan USB istenirse yeniden değerlendirilir.
+- Açılışta isteğe bağlı güncelleme denetimi (şimdi yalnız elle) ve kasa boşta süresi için Ayarlar arayüzü (şimdi `KEYLAB_VAULT_IDLE_MIN`).
+
+### Paketler (utility / linux-hardening)
+- utility'de kart başına gerçek Önizle/Kur/Yükselt/Kaldır düğmeleri: paket manifestine `items` eklenmeli (şimdi yerleşik dört uygulama listesi, düğmeler kapalı).
+- `ntp_durum`/`ntp_ayarla` ve birleşik paketin gerçek VM'de doğrulanması; chrony ↔ systemd-timesyncd etkileşimi; Proxmox için NTP profili (şimdi yazan eylem reddedilir).
+- İndekste eski `kurulum` girdisinin temizliği (zararsız; kilitten de kalkınca).
+- Cmd+Q'yu yakalama (şimdi artıklar sonraki açılışta temizlenir).
 - Demo GIF'i.
 
 ## Tamamlananlar
