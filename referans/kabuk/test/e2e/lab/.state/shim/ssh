@@ -1,7 +1,0 @@
-#!/bin/bash
-if [ "${LAB_BREAK_VERIFY:-0}" = 1 ]; then
-    for a in "$@"; do
-        if [ "$a" = "ControlMaster=no" ]; then echo "ssh: connect to host 127.0.0.1 port 2223: Connection timed out" >&2; exit 255; fi
-    done
-fi
-exec /usr/bin/ssh -o UserKnownHostsFile=/Users/ziyayesilbahce/Developer/sshpocket/test/e2e/lab/.state/kh "$@"
