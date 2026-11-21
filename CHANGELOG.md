@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 
 ## [Unreleased]
 
+### Değişti
+- `go/scripts/keylabtest.sh` (geliştirici deneme klasörü) emniyetler kazandı: derleme **sürüm damgalı** yapılır ve `VERSION` deneme klasörüne kopyalanır (eskiden deneme ikilisi eski `VERSION` dosyasından yanlış sürüm bildirebilirdi); **misafir mod zorlanır** (`KEYLAB_GUEST=1`; "Bu Mac'e güveniyorum" işareti olsa bile gerçek Keychain'e dokunulmaz, `--keychain` ile kapatılır); `servers/*/server.env` adresleri yalnız 127.0.0.1/localhost, `KEYLABTEST_IZINLI` ya da `$KT/lab-hosts` listesindeyse sessiz geçer, başka adres varsa başlatma durur (`--yes` ile aşılır); `--web` (= `--chrome`) takma adı eklendi.
+
 ## [4.0.16] - 2026-11-15
 
 Utility sayfasında Saat ve NTP kartı; Genel eylemler açık kalır.
