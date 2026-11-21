@@ -5,6 +5,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 ## [Unreleased]
 
 ### Eklendi
+- `go/scripts/keylabtest.sh --paket <dizin>` (birden çok kez verilebilir): bir paketin **çalışma kopyasını yayımlamadan** deneme klasörüne kurar (paket geliştirme döngüsü). Arşiv geçici bir git index'iyle (`git add -A` + `write-tree` + `git archive`) üretilir: commit'lenmemiş değişiklikler dahil, paket reposuna dokunulmaz, `.gitattributes export-ignore` yayın arşiviyle aynı uygulanır. Sonra `components validate --unsigned`, **tek kullanımlık test anahtarıyla** (`$KT/.testkey`, gerçek yayın anahtarı değil) imza, deneme klasörünün `components.lock`'unda yalnız o paketin girdisi ve `components install-local --force`. Güven kapıları atlanmaz. linux-hardening'in `component.json`'u `component.yml`'den eskiyse durur.
 - Geliştirici komutu `components install-local [--force] <paket> <arşiv> <imza>`: kilitteki sürümü **ağsız**, yerel bir arşivden kurar (paket geliştirme deneme döngüsü için). Güven kapıları indirmeyle aynıdır (`InstallArchive`: sürüm kilitle aynı, sha256 kilitteki, imza kilitteki imzacıyla geçerli, geri sürüm yok, arşiv içeriği güvenli); yalnız bayt kaynağı değişir. `--force` aynı sürüm kuruluysa eskisini `<sürüm>.bozuk-<zaman>` olarak kenara alıp (silmez) yenisini kurar.
 
 ### Değişti
