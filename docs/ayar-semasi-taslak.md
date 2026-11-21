@@ -67,9 +67,9 @@ devam etti. İstenen ile gerçeği yan yana göstermek bunu bir bakışta yakala
 | Alan | Anlamı |
 |---|---|
 | `action` * | **Salt okunur** eylem (`effects: []`, tercihen `requires_sudo` yok): "kontrol et" düğmesi bunu çalıştırır |
-| `key` * | O eylemin `outputs.keys`'inde bildirilmiş sonuç anahtarı |
+| `key` ya da `keys[]` * | O eylemin `outputs.keys`'inde bildirilmiş sonuç anahtarı. Liste ayarları **birden çok anahtarla** bildirilir (`keys`: sıralı anahtar adları, örn. `["ntp_kaynak_1", …, "ntp_kaynak_8"]`; her biri tek öğe, boş olanlar atlanır): her değer ≤ 64 karakter sınırına uyar ve **yeni bir arka uç mekanizması gerekmez** |
 | `compare` | `exact` (varsayılan) · `set` (liste, sıra önemsiz) · `ordered` (liste, sıra önemli) · `present` (dolu mu) |
-| `source` | `result` (varsayılan, tek satırlık sonuç) · `summary` (eylemin `outputs.summary` JSON'u; nesne listeleri için) |
+| `source` | `result` (varsayılan, **P1**: eylemin sonuç satırı anahtarları). `summary` (eylemin yazdığı JSON dosyası) **P2'dir ve bugün YOKTUR:** `outputs.summary` genel bir mekanizma değil (doğrulayıcı onu serbest metin sayar; özet dosyası okuma yalnız Lynis için sabit kodlu), nesne listeleri için yeni KeyLab kodu gerekir |
 
 **Durum değerlendirmesi (kart satırı başına):**
 
@@ -87,11 +87,11 @@ devam etti. İstenen ile gerçeği yan yana göstermek bunu bir bakışta yakala
 (`/`, boşluk ve virgül **yasak**). Sonuçları:
 
 - **Liste ayracı `+`** (mevcut `kurulu=docker:docker+nginx:native` sözleşmesi gibi); virgül değil.
-- **Uzun listeler** (örn. 8 NTP sunucusu 64 karakteri aşar) ve **nesne listeleri** sonuç satırına sığmaz: `source: summary` ile eylemin yazdığı özet JSON'undan okunur
-  (`state.path`: nokta yolu, örn. `ntp.sources`, `networks`).
+- **Listeler** tek değerde taşınamaz (8 NTP sunucusu 64 karakteri aşar): **P1'de her öğe ayrı anahtarla** bildirilir (`state.keys[]`; bir eylemde **en çok 20** anahtar vardır, kalan kotaya dikkat).
+  **Nesne listeleri** (Docker ağları) bu yolla taşınamaz; onlar için ayrı bir mekanizma P2'de tasarlanır (`source: summary`, yeni KeyLab kodu).
 - **Karakter kuralı karşılaştırmaya girer:** paket gerçek değeri aynı kuralla temizleyerek bildirir (`Europe/Istanbul` → `Europe_Istanbul`; utility `durum.yml` bunu yapıyor). Bu yüzden
   KeyLab, `source: result` karşılaştırmasında **istenen değere de aynı kuralı** uygular (izin verilmeyen karakter → `_`, sonra en çok 64 karaktere kırp). Kullanıcı ve arayüz her yerde
-  gerçek adı görür (`Europe/Istanbul`); uyumluysa "sunucuda" sütunu da istenen yazımı gösterir, sapma varsa ham değer görünür. `source: summary` JSON değerleri temizlenmez, olduğu gibi karşılaştırılır.
+  gerçek adı görür (`Europe/Istanbul`); uyumluysa "sunucuda" sütunu da istenen yazımı gösterir, sapma varsa ham değer görünür.
 
 ## 5. Kart düzeni (arayüz)
 
@@ -125,7 +125,8 @@ Utility'de zaten var: değişkenler `utility_timezone`, `utility_locale`, `utili
   "settings": [
     { "id": "ntp_servers", "label": "NTP sunucuları", "var": "utility_ntp_servers",
       "apply_via": ["ntp_ayarla", "apply"],
-      "state": { "action": "ntp_durum", "source": "summary", "path": "ntp.sources", "compare": "set" } },
+      "state": { "action": "ntp_durum", "compare": "set",
+                 "keys": ["ntp_kaynak_1", "ntp_kaynak_2", "ntp_kaynak_3", "ntp_kaynak_4", "ntp_kaynak_5", "ntp_kaynak_6", "ntp_kaynak_7", "ntp_kaynak_8"] } },
     { "id": "makestep", "label": "Saat sıçratma", "var": "utility_ntp_makestep",
       "risk": ["time-jump"], "risk_note": "Saat 1 sn'den fazla sapmışsa tek seferlik adımlanır.",
       "apply_via": ["ntp_ayarla", "apply"] },
@@ -142,9 +143,10 @@ Utility'de zaten var: değişkenler `utility_timezone`, `utility_locale`, `utili
 
 **Utility paketinde gereken küçük değişiklikler:**
 
-1. `ntp_durum` **gerçek sunucu listesini** bildirmeli (bugün yalnız `yonetilen_kaynak` sayısı var). Sonuç satırı bunu taşıyamaz (64 karakter), bu yüzden eylem `outputs.summary` ile bir özet JSON'u
-   yazar (örn. `{"ntp": {"sources": ["0.tr.pool.ntp.org"]}}`; **host adları**, `server`/`pool` öneki ve `iburst` olmadan). Bu sunucu listesi için *kanonik biçim* paketin işidir; istenen girişler
-   (`host`, `server host`, `pool host`) karşılaştırmadan önce aynı biçime (yalnız host adı) indirgenir. `summary` mekanizmasının sudosuz bir okuma eyleminde de çalıştığı **doğrulanmalıdır** (bugün yalnız denetim eylemleri kullanıyor).
+1. `ntp_durum` **gerçek sunucu listesini** bildirmeli (bugün yalnız `yonetilen_kaynak` sayısı var: `grep -Ec '^(server|pool) ' /etc/chrony/sources.d/utility.sources`). Önerilen: aynı dosyadan
+   host adları (`awk '/^(server|pool) /{print $2}'`) **`ntp_kaynak_1 … ntp_kaynak_8`** anahtarlarıyla sonuç satırına eklenir ve `outputs.keys`'e yazılır (mevcut 10 + 8 = **18 ≤ 20** anahtar sınırı). Her değer tek host adıdır
+   (`server`/`pool` öneki ve `iburst` olmadan); kullanılmayan anahtarlar boş kalır. Bu *kanonik biçim* (yalnız host adı) paketin işidir; istenen girişler (`host`, `server host`, `pool host`) karşılaştırmadan önce aynı biçime
+   indirgenir. Sonuç satırı değer kuralı geçerli: host adlarında `[A-Za-z0-9_.:+-]` dışında karakter olmaz; ≤ 64 karakter.
 2. `durum` zaten `timezone` ve `locale` veriyor (gerçek VM'de doğrulandı). Sonuç satırı `/` karakterini `_` yaptığı için `timezone=Europe_Istanbul` görünür; istenen değer `Europe/Istanbul`'dur
    (standart ad). **Ek iş yok:** karşılaştırmada KeyLab istenen değere aynı karakter kuralını uygular (§4, §9), yani sahte sapma çıkmaz ve paket değişmez.
 3. `apply_via` eylemleri zaten mevcut; yeni eylem gerekmez.
@@ -161,14 +163,15 @@ Bu kısım **kesin değildir**; nesne listesi tipi ve yeni eylemler gerektirir.
 | `default_address_pools` | `list[object]` (`base` cidr, `size` int) | VPN/LAN ile çakışırsa erişim kesilir (`access-loss`) |
 | `networks` | `list[object]` (`name`, `driver` ∈ bridge/macvlan/ipvlan, `subnet`, `gateway`, `parent` yalnız macvlan) | `host` ayrı: ağ nesnesi değil, uygulama başına seçim (v3). macvlan/ipvlan yanlış `parent` ile sunucu ağını bozabilir → `access-loss` + önizleme + snapshot onayı |
 
-Yeni okuma eylemi `docker_durum` (salt okunur): `docker info`/`daemon.json`/`docker network ls`'i `outputs.summary` JSON'una yazar; kart `source: summary` ile okur.
+Yeni okuma eylemi `docker_durum` (salt okunur): `docker info`/`daemon.json`/`docker network ls` çıktısını bildirir. Skaler ayarlar (log sürücüsü, `live_restore`) sonuç satırıyla (P1 mekanizması) okunur; **ağ listesi gibi nesne listeleri
+için yeni bir okuma mekanizması gerekir** (`source: summary`: eylemin kullanıcı klasörüne yazdığı JSON'u KeyLab okur; doğrulayıcı, boyut/yol sınırları ve test P2'de tasarlanır).
 
 **Sınır (bilerek):** konteyner/uygulama başına ayarlar (healthcheck, restart politikası, kaynak limitleri) v3; "ham yapılandırma düzenleyici" planlanmıyor (güvenlik kapılarını atlatır).
 
 ## 8. Doğrulayıcı kuralları (`components validate`)
 
 Hata (❌): `var` `vars[]`'te yok; `apply_via` eylemi tanımlı değil; `state.action` tanımlı değil ya da `effects` boş değil; `state.key` o eylemin `outputs.keys`'inde
-yok; `compare` sözlükte değil; `risk` sözlük dışı; ayar kimliği öğe içinde yinelenen; öğede 40'tan fazla ayar; `source: summary` iken eylem `outputs.summary` bildirmiyor.
+yok; `compare` sözlükte değil; `risk` sözlük dışı; ayar kimliği öğe içinde yinelenen; öğede 40'tan fazla ayar; `state.keys[]`'teki bir anahtar eylemin `outputs.keys`'inde yok ya da `key` ile `keys` birlikte verilmiş; `source: summary` (P1'de desteklenmez).
 Uyarı (⚠️): `state.action` `requires_sudo` istiyor (arayüz arka planda çalıştıramaz, terminalde açılır); `risk` boş ama bağlı eylem `destructive`; `description` yok.
 Eski sshpocket `settings`'i bilmediğinde alanı yok sayar ve öğe bugünkü gibi çizilir.
 
@@ -184,14 +187,15 @@ Eski sshpocket `settings`'i bilmediğinde alanı yok sayar ve öğe bugünkü gi
 | 6 | Değer normalizasyonu | Paket gerçek değeri sonuç satırı sözleşmesi izin verdiği kadar bildirir; **karşılaştırmada KeyLab istenen değere aynı karakter kuralını uygular** (§4). `/` ve `,` sözleşmede yasak olduğundan "paket aynen bildirsin" mümkün değil |
 | — | **Saat dilimi standardı** | **`Europe/Istanbul`** (IANA adı; `/usr/share/zoneinfo`, `timedatectl`). `Europe_Istanbul` yalnız sonuç satırındaki temizlenmiş görünümdür; chrony/NTP'nin saat dilimi ayarı yoktur (UTC), saat dilimi işletim sistemi ayarıdır |
 
-**Kalan açık konu:** NTP listesinin kanonik biçimi (yalnız host adı) ve `outputs.summary`'nin sudosuz okuma eyleminde çalışması (§6, madde 1); P1'in ilk işi bunları doğrulamak.
+**Doğrulandı (2026-11-21, kod okundu):** `outputs.summary` genel bir mekanizma değildir (yalnız serbest metin; özet dosyası okuma Lynis'e sabit kodlu). P1 bu yüzden `state.keys[]` ile çok anahtarlı liste kullanır; `outputs.keys` sınırı en çok 20 anahtardır.
+**Kalan açık konu:** nesne listeleri için okuma mekanizması (`source: summary`), P2'de.
 
 ## 10. Aşamalar
 
 | Aşama | İçerik | Kapsam |
 |---|---|---|
-| **P1** | `settings` düz tiplerle + gerçek değer + durum rozetleri; **chrony kartı** | utility `ntp_durum`'a `yonetilen_sunucular`; KeyLab: doğrulayıcı + kart çizimi + testler |
-| **P2** | `list[object]` tipi, `source: summary`; **Docker Engine + ağlar** | yeni `docker_durum`/`docker_ayarla` eylemleri; arayüzde liste düzenleyici |
+| **P1** | `settings` düz tiplerle + gerçek değer + durum rozetleri; **chrony kartı** | utility `ntp_durum`'a `ntp_kaynak_1..8` anahtarları; KeyLab: doğrulayıcı (`manifest.go`) + `setting.*` bildirim satırları + `/api/server`'a ayarlar + `server.js` kartı + jsdom testleri. Kart verisi zaten `a.keys`/`a.lastTime`'dan gelir |
+| **P2** | `list[object]` tipi, **nesne listesi okuma mekanizması (`source: summary`, yeni KeyLab kodu)**; **Docker Engine + ağlar** | yeni `docker_durum`/`docker_ayarla` eylemleri; arayüzde liste düzenleyici |
 | **P3** | Uygulama başına ayarlar (healthcheck, restart, limitler); nginx/MariaDB/Redis kartları | `items` ile bağlanır |
 
 **Test planı (P1):** jsdom ile kart durumları (uyumlu/sapma/bilinmiyor/yönetilmiyor/okunamaz ve eskimiş rozeti); doğrulayıcı testleri (§8) ve mutasyon; gerçek VM'de
