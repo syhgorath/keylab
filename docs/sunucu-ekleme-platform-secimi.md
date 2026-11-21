@@ -1,5 +1,7 @@
 # Sunucu eklerken platform seçimi (tasarım notu, KOD YOK)
 
+> **GÜNCEL DURUM (2026-11-21): UYGULANDI; bu belge tasarım tarihçesidir.** Paket bildirimindeki `platform_choices` ve eylem düzeyindeki `platforms` alanları standartta tanımlıdır ([package-standard.md](package-standard.md)); sunucu eklerken ve eski sunucularda paket sekmesi ilk açılırken sunucu türü sorulur ("Şimdi değil" hiçbir şey yazmaz; bkz. [paketler.md](paketler.md)). Aşağıdaki "öneri" ve "KOD YOK" ifadeleri o günkü durumu anlatır.
+
 Durum: **öneri**. Yazan: sshpocket oturumu, 2026-11-02. Paket tarafı notu `linux-hardening` oturumunda yazılıyor; alan adları
 aşağıda **öneridir**, paket oturumuyla uzlaşılacak.
 
