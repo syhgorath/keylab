@@ -176,6 +176,49 @@ func (c *Components) reportChanged(ids []string) {
 	}
 }
 
+// InstallLocal: geliştirici komutu (`components install-local [--force] <paket> <arşiv> <imza>`): kilitteki sürümü AĞSIZ, yerel bir arşivden kurar.
+// Güven kapıları indirmeyle aynıdır (trust.InstallArchive): sürüm kilitle aynı, arşivin sha256'sı kilitteki, imza kilitteki imzacıyla geçerli, geri sürüm yok,
+// arşiv içeriği güvenli, component.json kimliği/sürümü eşleşiyor. Yani bayt kaynağı değişir, güven kökü değişmez: deneme için kilidin imzacısı test anahtarı olur.
+// --force: aynı sürüm zaten kuruluysa (geliştirme döngüsünde içerik değişir, sürüm aynı kalır) eskisi `<sürüm>.bozuk-<zaman>` olarak kenara alınır (silinmez) ve yenisi kurulur.
+func (c *Components) InstallLocal(args []string) int {
+	force := false
+	var pos []string
+	for _, a := range args {
+		if a == "--force" {
+			force = true
+		} else {
+			pos = append(pos, a)
+		}
+	}
+	if len(pos) != 3 {
+		c.err("kullanım: components install-local [--force] <paket> <arşiv.tar.gz> <arşiv.tar.gz.sig>\n")
+		return 2
+	}
+	id, archive, sig := pos[0], pos[1], pos[2]
+	lock, ok := c.lock()
+	if !ok {
+		return 1
+	}
+	e, found := lock.Get(id)
+	if !found {
+		c.err("paket kilit dosyasında yok: %s\n", id)
+		return 1
+	}
+	if force {
+		if inst := trust.InstalledVersion(c.Dir, id); inst == e.Version {
+			quarantine(c.Dir, id, inst, c.now().Format("20060102-150405"))
+			c.out("Aynı sürüm yeniden kuruluyor; eskisi %s.bozuk-… olarak kenara alındı\n", inst)
+		}
+	}
+	msg, err := trust.InstallArchive(c.Dir, lock, id, e.Version, archive, sig, "")
+	if err != nil {
+		c.err("%s\n", err)
+		return 1
+	}
+	c.out("%s\n", msg)
+	return 0
+}
+
 // Sync, comp_cli_sync: kilitteki sürümü kurar/onarır.
 func (c *Components) Sync(yes bool) int {
 	lock, ok := c.lock()
