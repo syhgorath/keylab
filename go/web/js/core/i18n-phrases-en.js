@@ -90,7 +90,7 @@ window.KeyLabPhrasesEN = {
     "Yeniden adlandır, sil, günlükler…": "Rename, delete, logs…", "Yeniden denetle": "Re-audit", "Yükselt…": "Upgrade…", "Yıkıcı": "Destructive",
     "Çalıştır": "Run", "Çevrimiçi": "Online", "Önizle": "Preview", "Önizleme": "Preview", "Özet": "Overview", "İndeks": "Index", "İptal": "Cancel",
     "İşletim sistemi profili": "OS profile", "İmzalı indeks alınıyor ve doğrulanıyor…": "Fetching and verifying the signed index…",
-    "✔ güncel": "✔ up to date", "⬆ yükseltilebilir": "⬆ upgradable", "güncelleme denetimi yok": "no update check",
+    "✔ güncel": "✔ up to date", "⬆ yükseltilebilir": "⬆ upgradable", "güncellemeler Paketler sayfasında": "updates are on the Packages page",
     "henüz denetlenmedi · hiçbir şey kurmaz": "not checked yet · installs nothing", "Ana klasör": "Main folder", "Kurulum modu": "Install mode",
     "Kurulum motoru": "Install engine", "Genel anahtarı sunucudaki": "Adds the public key to the server's",
     "kapalı": "off", "kullanılmadı": "not used", "hiçbir sunucuda kullanılmadı": "not used on any server", "bağlantı yok": "no connection",
@@ -144,7 +144,7 @@ window.KeyLabPhrasesEN = {
     "yazma eylemlerinden önce VM snapshot'ı alın.": "take a VM snapshot before write actions.", "Snapshot hatırlatması:": "Snapshot reminder:",
     /* --- Pano/Lynis/Günlükler/Ayarlar/Sunucu ekle/pencere ayrıntıları (3. dilim) --- */
     "yerel · taslak": "local · draft",
-    "imza doğrulaması bu taslakta yok": "signature verification is not in this draft",
+    "imzası index_signers ile doğrulanır": "signature is verified with index_signers",
     "Paket bulunamadı.": "No packages found.",
     "Paket bulunamadı": "No packages found",
     "dosyasını uygulamanın kendi işleviyle yazar (var olanın üzerine yazılmaz). Ardından anahtar adımları sizi adım adım yönlendirir. Sunucuya bu aşamada": "writes it with the app's own function (an existing file is never overwritten). The key steps then guide you step by step. At this stage the server is",
