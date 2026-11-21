@@ -83,8 +83,15 @@ devam etti. İstenen ile gerçeği yan yana göstermek bunu bir bakışta yakala
 
 "Eskimiş" kuralı yeni değildir: bir okuma eylemi sonuç kaydından sonra **yazan bir eylem** çalıştıysa mevcut "güncel olmayabilir" rozeti çıkar.
 
-**Liste/nesne değerlerin sonuç satırında taşınması:** `list[string]` gerçek değer tek token'da virgülle ayrılır (`a,b,c`, boşluk yok). Nesne listeleri tek satıra
-sığmaz; onlar `source: summary` ile eylemin yazdığı özet JSON'undan okunur (`state.path`: nokta yolu, örn. `networks`).
+**Sonuç satırının sınırları (KeyLab ayrıştırıcısı, `internal/runner/exec.go`):** değer yalnız `[A-Za-z0-9_.:+-]` karakterlerinden oluşur ve en çok **64** karakterdir
+(`/`, boşluk ve virgül **yasak**). Sonuçları:
+
+- **Liste ayracı `+`** (mevcut `kurulu=docker:docker+nginx:native` sözleşmesi gibi); virgül değil.
+- **Uzun listeler** (örn. 8 NTP sunucusu 64 karakteri aşar) ve **nesne listeleri** sonuç satırına sığmaz: `source: summary` ile eylemin yazdığı özet JSON'undan okunur
+  (`state.path`: nokta yolu, örn. `ntp.sources`, `networks`).
+- **Karakter kuralı karşılaştırmaya girer:** paket gerçek değeri aynı kuralla temizleyerek bildirir (`Europe/Istanbul` → `Europe_Istanbul`; utility `durum.yml` bunu yapıyor). Bu yüzden
+  KeyLab, `source: result` karşılaştırmasında **istenen değere de aynı kuralı** uygular (izin verilmeyen karakter → `_`, sonra en çok 64 karaktere kırp). Kullanıcı ve arayüz her yerde
+  gerçek adı görür (`Europe/Istanbul`); uyumluysa "sunucuda" sütunu da istenen yazımı gösterir, sapma varsa ham değer görünür. `source: summary` JSON değerleri temizlenmez, olduğu gibi karşılaştırılır.
 
 ## 5. Kart düzeni (arayüz)
 
@@ -118,7 +125,7 @@ Utility'de zaten var: değişkenler `utility_timezone`, `utility_locale`, `utili
   "settings": [
     { "id": "ntp_servers", "label": "NTP sunucuları", "var": "utility_ntp_servers",
       "apply_via": ["ntp_ayarla", "apply"],
-      "state": { "action": "ntp_durum", "key": "yonetilen_sunucular", "compare": "set" } },
+      "state": { "action": "ntp_durum", "source": "summary", "path": "ntp.sources", "compare": "set" } },
     { "id": "makestep", "label": "Saat sıçratma", "var": "utility_ntp_makestep",
       "risk": ["time-jump"], "risk_note": "Saat 1 sn'den fazla sapmışsa tek seferlik adımlanır.",
       "apply_via": ["ntp_ayarla", "apply"] },
@@ -135,10 +142,11 @@ Utility'de zaten var: değişkenler `utility_timezone`, `utility_locale`, `utili
 
 **Utility paketinde gereken küçük değişiklikler:**
 
-1. `ntp_durum` sonucuna **`yonetilen_sunucular`** (virgülle ayrılmış gerçek liste; bugün yalnız `yonetilen_kaynak` sayısı var) eklenir ve `outputs.keys`'e yazılır.
-2. `durum` zaten `timezone` ve `locale` veriyor, **ama biçim farkı var:** gerçek VM'de sonuç `timezone=Europe_Istanbul` (`/` yerine `_`) görünüyor, istenen değer ise
-   `Europe/Istanbul`. Birebir (`exact`) karşılaştırma **sahte sapma** üretir. Çözüm seçenekleri: (a) paket gerçek değeri `/` ile bildirir (sonuç satırı sözleşmesi buna izin veriyorsa),
-   ya da (b) şemaya `state.normalize` ipucu (örn. `"slash-underscore"`) eklenir. Öneri (a); izin yoksa (b) (bkz. §9, soru 6).
+1. `ntp_durum` **gerçek sunucu listesini** bildirmeli (bugün yalnız `yonetilen_kaynak` sayısı var). Sonuç satırı bunu taşıyamaz (64 karakter), bu yüzden eylem `outputs.summary` ile bir özet JSON'u
+   yazar (örn. `{"ntp": {"sources": ["0.tr.pool.ntp.org"]}}`; **host adları**, `server`/`pool` öneki ve `iburst` olmadan). Bu sunucu listesi için *kanonik biçim* paketin işidir; istenen girişler
+   (`host`, `server host`, `pool host`) karşılaştırmadan önce aynı biçime (yalnız host adı) indirgenir. `summary` mekanizmasının sudosuz bir okuma eyleminde de çalıştığı **doğrulanmalıdır** (bugün yalnız denetim eylemleri kullanıyor).
+2. `durum` zaten `timezone` ve `locale` veriyor (gerçek VM'de doğrulandı). Sonuç satırı `/` karakterini `_` yaptığı için `timezone=Europe_Istanbul` görünür; istenen değer `Europe/Istanbul`'dur
+   (standart ad). **Ek iş yok:** karşılaştırmada KeyLab istenen değere aynı karakter kuralını uygular (§4, §9), yani sahte sapma çıkmaz ve paket değişmez.
 3. `apply_via` eylemleri zaten mevcut; yeni eylem gerekmez.
 
 ## 7. Örnek taslak: Docker Engine ve ağlar (v2; yalnız yön)
@@ -164,14 +172,19 @@ yok; `compare` sözlükte değil; `risk` sözlük dışı; ayar kimliği öğe i
 Uyarı (⚠️): `state.action` `requires_sudo` istiyor (arayüz arka planda çalıştıramaz, terminalde açılır); `risk` boş ama bağlı eylem `destructive`; `description` yok.
 Eski sshpocket `settings`'i bilmediğinde alanı yok sayar ve öğe bugünkü gibi çizilir.
 
-## 9. Açık sorular (inceleme için)
+## 9. Kararlar (2026-11-21)
 
-1. **Nesne listesinin `.vars`'taki biçimi.** `.vars` bugün düz satırlar. Öneri: nesne listesi **tek satır JSON** olarak yazılır (şemayla doğrulanır). Alternatif: ayrı bir klasör/dosya. Hangisi?
-2. **`settings` nerede?** Öneri: `items[].settings`. Sorun: `items` bugün "yazılım seçimi" için `item_var` ister; yalnız-ayar kartı (chrony) için `item_var` zorunlu mu kalmalı? Öneri: `item_var` yalnız öğenin eylemleri onu kullanıyorsa gerekli.
-3. **Okuma granülerliği.** Bir ayar için ayrı okuma eylemi mi, öğe başına tek okuma eylemi mi (Ansible ~30 sn sürüyor; tek koşu daha ucuz)? Öneri: öğe başına **tek** okuma eylemi, birden çok anahtar.
-4. **Risk sözlüğü** yeterli mi (`access-loss`, `restarts-service`, `time-jump`, `data-loss`)? Başka ne gerekir?
-5. **Çok dillilik:** etiketler yalnız Türkçe mi, `label_en` de mi? (Arayüz TR/EN; paketler bugün Türkçe.)
-6. **Değer normalizasyonu.** Sonuç satırında gerçek değerler bazı karakterleri değiştirebilir (örn. `Europe/Istanbul` → `Europe_Istanbul`). Kural nerede olsun: pakette mi (gerçek değeri aynen bildirsin), şemada mı (`state.normalize`)?
+| # | Soru | Karar |
+|---|---|---|
+| 1 | Nesne listesinin `.vars` biçimi | **Tek satır JSON** (şemayla doğrulanır) |
+| 2 | `settings` nerede? | `items[].settings`; `item_var` yalnız öğenin eylemleri onu kullanıyorsa zorunlu |
+| 3 | Okuma granülerliği | Öğe başına **tek** okuma eylemi, birden çok anahtar |
+| 4 | Risk sözlüğü | `access-loss`, `restarts-service`, `time-jump`, `data-loss` yeterli başlangıç için |
+| 5 | Çok dillilik | Şimdilik yalnız Türkçe; `label_en` sonra |
+| 6 | Değer normalizasyonu | Paket gerçek değeri sonuç satırı sözleşmesi izin verdiği kadar bildirir; **karşılaştırmada KeyLab istenen değere aynı karakter kuralını uygular** (§4). `/` ve `,` sözleşmede yasak olduğundan "paket aynen bildirsin" mümkün değil |
+| — | **Saat dilimi standardı** | **`Europe/Istanbul`** (IANA adı; `/usr/share/zoneinfo`, `timedatectl`). `Europe_Istanbul` yalnız sonuç satırındaki temizlenmiş görünümdür; chrony/NTP'nin saat dilimi ayarı yoktur (UTC), saat dilimi işletim sistemi ayarıdır |
+
+**Kalan açık konu:** NTP listesinin kanonik biçimi (yalnız host adı) ve `outputs.summary`'nin sudosuz okuma eyleminde çalışması (§6, madde 1); P1'in ilk işi bunları doğrulamak.
 
 ## 10. Aşamalar
 
