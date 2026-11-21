@@ -279,6 +279,8 @@ func componentsCommand(args []string) int {
 		return c.CheckNew()
 	case "prune":
 		return c.Prune(rest)
+	case "install-local": // geliştirici aracı: ağsız, yerel arşivden kurulum (güven kapıları indirmeyle aynı; bkz. cli.InstallLocal)
+		return c.InstallLocal(rest)
 	case "validate":
 		return c.Validate(rest)
 	case "lock": // bakımcı aracı: scripts/lock-component.sh karşılığı
@@ -292,7 +294,7 @@ func componentsCommand(args []string) int {
 	case "run":
 		return runCommand(append([]string{"-servers", srv, "-components", comp}, rest...))
 	}
-	fmt.Fprintln(os.Stderr, "kullanım: components list | sync [--yes] | update | upgrade [--yes] [paket…] | check-new | prune [--yes] [--dry-run] | report [paket [eski-sürüm]] | run <paket> <eylem> <sunucu> | validate <paket|dizin|arşiv> [--strict] | lock <paket> <sürüm> [--repo sahip/depo] [--signers satır] [--write]")
+	fmt.Fprintln(os.Stderr, "kullanım: components list | sync [--yes] | update | upgrade [--yes] [paket…] | check-new | prune [--yes] [--dry-run] | install-local [--force] <paket> <arşiv> <imza> | report [paket [eski-sürüm]] | run <paket> <eylem> <sunucu> | validate <paket|dizin|arşiv> [--strict] | lock <paket> <sürüm> [--repo sahip/depo] [--signers satır] [--write]")
 	return 2
 }
 
