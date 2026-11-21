@@ -117,8 +117,8 @@
               <span class="muted">
                 "· USB'de kurulu sürüm"
           <div class="pkg-actions">
-            <button class="btn sm ghost" disabled="" title="Güncelleme denetimi bu taslakta yok">
-              "güncelleme denetimi yok"
+            <button class="btn sm ghost" disabled="" title="Güncelleme denetimi Paketler sayfasındaki Güncellemeleri denetle düğmesiyle yapılır">
+              "güncellemeler Paketler sayfasında"
         <div class="pkg-row">
           <div>
             <div class="pkg-name">
@@ -129,8 +129,8 @@
               <span class="muted">
                 "· USB'de kurulu sürüm"
           <div class="pkg-actions">
-            <button class="btn sm ghost" disabled="" title="Güncelleme denetimi bu taslakta yok">
-              "güncelleme denetimi yok"
+            <button class="btn sm ghost" disabled="" title="Güncelleme denetimi Paketler sayfasındaki Güncellemeleri denetle düğmesiyle yapılır">
+              "güncellemeler Paketler sayfasında"
         <div class="pkg-row">
           <div>
             <div class="pkg-name">
@@ -141,8 +141,8 @@
               <span class="muted">
                 "· USB'de kurulu sürüm"
           <div class="pkg-actions">
-            <button class="btn sm ghost" disabled="" title="Güncelleme denetimi bu taslakta yok">
-              "güncelleme denetimi yok"
+            <button class="btn sm ghost" disabled="" title="Güncelleme denetimi Paketler sayfasındaki Güncellemeleri denetle düğmesiyle yapılır">
+              "güncellemeler Paketler sayfasında"
   <section class="view" id="view-server">
     <div id="srv-head">
       <nav aria-label="Konum" class="sv-crumb">

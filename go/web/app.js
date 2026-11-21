@@ -124,7 +124,7 @@ import { appState } from "./js/state.js";
   function pkgRow(p) {
     return `<div class="pkg-row"><div><div class="pkg-name">${esc(p.id)}</div>
       <div class="pkg-meta"><span class="ver">${esc(p.version)}</span><span class="muted">· USB'de kurulu sürüm</span></div></div>
-      <div class="pkg-actions"><button class="btn sm ghost" disabled title="Güncelleme denetimi bu taslakta yok">güncelleme denetimi yok</button></div></div>`;
+      <div class="pkg-actions"><button class="btn sm ghost" disabled title="Güncelleme denetimi Paketler sayfasındaki Güncellemeleri denetle düğmesiyle yapılır">güncellemeler Paketler sayfasında</button></div></div>`;
   }
 
   function kpis() {
