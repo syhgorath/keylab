@@ -40,6 +40,12 @@ type ExecCtx struct {
 
 	rd    *bufio.Reader
 	scope string // bu koşunun kapsamı (bkz. scopeFor)
+
+	// tek tık zinciri (bkz. chain.go)
+	chain       bool
+	autoYes     bool   // bu adımın e/h onayı düğmeyle verildi
+	secret      string // sudo parolası: yalnız bellekte
+	secretAsked bool
 }
 
 // scopeFor: `items` bildiren pakette bu koşunun kapsamı "<öğe>:<mod>" (koşuya özel seçim > değer dosyası > varsayılan, çalıştırıcıyla
@@ -171,7 +177,10 @@ func (ec *ExecCtx) runTee(cmd *exec.Cmd, log io.Writer) int {
 	// borumuzu kurarız; alt süreç bitince okuma ucu kapanır ve Wait beklemez.
 	in := ec.input()
 	var stdinCleanup func()
-	if f, ok := ec.Stdin.(*os.File); ok && in.Buffered() == 0 {
+	if ec.chain {
+		// zincirde alt süreç girdi istemez (parola boruyla verilir); girdi sonraki adımların onaylarına kalmalı, alt süreç tüketmemeli
+		cmd.Stdin = nil
+	} else if f, ok := ec.Stdin.(*os.File); ok && in.Buffered() == 0 {
 		cmd.Stdin = f
 	} else if pr, pw, err := os.Pipe(); err == nil {
 		cmd.Stdin = pr
@@ -333,7 +342,14 @@ func (ec *ExecCtx) execBody(info []string, id, ver, action string) (rc int, sdir
 
 	// ---- onay ----
 	ApplyVarsNotice(info, ec.values(), applied, ec.Stderr)
-	if err := Confirm(info, action, ec.Server, ec.ask, ec.Stderr); err != nil {
+	confirmAsk := ec.ask
+	if ec.autoYes {
+		confirmAsk = func(prompt string) (string, bool) {
+			fmt.Fprintln(ec.Stderr, prompt+"e   (Kur düğmesiyle onaylandı)")
+			return "e", true
+		}
+	}
+	if err := Confirm(info, action, ec.Server, confirmAsk, ec.Stderr); err != nil {
 		return ec.refuse(err.Error()), sdir
 	}
 
@@ -362,6 +378,29 @@ func (ec *ExecCtx) execBody(info []string, id, ver, action string) (rc int, sdir
 		return ec.refuse("Çalıştırılacak program bulunamadı: " + prog), sdir
 	}
 	argv[0] = filepath.Join(ec.BinDir, prog)
+	// zincirde parola bir kez sorulur ve Ansible'a boruyla verilir (parola istenmiyorsa bayrak kaldırılır)
+	var secretPipe *os.File
+	if ec.chain {
+		for i := 1; i < len(argv); i++ {
+			if argv[i] != "--ask-become-pass" && argv[i] != "-K" {
+				continue
+			}
+			pw, err := ec.becomePassword()
+			if err != nil {
+				return ec.refuse(err.Error()), sdir
+			}
+			var repl []string
+			if pw != "" {
+				if secretPipe, err = passwordPipe(pw); err != nil {
+					return ec.refuse("Parola Ansible'a iletilemedi."), sdir
+				}
+				defer secretPipe.Close()
+				repl = []string{"--become-password-file", "/dev/fd/3"}
+			}
+			argv = append(argv[:i], append(repl, argv[i+1:]...)...)
+			break
+		}
+	}
 	for _, w := range argv {
 		if w == "--ask-become-pass" || w == "-K" {
 			ec.say("🔑 Sudo parolası istenecek: aşağıdaki 'BECOME password:' sunucudaki sudo parolasıdır.\n")
@@ -397,6 +436,9 @@ func (ec *ExecCtx) execBody(info []string, id, ver, action string) (rc int, sdir
 		timeout = "30"
 	}
 	cmd.Env = ec.ansibleEnv(timeout)
+	if secretPipe != nil {
+		cmd.ExtraFiles = []*os.File{secretPipe} // çocukta fd 3
+	}
 	rc = ec.runTee(cmd, lf)
 	logText, _ := os.ReadFile(logPath)
 	if rc != 0 && strings.Contains(string(logText), "waiting for privilege escalation prompt") {
@@ -404,7 +446,11 @@ func (ec *ExecCtx) execBody(info []string, id, ver, action string) (rc int, sdir
 		ec.say("    (Ubuntu 26.04'te varsayılan sudo-rs parolalı kullanımda takılır). Parolayı kontrol edin; sudo'yu elle deneyin (ssh ile: sudo -v).\n")
 	}
 	if rc != 0 && (strings.Contains(string(logText), "Incorrect sudo password") || strings.Contains(string(logText), "Missing sudo password")) {
-		ec.say("  ↳ Sudo parolası reddedildi. Aynı komutu yeniden çalıştırıp 'BECOME password:' istemine doğru parolayı yazın.\n")
+		if ec.chain {
+			ec.say("  ↳ Sudo parolası reddedildi. Düğmeye yeniden basıp doğru parolayı yazın.\n")
+		} else {
+			ec.say("  ↳ Sudo parolası reddedildi. Aynı komutu yeniden çalıştırıp 'BECOME password:' istemine doğru parolayı yazın.\n")
+		}
 	}
 	return rc, sdir
 }

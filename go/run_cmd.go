@@ -42,6 +42,7 @@ func runCommand(args []string) int {
 		sets = append(sets, k+"="+val)
 		return nil
 	})
+	chain := fs.Bool("chain", false, "tek tık zinciri: önizleme → eylem → kontrol; sudo parolası bir kez sorulur")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -65,6 +66,7 @@ func runCommand(args []string) int {
 		Stdout:        os.Stdout,
 		Stderr:        os.Stderr,
 		RunSet:        strings.Join(sets, "\n"),
+		Chain:         *chain,
 	}
 	return cli.Run(fs.Arg(0), fs.Arg(1), fs.Arg(2))
 }

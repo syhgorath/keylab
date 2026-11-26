@@ -49,10 +49,23 @@ var taskProgram = func(exe string) string { return exe }
 
 // openTask: eylemi görev terminali olarak başlatır. Aynı sunucuda aynı anda tek görev; toplam oturum sınırı ssh oturumlarıyla ortaktır.
 func (a *App) openTask(server, pkg, action, item string, snapshot bool, confirm string, ackDestructive bool, rows, cols uint16) (*TermSession, int, error) {
+	return a.openTaskX(false, server, pkg, action, item, snapshot, confirm, ackDestructive, rows, cols)
+}
+
+// openTaskX: chain=true tek tık zinciridir (önizleme → eylem → kontrol, `keylab run -chain`); kapıları authorizeChain denetler, onayları
+// (yıkıcı eylemde sunucu adı) ve sudo parolasını yürütücü terminalde sorar.
+func (a *App) openTaskX(chain bool, server, pkg, action, item string, snapshot bool, confirm string, ackDestructive bool, rows, cols uint16) (*TermSession, int, error) {
 	if !platform.DefaultPTY().TerminalSupported() {
 		return nil, http.StatusNotImplemented, fmt.Errorf("Windows'ta gömülü terminal henüz yok (WSL 2 kullanabilirsiniz)")
 	}
-	_, itemVar, code, err := a.authorizeRunItem(server, pkg, action, item, snapshot, confirm, ackDestructive)
+	var itemVar string
+	var code int
+	var err error
+	if chain {
+		code, err = a.authorizeChain(server, pkg, action, item)
+	} else {
+		_, itemVar, code, err = a.authorizeRunItem(server, pkg, action, item, snapshot, confirm, ackDestructive)
+	}
 	if err != nil {
 		return nil, code, err
 	}
@@ -61,6 +74,9 @@ func (a *App) openTask(server, pkg, action, item string, snapshot bool, confirm 
 		return nil, http.StatusInternalServerError, fmt.Errorf("ikilinin yolu bulunamadı: %w", err)
 	}
 	argv := jobArgv(exe, a.serversDir, a.compDir, a.stateDir, pkg, action, server, itemVar, item) // testte değiştirilebilir (bkz. jobArgv)
+	if chain {
+		argv = append([]string{argv[0], argv[1], "-chain"}, argv[2:]...)
+	}
 	root := filepath.Dir(filepath.Clean(a.compDir))
 
 	a.topen.Lock()
@@ -89,7 +105,11 @@ func (a *App) openTask(server, pkg, action, item string, snapshot bool, confirm 
 	a.tmu.Lock()
 	a.terms[ts.ID] = ts
 	a.tmu.Unlock()
-	a.auditTerm("task:"+pkg+"."+action, server, ts.ID)
+	kind := "task:"
+	if chain {
+		kind = "chain:"
+	}
+	a.auditTerm(kind+pkg+"."+action, server, ts.ID)
 	go ts.readLoop()
 	go ts.waitLoop(a)
 	return ts, 0, nil
@@ -109,6 +129,7 @@ func (a *App) termTaskHandler(w http.ResponseWriter, r *http.Request) {
 		Snapshot       bool   `json:"snapshot"`
 		Confirm        string `json:"confirm"`
 		AckDestructive bool   `json:"ackDestructive"`
+		Chain          bool   `json:"chain"`
 		Rows           uint16 `json:"rows"`
 		Cols           uint16 `json:"cols"`
 	}
@@ -123,7 +144,7 @@ func (a *App) termTaskHandler(w http.ResponseWriter, r *http.Request) {
 	if req.Cols < 10 || req.Cols > 600 {
 		req.Cols = 80
 	}
-	ts, code, err := a.openTask(req.Server, req.Package, req.Action, req.Item, req.Snapshot, req.Confirm, req.AckDestructive, req.Rows, req.Cols)
+	ts, code, err := a.openTaskX(req.Chain, req.Server, req.Package, req.Action, req.Item, req.Snapshot, req.Confirm, req.AckDestructive, req.Rows, req.Cols)
 	if err != nil {
 		http.Error(w, err.Error(), code)
 		return

@@ -300,7 +300,7 @@ import { appState } from "./js/state.js";
     load: () => load(), renderServer: () => renderServer(), showView: n => showView(n), loadPackages: () => packages.load(), checkUpdatesUI: () => packages.checkUpdates(),
     renderAddSteps: () => renderAddSteps(), markTaskDone: k => add.markTaskDone(k), getRemoval: () => ops.getRemoval(), openLastLog: (p, sv) => logs.openLast(p, sv),
   });
-  const { openRun, openWrite, openTerm, jobBusy, watchJob, closeRun, openJob, adoptJob } = jobs;
+  const { openRun, openWrite, openTerm, openChain, openCheck, jobBusy, watchJob, closeRun, openJob, adoptJob } = jobs;
 
   /* ---------------- Tema ve Ayarlar (js/ui/settings.js) ---------------- */
   const settings = initSettings({ render: () => render() });
@@ -327,7 +327,7 @@ import { appState } from "./js/state.js";
 
   /* ---------------- Sunucu sayfası, Özet, paket sekmeleri ve katalog (js/ui/server.js) ---------------- */
   const serverPage = initServer({
-    openRun, openWrite, openTerm, openVars, varCur, openDlg, closeDlg, showView: n => showView(n), load: () => load(),
+    openRun, openWrite, openTerm, openChain, openCheck, openVars, varCur, openDlg, closeDlg, showView: n => showView(n), load: () => load(),
     openTask: (s, k) => openTask(s, k), openCtx: (x, y, n) => openCtx(x, y, n), renderSrvTree: () => renderSrvTree(), setHash: (h, r) => setHash(h, r), stateText: s => stateText(s), logs, lynis,
   });
   const { openServer, renderServer, goLogs, goLynis, openEditAddr } = serverPage;
