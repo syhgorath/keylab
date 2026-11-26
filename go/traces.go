@@ -7,7 +7,8 @@ package main
 //   - Ayrı tarayıcı profili: Chromium'un SingletonLock sembolik bağı FAT/exFAT'ta oluşturulamaz → geçici klasör.
 //   - ssh known_hosts: USB'deki durum klasörüne (state/known_hosts): kabul edilen host key'ler bilgisayarın ~/.ssh/known_hosts'una yazılmaz.
 //
-//   - Gömülü pencerenin WebKit verisi (~/Library/WebKit ve ~/Library/Caches altında paket kimliğiyle): misafir modda pencere kapanınca ve her açılışta silinir (sweepWebKitTraces).
+//   - Gömülü pencerenin WebKit verisi (~/Library/WebKit ve ~/Library/Caches altında): misafir modda pencere kapanınca ve her açılışta silinir.
+//     Yalnız pencereli derleme ve yalnız KENDİ klasörü (.app: paket kimliği; paketsiz ikili: dosya adı); bkz. webKitOwnID, sweepWebKitTraces.
 //
 // Hâlâ bilgisayarda kalanlar: Keychain kayıtları (parola/knock), kullanıcının kendi ssh-agent'ına eklenen anahtarlar (Çıkış USB anahtarlarını siler),
 // macOS'un kendi izleri (Spotlight, son kullanılanlar, günlükler).
@@ -86,19 +87,36 @@ func (a *App) runCleanupsSteps(begin, end func(label string)) []string {
 	return done
 }
 
+// webKitOwnID: BU sürecin gömülü penceresinin WebKit klasör adı. "" → silinecek bir şey yok.
+//   - Pencereli derleme değilse (window=false: --chrome, CGO'suz) WebKit'e hiç yazılmaz.
+//   - .app içinden çalışıyorsa paket kimliği.
+//   - Paketsiz ikilide macOS dosya adını kullanır (yayın ikilisi keylab-X.Y.Z-darwin-arm64, deneme klasöründeki keylab). Yalnız "keylab" ile
+//     başlayan adlar kabul edilir: başka ada çevrilmiş bir ikili, adı çakışan yabancı bir uygulamanın verisini silmesin.
+//
+// Böylece paketsiz bir deneme ikilisi aynı Mac'teki kurulu KeyLab.app'in verisine dokunmaz. USB'deki ve kurulu .app aynı kimliği paylaşır: ayrılamaz.
+func webKitOwnID(window bool, exe string) string {
+	if !window {
+		return ""
+	}
+	if appBase(exe) != filepath.Dir(exe) { // exe bir .app/Contents/MacOS içinde
+		return platform.WebKitBundleID
+	}
+	if name := filepath.Base(exe); strings.HasPrefix(strings.ToLower(name), "keylab") {
+		return name
+	}
+	return ""
+}
+
 // sweepWebKitTraces: misafir (USB) modda gömülü pencerenin bu bilgisayarda bıraktığı WebKit verisini (çerez, yerel depo, önbellek) siler. WebKit süreçleri
 // pencere kapanırken de yazdığı için pencere kapandıktan sonra ve her açılışta (Cmd+Q/çökme artıkları) çağrılır. Misafir değilse HİÇBİR ŞEY silinmez
-// (kurulu/güvenilir Mac'te bu veri kullanıcının kendi uygulama verisidir). Yalnız beklenen iki yola (ev klasörü altında, son öğe paket kimliği) bakar,
-// sembolik bağları izlemez (bağın kendisi silinir, hedefine dokunulmaz).
-func sweepWebKitTraces(guest bool, home string, remove func(string) error) int {
+// (kurulu/güvenilir Mac'te bu veri kullanıcının kendi uygulama verisidir). Yalnız id'nin iki yoluna (ev klasörü altında) bakar, sembolik bağları izlemez
+// (bağın kendisi silinir, hedefine dokunulmaz).
+func sweepWebKitTraces(guest bool, home, id string, remove func(string) error) int {
 	if !guest {
 		return 0
 	}
 	n := 0
-	for _, d := range platform.WebKitTraceDirs(home) {
-		if filepath.Base(d) != platform.WebKitBundleID || !strings.HasPrefix(d, filepath.Clean(home)+string(filepath.Separator)) {
-			continue
-		}
+	for _, d := range platform.WebKitTraceDirs(home, id) {
 		if _, err := os.Lstat(d); err != nil {
 			continue
 		}
@@ -111,5 +129,5 @@ func sweepWebKitTraces(guest bool, home string, remove func(string) error) int {
 
 func sweepWebKitNow() {
 	home, _ := os.UserHomeDir()
-	sweepWebKitTraces(platform.GuestMode(), home, os.RemoveAll)
+	sweepWebKitTraces(platform.GuestMode(), home, webKitOwnID(windowSupported(), selfExe()), os.RemoveAll)
 }

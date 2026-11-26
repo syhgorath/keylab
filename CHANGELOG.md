@@ -10,6 +10,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/) esas alınmıştır.
 - Geliştirici komutu `components install-local [--force] <paket> <arşiv> <imza>`: kilitteki sürümü **ağsız**, yerel bir arşivden kurar (paket geliştirme deneme döngüsü için). Güven kapıları indirmeyle aynıdır (`InstallArchive`: sürüm kilitle aynı, sha256 kilitteki, imza kilitteki imzacıyla geçerli, geri sürüm yok, arşiv içeriği güvenli); yalnız bayt kaynağı değişir. `--force` aynı sürüm kuruluysa eskisini `<sürüm>.bozuk-<zaman>` olarak kenara alıp (silmez) yenisini kurar.
 
 ### Düzeltildi
+- Misafir modda WebKit temizliği artık yalnız sürecin **kendi** klasörünü siler: paketsiz deneme ikilisi (`keylabtest.sh`) ve `--chrome` derlemesi kurulu `KeyLab.app`'in pencere verisine dokunmaz; paketsiz pencereli ikilinin (`keylab-…`) silinmeden kalan verisi de temizlenir.
 - Arayüzde kalmış iki eski prototip metni düzeltildi: kenar çubuğundaki İndeks kartı **"imza doğrulaması bu taslakta yok"** diyordu (oysa indeks imzası `index_signers` ile doğrulanıyor; artık "imzası index_signers ile doğrulanır"); Pano'daki paket satırlarındaki devre dışı düğme **"güncelleme denetimi yok"** diyordu (denetim Paketler sayfasında var; artık "güncellemeler Paketler sayfasında"). İngilizce çeviriler ve anlık görüntüler güncellendi.
 
 ### Değişti

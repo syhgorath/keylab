@@ -20,7 +20,8 @@
 #
 # EMNİYETLER (gerçek veriye/sunucuya bulaşmasın):
 #   - Sürüm damgası: derleme `-X main.buildVersion=<VERSION>` ile yapılır ve VERSION dosyası deneme klasörüne kopyalanır (yoksa sürüm eski VERSION'dan okunurdu).
-#   - Misafir mod: KEYLAB_GUEST=1 verilir (özel ssh-agent, Keychain'e dokunulmaz); "Bu Mac'e güveniyorum" işareti olsa bile.
+#   - Misafir mod: KEYLAB_GUEST=1 verilir (özel ssh-agent, Keychain'e dokunulmaz); "Bu Mac'e güveniyorum" işareti olsa bile. Pencere verisi temizliği yalnız
+#     bu deneme ikilisinin klasörünü (~/Library/{WebKit,Caches}/keylab) siler; kurulu KeyLab.app'inkine dokunmaz.
 #   - Adres koruması: servers/*/server.env içindeki IP yalnız 127.0.0.1/localhost/::1, KEYLABTEST_IZINLI (boşluk/virgülle) ya da $KT/lab-hosts (satır başına bir adres, # yorum)
 #     listesindeyse sessiz geçer; başka adres varsa başlatma DURUR (--yes ile aşılır). Test VM'lerinizi bilerek lab-hosts'a ekleyin.
 #
