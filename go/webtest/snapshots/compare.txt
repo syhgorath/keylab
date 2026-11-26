@@ -3113,7 +3113,7 @@
           <li>
             <b>
               "Sudo parolası"
-            "yalnızca motor sorduğunda çıkan kutuya yazılır; doğrudan Ansible'ın terminaline (pty) iletilir, saklanmaz, günlüğe yazılmaz, sayfada gösterilmez. Paket eylemleri gömülü terminalde çalışır; parolayı doğrudan orada yazarsınız. SSH anahtar parolaları ve gizli anahtarlar arayüzde girilmez (ssh-agent)."
+            "paket eylemlerinde gömülü terminalde yazılır; saklanmaz, günlüğe yazılmaz. Ayar kartlarının Kur düğmesinde bir kez sorulur ve yalnız o koşu boyunca bellekte tutulur. Sunucu görevlerinde motor sorduğunda kutu açılır. SSH anahtar parolaları ve gizli anahtarlar sayfaya yazılmaz (ssh-agent)."
           <li>
             "Sayfa"
             <span class="mono">
@@ -3123,7 +3123,7 @@
             "Arayüzden yalnızca"
             <b>
               "salt okunur, sudo istemeyen, onay gerektirmeyen, önkoşulsuz"
-            "eylemler çalıştırılır; sunucu tarafında yeniden denetlenir. Çalıştırma uygulamanın kendi motoruyla yapılır (kapılar, günlük, sonuç kaydı aynı). Eylemler arayüzdeki terminalde çalışır; sudo parolası istenince kutu açılır. Değişiklik yapan (yıkıcı olmayan) eylemler önce plan, snapshot ve ad/e-h onayından geçer; motor onayları yeniden sorabilir. Yıkıcı eylemler (kaldir, yukselt, sunucu silme) ek onay ister: sunucu adı birebir, snapshot ve \"geri alınamayabilir\" onayı."
+            "eylemler çalıştırma penceresinde koşar; sunucu tarafında yeniden denetlenir. Diğer paket eylemleri doğrudan gömülü terminalde başlar (kapılar, günlük ve sonuç kaydı aynı): değiştiren eylemde motor e/h, yıkıcı eylemde sunucu adını terminalde sorar. Ayar kartlarındaki Kur düğmesi e/h sorusunun yerine geçer; yıkıcı eylemde sunucu adı yine sorulur. Snapshot almak size kalır. Sunucu silme ayrıca ad onayı ister."
     <div class="card">
       <div class="card-head">
         <h2>

@@ -256,15 +256,6 @@ test("günlük: 'changed:' satırları da yeşil (ok) sınıfı alır", async ()
   assert.deepEqual(h.errors, []); h.close();
 });
 
-test("yazan eylem terminalde başlayınca çalıştırma penceresi KENDİLİĞİNDEN kapanır; görev sekmesi çalışmaya devam eder (kapanış eylemi kesmez)", async () => {
-  const tasks = []; const h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov(taskOv(tasks)) });
-  await h.click('#srv-body [data-write="linux-hardening|audit"]'); await h.click("#w-snap"); await h.click("#w-yes"); await h.click("#run-go");
-  assert.deepEqual(tasks.map(p => `${p.server}/${p.action}`), ["web1/audit"]); assert.ok(h.$("#termmodal").classList.contains("open"));
-  assert.ok(!isOpen(h, "#runmodal"), "çalıştırma penceresi kendiliğinden kapandı");
-  assert.equal(h.calls.filter(c => c.path === "/api/term/close").length, 0, "görev oturumu sonlandırılmadı");
-  assert.equal(h.$$("#term-dock .term-chip").length, 1); assert.deepEqual(h.errors, []); h.close();
-});
-
 test("görev modu + Sunucu ekle sihirbazı: bitince adım ✔ olur (markTaskDone + renderAddSteps bağlantısı); başarısızsa olmaz", async () => {
   for (const [exit, expectDone] of [[0, true], [1, false]]) {
     const f = fakeJobs(); let created = false;

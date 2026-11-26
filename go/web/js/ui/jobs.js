@@ -127,79 +127,8 @@ export function initJobs(hooks) {
   }
   function closeRun() { if (runBusy()) return; runm.classList.remove("open"); pill = null; renderPill(); }
 
-  /* değişiklik yapan eylem: plan → snapshot + onay → Terminal (sudo parolası orada) → canlı ilerleme.
-     Eylem gömülü terminalde çalışır; motor aynı onayları orada yeniden ister (tek doğruluk kaynağı); arayüz onayı bunun ÖN adımıdır. */
-  const EFFECT_TXT = { "installs-package": "paket kurar", "changes-config": "yapılandırmayı değiştirir", destructive: "yıkıcı" };
-  let wAct = null;
-  function openWriteBase(server, pkg, action, item) {
-    if (jobBusy(server)) return;
-    openRunBase(server, pkg, action, item);
-    runMode = "write";
-    const p = appState.srv.packages.find(x => x.id === pkg), a = actionOf(pkg, action); wAct = a;
-    const pv = (p.vars || []).filter(v => v.set);
-    const prereq = (a.prereqs || []).map(q => {
-      const act = p.actions.find(x => x.id === q.action);
-      const chips = act && act.keys ? Object.entries(act.keys).map(([k, v]) => `<span class="chip">${esc(k)}=${esc(v)}</span>`).join("") : "";
-      return `<div class="sj-fe7b49"><span class="ok">✔ ${esc(q.action)}</span> <span class="muted small">${Math.max(1, Math.round(q.ageSec / 60))} dk önce</span>${chips ? `<div class="chips">${chips}</div>` : ""}</div>`;
-    }).join("");
-    const warns = (a.warnings || []);
-    const destr = !!a.destructive;
-    const typeName = destr || a.confirm === "type-server-name";
-    $("#run-title").innerHTML = `<span class="mono">${esc(action)}</span> · ${esc(TAB_LABEL[pkg] || pkg)}${runItem ? ` · <b>${esc(runItem)}</b>` : ""} <span class="draft-tag sj-0996f7">${destr ? "YIKICI" : "yazar"}</span>`;
-    $("#run-confirm-text").innerHTML = destr
-      ? `<b>⚠ YIKICI EYLEM.</b> <b>${esc(server)}</b> sunucusunda dosya/veri <b>silinebilir ya da değiştirilebilir ve geri alınamayabilir</b>: ${(a.effects || []).map(e => esc(EFFECT_TXT[e] || e)).join(", ")}. Aşağıdaki uyarıların tamamını okuyun.`
-      : `<b>${esc(server)}</b> sunucusuna <b>gerçekten yazılacak</b>: ${(a.effects || []).map(e => esc(EFFECT_TXT[e] || e)).join(", ")}.`;
-    $("#run-confirm-extra").hidden = false;
-    $("#run-confirm-extra").innerHTML = `
-      ${prereq ? `<div class="small muted sj-56f435">Önkoşul (motor 30 dk tazelik ister)</div>${prereq}` : ""}
-      ${pv.length ? `<div class="small muted sj-56f435">Bu değişkenlerle</div><div class="chips">${pv.map(v => `<span class="chip">${esc(v.name)}=${esc(v.value.length > 48 ? v.value.slice(0, 48) + "…" : v.value)}</span>`).join("")}</div>` : ""}
-      ${warns.length ? `<div class="small muted sj-56f435">Paketin uyarıları${destr ? " (tamamı)" : ""}</div><ul class="small sj-cf5387">${warns.slice(0, destr ? warns.length : 3).map(w => `<li>${esc(w)}</li>`).join("")}</ul>${!destr && warns.length > 3 ? `<details class="small sj-96ad60"><summary class="muted sj-3b6a3a">${warns.length - 3} uyarı daha</summary><ul class="sj-e15e9c">${warns.slice(3).map(w => `<li>${esc(w)}</li>`).join("")}</ul></details>` : ""}` : ""}
-      <label class="small sj-6693ed"><input type="checkbox" id="w-snap"> <span><b>VM snapshot'ı aldım</b>; sorun çıkarsa geri dönebilirim.</span></label>
-      ${destr ? `<label class="small sj-b97486"><input type="checkbox" id="w-destr"> <span><b>Bu eylemin geri alınamayabileceğini anlıyorum</b>; yedeğim var ve sonuçlarını üstleniyorum.</span></label>` : ""}
-      ${typeName ? `<div class="field sj-56f435"><label for="w-confirm">Onay için sunucu adını yazın: <span class="mono">${esc(server)}</span></label><input id="w-confirm" autocomplete="off" spellcheck="false" placeholder="${esc(server)}"><div class="hint">Büyük/küçük harf duyarlıdır.</div></div>`
-        : `<label class="small sj-6abd0a"><input type="checkbox" id="w-yes"> <span>Evet, bu eylemi <b>${esc(server)}</b> üzerinde çalıştırmak istiyorum.</span></label>`}`;
-    $("#run-confirm-note").textContent = "Eylem terminal penceresinde çalışır: motor aynı onayları (snapshot, e/h ya da ad) ve sudo parolasını orada yeniden sorabilir (kurallar menüdekiyle aynıdır); yanıtları terminalde yazarsınız. Çalışırken ilerleme burada izlenir.";
-    $("#run-go").textContent = destr ? "Yıkıcı eylemi çalıştır" : "Çalıştır (onaylı)"; $("#run-go").classList.add(destr ? "dangerbtn" : "warnbtn"); $("#run-go").disabled = true;
-    const check = () => { const okc = $("#w-snap").checked && (!destr || $("#w-destr").checked) && (typeName ? $("#w-confirm").value === server : $("#w-yes").checked); $("#run-go").disabled = !okc; };
-    ["#w-snap", "#w-destr", "#w-confirm", "#w-yes"].forEach(id => { const e = $(id); if (e) { e.addEventListener("input", check); e.addEventListener("change", check); } });
-  }
-
   // ilerleme çubuğu genişliği: satır içi stil özniteliği yerine data-w + CSSOM (CSP style-src-attr 'none' ile uyumlu)
   const applyBars = root => $$("i[data-w]", root).forEach(i => { i.style.width = (parseInt(i.dataset.w, 10) || 0) + "%"; });
-
-  /* sudo gerektiren salt okunur eylem: gömülü terminalde sshpocket motoru; parolayı kullanıcı terminalde yazar */
-  // runItem doluysa eylem durumu O ÖĞENİN kapsamında hesaplanmış olandır (önkoşul, son sonuç); yoksa paketin şimdiki seçimine göre.
-  function actionOf(pkg, action) {
-    const p = appState.srv && appState.srv.packages.find(x => x.id === pkg); if (!p) return undefined;
-    if (runItem) { const it = (p.items || []).find(x => x.id === runItem); return it && it.states && it.states[action]; }
-    return p.actions.find(x => x.id === action);
-  }
-  function openTermBase(server, pkg, action, item) {
-    if (jobBusy(server)) return;
-    openRunBase(server, pkg, action, item);
-    runMode = "term";
-    $("#run-confirm-text").innerHTML = `<b>${esc(server)}</b> sunucusunda <span class="mono">${esc(action)}</span> (<b>salt okunur</b>) çalışacak. Motor <b>sudo parolası</b> isteyecek: terminal penceresinde yazarsınız; doğrudan Ansible'a iletilir, KeyLab onu saklamaz ya da günlüğe yazmaz.`;
-    $("#run-go").textContent = "Çalıştır";
-    const pv = (actionOf(pkg, action) && appState.srv && appState.srv.packages.find(x => x.id === pkg).vars || []).filter(v => v.set);
-    if (pv.length) $("#run-confirm-text").insertAdjacentHTML("beforeend", `<div class="chips sj-8a77e5"><span class="small muted sj-9162a2">Bu değişkenlerle:</span>${pv.map(v => `<span class="chip">${esc(v.name)}=${esc(v.value.length > 48 ? v.value.slice(0, 48) + "…" : v.value)}</span>`).join("")}</div>`);
-    $("#run-confirm-note").textContent = "Eylem terminal penceresinde çalışır: sudo parolası istemi orada belirince yazarsınız. Sonuç menüdekiyle aynı şekilde kaydedilir. ssh anahtarınızın ssh-agent'ta yüklü olması gerekir.";
-  }
-  // sudo gerektiren (term) ve değişiklik yapan (write) eylemler gömülü terminalde çalışır: sudo/ansible parolası ve motorun onay soruları terminalde yazılır.
-  // Arayüz onayı (snapshot, e/h ya da ad) bunun ÖN adımıdır; sunucu aynı kapıları yeniden denetler. Sonuç kartı eylem bitince (olay) ya da günlük değişince yenilenir.
-  async function startTerm() {
-    $("#run-go").disabled = true;
-    const a0 = actionOf(runPkg, runAct), base = a0 ? a0.lastTime || "" : "";
-    const body = { server: runSrv, package: runPkg, action: runAct };
-    if (runItem) body.item = runItem;
-    if (runMode === "write") { body.snapshot = $("#w-snap").checked; body.ackDestructive = !!($("#w-destr") && $("#w-destr").checked); body.confirm = $("#w-confirm") ? $("#w-confirm").value : $("#w-yes").checked ? "evet" : ""; }
-    const started = await window.KeyLabTerminal.openTask(body); // → /api/term/task; terminal penceresi açılır
-    if (!started.ok) { $("#run-go").disabled = false; toast("Eylem başlatılamadı: " + started.error); return; }
-    // eylem artık terminalde çalışıyor: modal HEMEN kapanır (terminal penceresi küçültülünce arkada sayfayı kilitleyen bir modal kalmasın);
-    // ilerleme/parola/onay terminalde, sonuç bitince sayfada ve bildirimde (aşağıdaki "keylab:taskexit" dinleyicisi)
-    const label = `${runAct} · ${TAB_LABEL[runPkg] || runPkg}`;
-    closeRun();
-    toast(`${runSrv}: ${label} terminalde çalışıyor — parola ve onayları orada yazın`);
-  }
 
   const refreshServer = async server => {
     const r = await json("/api/server?name=" + encodeURIComponent(server));
@@ -259,13 +188,19 @@ export function initJobs(hooks) {
     } finally { if (!dropped()) autoReading.delete(key); }
   }
 
-  /* Ayar kartlarının tek tık akışı: ayrı onay penceresi yok, her şey gömülü terminalde. "Kur" zinciri önizleme → eylem → kontrol koşar;
-     sudo parolası ve gereken onaylar (yıkıcı eylemde sunucu adı) orada yazılır. "Kontrol et" okumayı doğrudan terminalde açar. */
+  /* Değiştiren ve sudo isteyen paket eylemleri ayrı onay penceresi olmadan doğrudan gömülü terminalde açılır: sudo parolası ve motorun onayları (değiştiren eylemde
+     e/h, yıkıcı eylemde sunucu adı) orada yazılır; sunucu ve yürütücü kapıları yeniden denetler. Ayar kartlarının "Kur" zinciri ayrıca
+     önizleme → eylem → kontrol adımlarını tek koşuda yürütür. */
   const chained = new Set(); // "sunucu|paket|eylem": biten görev zincirse kontrolü zaten koşmuştur
-  async function startDirect(server, pkg, action, chain) {
+  const starting = new Set(); // açılmakta olan görevler: çift tıklama ikinci istek göndermez
+  async function startDirect(server, pkg, action, chain, item) {
     const key = `${server}|${pkg}|${action}`;
+    if (starting.has(key)) return;
+    starting.add(key);
     if (chain) chained.add(key); else chained.delete(key);
-    const started = await window.KeyLabTerminal.openTask({ server, package: pkg, action, ...(chain ? { chain: true } : {}) });
+    let started;
+    try { started = await window.KeyLabTerminal.openTask({ server, package: pkg, action, ...(item ? { item } : {}), ...(chain ? { chain: true } : {}) }); }
+    finally { starting.delete(key); }
     if (!started.ok) { chained.delete(key); toast("Eylem başlatılamadı: " + started.error); return; }
     toast(`${server}: ${action} terminalde çalışıyor — parola ve onayları orada yazın`);
   }
@@ -310,7 +245,6 @@ export function initJobs(hooks) {
     $("#run-go").disabled = true; askedAt = askCancelledAt = -1; askBusy = false;
     const body = { server: runSrv, package: runPkg, action: runAct };
     if (runItem) body.item = runItem;
-    if (runMode === "write") { body.snapshot = $("#w-snap").checked; body.ackDestructive = !!($("#w-destr") && $("#w-destr").checked); body.confirm = $("#w-confirm") ? $("#w-confirm").value : $("#w-yes").checked ? "evet" : ""; }
     let r;
     try { r = runMode === "upgrade" ? await json("/api/upgrade", { package: runPkg, version: runUpgTo, ack: true }) : runMode === "task" ? await json("/api/server-task", { server: runSrv, task: runAct }) : await json("/api/run", body); }
     catch (e) { $("#run-go").disabled = false; toast("Çalıştırılamadı: " + e.message); return; }
@@ -424,13 +358,14 @@ export function initJobs(hooks) {
     }
     try { appState.srv = await json("/api/server?name=" + encodeURIComponent(runSrv)); if (appState.view === "server") renderServer(); load(); } catch (e) { /* bir sonraki turda yenilenir */ }
   }
-  $("#run-go").addEventListener("click", () => (runMode === "term" || runMode === "write" ? startTerm() : startRun()));
+  $("#run-go").addEventListener("click", startRun);
   $("#run-close").addEventListener("click", closeRun);
   $("#run-cancel").addEventListener("click", async () => { $("#run-cancel").disabled = true; try { await json("/api/run/cancel", { id: runJob }); } catch (e) { toast("İptal edilemedi: " + e.message); } });
 
-  const openRun = gated(openRunBase), openWrite = gated(openWriteBase), openTerm = gated(openTermBase);
+  const openAction = gated((server, pkg, action, item) => startDirect(server, pkg, action, false, item));
+  // openRun (parolasız salt okunur eylem, sunucu görevi, yükseltme, silme) şimdilik çalıştırma penceresinde
+  const openRun = gated(openRunBase), openWrite = openAction, openTerm = openAction, openCheck = openAction;
   const openChain = gated((server, pkg, action) => startDirect(server, pkg, action, true));
-  const openCheck = gated((server, pkg, action) => startDirect(server, pkg, action, false));
   return {
     openRun, openWrite, openTerm, openChain, openCheck, jobBusy, watchJob, closeRun, openJob, adoptJob,
     setMode: m => { runMode = m; },          // openRun'dan sonra çağıran akışlar (silme, görev, yükseltme) kipi belirler

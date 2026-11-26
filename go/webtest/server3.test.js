@@ -102,7 +102,8 @@ test("katalog: 'Düzenle…' öğenin grubuyla, 'Tüm değişkenler…' grupsuz 
 test("katalog: Genel eylemler bölümü (süzgeç çipleri, düğmeler) çalışır", async () => {
   const h = await open(); h.$(".store-actions").open = true;
   assert.ok(h.$$(".store-actions [data-actcat]").length >= 2); await h.click('.store-actions [data-actcat="read"]'); assert.ok(h.$$("#act-list > .act[data-cat]").filter(a => !a.hidden).every(a => a.dataset.cat === "read"));
-  await h.click('.store-actions [data-term="kurulum|preview"]'); assert.ok(h.$("#runmodal").classList.contains("open")); assert.match(h.$("#run-title").textContent, /preview/); h.close();
+  await h.click('.store-actions [data-term="kurulum|preview"]');
+  assert.deepEqual(h.calls.filter(c => c.path === "/api/term/task").map(c => c.body.action), ["preview"]); assert.ok(!h.$("#runmodal").classList.contains("open")); h.close();
 });
 
 /* ---------------- genel `items` bildiren paket ---------------- */
@@ -128,10 +129,13 @@ test("katalog (items): öğe eylem düğmeleri — durum türüne göre; kuruluy
   assert.match(txt(h, ".store-actions summary"), /kurulum_yazilim seçimine göre çalışır/); h.close();
 });
 
-test("katalog (items): öğe düğmeleri iş pencerelerini açar (Çalıştır/Onayla/Terminal), öğe kimliğiyle", async () => {
-  let h = await open(itemsPkg()); await h.click('[data-irun="kurulum|preview|docker"]'); assert.ok(h.$("#runmodal").classList.contains("open")); assert.match(h.$("#run-title").textContent, /preview/); h.close();
-  h = await open(itemsPkg()); await h.click('[data-iwrite="kurulum|kaldir|docker"]'); assert.ok(h.$("#runmodal").classList.contains("open")); assert.match(h.$("#run-title").textContent, /kaldir/); h.close();
-  h = await open(itemsPkg()); await h.click('[data-iterm="kurulum|yukselt|docker"]'); assert.ok(h.$("#runmodal").classList.contains("open")); assert.match(h.$("#run-title").textContent, /yukselt/); h.close();
+test("katalog (items): öğe düğmeleri öğe kimliğiyle doğrudan gömülü terminalde başlar", async () => {
+  for (const [attr, action] of [["irun", "preview"], ["iwrite", "kaldir"], ["iterm", "yukselt"]]) {
+    const h = await open(itemsPkg()); await h.click(`[data-${attr}="kurulum|${action}|docker"]`);
+    if (attr === "irun") { assert.ok(h.$("#runmodal").classList.contains("open")); assert.match(h.$("#run-title").textContent, /preview/); }
+    else assert.deepEqual(h.calls.filter(c => c.path === "/api/term/task").map(c => [c.body.action, c.body.item]), [[action, "docker"]]);
+    h.close();
+  }
 });
 
 test("katalog (items): ortak ayarlar = hiçbir öğeye ait olmayan ilk 8 değişken (paket ön eki kısaltılır); itemVar yoksa özet boş", async () => {

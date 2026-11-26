@@ -7,7 +7,7 @@ const { boot } = require("./harness");
 const { mixedHome, status } = require("./lib/fakejobs");
 
 const MISSING = { needed: true, ok: false, range: ">=3.12", found: ["3.9.6"], stub: true, guide: "g" };
-const ov = extra => ({ "/api/home": mixedHome, "/api/status": status, ...extra });
+const ov = extra => ({ "/api/home": mixedHome, "/api/status": status, "/api/term/task": { id: "k1", kind: "task", title: "görev" }, "/api/term/close": { ok: true }, "/api/term/resize": { ok: true }, ...extra });
 const isOpen = (h, s) => h.$(s).classList.contains("open");
 const WRITE = '#srv-body [data-write="linux-hardening|audit"]';
 
@@ -28,16 +28,16 @@ test("python yok → kurulunca 'Yeniden denetle': hâlâ yoksa uyarı kalır; va
   let st = MISSING;
   const h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov({ "/api/python": () => st }) });
   await h.click(WRITE); await h.settle(); assert.ok(isOpen(h, "#dlg"));
-  await h.click("#dlg-ok"); await h.settle(); assert.ok(isOpen(h, "#dlg")); assert.match(h.$("#dlg-err").textContent, /Hâlâ uygun Python/); assert.ok(!isOpen(h, "#runmodal"));
+  await h.click("#dlg-ok"); await h.settle(); assert.ok(isOpen(h, "#dlg")); assert.match(h.$("#dlg-err").textContent, /Hâlâ uygun Python/); assert.ok(!isOpen(h, "#termmodal"));
   st = { needed: true, ok: true, range: ">=3.12", found: [], stub: false, guide: "" };
-  await h.click("#dlg-ok"); await h.settle(); assert.ok(!isOpen(h, "#dlg")); assert.ok(isOpen(h, "#runmodal"), "eylem kaldığı yerden açıldı");
+  await h.click("#dlg-ok"); await h.settle(); assert.ok(!isOpen(h, "#dlg")); assert.ok(isOpen(h, "#termmodal"), "eylem kaldığı yerden açıldı");
   assert.deepEqual(h.errors, []); h.close();
 });
 
 test("python var ya da gerekmiyorsa ya da denetlenemezse eylem engellenmez (denetim hatası eylemi kilitlemez)", async () => {
   for (const o of [{ "/api/python": () => ({ needed: true, ok: true, range: ">=3.12", found: [], stub: false, guide: "" }) }, { "/api/python": () => ({ needed: false, ok: true, range: "", found: [], stub: false, guide: "" }) }, { "/api/python": () => ({ status: 500, body: "x" }) }]) {
     const h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: ov(o) });
-    await h.click(WRITE); await h.settle(); assert.ok(isOpen(h, "#runmodal")); assert.ok(!isOpen(h, "#dlg")); h.close();
+    await h.click(WRITE); await h.settle(); assert.ok(isOpen(h, "#termmodal")); assert.ok(!isOpen(h, "#dlg")); h.close();
   }
 });
 
