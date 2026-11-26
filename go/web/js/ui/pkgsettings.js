@@ -1,6 +1,6 @@
 /* KeyLab — Paket ayar kartları ve ayar penceresi (#setmodal): component.json "settings" / "setting_cards" bildirimi.
    Kart yalnız durum özetini gösterir; "Ayarlar" penceresi istenen değeri düzenler (Kaydet yalnız bu bilgisayardaki .vars dosyasını yazar) ve altında
-   sunucudan SON OKUNAN değeri gösterir. Durumu arka uç hesaplar (pkgsettings.go). Hiçbir okuma kendiliğinden başlamaz; Kontrol et / Önizle / Uygula
+   sunucudan SON OKUNAN değeri gösterir. Durumu arka uç hesaplar (pkgsettings.go). Okuma yalnız başarılı bir değiştiren eylemden sonra kendiliğinden başlar (parola istemeyen okumalar, jobs.js); Kontrol et / Önizle / Uygula
    paketin mevcut eylemleridir, onay ve terminal pencereleri aynen açılır (o sırada bu pencere gizlenir, kapanınca geri gelir). Testler: go/webtest/ayar_kart.test.js */
 import { $, $$, esc, json, toast, ago, localTime } from "../lib/util.js";
 import { appState } from "../state.js";
