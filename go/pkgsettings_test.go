@@ -21,11 +21,12 @@ const setPkg = `{"id":"demo","version":"0.2.0","sshpocket_api":1,"name":"Demo","
   {"name":"demo_adim","type":"bool","default":true,"group":"NTP","description":"z"},
   {"name":"demo_uyg","type":"string","default":"","group":"Uyg","description":"u"}
  ],
+ "setting_cards":[{"id":"saat","label":"Saat","description":"d"},{"id":"../kotu","label":"x"}],
  "settings":[
   {"id":"ntp","label":"NTP sunucuları","var":"demo_ntp","risk":["time-jump"],"apply_via":["apply"],
    "state":{"action":"ntp_durum","keys":["ntp_kaynak_1","ntp_kaynak_2"],"compare":"set","strip_prefix":["server ","pool "]}},
   {"id":"zone","label":"Saat dilimi","var":"demo_zone","apply_via":["apply"],"state":{"action":"durum","key":"timezone"}},
-  {"id":"adim","label":"Saat adımlama","var":"demo_adim","apply_via":["apply"]},
+  {"id":"adim","label":"Saat adımlama","var":"demo_adim","apply_via":["apply"],"card":"saat"},
   {"id":"uyg","label":"Uygulamalar","var":"demo_uyg","apply_via":["apply"],"state":{"action":"ntp_durum","key":"liste","compare":"set"}},
   {"id":"pve","label":"PVE","var":"demo_uyg","apply_via":["apply"],"state":{"action":"pve_oku","key":"pve"}}
  ]}`
@@ -146,6 +147,21 @@ func TestSettingsStatus(t *testing.T) {
 	// geçersiz değer dosyası: sapma/uyum uydurulmaz
 	g = setSettings(t, "demo_adim=belki\n", ntpRead(100, "ntp_kaynak_1=a.example.org"))
 	want("geçersiz değer", g["ntp"], setUnknown)
+}
+
+func TestSettingCardsInInfo(t *testing.T) {
+	comp := t.TempDir()
+	writePkg(t, comp, "demo", "0.2.0", setPkg)
+	a := &App{serversDir: t.TempDir(), compDir: comp, stateDir: t.TempDir()}
+	p := a.packageInfos(Server{Name: "web1"})[0]
+	if len(p.SettingCards) != 1 || p.SettingCards[0] != (SettingCard{ID: "saat", Label: "Saat", Description: "d"}) {
+		t.Fatalf("kartlar: %+v", p.SettingCards)
+	}
+	for _, s := range p.Settings {
+		if want := map[string]string{"adim": "saat"}[s.ID]; s.Card != want {
+			t.Errorf("%s kartı %q (beklenen %q)", s.ID, s.Card, want)
+		}
+	}
 }
 
 func TestSettingMatches(t *testing.T) {

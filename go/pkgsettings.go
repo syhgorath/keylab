@@ -21,6 +21,7 @@ type settingDecl struct {
 	Risk        []string `json:"risk"`
 	RiskNote    string   `json:"risk_note"`
 	ApplyVia    []string `json:"apply_via"`
+	Card        string   `json:"card"`
 	State       *struct {
 		Action      string   `json:"action"`
 		Key         string   `json:"key"`
@@ -28,6 +29,24 @@ type settingDecl struct {
 		Compare     string   `json:"compare"`
 		StripPrefix []string `json:"strip_prefix"`
 	} `json:"state"`
+}
+
+// SettingCard: component.json "setting_cards" öğesi (arayüzde katalog kartı + ayar penceresi).
+type SettingCard struct {
+	ID          string `json:"id"`
+	Label       string `json:"label"`
+	Description string `json:"description,omitempty"`
+}
+
+// cleanSettingCards: bildirimden gelen kartları güvenli sınırlara indirir.
+func cleanSettingCards(in []SettingCard) []SettingCard {
+	var out []SettingCard
+	for _, c := range in {
+		if reName.MatchString(c.ID) && len(out) < 10 {
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 // Ayar durumları (arayüz yalnız gösterir).
@@ -42,7 +61,8 @@ const (
 type SettingInfo struct {
 	ID          string   `json:"id"`
 	Label       string   `json:"label"`
-	Group       string   `json:"group"` // değişkenin grubu: arayüzde kart başlığı
+	Group       string   `json:"group"`          // değişkenin grubu: kart bildirilmemişse kart başlığı
+	Card        string   `json:"card,omitempty"` // setting_cards kimliği
 	Var         string   `json:"var"`
 	Description string   `json:"description,omitempty"`
 	Risk        []string `json:"risk,omitempty"`
@@ -128,7 +148,7 @@ func (a *App) settingInfos(s Server, p Package, decls []settingDecl, groups map[
 			continue
 		}
 		info := SettingInfo{ID: d.ID, Label: d.Label, Group: groups[d.Var], Var: d.Var, Description: d.Description, Risk: d.Risk, RiskNote: d.RiskNote,
-			ApplyVia: d.ApplyVia, Desired: splitList(effective[d.Var], ","), Actual: []string{}}
+			Card: d.Card, ApplyVia: d.ApplyVia, Desired: splitList(effective[d.Var], ","), Actual: []string{}}
 		if info.ApplyVia == nil {
 			info.ApplyVia = []string{}
 		}
