@@ -7,6 +7,7 @@ import { TAB_LABEL } from "../lib/labels.js";
 import { OS_LABEL, osIcon } from "../lib/icons.js";
 import { chart } from "./lynis.js";
 import { initKnock } from "./knock.js";
+import { initPkgSettings, cardsOf } from "./pkgsettings.js";
 
 // hooks: { openRun, openWrite, openTerm — iş penceresi; openVars, varCur — değişken penceresi; openDlg, closeDlg — ortak pencere;
 //          openTask(sunucu, görev) — hazırlık görevi; openCtx(x, y, ad) — sunucu bağlam menüsü; showView, load, renderSrvTree, setHash, stateText;
@@ -170,6 +171,8 @@ export function initServer(hooks) {
   }
   const knock = initKnock({ openDlg, closeDlg, reloadServer });
   const openKnock = knock.open;
+  // paket ayar kartları ve ayar penceresi (js/ui/pkgsettings.js)
+  const pkgSettings = initPkgSettings({ openRun, openWrite, openTerm, reload: reloadServer, saved: () => { catSrv = ""; window.KeyLabCompare?.invalidate(); } });
 
   /* ---------------- Paket sayfası (Hardening / Utility / Kurulum) ---------------- */
   let actFilter = "all";
@@ -229,74 +232,6 @@ export function initServer(hooks) {
     return `<div class="card st-card">${head}
       ${shown.length ? `<div class="st-grid">${shown.map(tile).join("")}</div>` : ""}
       ${rest.length ? `<details class="st-more"><summary class="small muted">${shown.length ? "Diğer değerler" : "Değerler"} (${rest.length})</summary><div class="chips">${rest.map(([n, v]) => `<span class="chip" title="${esc(n)}">${esc(ST_LABEL[n] || n)}: ${esc(v)}</span>`).join("")}</div></details>` : ""}</div>`;
-  }
-
-  /* ---------------- Ayar kartı (paketin `settings` bildirimi): istenen ↔ sunucudan son okunan değer ---------------- */
-  // Durumu arka uç hesaplar (pkgsettings.go); burada yalnız gösterilir. Hiçbir okuma kendiliğinden başlamaz: "Kontrol et" paketin salt okunur eylemidir.
-  // Düzen: tek kart; değişken grubu başına bir başlık satırı (son okuma + düğmeler). Açıklamalar satır adına tıklayınca açılır.
-  // Sunucuda karşılığı olmayan (okunmayan) ayarlar tabloya girmez, grubun "Uygulama seçenekleri" satırında durur.
-  const SET_ST = { match: ["ok", "✔ uyumlu"], drift: ["warn", "⚠ sapma"], unknown: ["plain", "bilinmiyor"], unmanaged: ["plain", "yönetilmiyor"], unreadable: ["plain", "okunamaz"] };
-  const SET_RISK = { "access-loss": ["danger", "erişimi kesebilir"], "restarts-service": ["warn", "servisi yeniden başlatır"], "time-jump": ["warn", "saati sıçratır"], "data-loss": ["danger", "veriyi etkiler"] };
-  const setOpen = new Set(); // açık açıklamalar: sayfa yeniden çizilince (10 sn'lik tazeleme) kapanmasın
-  const setChips = list => list.map(v => `<span class="chip">${esc(v)}</span>`).join("") || '<span class="muted">—</span>';
-  const setRisk = x => (x.risk || []).filter(r => SET_RISK[r]).map(r => `<span class="badge ${SET_RISK[r][0]}" title="${esc(x.riskNote || "")}">${SET_RISK[r][1]}</span>`).join("");
-  function setName(p, x) {
-    const name = `<span class="set-name" title="${esc(x.var)}">${esc(x.label)}</span>`;
-    if (!x.description && !x.riskNote) return name;
-    const key = `${appState.srvName}|${p.id}|${x.id}`;
-    return `<details class="set-info" data-sinfo="${esc(key)}"${setOpen.has(key) ? " open" : ""}><summary title="Açıklamayı göster">${name}<span class="set-i" aria-hidden="true">ⓘ</span></summary>
-      <div class="small muted">${x.description ? `<div>${esc(x.description)}</div>` : ""}${x.riskNote ? `<div>${esc(x.riskNote)}</div>` : ""}</div></details>`;
-  }
-  function setRow(p, x) {
-    const [cls, label] = SET_ST[x.status] || SET_ST.unknown;
-    const risk = setRisk(x);
-    // uyumluysa sunucu sütunu da istenen yazımı gösterir (sonuç satırı '/' gibi karakterleri '_' yapar)
-    const actual = x.status === "match" ? x.desired : x.actual;
-    return `<div class="set-row" data-set="${esc(x.id)}" data-st="${esc(x.status)}">
-      <div>${setName(p, x)}${risk ? `<div class="set-risk">${risk}</div>` : ""}</div>
-      <div class="set-want"><span class="set-lbl">İstenen</span>${setChips(x.desired || [])}</div>
-      <div class="set-have"><span class="set-lbl">Sunucuda</span>${setChips(actual || [])}</div>
-      <div class="set-state"><span class="badge ${cls}">${label}</span></div>${x.note ? `<div class="set-note small muted">${esc(x.note)}</div>` : ""}</div>`;
-  }
-  // okunmayan seçenek: yalnız istenen değer (aç/kapa seçenekleri sözcükle)
-  function setOption(p, x) {
-    const v = x.desired || [], one = v.length === 1 ? v[0] : "";
-    const val = one === "true" ? '<span class="chip">açık</span>' : one === "false" ? '<span class="chip">kapalı</span>' : setChips(v);
-    return `<div class="set-opt" data-set="${esc(x.id)}" data-st="unreadable">${setName(p, x)}${val}${setRisk(x)}</div>`;
-  }
-  function setGroup(p, group, rows) {
-    const byId = id => p.actions.find(a => a.id === id);
-    const uniq = l => [...new Set(l)];
-    const btn = (a, label, cls) => { const at = actBtnAttr(a, p); return at ? `<button class="btn sm ${cls}" ${at} title="${esc(a.id)}">${label}</button>` : `<button class="btn sm" disabled title="${esc(a.reason || "şimdi çalıştırılamaz")}">${label}</button>`; };
-    // bu platformda okunamayan (notlu) ayar tabloda kalır; yalnız hiç okuma bildirmeyenler seçenek satırına iner
-    const isOpt = x => x.status === "unreadable" && !x.note;
-    const reads = uniq(rows.map(x => x.readAction).filter(Boolean)).map(byId).filter(Boolean);
-    // hiçbir ayarı yönetilmeyen grupta (istenen boş) uygulanacak bir şey yoktur
-    const managed = rows.some(x => x.status !== "unmanaged" && (x.desired || []).length);
-    const applies = managed ? uniq(rows.flatMap(x => x.applyVia || [])).map(byId).filter(a => a && a.applicable) : [];
-    const previews = uniq(applies.flatMap(a => a.requires || [])).map(byId).filter(a => a && a.applicable && !(a.effects || []).length);
-    const named = (list, a) => (list.length > 1 ? `: ${esc(a.id)}` : "");
-    const buttons = reads.map(a => btn(a, `Kontrol et${named(reads, a)}`, "primary")).join("") +
-      previews.map(a => btn(a, `Önizle${named(previews, a)}`, "")).join("") +
-      applies.map(a => btn(a, `Uygula${named(applies, a)}`, a.destructive ? "dangerbtn" : "warnbtn")).join("");
-    const since = iso => { const v = ago(iso); return v === "şimdi" ? v : `${v} önce`; };
-    const when = reads.map(a => `<span title="${esc(a.id)}${a.lastTime ? " · " + esc(localTime(a.lastTime)) : ""}">${a.lastTime ? esc(since(a.lastTime)) : "henüz okunmadı"}</span>`).join(" · ");
-    const stale = rows.some(x => x.stale) ? '<span class="badge warn" title="Bu okumadan sonra bu sunucuda değişiklik yapan bir eylem çalıştı.">güncel olmayabilir</span>' : "";
-    const table = rows.filter(x => !isOpt(x)), opts = rows.filter(isOpt);
-    return `<div class="set-group" data-setgroup="${esc(group)}">
-      <div class="set-ghead"><h3>${esc(group || "Genel")}</h3>${stale}${when ? `<span class="set-when small muted"><span>Son okuma:</span> ${when}</span>` : ""}<span class="grow"></span><div class="app-btns">${buttons}</div></div>
-      ${table.map(x => setRow(p, x)).join("")}
-      ${opts.length ? `<div class="set-opts"><span class="small muted">Uygulama seçenekleri:</span>${opts.map(x => setOption(p, x)).join("")}</div>` : ""}</div>`;
-  }
-  function settingsCards(p) {
-    const all = p.settings || [];
-    if (!all.length) return "";
-    const n = st => all.filter(x => x.status === st).length;
-    const sum = [n("drift") ? `<span class="badge warn">${n("drift")} sapma</span>` : "", n("unknown") ? `<span class="badge plain">${n("unknown")} bilinmiyor</span>` : "",
-      !n("drift") && !n("unknown") && n("match") ? '<span class="badge ok">uyumlu</span>' : ""].join("");
-    const groups = [...new Set(all.map(x => x.group || ""))];
-    return `<div class="card set-card"><div class="card-head"><h2>Ayarlar</h2><span class="set-sum">${sum}</span><span class="grow"></span><button class="link" data-svars="">Değişkenleri düzenle…</button></div>
-      <div class="card-body tight"><div class="set-row head"><div>Ayar</div><div>İstenen</div><div>Sunucuda</div><div>Durum</div></div>${groups.map(g => setGroup(p, g, all.filter(x => (x.group || "") === g))).join("")}</div></div>`;
   }
 
   function pkgInfoCard(p, ok) {
@@ -401,9 +336,9 @@ export function initServer(hooks) {
     const itemVar = p.itemVar || (legacy && isKurulumCat(p) ? "kurulum_yazilim" : "");
     const sub = legacy ? "Kurulum motoru" : esc(p.name || p.id);
     return `<div class="store-head"><div><h2>Uygulama kataloğu</h2><div class="small muted">${sub} <span class="mono">v${esc(p.version)}</span> · bu USB'de.${legacy ? " Docker ya da yerel paket (native) olarak kurulur." : p.description ? " " + esc(p.description) : ""}</div></div>
-        <div class="fchips2">${chip("all", "Tümü", items.length)}${known ? chip("on", "Kurulu", onN) + chip("off", "Kurulabilir", items.length - onN) : ""}</div></div>
+        <div class="fchips2">${chip("all", "Tümü", items.length + cardsOf(p).length)}${known ? chip("on", "Kurulu", onN) + chip("off", "Kurulabilir", items.length - onN) : ""}</div></div>
       ${known ? "" : `<div class="notice sj-2b583d"><span class="ico" aria-hidden="true">ℹ</span><div>Hangi uygulamaların kurulu olduğu henüz okunmadı. ${dattr ? `<button class="link" ${dattr}>Durumu oku</button> (salt okunur).` : ""}</div></div>`}
-      <div class="store-grid" id="store-grid">${cards}</div>
+      <div class="store-grid" id="store-grid">${pkgSettings.cards(p)}${cards}</div>
       <div class="card gen-card"><div class="oz-top"><span class="oz-title">Genel ayarlar</span><span class="oz-tag">tüm uygulamalar</span></div>
         <div class="gen-grid">${gen}</div>
         <div class="oz-foot oz-foot-row"><span>${known && dattr ? `<button class="link" ${dattr}>Durumu yenile</button> · ` : ""}Son durum: ${d && d.lastTime ? esc(ago(d.lastTime)) + " önce" : "okunmadı"}</span><button class="link" data-kvars-all>Tüm değişkenler…</button></div></div>
@@ -441,6 +376,7 @@ export function initServer(hooks) {
 
   function renderServer() {
     if (!appState.srv) return;
+    pkgSettings.refresh();
     const s = appState.srv.server;
     const stCls = !s.valid ? "warn" : !s.checked ? "plain" : s.up ? "ok" : s.knock || s.conn === "refused" ? "warn" : "danger";
     const addr = s.valid ? `${s.user}@${s.host}:${s.port}` : "";
@@ -478,14 +414,14 @@ export function initServer(hooks) {
     setTimeout(() => $$("#srv-body [data-term]").forEach(b => b.addEventListener("click", () => { const [pid, aid] = b.dataset.term.split("|"); openTerm(appState.srvName, pid, aid); })), 0);
     setTimeout(() => $$("#srv-body [data-run]").forEach(b => b.addEventListener("click", () => { const [pid, aid] = b.dataset.run.split("|"); openRun(appState.srvName, pid, aid); })), 0);
     if (!p) { $("#srv-body").innerHTML = '<div class="card"><div class="card-body small muted">Bu sunucu için paket bulunamadı.</div></div>'; return; }
-    setTimeout(() => $$("#srv-body [data-svars]").forEach(b => b.addEventListener("click", () => openVars(appState.srvName, p.id, b.dataset.svars || undefined))), 0);
-    setTimeout(() => $$("#srv-body details[data-sinfo]").forEach(d => d.addEventListener("toggle", () => { if (d.open) setOpen.add(d.dataset.sinfo); else setOpen.delete(d.dataset.sinfo); })), 0);
+    setTimeout(() => $$("#srv-body [data-setopen]").forEach(b => b.addEventListener("click", () => pkgSettings.open(p.id, b.dataset.setopen))), 0);
     const ok = p.actions.filter(a => a.applicable), na = p.actions.filter(a => !a.applicable);
     const cat = catalogItems(p);
     // birleşik utility: katalogun altında paketin kendi kartları (bilgi, değişkenler, Son durum: saat dilimi/dil/NTP) da görünür; eylemler katalogdaki "Genel eylemler"de
-    // `settings` bildiren pakette genel ayar kartları en üsttedir; utility'nin elle yazılmış "Saat ve NTP" kartı yalnız eski (settings'siz) sürüm içindir
-    if (cat) { $("#srv-body").innerHTML = (settingsCards(p) || (p.id === "utility" ? ntpCard(p) : "")) + catalogStore(s, p, ok, na, cat) + (p.id === "utility" ? `<div class="pk-top">${pkgInfoCard(p, ok)}${varsCard(p)}</div>${statusCard(p)}` : ""); bindCatalog(p.id); return; }
-    $("#srv-body").innerHTML = `${p.id === "linux-hardening" ? lynisHero(s, p) : ""}${settingsCards(p)}<div class="pk-top">${pkgInfoCard(p, ok)}${varsCard(p)}</div>${statusCard(p)}${actionsSection(ok, na, p)}`;
+    // `settings` bildiren pakette ayar kartları kataloğun başındadır; utility'nin elle yazılmış "Saat ve NTP" kartı yalnız eski (settings'siz) sürüm içindir
+    if (cat) { $("#srv-body").innerHTML = (p.id === "utility" && !(p.settings || []).length ? ntpCard(p) : "") + catalogStore(s, p, ok, na, cat) + (p.id === "utility" ? `<div class="pk-top">${pkgInfoCard(p, ok)}${varsCard(p)}</div>${statusCard(p)}` : ""); bindCatalog(p.id); return; }
+    const setCards = pkgSettings.cards(p);
+    $("#srv-body").innerHTML = `${p.id === "linux-hardening" ? lynisHero(s, p) : ""}${setCards ? `<div class="store-grid">${setCards}</div>` : ""}<div class="pk-top">${pkgInfoCard(p, ok)}${varsCard(p)}</div>${statusCard(p)}${actionsSection(ok, na, p)}`;
     $$("#srv-body [data-actcat]").forEach(b => b.addEventListener("click", () => { actFilter = b.dataset.actcat; applyActFilter(); }));
     $("#srv-body [data-go-lynis-p]")?.addEventListener("click", () => goLynis(appState.srvName, s.lynis && s.lynis.warnings > 0 ? "uyari" : "all"));
     applyActFilter();

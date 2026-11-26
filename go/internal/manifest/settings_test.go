@@ -84,11 +84,48 @@ func TestSettingsRejects(t *testing.T) {
 		{"summary kaynağı", st(`"action":"durum","key":"zone","source":"summary"`), "source yalnızca"},
 		{"strip_prefix uzun", st(`"action":"durum","key":"zone","strip_prefix":["123456789012345678901"]`), "strip_prefix"},
 		{"state bilinmeyen alan", st(`"action":"durum","key":"zone","path":"/etc"`), "bilinmeyen alan: path"},
+		{"kart tanımsız", one(`,"card":"yok"`), "card, setting_cards"},
 	} {
 		_, errs, code := setValidate(tc.settings)
 		if code == 0 || !strings.Contains(strings.Join(errs, "\n"), tc.want) {
 			t.Errorf("%s: kod %d, hata %v (beklenen %q)", tc.name, code, errs, tc.want)
 		}
+	}
+}
+
+func TestSettingCards(t *testing.T) {
+	one := `[{"id":"a","label":"A","var":"demo_zone","apply_via":["apply"],"card":"saat"}]`
+	with := func(cards, settings string) ([]string, []string, int) {
+		m := strings.Replace(fmt.Sprintf(setBase, settings), `"settings":`, `"setting_cards":`+cards+`,"settings":`, 1)
+		return Validate([]byte(m), "demo", "0.1.0")
+	}
+	lines, errs, code := with(`[{"id":"saat","label":"Saat","description":"d"}]`, one)
+	if code != 0 {
+		t.Fatalf("geçerli kart reddedildi: %v", errs)
+	}
+	got := "\n" + strings.Join(lines, "\n") + "\n"
+	for _, want := range []string{"setting_card.saat=Saat", "setting.a.card=saat"} {
+		if !strings.Contains(got, "\n"+want+"\n") {
+			t.Errorf("satır yok: %q", want)
+		}
+	}
+	for _, tc := range []struct{ name, cards, settings, want string }{
+		{"liste değil", `{}`, one, "setting_cards 1-10"},
+		{"nesne değil", `[1]`, one, "nesne olmalı"},
+		{"bilinmeyen alan", `[{"id":"saat","label":"S","cmd":"x"}]`, one, "bilinmeyen alan: cmd"},
+		{"kötü id", `[{"id":"../x","label":"S"}]`, one, "id geçersiz"},
+		{"yinelenen", `[{"id":"saat","label":"S"},{"id":"saat","label":"T"}]`, one, "yinelenmiş"},
+		{"etiket yok", `[{"id":"saat"}]`, one, "label geçersiz"},
+		{"boş kart", `[{"id":"saat","label":"S"},{"id":"bos","label":"B"}]`, one, "kartını kullanan ayar yok"},
+	} {
+		_, errs, code := with(tc.cards, tc.settings)
+		if code == 0 || !strings.Contains(strings.Join(errs, "\n"), tc.want) {
+			t.Errorf("%s: kod %d, hata %v (beklenen %q)", tc.name, code, errs, tc.want)
+		}
+	}
+	alone := strings.Replace(fmt.Sprintf(setBase, setGood), `"settings":`, `"setting_cards":[],"yok":`, 1)
+	if _, errs, code := Validate([]byte(alone), "demo", "0.1.0"); code == 0 || !strings.Contains(strings.Join(errs, "\n"), "yalnızca settings") {
+		t.Errorf("settings olmadan setting_cards kabul edildi: %v", errs)
 	}
 }
 

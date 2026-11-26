@@ -11,6 +11,8 @@ import (
 
 const (
 	setMax       = 40
+	setCardMax   = 10
+	setCardDesc  = 200
 	setLabelMax  = 60
 	setDescMax   = 300
 	setNoteMax   = 160
@@ -20,7 +22,8 @@ const (
 )
 
 var (
-	setFields     = []string{"id", "label", "var", "description", "risk", "risk_note", "apply_via", "state"}
+	setFields     = []string{"id", "label", "var", "description", "risk", "risk_note", "apply_via", "state", "card"}
+	setCardFields = []string{"id", "label", "description"}
 	setStateKeys  = []string{"action", "key", "keys", "compare", "source", "strip_prefix"}
 	setRisks      = []string{"access-loss", "restarts-service", "time-jump", "data-loss"}
 	setComparisns = []string{"exact", "set", "ordered", "present"}
@@ -69,14 +72,18 @@ func actionOutKeys(actions *obj, name string) []string {
 // setting.<id>=<etiket>, setting.<id>.var|apply|risk|described|read|keys|compare=...
 func validateSettings(v *validator, d *obj, actions *obj, varSpecs map[string]varSpec) []string {
 	if !d.has("settings") {
+		if d.has("setting_cards") {
+			v.err("setting_cards yalnızca settings ile birlikte kullanılır")
+		}
 		return nil
 	}
+	cards, cardOrder, out := validateSettingCards(v, d)
+	used := map[string]bool{}
 	list, ok := asList(d.get("settings"))
 	if !ok || len(list) < 1 || len(list) > setMax {
 		v.err("settings 1-%d öğeli liste olmalı", setMax)
 		return nil
 	}
-	var out []string
 	seen := map[string]bool{}
 	for i, x := range list {
 		w := fmt.Sprintf("settings[%d]", i)
@@ -145,9 +152,64 @@ func validateSettings(v *validator, d *obj, actions *obj, varSpecs map[string]va
 		if so.has("state") {
 			lines = append(lines, validateSettingState(v, w, id, so.get("state"), actions)...)
 		}
+		if so.has("card") {
+			c, ok := asStr(so.get("card"))
+			if !ok || !cards[c] {
+				v.err("%s: card, setting_cards içinde tanımlı bir kimlik olmalı", w)
+			} else {
+				used[c] = true
+				lines = append(lines, "setting."+id+".card="+c)
+			}
+		}
 		out = append(out, lines...)
 	}
+	for _, c := range cardOrder {
+		if !used[c] {
+			v.err("setting_cards: '%s' kartını kullanan ayar yok", c)
+		}
+	}
 	return out
+}
+
+// validateSettingCards: isteğe bağlı "setting_cards" (arayüz kartları; ayar "card" alanıyla bağlanır).
+func validateSettingCards(v *validator, d *obj) (map[string]bool, []string, []string) {
+	ids := map[string]bool{}
+	if !d.has("setting_cards") {
+		return ids, nil, nil
+	}
+	list, ok := asList(d.get("setting_cards"))
+	if !ok || len(list) < 1 || len(list) > setCardMax {
+		v.err("setting_cards 1-%d öğeli liste olmalı", setCardMax)
+		return ids, nil, nil
+	}
+	var order, out []string
+	for i, x := range list {
+		w := fmt.Sprintf("setting_cards[%d]", i)
+		co, ok := asObj(x)
+		if !ok {
+			v.err("%s nesne olmalı", w)
+			continue
+		}
+		for _, k := range co.keys {
+			if !inStrs(k, setCardFields) {
+				v.err("%s: bilinmeyen alan: %s", w, k)
+			}
+		}
+		id, idOK := asStr(co.get("id"))
+		if !idOK || !reItem.MatchString(id) || ids[id] {
+			v.err("%s: id geçersiz ya da yinelenmiş", w)
+			continue
+		}
+		ids[id] = true
+		order = append(order, id)
+		if v.textOK(co.get("label"), w+".label", setLabelMax) {
+			out = append(out, "setting_card."+id+"="+co.get("label").(string))
+		}
+		if co.has("description") {
+			v.textOK(co.get("description"), w+".description", setCardDesc)
+		}
+	}
+	return ids, order, out
 }
 
 // validateSettingState: sunucudaki gerçek değerin kaynağı (salt okunur eylem + sonuç satırı anahtarları).

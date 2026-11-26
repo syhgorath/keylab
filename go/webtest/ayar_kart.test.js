@@ -1,129 +1,255 @@
 "use strict";
-/* Ayar kartı (paketin `settings` bildirimi): istenen ↔ sunucuda okunan değer yan yana; durum arka uçtan gelir (pkgsettings.go), arayüz yalnız gösterir.
-   Tek kart, değişken grubu başına başlık satırı; okunmayan seçenekler "Uygulama seçenekleri" satırında; açıklamalar ada tıklayınca açılır.
-   Hiçbir okuma kendiliğinden başlamaz; düğmeler paketin mevcut eylemlerini (ve kapılarını) kullanır. */
+/* Paket ayar kartları ve ayar penceresi (component.json "settings" / "setting_cards"). Kart yalnız durum özetini gösterir; pencerede istenen değer
+   düzenlenir (Kaydet yalnız .vars dosyasını yazar) ve altında sunucudan okunan değer durur. Durum arka uçtan gelir (pkgsettings.go).
+   Hiçbir okuma kendiliğinden başlamaz; Kontrol et / Önizle / Uygula paketin mevcut eylemleri ve pencereleridir. */
 process.env.TZ = "UTC";
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { boot, fixture } = require("./harness");
 const { mixedHome } = require("./lib/fakejobs");
 
-const set = (id, status, extra) => ({ id, label: "Ad " + id, group: "NTP", var: "utility_" + id, applyVia: ["ntp_ayarla"], readAction: "ntp_durum", desired: [], actual: [], status, ...extra });
+const set = (id, status, extra) => ({ id, label: "Ad " + id, group: "NTP", card: "saat", var: "v_" + id, applyVia: ["ntp_ayarla"], readAction: "ntp_durum", desired: [], actual: [], status, ...extra });
 const SETTINGS = [
   set("kaynak", "drift", { desired: ["0.tr.pool.ntp.org"], actual: ["eski.example.org"], risk: ["time-jump", "uydurma"], riskNote: "risk notu", description: "uzun açıklama" }),
-  set("bilinmez", "unknown", { desired: ["x"], note: "henüz okunmadı" }),
   set("adim", "unreadable", { desired: ["true"], readAction: "", risk: ["time-jump"] }),
-  set("kapali", "unreadable", { desired: ["false"], readAction: "" }),
   set("platform", "unreadable", { desired: ["y"], readAction: "", note: "bu sunucuda okunamıyor" }),
-  set("zone", "match", { group: "Zaman", desired: ["Europe/Istanbul"], actual: ["Europe_Istanbul"], readAction: "durum", applyVia: ["apply"] }),
-  set("dil", "unmanaged", { group: "Dil", actual: ["unset"], readAction: "durum", applyVia: ["apply"] }),
+  set("zone", "match", { card: "sistem", group: "Zaman", desired: ["Europe/Istanbul"], actual: ["Europe_Istanbul"], readAction: "durum", applyVia: ["apply"] }),
+  set("dil", "unmanaged", { card: "sistem", group: "Dil", actual: ["unset"], readAction: "durum", applyVia: ["apply"] }),
 ];
-const withSettings = (settings, f) => d => {
-  const u = d.packages.find(p => p.id === "utility"), base = u.actions.find(a => a.id === "durum");
-  const mk = (id, extra) => ({ ...JSON.parse(JSON.stringify(base)), id, keys: {}, applicable: true, runnable: false, write: false, terminal: false, destructive: false, effects: [], requires: [], prereqs: [], lastTime: "", lastResult: "", ...extra });
-  u.actions = u.actions.filter(a => !["preview", "apply", "ntp_durum", "ntp_ayarla"].includes(a.id));
-  u.actions.push(mk("ntp_durum", { runnable: true }), mk("preview", { terminal: true }),
-    mk("ntp_ayarla", { write: true, effects: ["changes-config"], requires: ["preview"] }), mk("apply", { effects: ["changes-config"], requires: ["preview"], reason: "önce preview" }));
-  u.settings = settings; if (f) f(u);
-};
-const open = async f => {
-  const h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: {
-    "/api/home": mixedHome,
-    "/api/server": u => { const d = fixture("server-" + u.searchParams.get("name")); d.server.up = true; if (f) f(d); return d; },
-    "/api/vars": () => ({ vars: [] }),
-  } });
+const CARDS = [{ id: "saat", label: "Saat (NTP)", description: "chrony ile saat eşitleme" }, { id: "sistem", label: "Sistem", description: "saat dilimi ve dil" }];
+const V = (name, extra) => ({ name, type: "string", default: "", value: "", set: false, group: "G", description: "", ...extra });
+const VARS = () => [
+  V("v_kaynak", { type: "list[string]", value: "0.tr.pool.ntp.org", set: true }), V("v_adim", { type: "bool", default: "true" }),
+  V("v_platform", { value: "y", set: true }), V("v_zone", { value: "Europe/Istanbul", set: true }), V("v_dil"),
+];
+
+// state: testin değiştirebildiği sahte sunucu; posts: /api/vars'a yazılanlar
+function world(opts = {}) {
+  const w = { settings: opts.settings || JSON.parse(JSON.stringify(SETTINGS)), cards: opts.cards === undefined ? CARDS : opts.cards, vars: opts.vars || VARS(), posts: [], reply: opts.reply, catalog: opts.catalog, f: opts.f };
+  const server = u => {
+    const d = fixture("server-" + u.searchParams.get("name")); d.server.up = true;
+    const p = d.packages.find(x => x.id === "utility"), base = p.actions.find(a => a.id === "durum");
+    const mk = (id, extra) => ({ ...JSON.parse(JSON.stringify(base)), id, keys: {}, applicable: true, runnable: false, write: false, terminal: false, destructive: false, effects: [], requires: [], prereqs: [], lastTime: "", lastResult: "", ...extra });
+    p.actions = p.actions.filter(a => !["durum", "preview", "apply", "ntp_durum", "ntp_ayarla"].includes(a.id));
+    p.actions.push(mk("durum", { runnable: true }), mk("ntp_durum", { runnable: true }), mk("preview", { terminal: true }),
+      mk("ntp_ayarla", { write: true, effects: ["changes-config"], requires: ["preview"] }), mk("apply", { effects: ["changes-config"], requires: ["preview"], reason: "önce preview" }));
+    if (w.catalog) p.actions.push(mk("kurulum_durum", { runnable: true }));
+    p.settings = w.settings; p.settingCards = w.cards || undefined;
+    if (w.f) w.f(p);
+    return d;
+  };
+  w.overrides = {
+    "/api/home": mixedHome, "/api/server": server,
+    "/api/vars": (u, { method, body }) => {
+      if (method !== "POST") return { vars: JSON.parse(JSON.stringify(w.vars)) };
+      w.posts.push(body);
+      const r = w.reply && w.reply(body);
+      if (r) return r;
+      const v = w.vars.find(x => x.name === body.name); v.set = body.action === "set"; v.value = v.set ? body.value : "";
+      return { ok: true };
+    },
+  };
+  return w;
+}
+const open = async opts => {
+  const w = world(opts);
+  const h = await boot({ hash: "#s=web1&p=linux-hardening", overrides: w.overrides });
   await h.click('#srv-tabs [data-p="utility"]');
-  return h;
+  h.w = w; return h;
 };
 const txt = el => el.textContent.replace(/\s+/g, " ").trim();
-const row = (h, id) => h.$(`#srv-body [data-set="${id}"]`);
-const group = (h, g) => h.$(`#srv-body .set-group[data-setgroup="${g}"]`);
-const buttons = (h, g) => [...group(h, g).querySelectorAll(".set-ghead .btn")];
+const cardEl = (h, id) => h.$(`#srv-body [data-setcard="${id}"]`);
+const openCard = (h, id) => h.click(`#srv-body [data-setopen="${id}"]`);
+const modal = h => h.$("#setmodal");
+const isOpen = h => modal(h).classList.contains("open");
+const field = (h, id) => h.$(`#set-body .set-field[data-set="${id}"]`);
+const ctl = (h, name) => h.$(`#set-body [data-var="${name}"]`);
+const btns = h => [...h.$$("#set-reads .btn"), ...h.$$("#set-acts .btn")].map(txt);
+const btn = (h, text) => [...h.$$("#set-reads .btn"), ...h.$$("#set-acts .btn")].find(b => txt(b) === text);
+const edit = async (h, name, value) => { const el = ctl(h, name); if (el.type === "checkbox") el.checked = value; else el.value = value; el.dispatchEvent(new h.win.Event(el.type === "checkbox" ? "change" : "input", { bubbles: true })); await h.settle(); };
+const esc = async h => { h.doc.dispatchEvent(new h.win.KeyboardEvent("keydown", { key: "Escape", bubbles: true })); await h.settle(); };
 
-test("tek kart, en üstte; değişken grupları bölüm olur; satırlar istenen ve sunucudaki değeri durumuyla gösterir", async () => {
-  const h = await open(withSettings(SETTINGS));
-  assert.equal(h.$$("#srv-body .set-card").length, 1);
-  assert.equal(h.$("#srv-body").firstElementChild, h.$("#srv-body .set-card"), "en üstte");
-  assert.equal(h.$$("#srv-body .set-row.head").length, 1, "tablo başlığı bir kez");
-  assert.deepEqual(h.$$("#srv-body .set-group").map(g => g.dataset.setgroup), ["NTP", "Zaman", "Dil"]);
-  assert.deepEqual(h.$$("#srv-body .set-row[data-set]").map(r => [r.dataset.set, r.dataset.st]),
-    [["kaynak", "drift"], ["bilinmez", "unknown"], ["platform", "unreadable"], ["zone", "match"], ["dil", "unmanaged"]]);
-  const k = row(h, "kaynak");
-  assert.match(txt(k.querySelector(".set-want")), /0\.tr\.pool\.ntp\.org/);
-  assert.match(txt(k.querySelector(".set-have")), /eski\.example\.org/);
-  assert.equal(txt(k.querySelector(".set-state")), "⚠ sapma");
-  assert.deepEqual([...k.querySelectorAll(".set-risk .badge")].map(txt), ["saati sıçratır"], "sözlük dışı risk gösterilmez");
-  assert.equal(txt(row(h, "bilinmez").querySelector(".set-note")), "henüz okunmadı");
-  assert.match(txt(row(h, "platform")), /okunamaz.*bu sunucuda okunamıyor/);
-  assert.equal(txt(row(h, "zone").querySelector(".set-have .chip")), "Europe/Istanbul", "uyumluysa istenen yazım");
-  assert.deepEqual(h.$$("#srv-body .card-head .set-sum .badge").map(txt), ["1 sapma", "1 bilinmiyor"]);
-  assert.ok(h.$('#srv-body .set-card [data-svars=""]'));
+test("kartlar paketin bildirdiği sırayla; rozet durum özeti, ayrıntı kartta yok; sayfa açılınca hiçbir şey çalışmaz", async () => {
+  const h = await open();
+  assert.deepEqual(h.$$("#srv-body [data-setcard]").map(c => [c.dataset.setcard, txt(c.querySelector(".app-title span")), txt(c.querySelector(".app-title .badge"))]),
+    [["saat", "Saat (NTP)", "1 sapma"], ["sistem", "Sistem", "uyumlu"]]);
+  assert.match(txt(cardEl(h, "saat")), /chrony ile saat eşitleme.*Son okuma: henüz okunmadı.*Ayarlar/);
+  assert.doesNotMatch(txt(cardEl(h, "saat")), /0\.tr\.pool/);
+  assert.ok(!isOpen(h));
+  assert.equal(h.w.posts.length, 0); assert.equal(h.calls.filter(c => c.method === "POST").length, 0);
   assert.deepEqual(h.errors, []); h.close();
 });
 
-test("okunmayan seçenekler tabloya girmez: tek 'Uygulama seçenekleri' satırı, aç/kapa sözcükle, 'okunamaz' demeden", async () => {
-  const h = await open(withSettings(SETTINGS));
-  const opts = group(h, "NTP").querySelector(".set-opts");
-  assert.deepEqual([...opts.querySelectorAll(".set-opt")].map(o => [o.dataset.set, txt(o.querySelector(".chip"))]), [["adim", "açık"], ["kapali", "kapalı"]]);
-  assert.match(txt(opts), /Uygulama seçenekleri:/); assert.doesNotMatch(txt(opts), /okunamaz/);
-  assert.deepEqual([...opts.querySelectorAll(".set-opt .badge")].map(txt), ["saati sıçratır"]);
-  assert.equal(group(h, "Zaman").querySelector(".set-opts"), null);
+test("katalog sayfasında kartlar mağazanın başında; 'Tümü' sayar, kurulu süzgeci gizler; eski 'Saat ve NTP' kartı yok", async () => {
+  const h = await open({ catalog: true, f: p => { const k = p.actions.find(a => a.id === "kurulum_durum"); k.keys = { kurulu: "docker:docker", portlar: "yok" }; } });
+  const grid = h.$$("#store-grid > .app-card");
+  assert.deepEqual(grid.slice(0, 2).map(c => c.dataset.setcard), ["saat", "sistem"]);
+  assert.equal(h.$("#srv-body .ntp-card"), null);
+  assert.equal(txt(h.$('[data-sf="all"]')), `Tümü ${grid.length}`);
+  await h.click('[data-sf="on"]'); assert.equal(cardEl(h, "saat").hidden, true);
+  await h.click('[data-sf="all"]'); assert.equal(cardEl(h, "saat").hidden, false);
   h.close();
+  const eski = await open({ catalog: true, settings: [] });
+  assert.ok(eski.$("#srv-body .ntp-card"), "settings'siz sürümde eski kart"); eski.close();
 });
 
-test("açıklama kapalı gelir, ada tıklayınca açılır ve sayfa yeniden çizilince açık kalır", async () => {
-  const h = await open(withSettings(SETTINGS));
-  const det = () => row(h, "kaynak").querySelector("details.set-info");
-  assert.equal(det().open, false); assert.match(txt(det()), /uzun açıklama.*risk notu/);
-  assert.equal(row(h, "zone").querySelector("details"), null, "açıklaması olmayan satırda açılır yok");
-  det().open = true; det().dispatchEvent(new h.win.Event("toggle"));
+test("kart bildirilmemişse değişken grubu kart olur", async () => {
+  const h = await open({ cards: null });
+  assert.deepEqual(h.$$("#srv-body [data-setcard]").map(c => [c.dataset.setcard, txt(c.querySelector(".app-title span"))]),
+    [["g:NTP", "NTP"], ["g:Zaman", "Zaman"], ["g:Dil", "Dil"]]);
+  await openCard(h, "g:Zaman"); assert.equal(h.$("#set-title").textContent, "Zaman"); assert.ok(field(h, "zone")); h.close();
+});
+
+test("pencere: istenen değer kutuda, sunucudaki değer ve durum altında; seçenekler ayrı bölümde", async () => {
+  const h = await open();
+  await openCard(h, "saat");
+  assert.ok(isOpen(h)); assert.equal(h.$("#set-title").textContent, "Saat (NTP)");
+  assert.match(txt(h.$("#set-sub")), /Sunucu: web1 · Son okuma: henüz okunmadı/);
+  assert.equal(h.calls.filter(c => c.path === "/api/vars?server=web1&package=utility").length >= 1, true);
+  assert.equal(ctl(h, "v_kaynak").value, "0.tr.pool.ntp.org");
+  assert.equal(ctl(h, "v_adim").type, "checkbox"); assert.equal(ctl(h, "v_adim").checked, true, "ayarsız: varsayılan");
+  const k = field(h, "kaynak");
+  assert.equal(txt(k.querySelector('[data-live="state"]')), "⚠ sapma");
+  assert.match(txt(k.querySelector('[data-live="have"]')), /Sunucuda:.*eski\.example\.org/);
+  assert.match(txt(k.querySelector("details")), /uzun açıklama.*risk notu/);
+  assert.deepEqual([...k.querySelectorAll(".set-fhead .badge")].map(txt), ["saati sıçratır", "⚠ sapma"], "sözlük dışı risk gösterilmez");
+  assert.match(txt(field(h, "platform")), /okunamaz.*bu sunucuda okunamıyor/);
+  const opts = h.$("#set-body .set-optbox");
+  assert.deepEqual([...opts.querySelectorAll(".set-opt")].map(o => o.dataset.set), ["adim"]); assert.doesNotMatch(txt(opts), /okunamaz/);
+  assert.deepEqual(btns(h), ["Kontrol et", "Kaydet", "Önizle", "Uygula"]);
+  assert.ok(btn(h, "Kaydet").disabled);
+  assert.equal(btn(h, "Önizle").dataset.go, "term"); assert.equal(btn(h, "Uygula").dataset.action, "ntp_ayarla");
+  await h.click("#set-x"); assert.ok(!isOpen(h));
+  await openCard(h, "sistem");
+  assert.equal(txt(field(h, "zone").querySelector('[data-live="have"] .chip')), "Europe/Istanbul", "uyumluysa istenen yazım");
+  assert.ok(btn(h, "Uygula").disabled); assert.equal(btn(h, "Uygula").title, "önce preview");
+  assert.deepEqual(h.errors, []); h.close();
+});
+
+test("değişiklik: Kaydet açılır, Önizle ve Uygula kaydedene kadar kapalı; sayfa tazelenince yazılan silinmez, durum yenilenir", async () => {
+  const h = await open();
+  await openCard(h, "saat");
+  await edit(h, "v_kaynak", "yeni.example.org");
+  assert.ok(!btn(h, "Kaydet").disabled);
+  for (const t of ["Önizle", "Uygula"]) { assert.ok(btn(h, t).disabled, t); assert.equal(btn(h, t).title, "önce kaydedin"); }
+  assert.ok(!btn(h, "Kontrol et").disabled);
+  h.w.settings[0].status = "match"; h.w.settings[0].desired = ["a"]; h.w.settings[0].actual = ["a"];
   await h.click('#srv-tabs [data-p="linux-hardening"]'); await h.click('#srv-tabs [data-p="utility"]');
-  assert.equal(det().open, true); h.close();
-});
-
-test("grup düğmeleri paketin eylemleridir; çalıştırılamayan eylem kapalı ve nedeni yazılı; yönetilmeyen grupta yalnız Kontrol et", async () => {
-  const h = await open(withSettings(SETTINGS));
-  assert.deepEqual(buttons(h, "NTP").map(txt), ["Kontrol et", "Önizle", "Uygula"]);
-  assert.ok(group(h, "NTP").querySelector('.set-ghead [data-run="utility|ntp_durum"]'));
-  assert.ok(group(h, "NTP").querySelector('.set-ghead [data-term="utility|preview"]'));
-  assert.ok(group(h, "NTP").querySelector('.set-ghead [data-write="utility|ntp_ayarla"][title="ntp_ayarla"]'));
-  const apply = buttons(h, "Zaman").find(b => txt(b) === "Uygula");
-  assert.ok(apply.disabled); assert.equal(apply.title, "önce preview");
-  assert.deepEqual(buttons(h, "Dil").map(txt), ["Kontrol et"]);
-  assert.equal(txt(group(h, "NTP").querySelector(".set-when")), "Son okuma: henüz okunmadı");
+  h.win.dispatchEvent(new h.win.CustomEvent("keylab:taskexit", { detail: { server: "web1", pkg: "utility", action: "preview", code: 0 } })); await h.settle();
+  assert.equal(ctl(h, "v_kaynak").value, "yeni.example.org", "yazılan değer korunur");
+  assert.equal(txt(field(h, "kaynak").querySelector('[data-live="state"]')), "✔ uyumlu", "sunucu tarafı yenilenir");
+  await edit(h, "v_kaynak", "0.tr.pool.ntp.org");
+  assert.ok(btn(h, "Kaydet").disabled, "eski değere dönünce değişiklik yok"); assert.ok(!btn(h, "Uygula").disabled);
   h.close();
 });
 
-test("bir grupta birden çok uygulama eylemi varsa düğmeler eylem adını taşır", async () => {
-  const h = await open(withSettings([set("a", "drift", { desired: ["1"] }), set("b", "drift", { desired: ["2"], applyVia: ["apply"] })]));
-  assert.deepEqual(buttons(h, "NTP").map(txt), ["Kontrol et", "Önizle", "Uygula: ntp_ayarla", "Uygula: apply"]);
+test("düğmeler yerinde kalır: kutudan çıkışta gelen 'change' ve sayfa tazelemesi tıklanmakta olan düğmeyi sökmez", async () => {
+  const h = await open();
+  await openCard(h, "saat");
+  await edit(h, "v_kaynak", "yeni.example.org");
+  const save = btn(h, "Kaydet"), check = btn(h, "Kontrol et");
+  ctl(h, "v_kaynak").dispatchEvent(new h.win.Event("change", { bubbles: true })); await h.settle();
+  h.win.dispatchEvent(new h.win.CustomEvent("keylab:taskexit", { detail: { server: "web1", pkg: "utility", action: "preview", code: 0 } })); await h.settle();
+  assert.equal(btn(h, "Kaydet"), save); assert.equal(btn(h, "Kontrol et"), check);
+  await h.click(save); assert.equal(h.w.posts.length, 1); h.close();
+});
+
+test("kaydet: yalnız değişenler yazılır; boş bırakılan satır silinir; pencere açık kalır ve sunucuya eylem başlatılmaz", async () => {
+  const h = await open();
+  await openCard(h, "saat");
+  await edit(h, "v_kaynak", "  yeni.example.org  "); await edit(h, "v_adim", false);
+  await h.click(btn(h, "Kaydet"));
+  assert.deepEqual(h.w.posts.map(p => [p.server, p.package, p.name, p.value, p.action, p.ack]),
+    [["web1", "utility", "v_kaynak", "yeni.example.org", "set", false], ["web1", "utility", "v_adim", "false", "set", false]]);
+  assert.ok(isOpen(h)); assert.match(txt(h.$("#set-msg")), /Kaydedildi/); assert.ok(btn(h, "Kaydet").disabled);
+  assert.equal(ctl(h, "v_kaynak").value, "yeni.example.org");
+  await edit(h, "v_kaynak", ""); await h.click(btn(h, "Kaydet"));
+  assert.deepEqual(h.w.posts.at(-1).action, "unset"); assert.equal(h.w.posts.length, 3);
+  assert.equal(h.calls.filter(c => c.method === "POST" && c.path !== "/api/vars").length, 0);
+  assert.deepEqual(h.errors, []); h.close();
+});
+
+test("kaydet: uyarı eşiği ikinci tıklamayla onaylanır", async () => {
+  const h = await open({ reply: b => (b.name === "v_kaynak" && !b.ack ? { status: 409, body: { error: "riskli değer.", needAck: true } } : null) });
+  await openCard(h, "saat");
+  await edit(h, "v_kaynak", "x.example.org"); await h.click(btn(h, "Kaydet"));
+  assert.match(txt(h.$("#set-msg")), /riskli değer\. Yine de kaydetmek için tekrar tıklayın/);
+  assert.ok(btn(h, "Onayla ve kaydet")); assert.equal(h.w.posts.length, 1);
+  await h.click(btn(h, "Onayla ve kaydet"));
+  assert.equal(h.w.posts[1].ack, true); assert.match(txt(h.$("#set-msg")), /Kaydedildi/); h.close();
+});
+
+test("kaydet: onay isteyen değer değiştirilirse onay sıfırlanır", async () => {
+  const h = await open({ reply: b => (!b.ack ? { status: 409, body: { error: "riskli", needAck: true } } : null) });
+  await openCard(h, "saat");
+  await edit(h, "v_kaynak", "a"); await h.click(btn(h, "Kaydet")); assert.ok(btn(h, "Onayla ve kaydet"));
+  await edit(h, "v_kaynak", "b"); assert.ok(btn(h, "Kaydet")); await h.click(btn(h, "Kaydet"));
+  assert.deepEqual(h.w.posts.map(p => [p.value, p.ack]), [["a", false], ["b", false]]); h.close();
+});
+
+test("kaydet: hata gösterilir, değişiklik korunur", async () => {
+  const h = await open({ reply: () => ({ status: 400, body: { error: "geçersiz değer" } }) });
+  await openCard(h, "saat");
+  await edit(h, "v_kaynak", "bad"); await h.click(btn(h, "Kaydet"));
+  assert.match(txt(h.$("#set-msg")), /v_kaynak: geçersiz değer/); assert.equal(ctl(h, "v_kaynak").value, "bad"); assert.ok(!btn(h, "Kaydet").disabled); assert.ok(btn(h, "Uygula").disabled);
   h.close();
 });
 
-test("eskimiş okuma grup başlığında uyarılır; hepsi uyumluysa kart başlığında 'uyumlu'", async () => {
-  const h = await open(withSettings([set("kaynak", "match", { desired: ["a"], actual: ["a"], stale: true })]));
-  assert.deepEqual(h.$$("#srv-body .card-head .set-sum .badge").map(txt), ["uyumlu"]);
-  assert.deepEqual([...group(h, "NTP").querySelectorAll(".set-ghead .badge")].map(txt), ["güncel olmayabilir"]); h.close();
+test("kaydedilmemiş değişiklikle kapatma ikinci tıklama ister; Esc de aynı", async () => {
+  const h = await open();
+  await openCard(h, "saat"); await esc(h); assert.ok(!isOpen(h), "temizken Esc kapatır");
+  await openCard(h, "saat"); await edit(h, "v_kaynak", "z");
+  await h.click("#set-x"); assert.ok(isOpen(h)); assert.match(txt(h.$("#set-msg")), /Kaydedilmemiş değişiklik/);
+  await esc(h); assert.ok(!isOpen(h));
+  await openCard(h, "saat"); assert.equal(ctl(h, "v_kaynak").value, "0.tr.pool.ntp.org", "atılan değişiklik geri gelmez"); assert.equal(h.w.posts.length, 0); h.close();
+});
+
+test("eylem düğmesi mevcut onay penceresini açar; o sırada ayar penceresi gizlenir, kapanınca geri gelir; Esc yalnız üsttekini kapatır", async () => {
+  const h = await open();
+  await openCard(h, "saat");
+  await h.click(btn(h, "Kontrol et"));
+  assert.ok(h.$("#runmodal").classList.contains("open")); assert.match(txt(h.$("#run-title")), /ntp_durum/);
+  assert.ok(modal(h).classList.contains("behind")); assert.ok(isOpen(h));
+  await esc(h);
+  assert.ok(!h.$("#runmodal").classList.contains("open")); assert.ok(isOpen(h), "ayar penceresi kalır"); assert.ok(!modal(h).classList.contains("behind"));
+  assert.equal(h.calls.filter(c => c.method === "POST").length, 0, "onaysız hiçbir şey çalışmaz");
+  await h.click(btn(h, "Önizle")); assert.match(txt(h.$("#run-title")), /preview/); await h.click("#run-close");
+  await h.click(btn(h, "Uygula")); assert.match(txt(h.$("#run-title")), /ntp_ayarla.*yazar/); assert.ok(h.$("#w-snap"), "snapshot onayı aynen"); assert.ok(h.$("#run-go").disabled);
+  h.close();
+});
+
+test("üstte ortak iletişim penceresi (ör. Python denetimi) varken Esc yalnız onu kapatır", async () => {
+  const h = await open();
+  await openCard(h, "saat");
+  h.$("#dlg").classList.add("open"); await h.settle();
+  assert.ok(modal(h).classList.contains("behind"));
+  await esc(h);
+  assert.ok(!h.$("#dlg").classList.contains("open")); assert.ok(isOpen(h)); assert.ok(!modal(h).classList.contains("behind"));
+  await esc(h); assert.ok(!isOpen(h)); h.close();
+});
+
+test("yönetilmeyen kartta uygulama düğmesi yok; birden çok uygulama eylemi adıyla; eskimiş okuma kartta uyarılır", async () => {
+  const h = await open({ settings: [set("kaynak", "unmanaged", { readAction: "ntp_durum" })] });
+  await openCard(h, "saat"); assert.deepEqual(btns(h), ["Kontrol et", "Kaydet"]); h.close();
+  const iki = await open({ settings: [set("kaynak", "match", { desired: ["a"], actual: ["a"], stale: true }), set("adim", "drift", { desired: ["2"], applyVia: ["apply"] })] });
+  assert.deepEqual([...cardEl(iki, "saat").querySelectorAll(".app-title .badge")].map(txt), ["1 sapma", "güncel olmayabilir"]);
+  await openCard(iki, "saat"); assert.deepEqual(btns(iki), ["Kontrol et", "Kaydet", "Önizle", "Uygula: ntp_ayarla", "Uygula: apply"]); iki.close();
 });
 
 test("paket metni HTML olarak yorumlanmaz", async () => {
   const bad = '<img src=x onerror="window.__x=1">';
-  const h = await open(withSettings([
-    set("kaynak", "drift", { label: bad, group: bad, description: bad, desired: [bad], actual: [bad], note: bad, riskNote: bad, risk: ["data-loss"] }),
-    set("secenek", "unreadable", { label: bad, group: bad, description: bad, desired: [bad], readAction: "" }),
-  ]));
-  assert.equal(h.$("#srv-body img"), null); assert.equal(h.win.__x, undefined); h.close();
+  const h = await open({
+    cards: [{ id: "saat", label: bad, description: bad }],
+    settings: [set("kaynak", "drift", { label: bad, group: bad, description: bad, desired: [bad], actual: [bad], note: bad, riskNote: bad, risk: ["data-loss"] }),
+      set("adim", "unreadable", { label: bad, description: bad, desired: [bad], readAction: "" })],
+    vars: [V("v_kaynak", { value: bad, set: true, default: bad }), V("v_adim", { type: "enum", values: [bad], default: bad })],
+  });
+  assert.equal(h.$("#srv-body img"), null);
+  await openCard(h, "saat");
+  assert.equal(h.$("#setmodal img"), null); assert.equal(ctl(h, "v_kaynak").value, bad); assert.equal(h.win.__x, undefined); h.close();
 });
 
 test("settings yoksa kart yok", async () => {
-  const h = await open(null);
-  assert.equal(h.$("#srv-body .set-card"), null); h.close();
-});
-
-test("katalog sayfasında: settings varsa genel kart elle yazılmış 'Saat ve NTP' kartının yerini alır", async () => {
-  const catalog = u => { const d = u.actions.find(a => a.id === "durum"); u.actions.push({ ...JSON.parse(JSON.stringify(d)), id: "kurulum_durum", keys: {} }); };
-  const h = await open(withSettings(SETTINGS, catalog));
-  assert.ok(h.$("#store-grid"), "katalog çizildi"); assert.ok(h.$("#srv-body .set-card")); assert.equal(h.$("#srv-body .ntp-card"), null); h.close();
-  const eski = await open(withSettings([], catalog));
-  assert.ok(eski.$("#srv-body .ntp-card"), "settings'siz sürümde eski kart"); eski.close();
+  const h = await open({ settings: [] });
+  assert.equal(h.$("#srv-body [data-setcard]"), null); h.close();
 });
