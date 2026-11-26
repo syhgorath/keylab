@@ -30,6 +30,8 @@ type settingDecl struct {
 		Keys        []string `json:"keys"`
 		Compare     string   `json:"compare"`
 		StripPrefix []string `json:"strip_prefix"`
+		Absent      string   `json:"absent"` // sunucudaki bu değer: ayarlanan şey orada yok
+		Ignore      []string `json:"ignore"` // istenen bu değerlerden biriyse yönetilmiyor
 	} `json:"state"`
 }
 
@@ -141,7 +143,8 @@ const (
 	setMatch      = "match"      // uyumlu
 	setDrift      = "drift"      // sapma
 	setUnknown    = "unknown"    // bilinmiyor: okunmadı, son okuma başarısız ya da eski paket sürümünden
-	setUnmanaged  = "unmanaged"  // yönetilmiyor: istenen boş ("dokunma")
+	setUnmanaged  = "unmanaged"  // yönetilmiyor: istenen boş ("dokunma") ya da "ignore" değerlerinden
+	setAbsent     = "absent"     // sunucuda yok (örn. uygulama kurulu değil)
 	setUnreadable = "unreadable" // okunamaz: okuma bildirilmemiş ya da bu sunucuya uygulanmıyor
 )
 
@@ -266,7 +269,7 @@ func (a *App) settingInfos(s Server, p Package, decls []settingDecl, groups map[
 			}
 			info.ReadTime = read.LastTime
 			info.Stale = read.LastTime != "" && changedAfter(actions, read.LastTime)
-			found, unknown := false, false
+			found, unknown, absent := false, false, false
 			for _, k := range keys {
 				v, ok := read.Keys[k]
 				if !ok {
@@ -275,6 +278,10 @@ func (a *App) settingInfos(s Server, p Package, decls []settingDecl, groups map[
 				found = true
 				if v == "unknown" { // paket "okuyamadım" diyor
 					unknown, info.Actual = true, []string{}
+					break
+				}
+				if d.State.Absent != "" && v == d.State.Absent {
+					absent = true
 					break
 				}
 				// tek anahtarlı liste "a+b" biçimindedir
@@ -299,14 +306,16 @@ func (a *App) settingInfos(s Server, p Package, decls []settingDecl, groups map[
 				info.Status, info.Note, info.Actual = setUnknown, "son okuma paketin eski sürümünden ("+versions[read.ID]+")", []string{}
 			case !found || unknown:
 				info.Status, info.Note = setUnknown, "okuma bu değeri bildirmedi"
+			case absent:
+				info.Status = setAbsent
 			case settingMatches(compare, info.Desired, info.Actual, d.State.StripPrefix):
 				info.Status = setMatch
 			default:
 				info.Status = setDrift
 			}
 		}
-		// istenen boş = "dokunma": henüz okunmamış olsa da sapma/bilinmiyor değildir
-		if verr == nil && readable && len(info.Desired) == 0 {
+		// istenen boş ya da "ignore" değeri = "dokunma": henüz okunmamış olsa da sapma/bilinmiyor değildir
+		if verr == nil && readable && allIn(info.Desired, d.State.Ignore) {
 			info.Status, info.Note = setUnmanaged, ""
 		}
 		out = append(out, info)
@@ -314,7 +323,17 @@ func (a *App) settingInfos(s Server, p Package, decls []settingDecl, groups map[
 	return out
 }
 
-// changedAfter: verilen zamandan sonra değişiklik yapan (effects dolu) bir eylem çalıştı mı (arayüzdeki "güncel olmayabilir" kuralı).
+// allIn: her öğe listede mi (boş küme için doğru: istenen boşsa yönetilmiyor).
+func allIn(items, list []string) bool {
+	for _, x := range items {
+		if !slices.Contains(list, x) {
+			return false
+		}
+	}
+	return true
+}
+
+// changedAfter:verilen zamandan sonra değişiklik yapan (effects dolu) bir eylem çalıştı mı (arayüzdeki "güncel olmayabilir" kuralı).
 func changedAfter(actions []ActionInfo, t string) bool {
 	for _, x := range actions {
 		if len(x.Effects) > 0 && x.LastTime > t { // RFC3339 UTC: metin sırası zaman sırasıdır

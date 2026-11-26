@@ -5,7 +5,7 @@
 import { $, $$, esc, json, toast, ago, localTime } from "../lib/util.js";
 import { appState } from "../state.js";
 
-const ST = { match: ["ok", "✔ uyumlu"], drift: ["warn", "⚠ sapma"], unknown: ["plain", "bilinmiyor"], unmanaged: ["plain", "yönetilmiyor"], unreadable: ["plain", "okunamaz"] };
+const ST = { match: ["ok", "✔ uyumlu"], drift: ["warn", "⚠ sapma"], unknown: ["plain", "bilinmiyor"], absent: ["plain", "sunucuda yok"], unmanaged: ["plain", "yönetilmiyor"], unreadable: ["plain", "okunamaz"] };
 const RISK = { "access-loss": ["danger", "erişimi kesebilir"], "restarts-service": ["warn", "servisi yeniden başlatır"], "time-jump": ["warn", "saati sıçratır"], "data-loss": ["danger", "veriyi etkiler"] };
 const uniq = l => [...new Set(l)];
 const chips = list => list.map(v => `<span class="chip">${esc(v)}</span>`).join("") || '<span class="muted">—</span>';
@@ -35,14 +35,14 @@ export function cardsOf(p) {
 function cardBadge(c) {
   const rows = c.rows, n = st => rows.filter(x => x.status === st).length;
   const main = n("drift") ? `<span class="badge warn">${n("drift")} sapma</span>` : n("unknown") ? `<span class="badge plain">${n("unknown")} bilinmiyor</span>`
-    : n("match") ? '<span class="badge ok">uyumlu</span>' : n("unmanaged") ? '<span class="badge plain">yönetilmiyor</span>' : "";
+    : n("match") ? '<span class="badge ok">uyumlu</span>' : n("absent") ? '<span class="badge plain">sunucuda yok</span>' : n("unmanaged") ? '<span class="badge plain">yönetilmiyor</span>' : "";
   // ayarlar uyumlu olsa bile sağlık sorunu varsa kart yalnız yeşil görünmesin
   const ill = (c.health || []).some(h => h.state === "warn") ? '<span class="badge warn">⚠ dikkat</span>' : "";
   return main + ill + (c.stale || rows.some(x => x.stale) ? '<span class="badge warn" title="Bu okumadan sonra bu sunucuda değişiklik yapan bir eylem çalıştı.">güncel olmayabilir</span>' : "");
 }
 
 // sağlık özeti (kartın "summary" bildirimi): sonuç sözcükleri okunur yazılır, sayılara birim eklenir; durum arka uçtan gelir
-const WORD = { yes: "evet", no: "hayır", active: "çalışıyor", inactive: "çalışmıyor", unknown: "bilinmiyor" };
+const WORD = { yes: "evet", no: "hayır", evet: "evet", hayir: "hayır", durmus: "durmuş", active: "çalışıyor", inactive: "çalışmıyor", unknown: "bilinmiyor" };
 function healthHtml(c) {
   if (!c.readAction) return "";
   if (!c.health.length) return `<div class="set-health small muted"><span>Sağlık bilgisi:</span> <span>${esc(c.note || "okuma bu değeri bildirmedi")}</span></div>`;
@@ -63,9 +63,13 @@ export function initPkgSettings(hooks) {
   let cur = null; // { srv, pkg, card, vars, ack: Set, closeAsked }
   const isOpen = () => modal.classList.contains("open");
 
-  const cards = p => cardsOf(p).map(c => `<div class="card app-card set-app" data-setcard="${esc(c.id)}" data-st="settings">
-      <div class="app-top"><div class="app-ico" aria-hidden="true">⚙️</div><div class="app-titles"><div class="app-title"><span>${esc(c.label)}</span><span class="set-badges">${cardBadge(c)}</span></div><p class="app-desc">${esc(c.description)}</p></div></div>
-      ${healthHtml(c)}<div class="app-foot"><span class="small muted">${whenHtml(p, c)}</span><div class="app-btns"><button class="btn sm primary" data-setopen="${esc(c.id)}">Ayarlar</button></div></div></div>`).join("");
+  // app: katalogdaki bir uygulamanın yerini alan kart için { <kart kimliği>: { st: "on"|"off"|"?", badge, icon } } (kurulu bilgisi katalogdan)
+  const cards = (p, app = {}) => cardsOf(p).map(c => {
+    const a = Object.hasOwn(app, c.id) ? app[c.id] : null;
+    return `<div class="card app-card set-app" data-setcard="${esc(c.id)}" data-st="${a ? a.st : "settings"}">
+      <div class="app-top"><div class="app-ico" aria-hidden="true">${a ? a.icon : "⚙️"}</div><div class="app-titles"><div class="app-title"><span>${esc(c.label)}</span><span class="set-badges">${a ? a.badge : ""}${cardBadge(c)}</span></div><p class="app-desc">${esc(c.description)}</p></div></div>
+      ${healthHtml(c)}<div class="app-foot"><span class="small muted">${whenHtml(p, c)}</span><div class="app-btns"><button class="btn sm primary" data-setopen="${esc(c.id)}">Ayarlar</button></div></div></div>`;
+  }).join("");
 
   const pkgNow = () => appState.srv && (appState.srv.packages || []).find(x => x.id === cur.pkg);
   const cardNow = p => p && cardsOf(p).find(c => c.id === cur.card);

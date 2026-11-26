@@ -276,6 +276,33 @@ test("sağlık metni HTML olarak yorumlanmaz", async () => {
   assert.equal(n.$("#srv-body img"), null); assert.equal(n.win.__x, undefined); n.close();
 });
 
+test("uygulama ile aynı kimlikli ayar kartı katalogdaki kartın yerine geçer: tek kart, kurulu bilgisi ve süzgeç korunur", async () => {
+  const cards = [{ id: "nginx", label: "nginx", description: "web sunucusu" }];
+  const rows = [set("port", "match", { card: "nginx", desired: ["8080"], actual: ["8080"] })];
+  const katalog = kurulu => p => { p.actions.find(a => a.id === "kurulum_durum").keys = kurulu; };
+  const h = await open({ catalog: true, cards, settings: rows, f: katalog({ kurulu: "nginx:docker", portlar: "nginx:8080" }) });
+  assert.equal(h.$('#store-grid [data-app="nginx"]'), null, "eski nginx kartı çizilmez");
+  assert.deepEqual(h.$$("#store-grid > .app-card").map(c => c.dataset.setcard || c.dataset.app), ["nginx", "docker", "mariadb", "redis"]);
+  assert.deepEqual([...cardEl(h, "nginx").querySelectorAll(".app-title .badge")].map(txt), ["✔ Kurulu (docker)", "uyumlu"]);
+  assert.equal(txt(h.$('[data-sf="all"]')), "Tümü 4"); assert.equal(txt(h.$('[data-sf="on"]')), "Kurulu 1"); assert.equal(txt(h.$('[data-sf="off"]')), "Kurulabilir 3");
+  await h.click('[data-sf="on"]'); assert.equal(cardEl(h, "nginx").hidden, false);
+  await h.click('[data-sf="off"]'); assert.equal(cardEl(h, "nginx").hidden, true);
+  assert.deepEqual(h.errors, []); h.close();
+  const yok = await open({ catalog: true, cards, settings: rows, f: katalog({ kurulu: "yok", portlar: "yok" }) });
+  assert.match(txt(cardEl(yok, "nginx")), /Kurulmadı/); assert.equal(cardEl(yok, "nginx").dataset.st, "off"); yok.close();
+  const okunmadi = await open({ catalog: true, cards, settings: rows, f: katalog({}) });
+  assert.match(txt(cardEl(okunmadi, "nginx")), /durum okunmadı/); okunmadi.close();
+});
+
+test("sunucuda yok: ayrı durum, sapma sayılmaz; kurmak için uygulama düğmesi açık kalır", async () => {
+  const h = await open({ settings: [set("kaynak", "absent", { desired: ["8080"] })], cards: [CARDS[0]] });
+  assert.deepEqual([...cardEl(h, "saat").querySelectorAll(".app-title .badge")].map(txt), ["sunucuda yok"]);
+  await openCard(h, "saat");
+  assert.equal(txt(field(h, "kaynak").querySelector('[data-live="state"]')), "sunucuda yok");
+  assert.match(txt(field(h, "kaynak").querySelector('[data-live="have"]')), /Sunucuda:\s*—/);
+  assert.deepEqual(btns(h), ["Kontrol et", "Kaydet", "Önizle", "Uygula"]); h.close();
+});
+
 test("paket metni HTML olarak yorumlanmaz", async () => {
   const bad = '<img src=x onerror="window.__x=1">';
   const h = await open({

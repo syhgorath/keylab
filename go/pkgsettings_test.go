@@ -20,7 +20,8 @@ const setPkg = `{"id":"demo","version":"0.2.0","sshpocket_api":1,"name":"Demo","
   {"name":"demo_ntp","type":"list[string]","default":[],"group":"NTP","description":"x"},
   {"name":"demo_zone","type":"string","default":"","group":"Zaman","description":"y"},
   {"name":"demo_adim","type":"bool","default":true,"group":"NTP","description":"z"},
-  {"name":"demo_uyg","type":"string","default":"","group":"Uyg","description":"u"}
+  {"name":"demo_uyg","type":"string","default":"","group":"Uyg","description":"u"},
+  {"name":"demo_erisim","type":"string","default":"otomatik","group":"Uyg","description":"e"}
  ],
  "setting_cards":[{"id":"saat","label":"Saat","description":"d"},{"id":"../kotu","label":"x"}],
  "settings":[
@@ -29,7 +30,8 @@ const setPkg = `{"id":"demo","version":"0.2.0","sshpocket_api":1,"name":"Demo","
   {"id":"zone","label":"Saat dilimi","var":"demo_zone","apply_via":["apply"],"state":{"action":"durum","key":"timezone"}},
   {"id":"adim","label":"Saat adımlama","var":"demo_adim","apply_via":["apply"],"card":"saat"},
   {"id":"uyg","label":"Uygulamalar","var":"demo_uyg","apply_via":["apply"],"state":{"action":"ntp_durum","key":"liste","compare":"set"}},
-  {"id":"pve","label":"PVE","var":"demo_uyg","apply_via":["apply"],"state":{"action":"pve_oku","key":"pve"}}
+  {"id":"pve","label":"PVE","var":"demo_uyg","apply_via":["apply"],"state":{"action":"pve_oku","key":"pve"}},
+  {"id":"erisim","label":"Erişim","var":"demo_erisim","apply_via":["apply"],"state":{"action":"ntp_durum","key":"liste","absent":"yok","ignore":["otomatik"]}}
  ]}`
 
 // result.<eylem> dosyası ve results günlüğü
@@ -148,6 +150,28 @@ func TestSettingsStatus(t *testing.T) {
 	// geçersiz değer dosyası: sapma/uyum uydurulmaz
 	g = setSettings(t, "demo_adim=belki\n", ntpRead(100, "ntp_kaynak_1=a.example.org"))
 	want("geçersiz değer", g["ntp"], setUnknown)
+}
+
+func TestSettingAbsentAndIgnore(t *testing.T) {
+	read := func(v string) setRead { return ntpRead(100, "liste="+v) }
+	check := func(name, vars, status, actual string, reads ...setRead) {
+		t.Helper()
+		s := setSettings(t, vars, reads...)["erisim"]
+		if s.Status != status || strings.Join(s.Actual, " ") != actual {
+			t.Errorf("%s: durum=%q gerçek=%v not=%q (beklenen %q %q)", name, s.Status, s.Actual, s.Note, status, actual)
+		}
+	}
+	// "ignore": varsayılan "otomatik" yönetilmiyor (okunmamış olsa da), okunan değer görünür
+	check("otomatik okunmamış", "", setUnmanaged, "")
+	check("otomatik okunmuş", "", setUnmanaged, "agdan", read("agdan"))
+	// yönetilen değer: karşılaştırılır
+	check("uyumlu", "demo_erisim=ic\n", setMatch, "ic", read("ic"))
+	check("sapma", "demo_erisim=ic\n", setDrift, "agdan", read("agdan"))
+	// "absent": sunucuda yok → sapma değil, ayrı durum; okunmamışsa bilinmiyor
+	check("yok", "demo_erisim=ic\n", setAbsent, "", read("yok"))
+	check("yok ama başarısız", "demo_erisim=ic\n", setUnknown, "", read("yok"), setRead{"ntp_durum", "0.2.0", "fail", 200, nil})
+	check("okunmamış", "demo_erisim=ic\n", setUnknown, "")
+	check("yok ve otomatik", "", setUnmanaged, "", read("yok"))
 }
 
 func TestSettingCardsInInfo(t *testing.T) {
