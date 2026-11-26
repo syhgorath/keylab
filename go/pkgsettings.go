@@ -32,6 +32,8 @@ type settingDecl struct {
 		StripPrefix []string `json:"strip_prefix"`
 		Absent      string   `json:"absent"` // sunucudaki bu değer: ayarlanan şey orada yok
 		Ignore      []string `json:"ignore"` // istenen bu değerlerden biriyse yönetilmiyor
+		// sunucudaki bu değerler: ayar oradaki kurulum biçiminde anlamsız (örn. native kurulumda imaj sürümü)
+		NotApplicable []string `json:"not_applicable"`
 	} `json:"state"`
 }
 
@@ -146,6 +148,7 @@ const (
 	setUnmanaged  = "unmanaged"  // yönetilmiyor: istenen boş ("dokunma") ya da "ignore" değerlerinden
 	setAbsent     = "absent"     // sunucuda yok (örn. uygulama kurulu değil)
 	setUnreadable = "unreadable" // okunamaz: okuma bildirilmemiş ya da bu sunucuya uygulanmıyor
+	setNA         = "na"         // uygulanmaz: "not_applicable" değeri; karşılaştırılmaz
 )
 
 type SettingInfo struct {
@@ -269,7 +272,7 @@ func (a *App) settingInfos(s Server, p Package, decls []settingDecl, groups map[
 			}
 			info.ReadTime = read.LastTime
 			info.Stale = read.LastTime != "" && changedAfter(actions, read.LastTime)
-			found, unknown, absent := false, false, false
+			found, unknown, absent, na := false, false, false, false
 			for _, k := range keys {
 				v, ok := read.Keys[k]
 				if !ok {
@@ -282,6 +285,10 @@ func (a *App) settingInfos(s Server, p Package, decls []settingDecl, groups map[
 				}
 				if d.State.Absent != "" && v == d.State.Absent {
 					absent = true
+					break
+				}
+				if d.State.Key != "" && slices.Contains(d.State.NotApplicable, v) {
+					na = true
 					break
 				}
 				// tek anahtarlı liste "a+b" biçimindedir
@@ -308,6 +315,8 @@ func (a *App) settingInfos(s Server, p Package, decls []settingDecl, groups map[
 				info.Status, info.Note = setUnknown, "okuma bu değeri bildirmedi"
 			case absent:
 				info.Status = setAbsent
+			case na:
+				info.Status, info.Note = setNA, "bu kurulum biçiminde geçerli değil"
 			case settingMatches(compare, info.Desired, info.Actual, d.State.StripPrefix):
 				info.Status = setMatch
 			default:

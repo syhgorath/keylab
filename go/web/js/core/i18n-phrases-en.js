@@ -196,7 +196,7 @@ window.KeyLabPhrasesEN = {
     "Önizlemeden sonra kurulur": "Installs after a preview",
     "durum okunamadı": "status could not be read",
     "şimdi çalıştırılamaz": "cannot run now",
-    "sunucuda yok": "not on server", "durmuş": "stopped", "⚠ dikkat": "⚠ attention", "Sağlık bilgisi:": "Health:", "evet": "yes", "hayır": "no", "çalışıyor": "running", "çalışmıyor": "not running",
+    "sunucuda yok": "not on server", "uygulanmaz": "not applicable", "bu kurulum biçiminde geçerli değil": "not applicable to this kind of installation", "durmuş": "stopped", "⚠ dikkat": "⚠ attention", "Sağlık bilgisi:": "Health:", "evet": "yes", "hayır": "no", "çalışıyor": "running", "çalışmıyor": "not running",
     "Sunucuda:": "On server:", "Kontrol et": "Check", "uyumlu": "in sync", "✔ uyumlu": "✔ in sync", "⚠ sapma": "⚠ drift",
     "Onayla ve kaydet": "Confirm and save", "boş = dokunma": "empty = leave as is", "Birden çok değeri virgülle ayırın.": "Separate several values with commas.", "değişken bulunamadı:": "variable not found:",
     "önce kaydedin": "save first", "Ayarlar kaydedildi (sunucu değişmedi)": "Settings saved (the server did not change)", "✔ Kaydedildi. Sunucuya yazmak için Önizle ve Uygula.": "✔ Saved. Use Preview and Apply to write to the server.",

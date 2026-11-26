@@ -31,7 +31,7 @@ const setPkg = `{"id":"demo","version":"0.2.0","sshpocket_api":1,"name":"Demo","
   {"id":"adim","label":"Saat adımlama","var":"demo_adim","apply_via":["apply"],"card":"saat"},
   {"id":"uyg","label":"Uygulamalar","var":"demo_uyg","apply_via":["apply"],"state":{"action":"ntp_durum","key":"liste","compare":"set"}},
   {"id":"pve","label":"PVE","var":"demo_uyg","apply_via":["apply"],"state":{"action":"pve_oku","key":"pve"}},
-  {"id":"erisim","label":"Erişim","var":"demo_erisim","apply_via":["apply"],"state":{"action":"ntp_durum","key":"liste","absent":"yok","ignore":["otomatik"]}}
+  {"id":"erisim","label":"Erişim","var":"demo_erisim","apply_via":["apply"],"state":{"action":"ntp_durum","key":"liste","absent":"yok","ignore":["otomatik"],"not_applicable":["dagitim"]}}
  ]}`
 
 // result.<eylem> dosyası ve results günlüğü
@@ -172,6 +172,10 @@ func TestSettingAbsentAndIgnore(t *testing.T) {
 	check("yok ama başarısız", "demo_erisim=ic\n", setUnknown, "", read("yok"), setRead{"ntp_durum", "0.2.0", "fail", 200, nil})
 	check("okunmamış", "demo_erisim=ic\n", setUnknown, "")
 	check("yok ve otomatik", "", setUnmanaged, "", read("yok"))
+	// "not_applicable": karşılaştırılmaz, sapma değil; istenen "ignore" ise yine yönetilmiyor
+	check("uygulanmaz", "demo_erisim=ic\n", setNA, "", read("dagitim"))
+	check("uygulanmaz ama başarısız", "demo_erisim=ic\n", setUnknown, "", read("dagitim"), setRead{"ntp_durum", "0.2.0", "fail", 200, nil})
+	check("uygulanmaz ve otomatik", "", setUnmanaged, "", read("dagitim"))
 }
 
 func TestSettingCardsInInfo(t *testing.T) {

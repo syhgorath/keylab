@@ -303,6 +303,17 @@ test("sunucuda yok: ayrı durum, sapma sayılmaz; kurmak için uygulama düğmes
   assert.deepEqual(btns(h), ["Kontrol et", "Kaydet", "Önizle", "Uygula"]); h.close();
 });
 
+test("uygulanmaz: karşılaştırılmaz, sapma sayılmaz; yanında uyumlu ayar varsa kart uyumlu kalır", async () => {
+  const note = "bu kurulum biçiminde geçerli değil";
+  const tek = await open({ settings: [set("kaynak", "na", { note })], cards: [CARDS[0]] });
+  assert.deepEqual([...cardEl(tek, "saat").querySelectorAll(".app-title .badge")].map(txt), ["uygulanmaz"]);
+  await openCard(tek, "saat");
+  assert.equal(txt(field(tek, "kaynak").querySelector('[data-live="state"]')), "uygulanmaz");
+  assert.match(txt(field(tek, "kaynak").querySelector('[data-live="have"]')), /geçerli değil/); tek.close();
+  const karisik = await open({ settings: [set("kaynak", "na", { note }), set("adim", "match")], cards: [CARDS[0]] });
+  assert.deepEqual([...cardEl(karisik, "saat").querySelectorAll(".app-title .badge")].map(txt), ["uyumlu"]); karisik.close();
+});
+
 test("paket metni HTML olarak yorumlanmaz", async () => {
   const bad = '<img src=x onerror="window.__x=1">';
   const h = await open({
