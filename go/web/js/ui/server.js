@@ -52,7 +52,7 @@ export function initServer(hooks) {
     return `<div class="act r-${cat}" data-cat="${cat}"><div class="act-head"><span class="act-name">${esc(a.id)}</span>${effectBadges(a)}${stale}</div>
       ${warn}${keys ? `<div class="chips">${keys}</div>` : ""}
       <div class="act-foot"><span>${last}</span>${req.length ? `<span>· önkoşul: ${req.join(", ")}</span>` : ""}<span class="grow"></span>
-        ${a.runnable ? `<button class="btn sm primary" data-run="${esc(pkg.id)}|${esc(a.id)}">Çalıştır</button>` : a.write ? (a.destructive ? `<button class="btn sm dangerbtn" data-write="${esc(pkg.id)}|${esc(a.id)}" title="YIKICI: geri alınamayabilir; plan, snapshot, ad yazma ve ek onaydan geçer">Yıkıcı eylem…</button>` : `<button class="btn sm warnbtn" data-write="${esc(pkg.id)}|${esc(a.id)}" title="Gerçek sunucuya yazar; plan, snapshot ve onay adımlarından geçer">Onayla ve çalıştır…</button>`) : a.terminal ? `<button class="btn sm" data-term="${esc(pkg.id)}|${esc(a.id)}" title="Sudo parolası gerekir; Terminal'de girersiniz">Terminal'de çalıştır</button>` : `<span class="small muted sj-45fcdd">${esc(a.reason || "")}</span>`}</div></div>`;
+        ${a.runnable ? `<button class="btn sm primary" data-run="${esc(pkg.id)}|${esc(a.id)}">Çalıştır</button>` : a.write ? (a.destructive ? `<button class="btn sm dangerbtn" data-write="${esc(pkg.id)}|${esc(a.id)}" title="YIKICI: geri alınamayabilir; terminalde sunucu adını yazmanız istenir">Yıkıcı eylem…</button>` : `<button class="btn sm warnbtn" data-write="${esc(pkg.id)}|${esc(a.id)}" title="Gerçek sunucuya yazar; onay terminalde sorulur">Onayla ve çalıştır…</button>`) : a.terminal ? `<button class="btn sm" data-term="${esc(pkg.id)}|${esc(a.id)}" title="Sudo parolası gerekir; gömülü terminalde yazarsınız">Terminal'de çalıştır</button>` : `<span class="small muted sj-45fcdd">${esc(a.reason || "")}</span>`}</div></div>`;
   }
 
   // paketin bu sunucudaki değişkenleri (salt okunur): ayarlı olanlar ve eylemlerin zorunlu kıldıkları
@@ -415,9 +415,10 @@ export function initServer(hooks) {
     const p = pk.find(x => x.id === appState.srvTab);
     if (appState.srvTab === "ozet") { renderOzet(s, pk); return; }
     setTimeout(() => $$("#srv-body [data-vars]").forEach(b => b.addEventListener("click", () => openVars(appState.srvName, b.dataset.vars))), 0);
-    setTimeout(() => $$("#srv-body [data-write]").forEach(b => b.addEventListener("click", () => { const [pid, aid] = b.dataset.write.split("|"); openWrite(appState.srvName, pid, aid); })), 0);
-    setTimeout(() => $$("#srv-body [data-term]").forEach(b => b.addEventListener("click", () => { const [pid, aid] = b.dataset.term.split("|"); openTerm(appState.srvName, pid, aid); })), 0);
-    setTimeout(() => $$("#srv-body [data-run]").forEach(b => b.addEventListener("click", () => { const [pid, aid] = b.dataset.run.split("|"); openRun(appState.srvName, pid, aid); })), 0);
+    // eylem düğmelerinde onclick (addEventListener değil): art arda iki çizim aynı düğmeye iki dinleyici bağlamasın — tek tık tek eylem başlatır
+    setTimeout(() => $$("#srv-body [data-write]").forEach(b => { b.onclick = () => { const [pid, aid] = b.dataset.write.split("|"); openWrite(appState.srvName, pid, aid); }; }), 0);
+    setTimeout(() => $$("#srv-body [data-term]").forEach(b => { b.onclick = () => { const [pid, aid] = b.dataset.term.split("|"); openTerm(appState.srvName, pid, aid); }; }), 0);
+    setTimeout(() => $$("#srv-body [data-run]").forEach(b => { b.onclick = () => { const [pid, aid] = b.dataset.run.split("|"); openRun(appState.srvName, pid, aid); }; }), 0);
     if (!p) { $("#srv-body").innerHTML = '<div class="card"><div class="card-body small muted">Bu sunucu için paket bulunamadı.</div></div>'; return; }
     setTimeout(() => $$("#srv-body [data-setopen]").forEach(b => b.addEventListener("click", () => pkgSettings.open(p.id, b.dataset.setopen))), 0);
     const ok = p.actions.filter(a => a.applicable), na = p.actions.filter(a => !a.applicable);

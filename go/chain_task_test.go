@@ -22,10 +22,6 @@ func TestOpenChainTask(t *testing.T) {
 	taskProgram = func(string) string { return "echo" }
 	t.Cleanup(func() { taskProgram = old })
 
-	// aynı eylem zincirsiz: snapshot/onay olmadan açılmaz
-	if _, code, err := a.openTask("s1", "demo", "apply", "", false, "", false, 24, 80); err == nil || code < 400 {
-		t.Fatalf("zincirsiz yazan eylem onaysız açıldı: %d %v", code, err)
-	}
 	for _, c := range []struct {
 		server, action, item, want string
 	}{
@@ -35,7 +31,7 @@ func TestOpenChainTask(t *testing.T) {
 		{"yok", "apply", "", "sunucu yok"},
 		{"s1", "apply", "docker", "öğesiyle"},
 	} {
-		if ts, code, err := a.openTaskX(true, c.server, "demo", c.action, c.item, false, "", false, 24, 80); err == nil || ts != nil || code < 400 || !strings.Contains(err.Error(), c.want) {
+		if ts, code, err := a.openTaskX(true, c.server, "demo", c.action, c.item, 24, 80); err == nil || ts != nil || code < 400 || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("%+v: %d %v", c, code, err)
 		}
 	}

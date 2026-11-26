@@ -35,7 +35,7 @@ func waitOut(t *testing.T, ts *TermSession, sub string) {
 func TestOpenTaskRunsActionInTerminalAndTakesInput(t *testing.T) {
 	a := batchApp(t)
 	fakeJob(t, `echo "BASLADI $1"; printf 'Parola: '; read -r pw; echo; echo "ALINDI:${#pw}"; exit 3`)
-	ts, code, err := a.openTask("s1", "demo", "durum", "", false, "", false, 24, 80)
+	ts, code, err := a.openTask("s1", "demo", "durum", "", 24, 80)
 	if err != nil || ts == nil {
 		t.Fatalf("başlamadı (%d): %v", code, err)
 	}
@@ -66,23 +66,28 @@ func TestOpenTaskRunsActionInTerminalAndTakesInput(t *testing.T) {
 func TestOpenTaskGatesAndSingleTaskPerServer(t *testing.T) {
 	a := batchApp(t)
 	fakeJob(t, `sleep 30`)
-	// kapılar: değişiklik yapan eylem onay/önkoşul olmadan açılmaz (sunucu tarafı denetimi arayüze güvenmez)
-	if ts, code, err := a.openTask("s1", "demo", "kur", "", false, "", false, 24, 80); err == nil || ts != nil || code < 400 {
-		t.Fatalf("onaysız yazan eylem açıldı: %d %v", code, err)
+	// kapılar: önkoşulu tamam olmayan değiştiren eylem açılmaz (sunucu tarafı denetimi arayüze güvenmez). Onay (e/h, sunucu adı) terminalde
+	// yürütücünün işidir; arayüzden onay bilgisi istenmez.
+	writePkg(t, a.compDir, "demo", "0.1.0", `{"id":"demo","version":"0.1.0","name":"Demo","description":"d",
+	 "actions":{"durum":{"effects":[],"requires_sudo":false,"confirm":"none"},"tara":{"effects":[],"requires_sudo":true,"confirm":"none"},
+	            "yaz":{"effects":["changes-config"],"requires_sudo":true,"requires":["tara"],"confirm":"yes-no"}},
+	 "vars":[]}`)
+	if ts, code, err := a.openTask("s1", "demo", "yaz", "", 24, 80); err == nil || ts != nil || code != http.StatusConflict || !strings.Contains(err.Error(), "önkoşul") {
+		t.Fatalf("önkoşulsuz yazan eylem açıldı: %d %v", code, err)
 	}
-	if _, code, err := a.openTask("yok", "demo", "durum", "", false, "", false, 24, 80); err == nil || code < 400 {
+	if _, code, err := a.openTask("yok", "demo", "durum", "", 24, 80); err == nil || code < 400 {
 		t.Fatalf("olmayan sunucu: %d %v", code, err)
 	}
-	ts, _, err := a.openTask("s1", "demo", "durum", "", false, "", false, 24, 80)
+	ts, _, err := a.openTask("s1", "demo", "durum", "", 24, 80)
 	if err != nil {
 		t.Fatal(err)
 	}
 	endTask(t, ts)
-	if _, code, err := a.openTask("s1", "demo", "durum", "", false, "", false, 24, 80); err == nil || code != http.StatusConflict || !strings.Contains(err.Error(), "zaten çalışan") {
+	if _, code, err := a.openTask("s1", "demo", "durum", "", 24, 80); err == nil || code != http.StatusConflict || !strings.Contains(err.Error(), "zaten çalışan") {
 		t.Fatalf("aynı sunucuda ikinci görev: %d %v", code, err)
 	}
 	// başka sunucuda paralel çalışabilir
-	ts2, _, err := a.openTask("s2", "demo", "durum", "", false, "", false, 24, 80)
+	ts2, _, err := a.openTask("s2", "demo", "durum", "", 24, 80)
 	if err != nil {
 		t.Fatalf("başka sunucuda görev: %v", err)
 	}
@@ -95,7 +100,7 @@ func TestOpenTaskGatesAndSingleTaskPerServer(t *testing.T) {
 func TestTaskSessionsAreNotReapedWhileRunning(t *testing.T) {
 	a := batchApp(t)
 	fakeJob(t, `sleep 30`)
-	ts, _, err := a.openTask("s1", "demo", "durum", "", false, "", false, 24, 80)
+	ts, _, err := a.openTask("s1", "demo", "durum", "", 24, 80)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +161,7 @@ func TestTermTaskHandlerAndList(t *testing.T) {
 func TestQuitCountsRunningTasks(t *testing.T) {
 	a := batchApp(t)
 	fakeJob(t, `sleep 30`)
-	ts, _, err := a.openTask("s1", "demo", "durum", "", false, "", false, 24, 80)
+	ts, _, err := a.openTask("s1", "demo", "durum", "", 24, 80)
 	if err != nil {
 		t.Fatal(err)
 	}

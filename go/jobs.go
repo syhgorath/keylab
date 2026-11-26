@@ -176,6 +176,19 @@ func (a *App) authorizeRunItem(server, pkg, action, item string, snapshot bool, 
 	return ai, itemVar, 0, nil
 }
 
+// authorizeTerm: görev terminali için kapı. Arayüzün çalıştırabildiği her paket eylemi açılır (değiştiren eylemde önkoşul tamam olmalı);
+// onay arayüzde istenmez: yürütücü terminalde sorar (değiştiren eylemde e/h, yıkıcı eylemde sunucu adı) ve bütün kapıları yeniden denetler.
+func (a *App) authorizeTerm(server, pkg, action, item string) (string, int, error) {
+	ai, itemVar, err := a.findActionItem(server, pkg, action, item)
+	if err != nil {
+		return "", http.StatusConflict, err
+	}
+	if !ai.Runnable && !ai.Terminal && !ai.Write {
+		return "", http.StatusConflict, fmt.Errorf("bu eylem arayüzden çalıştırılamaz: %s", ai.Reason)
+	}
+	return itemVar, 0, nil
+}
+
 // authorizeChain: tek tık zinciri yalnız bir ayar kartının uygulama eylemi için açılır. Önkoşul (önizleme) zincirin içinde koştuğundan burada
 // aranmaz; yürütücü her adımda bütün kapıları yeniden denetler. Yıkıcı eylemde sunucu adı onayını yürütücü terminalde ister (ChainPlan).
 func (a *App) authorizeChain(server, pkg, action, item string) (int, error) {

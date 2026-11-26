@@ -48,13 +48,13 @@ func (a *App) runningTasks() int {
 var taskProgram = func(exe string) string { return exe }
 
 // openTask: eylemi görev terminali olarak başlatır. Aynı sunucuda aynı anda tek görev; toplam oturum sınırı ssh oturumlarıyla ortaktır.
-func (a *App) openTask(server, pkg, action, item string, snapshot bool, confirm string, ackDestructive bool, rows, cols uint16) (*TermSession, int, error) {
-	return a.openTaskX(false, server, pkg, action, item, snapshot, confirm, ackDestructive, rows, cols)
+func (a *App) openTask(server, pkg, action, item string, rows, cols uint16) (*TermSession, int, error) {
+	return a.openTaskX(false, server, pkg, action, item, rows, cols)
 }
 
 // openTaskX: chain=true tek tık zinciridir (önizleme → eylem → kontrol, `keylab run -chain`); kapıları authorizeChain denetler, onayları
 // (yıkıcı eylemde sunucu adı) ve sudo parolasını yürütücü terminalde sorar.
-func (a *App) openTaskX(chain bool, server, pkg, action, item string, snapshot bool, confirm string, ackDestructive bool, rows, cols uint16) (*TermSession, int, error) {
+func (a *App) openTaskX(chain bool, server, pkg, action, item string, rows, cols uint16) (*TermSession, int, error) {
 	if !platform.DefaultPTY().TerminalSupported() {
 		return nil, http.StatusNotImplemented, fmt.Errorf("Windows'ta gömülü terminal henüz yok (WSL 2 kullanabilirsiniz)")
 	}
@@ -64,7 +64,7 @@ func (a *App) openTaskX(chain bool, server, pkg, action, item string, snapshot b
 	if chain {
 		code, err = a.authorizeChain(server, pkg, action, item)
 	} else {
-		_, itemVar, code, err = a.authorizeRunItem(server, pkg, action, item, snapshot, confirm, ackDestructive)
+		itemVar, code, err = a.authorizeTerm(server, pkg, action, item)
 	}
 	if err != nil {
 		return nil, code, err
@@ -115,23 +115,20 @@ func (a *App) openTaskX(chain bool, server, pkg, action, item string, snapshot b
 	return ts, 0, nil
 }
 
-// POST /api/term/task {server, package, action, item?, snapshot?, confirm?, ackDestructive?, rows?, cols?} → {id, server, kind, title, pkg, action}
+// POST /api/term/task {server, package, action, item?, chain?, rows?, cols?} → {id, server, kind, title, pkg, action}
 func (a *App) termTaskHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST", http.StatusMethodNotAllowed)
 		return
 	}
 	var req struct {
-		Server         string `json:"server"`
-		Package        string `json:"package"`
-		Action         string `json:"action"`
-		Item           string `json:"item"`
-		Snapshot       bool   `json:"snapshot"`
-		Confirm        string `json:"confirm"`
-		AckDestructive bool   `json:"ackDestructive"`
-		Chain          bool   `json:"chain"`
-		Rows           uint16 `json:"rows"`
-		Cols           uint16 `json:"cols"`
+		Server  string `json:"server"`
+		Package string `json:"package"`
+		Action  string `json:"action"`
+		Item    string `json:"item"`
+		Chain   bool   `json:"chain"`
+		Rows    uint16 `json:"rows"`
+		Cols    uint16 `json:"cols"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&req); err != nil ||
 		!reName.MatchString(req.Server) || !reName.MatchString(req.Package) || !reAction.MatchString(req.Action) {
@@ -144,7 +141,7 @@ func (a *App) termTaskHandler(w http.ResponseWriter, r *http.Request) {
 	if req.Cols < 10 || req.Cols > 600 {
 		req.Cols = 80
 	}
-	ts, code, err := a.openTaskX(req.Chain, req.Server, req.Package, req.Action, req.Item, req.Snapshot, req.Confirm, req.AckDestructive, req.Rows, req.Cols)
+	ts, code, err := a.openTaskX(req.Chain, req.Server, req.Package, req.Action, req.Item, req.Rows, req.Cols)
 	if err != nil {
 		http.Error(w, err.Error(), code)
 		return

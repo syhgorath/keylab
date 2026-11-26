@@ -806,7 +806,7 @@
           <li>
             <b>
               "Sudo password"
-            "is typed only into the box that appears when the engine asks; it is passed straight to Ansible's terminal (pty), never stored, never logged, never shown on the page. Package actions run in the built-in terminal; you type the password right there. SSH key passphrases and private keys are never entered in the UI (ssh-agent)."
+            "is typed in the embedded terminal for package actions; it is never stored or logged. The Install button on settings cards asks for it once and keeps it in memory only for that run. For server tasks a box opens when the engine asks. SSH key passphrases and private keys are not typed into the page (ssh-agent)."
           <li>
             "Page"
             <span class="mono">
@@ -816,7 +816,7 @@
             "From the UI only"
             <b>
               "read-only, no-sudo, no-confirmation, no-prerequisite"
-            "actions are run; they are re-checked on the server side. Running uses the app's own engine (same gates, log and result record). Actions run in the UI terminal; a box opens when a sudo password is requested. Actions that make changes (non-destructive) first go through plan, snapshot and name/y-n confirmation; the engine may ask the confirmations again. Destructive actions (kaldir, yukselt, server deletion) need an extra confirmation: the exact server name, a snapshot and an \"may be irreversible\" confirmation."
+            "actions run in the run window; they are re-checked on the server side. Other package actions start directly in the embedded terminal (same gates, log and result record): for a changing action the engine asks yes/no, for a destructive one the server name, in the terminal. The Install button on settings cards replaces the yes/no question; destructive actions still ask for the server name. Taking a snapshot is up to you. Removing a server also asks for its name."
     <div class="card">
       <div class="card-head">
         <h2>
