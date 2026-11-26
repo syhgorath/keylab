@@ -1,0 +1,127 @@
+package manifest
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+)
+
+// %s: "settings" alanının değeri
+const setBase = `{
+ "id":"demo","version":"0.1.0","sshpocket_api":1,"runner":"ansible","inventory_group":"demo",
+ "name":"Demo","description":"d",
+ "profiles":[{"id":"ubuntu-26.04","status":"supported"}],
+ "requires":{"control":{"python":">=3.12","packages":["ansible-core"]},"target":{"python":">=3.9"}},
+ "actions":{
+  "durum":{"cmd":"ansible-playbook playbooks/durum.yml","effects":[],"confirm":"none","warnings":["w"],
+    "outputs":{"format":"keyvalue-line","keys":["zone","k1","k2"]}},
+  "kok":{"cmd":"ansible-playbook playbooks/kok.yml","effects":[],"requires_sudo":true,"confirm":"none","warnings":["w"],
+    "outputs":{"format":"keyvalue-line","keys":["zone"]}},
+  "preview":{"cmd":"ansible-playbook playbooks/preview.yml --check --diff","effects":[],"requires_sudo":true,"confirm":"none","warnings":["w"]},
+  "apply":{"cmd":"ansible-playbook playbooks/apply.yml","effects":["changes-config"],"requires_sudo":true,"requires":["preview"],"confirm":"yes-no","warnings":["w"]},
+  "sil":{"cmd":"ansible-playbook playbooks/sil.yml","effects":["destructive"],"requires_sudo":true,"requires":["preview"],"confirm":"type-server-name","warnings":["w"]}
+ },
+ "vars":[
+  {"name":"demo_ntp","type":"list[string]","default":[],"group":"NTP","description":"x"},
+  {"name":"demo_zone","type":"string","default":"","group":"Zaman"}
+ ],
+ "settings":%s}`
+
+func setValidate(settings string) ([]string, []string, int) {
+	return Validate([]byte(fmt.Sprintf(setBase, settings)), "demo", "0.1.0")
+}
+
+const setGood = `[
+ {"id":"ntp","label":"NTP sunucuları","var":"demo_ntp","description":"d","risk":["time-jump"],"risk_note":"n","apply_via":["apply"],
+  "state":{"action":"durum","keys":["k1","k2"],"compare":"set","source":"result","strip_prefix":["server ","pool "]}},
+ {"id":"zone","label":"Saat dilimi","var":"demo_zone","description":"d","apply_via":["apply"],"state":{"action":"durum","key":"zone"}},
+ {"id":"duz","label":"Okunmayan","var":"demo_zone","description":"d","apply_via":["apply"]}
+]`
+
+func TestSettingsValid(t *testing.T) {
+	lines, errs, code := setValidate(setGood)
+	if code != 0 {
+		t.Fatalf("geçerli settings reddedildi: %v", errs)
+	}
+	got := "\n" + strings.Join(lines, "\n") + "\n"
+	for _, want := range []string{"setting.ntp=NTP sunucuları", "setting.ntp.var=demo_ntp", "setting.ntp.apply=apply", "setting.ntp.risk=time-jump",
+		"setting.ntp.read=durum", "setting.ntp.keys=k1,k2", "setting.ntp.compare=set", "setting.zone.compare=exact", "setting.duz.var=demo_zone"} {
+		if !strings.Contains(got, "\n"+want+"\n") {
+			t.Errorf("satır yok: %q", want)
+		}
+	}
+	if strings.Contains(got, "setting.duz.read=") {
+		t.Error("state'siz ayarda read satırı olmamalı")
+	}
+}
+
+func TestSettingsRejects(t *testing.T) {
+	one := func(extra string) string {
+		return `[{"id":"a","label":"A","var":"demo_zone","apply_via":["apply"]` + extra + `}]`
+	}
+	st := func(body string) string { return one(`,"state":{` + body + `}`) }
+	for _, tc := range []struct{ name, settings, want string }{
+		{"liste değil", `{}`, "settings 1-40"},
+		{"boş liste", `[]`, "settings 1-40"},
+		{"nesne değil", `["x"]`, "nesne olmalı"},
+		{"bilinmeyen alan", one(`,"cmd":"rm"`), "bilinmeyen alan: cmd"},
+		{"kötü id", `[{"id":"../x","label":"A","var":"demo_zone","apply_via":["apply"]}]`, "id küçük harfle"},
+		{"yinelenen id", `[{"id":"a","label":"A","var":"demo_zone","apply_via":["apply"]},{"id":"a","label":"B","var":"demo_zone","apply_via":["apply"]}]`, "yinelenen id"},
+		{"etiket yok", `[{"id":"a","var":"demo_zone","apply_via":["apply"]}]`, "label geçersiz metin"},
+		{"değişken yok", `[{"id":"a","label":"A","var":"yok","apply_via":["apply"]}]`, "vars[] içinde"},
+		{"apply yok", `[{"id":"a","label":"A","var":"demo_zone"}]`, "apply_via"},
+		{"apply tanımsız", `[{"id":"a","label":"A","var":"demo_zone","apply_via":["yok"]}]`, "apply_via"},
+		{"risk sözlük dışı", one(`,"risk":["tehlike"]`), "risk şunlardan"},
+		{"risk yinelenen", one(`,"risk":["time-jump","time-jump"]`), "risk şunlardan"},
+		{"state action yok", st(`"action":"yok","key":"zone"`), "action tanımlı"},
+		{"state yazan eylem", st(`"action":"apply","key":"zone"`), "salt okunur olmalı"},
+		{"state anahtar bildirilmemiş", st(`"action":"durum","key":"baska"`), "outputs.keys listesinde yok"},
+		{"keys içinde bildirilmemiş", st(`"action":"durum","keys":["k1","k9"],"compare":"set"`), "'k9' anahtarı"},
+		{"key ve keys", st(`"action":"durum","key":"zone","keys":["k1"]`), "tam biri"},
+		{"ikisi de yok", st(`"action":"durum"`), "tam biri"},
+		{"compare sözlük dışı", st(`"action":"durum","key":"zone","compare":"yakın"`), "compare şunlardan"},
+		{"keys exact", st(`"action":"durum","keys":["k1"]`), "keys ile compare"},
+		{"summary kaynağı", st(`"action":"durum","key":"zone","source":"summary"`), "source yalnızca"},
+		{"strip_prefix uzun", st(`"action":"durum","key":"zone","strip_prefix":["123456789012345678901"]`), "strip_prefix"},
+		{"state bilinmeyen alan", st(`"action":"durum","key":"zone","path":"/etc"`), "bilinmeyen alan: path"},
+	} {
+		_, errs, code := setValidate(tc.settings)
+		if code == 0 || !strings.Contains(strings.Join(errs, "\n"), tc.want) {
+			t.Errorf("%s: kod %d, hata %v (beklenen %q)", tc.name, code, errs, tc.want)
+		}
+	}
+}
+
+// items[].settings BİLEREK desteklenmez (eski sürümler paketi reddeder): üst düzey kullanılmalı.
+func TestSettingsInsideItemsRejected(t *testing.T) {
+	m := strings.Replace(fmt.Sprintf(setBase, setGood), `"settings":`, `"item_var":"demo_zone","items":[{"id":"a","label":"A","settings":[]}],"settings":`, 1)
+	_, errs, code := Validate([]byte(m), "demo", "0.1.0")
+	if code == 0 || !strings.Contains(strings.Join(errs, "\n"), "bilinmeyen alan: settings") {
+		t.Fatalf("items[].settings kabul edildi: %d %v", code, errs)
+	}
+}
+
+func TestSettingsCheckerWarnings(t *testing.T) {
+	lines, errs, code := setValidate(`[
+	 {"id":"iyi","label":"İ","var":"demo_ntp","apply_via":["apply"]},
+	 {"id":"kotu","label":"K","var":"demo_zone","apply_via":["sil"],"state":{"action":"kok","key":"zone"}}
+	]`)
+	if code != 0 {
+		t.Fatalf("geçersiz: %v", errs)
+	}
+	c := &pkgChecker{}
+	c.checkSettings(parseInfo(lines))
+	var got []string
+	for _, r := range c.results {
+		got = append(got, r.level+" "+r.text)
+	}
+	all := strings.Join(got, "\n")
+	for _, want := range []string{"ok iyi", "warn kotu: okuma eylemi 'kok' sudo istiyor", "warn kotu: yıkıcı eylem 'sil'", "warn kotu: açıklama yok"} {
+		if !strings.Contains(all, want) {
+			t.Errorf("beklenen sonuç yok: %q\n%s", want, all)
+		}
+	}
+	if len(got) != 4 {
+		t.Errorf("sonuç sayısı %d:\n%s", len(got), all)
+	}
+}

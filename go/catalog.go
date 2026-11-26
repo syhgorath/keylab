@@ -84,6 +84,8 @@ type PackageInfo struct {
 	Items       []ItemInfo   `json:"items,omitempty"`
 	Vars        []VarInfo    `json:"vars"`
 	Actions     []ActionInfo `json:"actions"`
+	// Settings: "settings" bildiren pakette istenen ↔ sunucuda okunan değer (bkz. pkgsettings.go)
+	Settings []SettingInfo `json:"settings,omitempty"`
 }
 
 // cleanItems: component.json'dan gelen "items"ı güvenli sınırlara indirir (kimlikler reName, metinler kısaltılır, listeler sınırlanır).
@@ -237,6 +239,7 @@ func (a *App) buildPackageInfo(s Server, p Package, itemOverride string) (Packag
 			Default     json.RawMessage `json:"default"`
 			Description string          `json:"description"`
 		} `json:"vars"`
+		Settings []settingDecl `json:"settings"`
 	}
 	if json.Unmarshal(b, &c) != nil {
 		return PackageInfo{}, false
@@ -349,6 +352,13 @@ func (a *App) buildPackageInfo(s Server, p Package, itemOverride string) (Packag
 		}
 		return info.Actions[i].ID < info.Actions[j].ID
 	})
+	if itemOverride == "" && len(c.Settings) > 0 {
+		groups := map[string]string{}
+		for _, v := range c.Vars {
+			groups[v.Name] = v.Group
+		}
+		info.Settings = a.settingInfos(s, p, c.Settings, groups, info.Actions)
+	}
 	if itemOverride == "" && len(info.Items) > 0 {
 		for i := range info.Items {
 			sub, ok := a.buildPackageInfo(s, p, info.Items[i].ID)
