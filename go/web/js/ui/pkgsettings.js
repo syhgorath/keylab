@@ -5,7 +5,7 @@
 import { $, $$, esc, json, toast, ago, localTime } from "../lib/util.js";
 import { appState } from "../state.js";
 
-const ST = { match: ["ok", "✔ uyumlu"], drift: ["warn", "⚠ sapma"], unknown: ["plain", "bilinmiyor"], absent: ["plain", "sunucuda yok"], unmanaged: ["plain", "yönetilmiyor"], unreadable: ["plain", "okunamaz"] };
+const ST = { match: ["ok", "✔ uyumlu"], drift: ["warn", "⚠ sapma"], unknown: ["plain", "bilinmiyor"], absent: ["plain", "sunucuda yok"], unmanaged: ["plain", "yönetilmiyor"], unreadable: ["plain", "okunamaz"], na: ["plain", "uygulanmaz"] };
 const RISK = { "access-loss": ["danger", "erişimi kesebilir"], "restarts-service": ["warn", "servisi yeniden başlatır"], "time-jump": ["warn", "saati sıçratır"], "data-loss": ["danger", "veriyi etkiler"] };
 const uniq = l => [...new Set(l)];
 const chips = list => list.map(v => `<span class="chip">${esc(v)}</span>`).join("") || '<span class="muted">—</span>';
@@ -35,7 +35,7 @@ export function cardsOf(p) {
 function cardBadge(c) {
   const rows = c.rows, n = st => rows.filter(x => x.status === st).length;
   const main = n("drift") ? `<span class="badge warn">${n("drift")} sapma</span>` : n("unknown") ? `<span class="badge plain">${n("unknown")} bilinmiyor</span>`
-    : n("match") ? '<span class="badge ok">uyumlu</span>' : n("absent") ? '<span class="badge plain">sunucuda yok</span>' : n("unmanaged") ? '<span class="badge plain">yönetilmiyor</span>' : "";
+    : n("match") ? '<span class="badge ok">uyumlu</span>' : n("absent") ? '<span class="badge plain">sunucuda yok</span>' : n("unmanaged") ? '<span class="badge plain">yönetilmiyor</span>' : n("na") ? '<span class="badge plain">uygulanmaz</span>' : "";
   // ayarlar uyumlu olsa bile sağlık sorunu varsa kart yalnız yeşil görünmesin
   const ill = (c.health || []).some(h => h.state === "warn") ? '<span class="badge warn">⚠ dikkat</span>' : "";
   return main + ill + (c.stale || rows.some(x => x.stale) ? '<span class="badge warn" title="Bu okumadan sonra bu sunucuda değişiklik yapan bir eylem çalıştı.">güncel olmayabilir</span>' : "");

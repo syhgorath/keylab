@@ -34,7 +34,7 @@ func setValidate(settings string) ([]string, []string, int) {
 const setGood = `[
  {"id":"ntp","label":"NTP sunucuları","var":"demo_ntp","description":"d","risk":["time-jump"],"risk_note":"n","apply_via":["apply"],
   "state":{"action":"durum","keys":["k1","k2"],"compare":"set","source":"result","strip_prefix":["server ","pool "]}},
- {"id":"zone","label":"Saat dilimi","var":"demo_zone","description":"d","apply_via":["apply"],"state":{"action":"durum","key":"zone","absent":"yok","ignore":["otomatik"]}},
+ {"id":"zone","label":"Saat dilimi","var":"demo_zone","description":"d","apply_via":["apply"],"state":{"action":"durum","key":"zone","absent":"yok","ignore":["otomatik"],"not_applicable":["dagitim","ic"]}},
  {"id":"duz","label":"Okunmayan","var":"demo_zone","description":"d","apply_via":["apply"]}
 ]`
 
@@ -89,6 +89,11 @@ func TestSettingsRejects(t *testing.T) {
 		{"ignore boş liste", st(`"action":"durum","key":"zone","ignore":[]`), "ignore en çok"},
 		{"ignore metin değil", st(`"action":"durum","key":"zone","ignore":[1]`), "ignore en çok"},
 		{"ignore çok uzun", st(`"action":"durum","key":"zone","ignore":["a","b","c","d","e","f"]`), "ignore en çok"},
+		{"not_applicable keys ile", st(`"action":"durum","keys":["k1"],"compare":"set","not_applicable":["ic"]`), "not_applicable yalnızca"},
+		{"not_applicable boş", st(`"action":"durum","key":"zone","not_applicable":[]`), "not_applicable en çok"},
+		{"not_applicable boşluklu", st(`"action":"durum","key":"zone","not_applicable":["iç ağ"]`), "not_applicable en çok"},
+		{"not_applicable unknown", st(`"action":"durum","key":"zone","not_applicable":["unknown"]`), "not_applicable en çok"},
+		{"not_applicable absent ile aynı", st(`"action":"durum","key":"zone","absent":"yok","not_applicable":["yok"]`), "not_applicable en çok"},
 		{"kart tanımsız", one(`,"card":"yok"`), "card, setting_cards"},
 	} {
 		_, errs, code := setValidate(tc.settings)

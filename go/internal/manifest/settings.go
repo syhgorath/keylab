@@ -31,7 +31,7 @@ var (
 	setCardFields = []string{"id", "label", "description", "summary"}
 	setSumFields  = []string{"action", "items"}
 	setItemFields = []string{"key", "label", "ok", "max_abs", "unit"}
-	setStateKeys  = []string{"action", "key", "keys", "compare", "source", "strip_prefix", "absent", "ignore"}
+	setStateKeys  = []string{"action", "key", "keys", "compare", "source", "strip_prefix", "absent", "ignore", "not_applicable"}
 	reResultValue = regexp.MustCompile(`^[A-Za-z0-9_.:+-]{1,64}$`)
 	setRisks      = []string{"access-loss", "restarts-service", "time-jump", "data-loss"}
 	setComparisns = []string{"exact", "set", "ordered", "present"}
@@ -382,6 +382,19 @@ func validateSettingState(v *validator, w, id string, x any, actions *obj) []str
 			v.err("%s.state: absent sonuç satırı değeri olmalı (1-64 karakter; harf, rakam, _ . : + -)", w)
 		case !st.has("key"):
 			v.err("%s.state: absent yalnızca 'key' ile kullanılır", w)
+		}
+	}
+	if st.has("not_applicable") {
+		absent, _ := asStr(st.get("absent"))
+		vals, ok := uniqueStrings(st.get("not_applicable"), setIgnoreMax)
+		for _, s := range vals {
+			ok = ok && reResultValue.MatchString(s) && s != absent && s != "unknown"
+		}
+		switch {
+		case !ok:
+			v.err("%s.state: not_applicable en çok %d sonuç satırı değeri olmalı ('unknown' ve absent değeri olamaz)", w, setIgnoreMax)
+		case !st.has("key"):
+			v.err("%s.state: not_applicable yalnızca 'key' ile kullanılır", w)
 		}
 	}
 	if st.has("ignore") {
