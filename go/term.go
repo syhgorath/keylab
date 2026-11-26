@@ -34,6 +34,9 @@ const (
 	termDone   = 10 * time.Minute // bitmiş oturum haritada bu süreden sonra silinir
 	ringMax    = 256 << 10        // 256 KB
 	maxInBytes = 8192
+	// süreç bittikten sonra son çıktının okunması için en uzun bekleme. Terminali açık tutan bir artık süreç varsa okuma hiç bitmez;
+	// süre dolunca yine de kapatılır. kill()'in SIGKILL beklemesinden (2 sn) kısa olmalı.
+	termDrain = time.Second
 )
 
 type termEvent struct {
@@ -61,7 +64,9 @@ type TermSession struct {
 	wmu    sync.Mutex // PTY yazımı (mu'dan ayrı: yazma bloklanırsa çıktı akışı durmasın)
 	ptmx   *os.File
 	cmd    *exec.Cmd
-	exited chan struct{} // süreç bitince kapanır
+	exited chan struct{} // süreç bitip son çıktısı okununca kapanır
+	// drained: readLoop PTY'deki son parçayı da okuyup bitince kapanır
+	drained chan struct{}
 }
 
 func appendRing(ring, chunk []byte, max int) []byte {
@@ -86,6 +91,9 @@ func (s *TermSession) broadcast(ev termEvent) {
 }
 
 func (s *TermSession) readLoop() {
+	if s.drained != nil {
+		defer close(s.drained)
+	}
 	buf := make([]byte, 32<<10)
 	for {
 		n, err := s.ptmx.Read(buf)
@@ -113,6 +121,11 @@ func (s *TermSession) waitLoop(a *App) {
 		} else {
 			exitCode = 1
 		}
+	}
+	// Süreç, çıktısı okunmadan bitebilir (Linux): PTY'yi kapatmadan ve "exit" demeden önce okuyucunun son parçayı almasını bekle
+	select {
+	case <-s.drained:
+	case <-time.After(termDrain):
 	}
 	s.mu.Lock()
 	s.done = true
@@ -161,7 +174,7 @@ func startTermProcess(name string, args []string, dir string, env []string, rows
 	_, _ = rand.Read(b)
 	ts := &TermSession{
 		ID: hex.EncodeToString(b), Started: time.Now().UTC(), lastActive: time.Now(),
-		ptmx: ptmx, cmd: cmd, subs: map[chan termEvent]struct{}{}, exited: make(chan struct{}),
+		ptmx: ptmx, cmd: cmd, subs: map[chan termEvent]struct{}{}, exited: make(chan struct{}), drained: make(chan struct{}),
 	}
 	return ts, nil
 }

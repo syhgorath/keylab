@@ -42,7 +42,6 @@ func startTest(t *testing.T, a *App, script string) *TermSession {
 func TestTermOutputAndExitCode(t *testing.T) {
 	ts := startTest(t, nil, "echo merhaba; exit 3")
 	waitDone(t, ts, 5*time.Second)
-	time.Sleep(100 * time.Millisecond) // readLoop son parçayı bitirsin
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 	if ts.exit != 3 || !ts.done {
@@ -50,6 +49,45 @@ func TestTermOutputAndExitCode(t *testing.T) {
 	}
 	if !strings.Contains(string(ts.ring), "merhaba") {
 		t.Fatalf("çıktı yok: %q", ts.ring)
+	}
+}
+
+// Süreç, çıktısı okunmadan bitebilir (yüklü makinede okuyucu geç kalır): son çıktı yine de kaybolmamalı ve "exit" olayından ÖNCE gelmeli.
+func TestTermLateReaderKeepsLastOutput(t *testing.T) {
+	ts, err := startTermProcess("/bin/sh", []string{"-c", "echo merhaba; exit 0"}, t.TempDir(), termEnv(), 24, 80)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ch, _, _, _, ok := ts.subscribe()
+	if !ok {
+		t.Fatal("abone olunamadı")
+	}
+	go ts.waitLoop(nil)
+	time.Sleep(300 * time.Millisecond) // süreç bitti, okuyucu henüz başlamadı
+	go ts.readLoop()
+	waitDone(t, ts, 5*time.Second)
+	var kinds []string
+	for len(ch) > 0 {
+		kinds = append(kinds, (<-ch).Kind)
+	}
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+	if !strings.Contains(string(ts.ring), "merhaba") {
+		t.Fatalf("çıktı yok: %q", ts.ring)
+	}
+	if len(kinds) < 2 || kinds[0] != "data" || kinds[len(kinds)-1] != "exit" {
+		t.Fatalf("olay sırası: %v", kinds)
+	}
+}
+
+// Terminali açık tutan bir artık süreç (ör. arka planda kalan ssh) "bitti" bilgisini sonsuza dek geciktirmemeli.
+func TestTermExitNotHeldByLingeringChild(t *testing.T) {
+	ts := startTest(t, nil, "trap '' HUP; (sleep 20 &); echo merhaba; exit 0")
+	waitDone(t, ts, 6*time.Second)
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+	if !ts.done || !strings.Contains(string(ts.ring), "merhaba") {
+		t.Fatalf("done=%v çıktı=%q", ts.done, ts.ring)
 	}
 }
 
