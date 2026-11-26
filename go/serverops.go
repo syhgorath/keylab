@@ -45,20 +45,22 @@ func (a *App) createServer(name, host, user, port, osID string) (int, error) {
 	return 0, nil
 }
 
-// serverTaskArgv: sunucu hazırlık görevinin komutu ve kapıları; görev terminalinde koşar (parola istemleri terminalde)
+// serverTaskCmd: sunucu hazırlık görevinin komutu ve kapıları; görev terminalinde koşar (parola istemleri terminalde).
+// Program adı HER durumda sabittir (yazılı ad ya da kendi ikilimiz) ve argümanlardan ayrı döner: istekten gelen hiçbir değer çalıştırılacak
+// programı belirleyemez.
 //
 //	keygen  → ssh-keygen (var olan anahtarın üzerine YAZMAZ)
 //	keycopy → motorun ssh_copy_key işlevi (parmak izini gösterir, onay ister, ssh-copy-id çalıştırır)
 //	sshadd  → ssh-add (macOS'ta Keychain'e kaydederek)
 //	keychain → `servers keychain` (USBMonitor_<ÖNEK>_Passphrase kaydı: kaydet/güncelle/sil + doğrulama)
 //	knock   → `servers knock` (protokol, bekleme ve diziyi ayarlar; dizi Keychain'de)
-func (a *App) serverTaskArgv(kind, server string) ([]string, int, error) {
+func (a *App) serverTaskCmd(kind, server string) (program string, args []string, code int, err error) {
 	if !reName.MatchString(server) {
-		return nil, http.StatusBadRequest, fmt.Errorf("geçersiz sunucu adı")
+		return "", nil, http.StatusBadRequest, fmt.Errorf("geçersiz sunucu adı")
 	}
 	list := a.servers(false, server)
 	if len(list) != 1 || !list[0].Valid {
-		return nil, http.StatusNotFound, fmt.Errorf("sunucu yok ya da yapılandırması geçersiz")
+		return "", nil, http.StatusNotFound, fmt.Errorf("sunucu yok ya da yapılandırması geçersiz")
 	}
 	sv := list[0]
 	key := sv.keyPath
@@ -72,31 +74,29 @@ func (a *App) serverTaskArgv(kind, server string) ([]string, int, error) {
 			key = k
 		}
 	}
-	var argv []string
 	switch kind {
 	case "keygen":
 		if _, err := os.Stat(key); err == nil {
-			return nil, http.StatusConflict, fmt.Errorf("bu sunucu için anahtar zaten var (üzerine yazılmaz)")
+			return "", nil, http.StatusConflict, fmt.Errorf("bu sunucu için anahtar zaten var (üzerine yazılmaz)")
 		}
-		argv = []string{"ssh-keygen", "-t", "ed25519", "-a", "100", "-C", server, "-f", key}
+		return "ssh-keygen", []string{"-t", "ed25519", "-a", "100", "-C", server, "-f", key}, 0, nil
 	case "keycopy":
 		if st, err := os.Stat(key); err != nil || !st.Mode().IsRegular() {
-			return nil, http.StatusConflict, fmt.Errorf("önce anahtar oluşturun ya da servers/%s/ içine koyun", server)
+			return "", nil, http.StatusConflict, fmt.Errorf("önce anahtar oluşturun ya da servers/%s/ içine koyun", server)
 		}
-		argv = []string{selfExe(), "keycopy", sv.User, sv.Host, sv.Port, key}
+		return selfExe(), []string{"keycopy", sv.User, sv.Host, sv.Port, key}, 0, nil
 	case "sshadd":
 		if st, err := os.Stat(key); err != nil || !st.Mode().IsRegular() {
-			return nil, http.StatusConflict, fmt.Errorf("anahtar bulunamadı")
+			return "", nil, http.StatusConflict, fmt.Errorf("anahtar bulunamadı")
 		}
-		argv = platform.DefaultAgent().AddKeyArgv(key)
+		return "ssh-add", platform.DefaultAgent().AddKeyArgv(key)[1:], 0, nil // AddKeyArgv'ın ilk öğesi sözleşme gereği "ssh-add"
 	case "keychain":
-		argv = []string{selfExe(), "servers", "-servers", a.serversDir, "keychain", server}
+		return selfExe(), []string{"servers", "-servers", a.serversDir, "keychain", server}, 0, nil
 	case "knock":
-		argv = []string{selfExe(), "servers", "-servers", a.serversDir, "knock", server}
+		return selfExe(), []string{"servers", "-servers", a.serversDir, "knock", server}, 0, nil
 	default:
-		return nil, http.StatusBadRequest, fmt.Errorf("bilinmeyen adım")
+		return "", nil, http.StatusBadRequest, fmt.Errorf("bilinmeyen adım")
 	}
-	return argv, 0, nil
 }
 
 /* ---------- sunucu silme ve yeniden adlandırma: sshpocket'in kendi ModuleManager.sh betiğiyle ---------- */

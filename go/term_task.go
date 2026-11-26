@@ -85,11 +85,12 @@ func (a *App) openTaskX(chain bool, server, pkg, action, item string, rows, cols
 		kind = "chain:"
 	}
 	// komut adı kullanıcı girdisinden gelmez: kendi ikilimiz
-	return a.startTask(server, pkg, action, pkg+" · "+action, kind+pkg+"."+action, append([]string{taskProgram(exe)}, argv[1:]...), root, rows, cols)
+	return a.startTask(server, pkg, action, pkg+" · "+action, kind+pkg+"."+action, taskProgram(exe), argv[1:], root, rows, cols)
 }
 
 // startTask: görev terminali başlatır. Aynı sunucuda aynı anda tek görev; toplam oturum sınırı ssh oturumlarıyla ortaktır.
-func (a *App) startTask(server, pkg, action, title, audit string, argv []string, dir string, rows, cols uint16) (*TermSession, int, error) {
+// program sabit bir ad ya da kendi ikilimizdir; istekten türeyen değerler yalnız args içindedir (kabuk yok).
+func (a *App) startTask(server, pkg, action, title, audit, program string, args []string, dir string, rows, cols uint16) (*TermSession, int, error) {
 	a.topen.Lock()
 	defer a.topen.Unlock()
 	if err := a.termSlotCheck(); err != nil {
@@ -107,7 +108,7 @@ func (a *App) startTask(server, pkg, action, title, audit string, argv []string,
 	}
 	a.tmu.Unlock()
 
-	ts, err := startTermProcess(argv[0], argv[1:], dir, taskEnv(), rows, cols)
+	ts, err := startTermProcess(program, args, dir, taskEnv(), rows, cols)
 	if err != nil {
 		return nil, http.StatusInternalServerError, err
 	}
@@ -127,11 +128,11 @@ func (a *App) openServerTask(task, server string, rows, cols uint16) (*TermSessi
 	if !platform.DefaultPTY().TerminalSupported() {
 		return nil, http.StatusNotImplemented, fmt.Errorf("Windows'ta gömülü terminal henüz yok (WSL 2 kullanabilirsiniz)")
 	}
-	argv, code, err := a.serverTaskArgv(task, server)
+	program, args, code, err := a.serverTaskCmd(task, server)
 	if err != nil {
 		return nil, code, err
 	}
-	return a.startTask(server, "", task, task, "server:"+task, argv, a.engineRoot(), rows, cols)
+	return a.startTask(server, "", task, task, "server:"+task, program, args, a.engineRoot(), rows, cols)
 }
 
 // openRemove: sunucu silme görev terminalinde. Motor "sunucu adını yazın" diye sorar: arayüzde birebir yazılan ve burada yeniden denetlenen
@@ -143,7 +144,7 @@ func (a *App) openRemove(name, confirm string, ack bool, rows, cols uint16) (*Te
 	if code, err := a.authorizeRemove(name, confirm, ack); err != nil {
 		return nil, code, err
 	}
-	ts, code, err := a.startTask(name, "", "remove", "remove", "server:remove", []string{taskProgram(selfExe()), "server-remove", a.serversDir, name}, a.engineRoot(), rows, cols)
+	ts, code, err := a.startTask(name, "", "remove", "remove", "server:remove", taskProgram(selfExe()), []string{"server-remove", a.serversDir, name}, a.engineRoot(), rows, cols)
 	if err != nil {
 		return nil, code, err
 	}

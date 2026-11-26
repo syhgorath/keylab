@@ -118,3 +118,29 @@ func TestRemoveServerInTerminal(t *testing.T) {
 		t.Fatalf("denetim günlüğü: %q", b)
 	}
 }
+
+// Program adı her görevde sabittir; sunucu adı, kullanıcı, adres ve anahtar yolu yalnız argümanlarda kalır.
+func TestServerTaskProgramIsFixed(t *testing.T) {
+	a := termServerApp(t, "kvm")
+	key := filepath.Join(a.serversDir, "kvm", "id_ed25519_kvm")
+	check := func(task, program, last string) {
+		t.Helper()
+		got, args, code, err := a.serverTaskCmd(task, "kvm")
+		if err != nil || got != program || len(args) == 0 || args[len(args)-1] != last {
+			t.Errorf("%s: program=%q args=%q (%d %v); beklenen %q, son argüman %q", task, got, args, code, err, program, last)
+		}
+		for _, v := range []string{"kvm", "admin", "192.0.2.10", key} {
+			if got == v {
+				t.Errorf("%s: istekten gelen değer program olmuş: %q", task, got)
+			}
+		}
+	}
+	check("keygen", "ssh-keygen", key)
+	if err := os.WriteFile(key, []byte("deneme\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	check("keycopy", selfExe(), key)
+	check("sshadd", "ssh-add", key)
+	check("keychain", selfExe(), "kvm")
+	check("knock", selfExe(), "kvm")
+}
