@@ -508,6 +508,12 @@ a{color:var(--accent)}
 .store-actions{padding:12px 16px}
 .store-actions > summary{cursor:pointer}
 .store-actions[open] > summary{margin-bottom:12px}
+.set-health{display:flex;gap:6px 16px;flex-wrap:wrap;align-items:baseline;font-size:13px}
+.set-app > .set-health{padding:0 0 4px}
+.set-badges{display:flex;gap:6px;flex-wrap:wrap}
+.set-hitem b{font-weight:600}
+.set-hitem[data-st="ok"] b{color:var(--ok)}
+.set-hitem[data-st="warn"] b{color:var(--warn)}
 .modal-back.open.behind{display:none}
 .set-modal{display:flex;flex-direction:column;max-height:calc(100vh - 2 * var(--sp-4))}
 .set-modal .modal-body{overflow:auto;min-height:0;gap:0;padding:0}

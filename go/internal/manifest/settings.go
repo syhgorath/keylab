@@ -19,11 +19,16 @@ const (
 	setKeysMax   = 20
 	setPrefixMax = 5
 	setApplyMax  = 5
+	setSumMax    = 6
+	setSumLabel  = 30
+	setSumUnit   = 8
 )
 
 var (
 	setFields     = []string{"id", "label", "var", "description", "risk", "risk_note", "apply_via", "state", "card"}
-	setCardFields = []string{"id", "label", "description"}
+	setCardFields = []string{"id", "label", "description", "summary"}
+	setSumFields  = []string{"action", "items"}
+	setItemFields = []string{"key", "label", "ok", "max_abs", "unit"}
 	setStateKeys  = []string{"action", "key", "keys", "compare", "source", "strip_prefix"}
 	setRisks      = []string{"access-loss", "restarts-service", "time-jump", "data-loss"}
 	setComparisns = []string{"exact", "set", "ordered", "present"}
@@ -77,7 +82,7 @@ func validateSettings(v *validator, d *obj, actions *obj, varSpecs map[string]va
 		}
 		return nil
 	}
-	cards, cardOrder, out := validateSettingCards(v, d)
+	cards, cardOrder, out := validateSettingCards(v, d, actions)
 	used := map[string]bool{}
 	list, ok := asList(d.get("settings"))
 	if !ok || len(list) < 1 || len(list) > setMax {
@@ -172,7 +177,7 @@ func validateSettings(v *validator, d *obj, actions *obj, varSpecs map[string]va
 }
 
 // validateSettingCards: isteğe bağlı "setting_cards" (arayüz kartları; ayar "card" alanıyla bağlanır).
-func validateSettingCards(v *validator, d *obj) (map[string]bool, []string, []string) {
+func validateSettingCards(v *validator, d *obj, actions *obj) (map[string]bool, []string, []string) {
 	ids := map[string]bool{}
 	if !d.has("setting_cards") {
 		return ids, nil, nil
@@ -208,8 +213,87 @@ func validateSettingCards(v *validator, d *obj) (map[string]bool, []string, []st
 		if co.has("description") {
 			v.textOK(co.get("description"), w+".description", setCardDesc)
 		}
+		if co.has("summary") {
+			out = append(out, validateCardSummary(v, w+".summary", id, co.get("summary"), actions)...)
+		}
 	}
 	return ids, order, out
+}
+
+// readOnlyAction: tanımlı ve effects'i boş eylem.
+func readOnlyAction(actions *obj, name string) bool {
+	ao, ok := asObj(actions.get(name))
+	if !ok {
+		return false
+	}
+	eff, ok := asList(ao.get("effects"))
+	return ok && len(eff) == 0
+}
+
+// validateCardSummary: kartın sağlık özeti (salt okunur eylemin sonuç anahtarları; beklenen değer ya da mutlak sınır).
+func validateCardSummary(v *validator, w, id string, x any, actions *obj) []string {
+	so, ok := asObj(x)
+	if !ok {
+		v.err("%s nesne olmalı", w)
+		return nil
+	}
+	for _, k := range so.keys {
+		if !inStrs(k, setSumFields) {
+			v.err("%s: bilinmeyen alan: %s", w, k)
+		}
+	}
+	action, ok := asStr(so.get("action"))
+	if !ok || !readOnlyAction(actions, action) {
+		v.err("%s.action tanımlı, salt okunur (effects boş) bir eylem olmalı", w)
+		return nil
+	}
+	items, ok := asList(so.get("items"))
+	if !ok || len(items) < 1 || len(items) > setSumMax {
+		v.err("%s.items 1-%d öğeli liste olmalı", w, setSumMax)
+		return nil
+	}
+	declared := actionOutKeys(actions, action)
+	seen := map[string]bool{}
+	var keys []string
+	for i, x := range items {
+		iw := fmt.Sprintf("%s.items[%d]", w, i)
+		it, ok := asObj(x)
+		if !ok {
+			v.err("%s nesne olmalı", iw)
+			continue
+		}
+		for _, k := range it.keys {
+			if !inStrs(k, setItemFields) {
+				v.err("%s: bilinmeyen alan: %s", iw, k)
+			}
+		}
+		key, ok := asStr(it.get("key"))
+		switch {
+		case !ok || idx(declared, key) < 0:
+			v.err("%s.key, %s eyleminin outputs.keys listesinde olmalı", iw, action)
+		case seen[key]:
+			v.err("%s.key yinelenmiş: %s", iw, key)
+		default:
+			seen[key] = true
+			keys = append(keys, key)
+		}
+		v.textOK(it.get("label"), iw+".label", setSumLabel)
+		if it.has("ok") && it.has("max_abs") {
+			v.err("%s: 'ok' ile 'max_abs' birlikte verilemez", iw)
+		}
+		if it.has("ok") {
+			v.textOK(it.get("ok"), iw+".ok", 64)
+		}
+		if it.has("max_abs") {
+			if n, ok := asInt(it.get("max_abs")); !ok || n < 0 {
+				v.err("%s.max_abs sıfır ya da pozitif tamsayı olmalı", iw)
+			}
+		}
+		if it.has("unit") {
+			v.textOK(it.get("unit"), iw+".unit", setSumUnit)
+		}
+	}
+	return []string{"setting_card." + id + ".read=" + action, "setting_card." + id + ".keys=" + strings.Join(keys, ",")}
 }
 
 // validateSettingState: sunucudaki gerçek değerin kaynağı (salt okunur eylem + sonuç satırı anahtarları).

@@ -5,7 +5,7 @@
 > **P1'de taslaktan sapmalar:**
 > 1. Alan yalnız **üst düzeydedir**; `items[].settings` **desteklenmez**. Neden: yayımlanmış sürümler `items[]` içindeki bilinmeyen alanı reddeder (paket kurulamaz); üst düzeydeki bilinmeyen alanı yok sayar (kod okunup denendi).
 >    §4 ve §9 karar 2'deki `items[].settings` bu yüzden ertelendi; açılırsa paketin en düşük KeyLab sürümünü şart koşması gerekir.
-> 2. Kartlar `items` yerine üst düzey **`setting_cards`** ile bildirilir (ayar `card` alanıyla bağlanır; bildirilmezse değişken `group`'u). Kart katalogda yalnız durum özetidir; ayarlar §5'teki tablo yerine **ayar penceresinde** düzenlenir ve sunucudaki değerle birlikte görünür (kullanıcı kararı, 2026-11-26). `summary_keys` yok.
+> 2. Kartlar `items` yerine üst düzey **`setting_cards`** ile bildirilir (ayar `card` alanıyla bağlanır; bildirilmezse değişken `group`'u). Kart katalogda yalnız durum özetidir; ayarlar §5'teki tablo yerine **ayar penceresinde** düzenlenir ve sunucudaki değerle birlikte görünür (kullanıcı kararı, 2026-11-26). `summary_keys` yerine kartın **`summary`** alanı vardır (beklenen değer ya da sınırla).
 > 3. `state.strip_prefix` eklendi (örn. `["server ", "pool "]`): istenen değerden atılan önekler; paket sonuçta yalnız host adını bildirir.
 > 4. `state.keys[]` ile `compare` `set`, `ordered` ya da `present` olmalıdır (`exact` reddedilir).
 > 5. Son okuma başarısızsa ya da paketin başka bir sürümündense durum **bilinmiyor** olur (eski değerle "sapma" uydurulmaz).

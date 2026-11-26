@@ -3,10 +3,12 @@
 package main
 
 import (
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"keylab/internal/manifest"
@@ -31,22 +33,107 @@ type settingDecl struct {
 	} `json:"state"`
 }
 
-// SettingCard: component.json "setting_cards" öğesi (arayüzde katalog kartı + ayar penceresi).
-type SettingCard struct {
+// settingCardDecl: component.json "setting_cards" öğesi.
+type settingCardDecl struct {
 	ID          string `json:"id"`
 	Label       string `json:"label"`
-	Description string `json:"description,omitempty"`
+	Description string `json:"description"`
+	Summary     *struct {
+		Action string `json:"action"`
+		Items  []struct {
+			Key    string `json:"key"`
+			Label  string `json:"label"`
+			OK     string `json:"ok"`
+			MaxAbs *int64 `json:"max_abs"`
+			Unit   string `json:"unit"`
+		} `json:"items"`
+	} `json:"summary"`
 }
 
-// cleanSettingCards: bildirimden gelen kartları güvenli sınırlara indirir.
-func cleanSettingCards(in []SettingCard) []SettingCard {
+// SettingCard: arayüzde katalog kartı + ayar penceresi; Health, özet eyleminin SON okumasından gelen sağlık bilgisidir.
+type SettingCard struct {
+	ID          string       `json:"id"`
+	Label       string       `json:"label"`
+	Description string       `json:"description,omitempty"`
+	ReadAction  string       `json:"readAction,omitempty"`
+	Note        string       `json:"note,omitempty"` // sağlık bilgisi neden yok
+	Stale       bool         `json:"stale,omitempty"`
+	Health      []HealthItem `json:"health,omitempty"`
+}
+
+// HealthItem: tek sağlık değeri. State: "ok", "warn" ya da boş (beklenti bildirilmemiş ya da değer bilinmiyor).
+type HealthItem struct {
+	Label string `json:"label"`
+	Value string `json:"value"`
+	Unit  string `json:"unit,omitempty"`
+	State string `json:"state,omitempty"`
+}
+
+// settingCards: bildirimdeki kartları güvenli sınırlara indirir ve sağlık özetini bu sunucunun kayıtlı okumasından hesaplar.
+// Başarısız ya da paketin başka sürümünden okumayla sağlık değeri GÖSTERİLMEZ (eski bilgi "iyi" sanılmasın).
+func (a *App) settingCards(s Server, p Package, decls []settingCardDecl, actions []ActionInfo) []SettingCard {
+	byID := map[string]ActionInfo{}
+	for _, ai := range actions {
+		byID[ai.ID] = ai
+	}
+	versions := lastVersions(filepath.Join(a.stateDir, p.ID, s.Name, "results"))
 	var out []SettingCard
-	for _, c := range in {
-		if reName.MatchString(c.ID) && len(out) < 10 {
-			out = append(out, c)
+	for _, d := range decls {
+		if !reName.MatchString(d.ID) || len(out) >= 10 {
+			continue
 		}
+		c := SettingCard{ID: d.ID, Label: d.Label, Description: d.Description}
+		if d.Summary != nil {
+			read, ok := byID[d.Summary.Action]
+			if ok && read.Applicable && len(read.Effects) == 0 {
+				c.ReadAction = read.ID
+				switch {
+				case read.LastTime == "":
+					c.Note = "henüz okunmadı"
+				case read.LastResult == "fail":
+					c.Note = "son okuma başarısız"
+				case versions[read.ID] != "" && versions[read.ID] != p.Version:
+					c.Note = "son okuma paketin eski sürümünden (" + versions[read.ID] + ")"
+				default:
+					c.Stale = changedAfter(actions, read.LastTime)
+					for i, it := range d.Summary.Items {
+						v, found := read.Keys[it.Key]
+						if !found || i >= 6 {
+							continue
+						}
+						h := HealthItem{Label: it.Label, Value: v, Unit: it.Unit}
+						if v != "unknown" {
+							h.State = healthState(v, it.OK, it.MaxAbs)
+						}
+						c.Health = append(c.Health, h)
+					}
+				}
+			}
+		}
+		out = append(out, c)
 	}
 	return out
+}
+
+// healthState: beklenen değer (ok) ya da mutlak sınır (maxAbs) bildirilmişse "ok"/"warn"; bildirilmemişse ya da sayı okunamıyorsa boş.
+func healthState(v, want string, maxAbs *int64) string {
+	good := false
+	switch {
+	case want != "":
+		good = v == want
+	case maxAbs != nil:
+		n, err := strconv.ParseFloat(v, 64)
+		if err != nil || math.IsNaN(n) {
+			return ""
+		}
+		good = math.Abs(n) <= float64(*maxAbs)
+	default:
+		return ""
+	}
+	if good {
+		return "ok"
+	}
+	return "warn"
 }
 
 // Ayar durumları (arayüz yalnız gösterir).
