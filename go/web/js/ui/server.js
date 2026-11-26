@@ -231,47 +231,72 @@ export function initServer(hooks) {
       ${rest.length ? `<details class="st-more"><summary class="small muted">${shown.length ? "Diğer değerler" : "Değerler"} (${rest.length})</summary><div class="chips">${rest.map(([n, v]) => `<span class="chip" title="${esc(n)}">${esc(ST_LABEL[n] || n)}: ${esc(v)}</span>`).join("")}</div></details>` : ""}</div>`;
   }
 
-  /* ---------------- Ayar kartları (paketin `settings` bildirimi): istenen ↔ sunucudan son okunan değer ---------------- */
+  /* ---------------- Ayar kartı (paketin `settings` bildirimi): istenen ↔ sunucudan son okunan değer ---------------- */
   // Durumu arka uç hesaplar (pkgsettings.go); burada yalnız gösterilir. Hiçbir okuma kendiliğinden başlamaz: "Kontrol et" paketin salt okunur eylemidir.
+  // Düzen: tek kart; değişken grubu başına bir başlık satırı (son okuma + düğmeler). Açıklamalar satır adına tıklayınca açılır.
+  // Sunucuda karşılığı olmayan (okunmayan) ayarlar tabloya girmez, grubun "Uygulama seçenekleri" satırında durur.
   const SET_ST = { match: ["ok", "✔ uyumlu"], drift: ["warn", "⚠ sapma"], unknown: ["plain", "bilinmiyor"], unmanaged: ["plain", "yönetilmiyor"], unreadable: ["plain", "okunamaz"] };
   const SET_RISK = { "access-loss": ["danger", "erişimi kesebilir"], "restarts-service": ["warn", "servisi yeniden başlatır"], "time-jump": ["warn", "saati sıçratır"], "data-loss": ["danger", "veriyi etkiler"] };
+  const setOpen = new Set(); // açık açıklamalar: sayfa yeniden çizilince (10 sn'lik tazeleme) kapanmasın
   const setChips = list => list.map(v => `<span class="chip">${esc(v)}</span>`).join("") || '<span class="muted">—</span>';
-  function setRow(x) {
+  const setRisk = x => (x.risk || []).filter(r => SET_RISK[r]).map(r => `<span class="badge ${SET_RISK[r][0]}" title="${esc(x.riskNote || "")}">${SET_RISK[r][1]}</span>`).join("");
+  function setName(p, x) {
+    const name = `<span class="set-name" title="${esc(x.var)}">${esc(x.label)}</span>`;
+    if (!x.description && !x.riskNote) return name;
+    const key = `${appState.srvName}|${p.id}|${x.id}`;
+    return `<details class="set-info" data-sinfo="${esc(key)}"${setOpen.has(key) ? " open" : ""}><summary title="Açıklamayı göster">${name}<span class="set-i" aria-hidden="true">ⓘ</span></summary>
+      <div class="small muted">${x.description ? `<div>${esc(x.description)}</div>` : ""}${x.riskNote ? `<div>${esc(x.riskNote)}</div>` : ""}</div></details>`;
+  }
+  function setRow(p, x) {
     const [cls, label] = SET_ST[x.status] || SET_ST.unknown;
-    const risk = (x.risk || []).filter(r => SET_RISK[r]).map(r => `<span class="badge ${SET_RISK[r][0]}" title="${esc(x.riskNote || "")}">${SET_RISK[r][1]}</span>`).join("");
+    const risk = setRisk(x);
     // uyumluysa sunucu sütunu da istenen yazımı gösterir (sonuç satırı '/' gibi karakterleri '_' yapar)
     const actual = x.status === "match" ? x.desired : x.actual;
     return `<div class="set-row" data-set="${esc(x.id)}" data-st="${esc(x.status)}">
-      <div><div class="set-name" title="${esc(x.var)}">${esc(x.label)}</div>${x.description ? `<div class="small muted">${esc(x.description)}</div>` : ""}${risk ? `<div class="set-risk">${risk}</div>` : ""}</div>
+      <div>${setName(p, x)}${risk ? `<div class="set-risk">${risk}</div>` : ""}</div>
       <div class="set-want"><span class="set-lbl">İstenen</span>${setChips(x.desired || [])}</div>
       <div class="set-have"><span class="set-lbl">Sunucuda</span>${setChips(actual || [])}</div>
-      <div class="set-state"><span class="badge ${cls}">${label}</span>${x.note ? `<div class="small muted">${esc(x.note)}</div>` : ""}</div></div>`;
+      <div class="set-state"><span class="badge ${cls}">${label}</span></div>${x.note ? `<div class="set-note small muted">${esc(x.note)}</div>` : ""}</div>`;
+  }
+  // okunmayan seçenek: yalnız istenen değer (aç/kapa seçenekleri sözcükle)
+  function setOption(p, x) {
+    const v = x.desired || [], one = v.length === 1 ? v[0] : "";
+    const val = one === "true" ? '<span class="chip">açık</span>' : one === "false" ? '<span class="chip">kapalı</span>' : setChips(v);
+    return `<div class="set-opt" data-set="${esc(x.id)}" data-st="unreadable">${setName(p, x)}${val}${setRisk(x)}</div>`;
+  }
+  function setGroup(p, group, rows) {
+    const byId = id => p.actions.find(a => a.id === id);
+    const uniq = l => [...new Set(l)];
+    const btn = (a, label, cls) => { const at = actBtnAttr(a, p); return at ? `<button class="btn sm ${cls}" ${at} title="${esc(a.id)}">${label}</button>` : `<button class="btn sm" disabled title="${esc(a.reason || "şimdi çalıştırılamaz")}">${label}</button>`; };
+    // bu platformda okunamayan (notlu) ayar tabloda kalır; yalnız hiç okuma bildirmeyenler seçenek satırına iner
+    const isOpt = x => x.status === "unreadable" && !x.note;
+    const reads = uniq(rows.map(x => x.readAction).filter(Boolean)).map(byId).filter(Boolean);
+    // hiçbir ayarı yönetilmeyen grupta (istenen boş) uygulanacak bir şey yoktur
+    const managed = rows.some(x => x.status !== "unmanaged" && (x.desired || []).length);
+    const applies = managed ? uniq(rows.flatMap(x => x.applyVia || [])).map(byId).filter(a => a && a.applicable) : [];
+    const previews = uniq(applies.flatMap(a => a.requires || [])).map(byId).filter(a => a && a.applicable && !(a.effects || []).length);
+    const named = (list, a) => (list.length > 1 ? `: ${esc(a.id)}` : "");
+    const buttons = reads.map(a => btn(a, `Kontrol et${named(reads, a)}`, "primary")).join("") +
+      previews.map(a => btn(a, `Önizle${named(previews, a)}`, "")).join("") +
+      applies.map(a => btn(a, `Uygula${named(applies, a)}`, a.destructive ? "dangerbtn" : "warnbtn")).join("");
+    const since = iso => { const v = ago(iso); return v === "şimdi" ? v : `${v} önce`; };
+    const when = reads.map(a => `<span title="${esc(a.id)}${a.lastTime ? " · " + esc(localTime(a.lastTime)) : ""}">${a.lastTime ? esc(since(a.lastTime)) : "henüz okunmadı"}</span>`).join(" · ");
+    const stale = rows.some(x => x.stale) ? '<span class="badge warn" title="Bu okumadan sonra bu sunucuda değişiklik yapan bir eylem çalıştı.">güncel olmayabilir</span>' : "";
+    const table = rows.filter(x => !isOpt(x)), opts = rows.filter(isOpt);
+    return `<div class="set-group" data-setgroup="${esc(group)}">
+      <div class="set-ghead"><h3>${esc(group || "Genel")}</h3>${stale}${when ? `<span class="set-when small muted"><span>Son okuma:</span> ${when}</span>` : ""}<span class="grow"></span><div class="app-btns">${buttons}</div></div>
+      ${table.map(x => setRow(p, x)).join("")}
+      ${opts.length ? `<div class="set-opts"><span class="small muted">Uygulama seçenekleri:</span>${opts.map(x => setOption(p, x)).join("")}</div>` : ""}</div>`;
   }
   function settingsCards(p) {
     const all = p.settings || [];
     if (!all.length) return "";
-    const byId = id => p.actions.find(a => a.id === id);
-    const uniq = l => [...new Set(l)];
-    const btn = (a, label, cls) => { const at = actBtnAttr(a, p); return at ? `<button class="btn sm ${cls}" ${at}>${label}</button>` : `<button class="btn sm" disabled title="${esc(a.reason || "şimdi çalıştırılamaz")}">${label}</button>`; };
-    return uniq(all.map(x => x.group || "")).map(group => {
-      const rows = all.filter(x => (x.group || "") === group);
-      const n = st => rows.filter(x => x.status === st).length;
-      const sum = [n("drift") ? `<span class="badge warn">${n("drift")} sapma</span>` : "", n("unknown") ? `<span class="badge plain">${n("unknown")} bilinmiyor</span>` : "",
-        !n("drift") && !n("unknown") && n("match") ? '<span class="badge ok">uyumlu</span>' : "",
-        rows.some(x => x.stale) ? '<span class="badge warn" title="Bu okumadan sonra bu sunucuda değişiklik yapan bir eylem çalıştı.">güncel olmayabilir</span>' : ""].join("");
-      const reads = uniq(rows.map(x => x.readAction).filter(Boolean)).map(byId).filter(Boolean);
-      const applies = uniq(rows.flatMap(x => x.applyVia || [])).map(byId).filter(a => a && a.applicable);
-      const previews = uniq(applies.flatMap(a => a.requires || [])).map(byId).filter(a => a && a.applicable && !(a.effects || []).length);
-      const named = (list, a) => (list.length > 1 ? `: ${esc(a.id)}` : "");
-      const buttons = reads.map(a => btn(a, `Kontrol et${named(reads, a)}`, "primary")).join("") +
-        previews.map(a => btn(a, `Önizle${named(previews, a)}`, "")).join("") +
-        applies.map(a => btn(a, `Uygula: ${esc(a.id)}`, a.destructive ? "dangerbtn" : "warnbtn")).join("");
-      const since = iso => { const v = ago(iso); return v === "şimdi" ? v : `${v} önce`; };
-      const when = reads.map(a => `<span class="mono">${esc(a.id)}</span> ${a.lastTime ? `<span title="${esc(localTime(a.lastTime))}">${esc(since(a.lastTime))}</span>` : "<span>henüz okunmadı</span>"}`).join(" · ");
-      return `<div class="card set-card" data-setgroup="${esc(group)}"><div class="card-head"><h2>${esc(group || "Ayarlar")}</h2><span class="set-sum">${sum}</span><span class="grow"></span><button class="link" data-svars="${esc(group)}">Değişkenleri düzenle…</button></div>
-        <div class="card-body tight"><div class="set-row head"><div>Ayar</div><div>İstenen</div><div>Sunucuda</div><div>Durum</div></div>${rows.map(setRow).join("")}</div>
-        <div class="card-body set-foot"><span class="small muted">${when ? `Son okuma: ${when}` : "Bu ayarlar sunucudan okunamaz."}</span><span class="grow"></span><div class="app-btns">${buttons}</div></div></div>`;
-    }).join("");
+    const n = st => all.filter(x => x.status === st).length;
+    const sum = [n("drift") ? `<span class="badge warn">${n("drift")} sapma</span>` : "", n("unknown") ? `<span class="badge plain">${n("unknown")} bilinmiyor</span>` : "",
+      !n("drift") && !n("unknown") && n("match") ? '<span class="badge ok">uyumlu</span>' : ""].join("");
+    const groups = [...new Set(all.map(x => x.group || ""))];
+    return `<div class="card set-card"><div class="card-head"><h2>Ayarlar</h2><span class="set-sum">${sum}</span><span class="grow"></span><button class="link" data-svars="">Değişkenleri düzenle…</button></div>
+      <div class="card-body tight"><div class="set-row head"><div>Ayar</div><div>İstenen</div><div>Sunucuda</div><div>Durum</div></div>${groups.map(g => setGroup(p, g, all.filter(x => (x.group || "") === g))).join("")}</div></div>`;
   }
 
   function pkgInfoCard(p, ok) {
@@ -454,6 +479,7 @@ export function initServer(hooks) {
     setTimeout(() => $$("#srv-body [data-run]").forEach(b => b.addEventListener("click", () => { const [pid, aid] = b.dataset.run.split("|"); openRun(appState.srvName, pid, aid); })), 0);
     if (!p) { $("#srv-body").innerHTML = '<div class="card"><div class="card-body small muted">Bu sunucu için paket bulunamadı.</div></div>'; return; }
     setTimeout(() => $$("#srv-body [data-svars]").forEach(b => b.addEventListener("click", () => openVars(appState.srvName, p.id, b.dataset.svars || undefined))), 0);
+    setTimeout(() => $$("#srv-body details[data-sinfo]").forEach(d => d.addEventListener("toggle", () => { if (d.open) setOpen.add(d.dataset.sinfo); else setOpen.delete(d.dataset.sinfo); })), 0);
     const ok = p.actions.filter(a => a.applicable), na = p.actions.filter(a => !a.applicable);
     const cat = catalogItems(p);
     // birleşik utility: katalogun altında paketin kendi kartları (bilgi, değişkenler, Son durum: saat dilimi/dil/NTP) da görünür; eylemler katalogdaki "Genel eylemler"de

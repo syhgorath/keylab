@@ -146,6 +146,9 @@ func (a *App) settingInfos(s Server, p Package, decls []settingDecl, groups map[
 			info.Status, info.Note = setUnknown, "değişken dosyası geçersiz: istenen değer okunamadı"
 		case !readable:
 			info.Status = setUnreadable
+			if d.State != nil { // okuma bildirilmiş ama bu sunucuda çalışmaz: arayüz bunu "yalnız seçenek"ten ayırır
+				info.Note = "bu sunucuda okunamıyor"
+			}
 		default:
 			keys, compare := d.State.Keys, d.State.Compare
 			if d.State.Key != "" {

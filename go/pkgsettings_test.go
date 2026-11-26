@@ -12,7 +12,8 @@ const setPkg = `{"id":"demo","version":"0.2.0","sshpocket_api":1,"name":"Demo","
  "actions":{
   "durum":{"cmd":"x","effects":[],"outputs":{"format":"keyvalue-line","keys":["timezone"]}},
   "ntp_durum":{"cmd":"x","effects":[],"outputs":{"format":"keyvalue-line","keys":["ntp_kaynak_1","ntp_kaynak_2","ntp_senkron","liste"]}},
-  "apply":{"cmd":"x","effects":["changes-config"],"confirm":"yes-no"}
+  "apply":{"cmd":"x","effects":["changes-config"],"confirm":"yes-no"},
+  "pve_oku":{"cmd":"x","effects":[],"platforms":["proxmox-host"],"outputs":{"format":"keyvalue-line","keys":["pve"]}}
  },
  "vars":[
   {"name":"demo_ntp","type":"list[string]","default":[],"group":"NTP","description":"x"},
@@ -25,7 +26,8 @@ const setPkg = `{"id":"demo","version":"0.2.0","sshpocket_api":1,"name":"Demo","
    "state":{"action":"ntp_durum","keys":["ntp_kaynak_1","ntp_kaynak_2"],"compare":"set","strip_prefix":["server ","pool "]}},
   {"id":"zone","label":"Saat dilimi","var":"demo_zone","apply_via":["apply"],"state":{"action":"durum","key":"timezone"}},
   {"id":"adim","label":"Saat adımlama","var":"demo_adim","apply_via":["apply"]},
-  {"id":"uyg","label":"Uygulamalar","var":"demo_uyg","apply_via":["apply"],"state":{"action":"ntp_durum","key":"liste","compare":"set"}}
+  {"id":"uyg","label":"Uygulamalar","var":"demo_uyg","apply_via":["apply"],"state":{"action":"ntp_durum","key":"liste","compare":"set"}},
+  {"id":"pve","label":"PVE","var":"demo_uyg","apply_via":["apply"],"state":{"action":"pve_oku","key":"pve"}}
  ]}`
 
 // result.<eylem> dosyası ve results günlüğü
@@ -82,6 +84,13 @@ func TestSettingsStatus(t *testing.T) {
 	g := setSettings(t, setVars)
 	want("okunmamış", g["ntp"], setUnknown)
 	want("okunmayan ayar", g["adim"], setUnreadable)
+	want("uygulanmayan platform", g["pve"], setUnreadable)
+	if g["pve"].Note != "bu sunucuda okunamıyor" || g["pve"].ReadAction != "" {
+		t.Errorf("platform notu: %+v", g["pve"])
+	}
+	if g["adim"].Note != "" {
+		t.Errorf("okuma bildirmeyen ayarda not olmamali: %q", g["adim"].Note)
+	}
 	if g["ntp"].Group != "NTP" || g["ntp"].ReadAction != "ntp_durum" || g["adim"].ReadAction != "" || g["adim"].Desired[0] != "true" {
 		t.Errorf("alanlar: %+v / %+v", g["ntp"], g["adim"])
 	}
