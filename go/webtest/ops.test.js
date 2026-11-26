@@ -50,21 +50,23 @@ test("sil: anahtar/günlük kutusu yoksa (dosya yok, durum yok) yalnız ad onay�
   h.$("#dl-name").value = "db1"; h.$("#dl-name").dispatchEvent(new h.win.Event("input", { bubbles: true })); assert.equal(h.$("#dlg-ok").disabled, false); h.close();
 });
 
-test("sil: Sil → /api/server-remove gövdesi (ad, onay, anahtar onayı), pencere kapanır, silme penceresi açılır; hata durumunda düğme yeniden açılır", async () => {
+const termTask = (bodies, reply) => ({ "/api/term/task": (u, { body }) => { const { rows, cols, ...b } = JSON.parse(JSON.stringify(body)); bodies.push(b); return reply(); }, "/api/term/close": { ok: true }, "/api/term/resize": { ok: true } });
+
+test("sil: Sil → terminal görevi (ad, onay, anahtar onayı), onay penceresi kapanır; hata durumunda düğme yeniden açılır", async () => {
   const f = fakeJobs(); let fail = false; const bodies = [];
-  const h = await boot({ hash: "", overrides: delApi(f, { "/api/server-remove": (u, { body }) => { bodies.push(body); return fail ? { status: 400, body: "onay yanlış" } : { id: f.start("db1", "remove", "") }; } }) }); await menu(h, "db1", "delete");
+  const h = await boot({ hash: "", overrides: delApi(f, termTask(bodies, () => (fail ? { status: 400, body: "onay yanlış" } : { id: "k1", kind: "task", title: "remove" }))) }); await menu(h, "db1", "delete");
   h.$("#dl-name").value = "db1"; h.$("#dl-key").checked = true; h.$("#dl-name").dispatchEvent(new h.win.Event("input", { bubbles: true }));
   fail = true; await h.click("#dlg-ok"); assert.match(h.$("#dlg-err").textContent, /^✖ /); assert.equal(h.$("#dlg-ok").disabled, false); assert.ok(dlgOpen(h));
-  fail = false; await h.click("#dlg-ok"); assert.deepEqual(bodies, [{ name: "db1", confirm: "db1", ack: true }, { name: "db1", confirm: "db1", ack: true }]);
-  assert.ok(!dlgOpen(h)); assert.ok(h.$("#runmodal").classList.contains("open")); assert.match(h.$("#run-title").textContent, /Sunucu siliniyor\s*db1/); assert.equal(h.$("#run-sub").textContent, "KeyLab motoru (ModuleManager.sh remove)");
+  fail = false; await h.click("#dlg-ok");
+  const want = { server: "db1", task: "remove", confirm: "db1", ack: true }; assert.deepEqual(bodies, [want, want]);
+  assert.ok(!dlgOpen(h)); assert.ok(h.$("#termmodal").classList.contains("open")); assert.ok(!h.$("#runmodal").classList.contains("open"));
   assert.deepEqual(h.errors, []); h.close();
 });
 
 test("sil: dosyalar okunamazsa bildirim; iş sürerken pencere açılmaz", async () => {
   const f = fakeJobs(); let h = await boot({ hash: "", overrides: delApi(f, { "/api/server-files": { status: 500, body: "yok" } }) }); await menu(h, "db1", "delete");
   assert.match(txt(h, "#toast"), /^Okunamadı: /); assert.ok(!dlgOpen(h)); h.close();
-  const g = fakeJobs(); h = await boot({ hash: "#s=web1&p=utility", overrides: delApi(g) });
-  await h.click('#srv-body [data-run="utility|durum"]'); await h.click("#run-go"); await h.click("#run-min, #run-bg").catch(() => {});
+  const g = fakeJobs(); g.start("web1"); h = await boot({ hash: "#s=web1&p=utility", overrides: delApi(g) }); await h.click("#job-pill");
   await menu(h, "db1", "delete"); assert.ok(!dlgOpen(h), "çalışan iş varken silme penceresi açılmaz"); h.close();
 });
 
@@ -121,18 +123,21 @@ const created = async (extra = {}, hasKey = false) => {
   const h = await boot({ hash: "#v=add", overrides: addApi({ "/api/home": () => { const x = mixedHome(); x.servers.push({ ...x.servers[0], name: "yeni1", hasKey }); return x; }, ...extra }) });
   await fill(h); await h.click("#add-create"); return h;
 };
-test("sunucu ekle: adımlar — anahtar yoksa 'Yeni anahtar üret', varsa 'Anahtar var' ve diğer düğmeler; her düğme görev penceresini açar", async () => {
-  let h = await created({}, false);
+const sentTasks = h => h.calls.filter(c => c.path === "/api/term/task").map(c => { const { rows, cols, ...b } = JSON.parse(JSON.stringify(c.body)); return b; });
+
+test("sunucu ekle: adımlar — anahtar yoksa 'Yeni anahtar üret', varsa 'Anahtar var' ve diğer düğmeler; her düğme görevi doğrudan terminalde başlatır", async () => {
+  let h = await created(termTask([], () => ({ id: "k1", kind: "task", title: "g" })), false);
   assert.deepEqual(h.$$("#add-steps [data-task]").map(b => b.dataset.task), ["keygen", "knock"]); assert.equal(h.$("#add-test"), null); assert.ok(h.$("#add-vars")); assert.match(txt(h, "#add-steps"), /Yeni bir ed25519 anahtarı üretin/);
-  await h.click('#add-steps [data-task="keygen"]'); assert.ok(h.$("#runmodal").classList.contains("open")); assert.match(h.$("#run-title").textContent, /Anahtar oluştur\s*yeni1/); assert.equal(h.$("#run-go").textContent, "Başlat"); h.close();
-  h = await created({}, true);
+  await h.click('#add-steps [data-task="keygen"]'); assert.deepEqual(sentTasks(h), [{ server: "yeni1", task: "keygen" }]);
+  assert.ok(h.$("#termmodal").classList.contains("open")); assert.ok(!h.$("#runmodal").classList.contains("open")); assert.match(txt(h, "#toast"), /passphrase belirleyin/); h.close();
+  h = await created(termTask([], () => ({ id: "k1", kind: "task", title: "g" })), true);
   assert.deepEqual(h.$$("#add-steps [data-task]").map(b => b.dataset.task), ["keycopy", "sshadd", "keychain", "knock"]); assert.ok(h.$("#add-test")); assert.match(txt(h, "#add-steps"), /Anahtar var/); assert.equal(h.$$("#add-steps .badge.ok").length, 2, "kayıt + anahtar tamam");
-  await h.click('#add-steps [data-task="sshadd"]'); assert.match(h.$("#run-title").textContent, /Anahtarı ssh-agent'a ekle\s*yeni1/); h.close();
+  await h.click('#add-steps [data-task="sshadd"]'); assert.deepEqual(sentTasks(h), [{ server: "yeni1", task: "sshadd" }]); h.close();
 });
 
-test("sunucu ekle: Dene → utility durum onayı; 'Sunucu sayfasına git'; 'Değişkenleri ayarla' sunucuyu hardening sekmesinde açıp değişken penceresini açar", async () => {
-  let h = await created({ "/api/vars": () => ({ vars: [] }), "/api/server": u => { const d = fixture("server-web1"); d.server.name = u.searchParams.get("name"); return d; } }, true);
-  await h.click("#add-test"); assert.ok(h.$("#runmodal").classList.contains("open")); assert.match(h.$("#run-title").textContent, /durum/); await h.click("#run-close, #run-cancel-confirm").catch(() => {}); h.close();
+test("sunucu ekle: Dene → utility durum terminalde; 'Sunucu sayfasına git'; 'Değişkenleri ayarla' sunucuyu hardening sekmesinde açıp değişken penceresini açar", async () => {
+  let h = await created({ ...termTask([], () => ({ id: "k1", kind: "task", title: "g" })), "/api/vars": () => ({ vars: [] }), "/api/server": u => { const d = fixture("server-web1"); d.server.name = u.searchParams.get("name"); return d; } }, true);
+  await h.click("#add-test"); assert.deepEqual(sentTasks(h), [{ server: "yeni1", package: "utility", action: "durum" }]); h.close();
   h = await created({ "/api/vars": () => ({ vars: [] }), "/api/server": u => { const d = fixture("server-web1"); d.server.name = u.searchParams.get("name"); return d; } }, true);
   await h.click("#add-open"); assert.equal(txt(h, "#srv-head h1"), "yeni1"); assert.match(h.win.location.hash, /^#s=yeni1&p=ozet$/); h.close();
   h = await created({ "/api/vars": () => ({ vars: [] }), "/api/server": u => { const d = fixture("server-web1"); d.server.name = u.searchParams.get("name"); return d; } }, true);

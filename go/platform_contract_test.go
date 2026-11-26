@@ -52,11 +52,16 @@ func TestContractSSHAddUsesAppleKeychainOnMac(t *testing.T) {
 		t.Fatal(err)
 	}
 	log := fakeTool(t, "ssh-add", "exit 0")
-	job, code, err := a.startServerTask("sshadd", "kvm")
+	ts, code, err := a.openServerTask("sshadd", "kvm", 24, 80)
 	if err != nil {
 		t.Fatalf("başlamadı (%d): %v", code, err)
 	}
-	waitFor(t, a, "bitiş", 10*time.Second, func() bool { return job.Done })
+	select {
+	case <-ts.exited:
+	case <-time.After(10 * time.Second):
+		ts.kill()
+		t.Fatal("ssh-add görevi bitmedi")
+	}
 	if got := strings.TrimSpace(readLog(t, log)); got != "--apple-use-keychain "+key {
 		t.Fatalf("ssh-add argümanları: %q (beklenen --apple-use-keychain <anahtar>)", got)
 	}

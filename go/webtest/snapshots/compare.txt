@@ -3113,17 +3113,17 @@
           <li>
             <b>
               "Sudo parolası"
-            "paket eylemlerinde gömülü terminalde yazılır; saklanmaz, günlüğe yazılmaz. Ayar kartlarının Kur düğmesinde bir kez sorulur ve yalnız o koşu boyunca bellekte tutulur. Sunucu görevlerinde motor sorduğunda kutu açılır. SSH anahtar parolaları ve gizli anahtarlar sayfaya yazılmaz (ssh-agent)."
+            "gömülü terminalde yazılır; saklanmaz, günlüğe yazılmaz. Ayar kartlarının Kur düğmesinde bir kez sorulur ve yalnız o koşu boyunca bellekte tutulur. SSH anahtar parolaları ve gizli anahtarlar sayfaya yazılmaz (ssh-agent)."
           <li>
             "Sayfa"
             <span class="mono">
               "Content-Security-Policy"
             "ile yalnızca kendi betiğini çalıştırır ve dışarıya bağlanamaz."
           <li>
-            "Arayüzden yalnızca"
+            "Paket eylemleri ve sunucu görevleri"
             <b>
-              "salt okunur, sudo istemeyen, onay gerektirmeyen, önkoşulsuz"
-            "eylemler çalıştırma penceresinde koşar; sunucu tarafında yeniden denetlenir. Diğer paket eylemleri doğrudan gömülü terminalde başlar (kapılar, günlük ve sonuç kaydı aynı): değiştiren eylemde motor e/h, yıkıcı eylemde sunucu adını terminalde sorar. Ayar kartlarındaki Kur düğmesi e/h sorusunun yerine geçer; yıkıcı eylemde sunucu adı yine sorulur. Snapshot almak size kalır. Sunucu silme ayrıca ad onayı ister."
+              "doğrudan gömülü terminalde"
+            "başlar; sunucu tarafında yeniden denetlenir (kapılar, günlük ve sonuç kaydı aynı). Değiştiren eylemde motor e/h, yıkıcı eylemde sunucu adını terminalde sorar. Ayar kartlarındaki Kur düğmesi e/h sorusunun yerine geçer; yıkıcı eylemde sunucu adı yine sorulur. Snapshot almak size kalır. Sunucu silme ayrıca ad onayı ister. Paket yükseltme ve arka plan işleri çalıştırma penceresinde izlenir."
     <div class="card">
       <div class="card-head">
         <h2>

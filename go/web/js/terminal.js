@@ -303,7 +303,8 @@
       const s0 = active || sessions[0]; show(s0); setNote(m); setTimeout(() => { if ($("#term-note").textContent === m) setNote(s0.note || ""); }, 4000);
       return { ok: false, error: m };
     }
-    const s = { id: "", server: spec.server, kind: "task", title: spec.package + " · " + spec.action, pkg: spec.package, action: spec.action, term: null, fit: null, es: null, ro: null, host: null, closed: false, queue: "", sending: false, unread: false, built: false, opened: false, lazy: false, note: "" };
+    // paket eylemi { package, action } ya da sunucu görevi { task } (pkg boş)
+    const s = { id: "", server: spec.server, kind: "task", title: spec.task || spec.package + " · " + spec.action, pkg: spec.package || "", action: spec.task || spec.action, term: null, fit: null, es: null, ro: null, host: null, closed: false, queue: "", sending: false, unread: false, built: false, opened: false, lazy: false, note: "" };
     sessions.push(s);
     show(s);
     let res;

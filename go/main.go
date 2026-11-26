@@ -422,27 +422,6 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"ok":true}`))
 	}))
-	mux.HandleFunc("/api/server-remove", app.guard(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "POST", http.StatusMethodNotAllowed)
-			return
-		}
-		var req struct {
-			Name, Confirm string
-			Ack           bool
-		}
-		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&req) != nil {
-			http.Error(w, "geçersiz istek", http.StatusBadRequest)
-			return
-		}
-		j, code, err := app.removeServer(req.Name, req.Confirm, req.Ack)
-		if err != nil {
-			http.Error(w, err.Error(), code)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"id": j.ID})
-	}))
 	mux.HandleFunc("/api/server-purge", app.guard(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "POST", http.StatusMethodNotAllowed)
@@ -486,24 +465,6 @@ func main() {
 	mux.HandleFunc("/api/backup-import", app.guard(app.backupImportHandler))
 	mux.HandleFunc("/api/ssh-config-hosts", app.guard(app.sshConfigHostsHandler))
 	mux.HandleFunc("/api/ssh-config-import", app.guard(app.sshConfigImportHandler))
-	mux.HandleFunc("/api/server-task", app.guard(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "POST", http.StatusMethodNotAllowed)
-			return
-		}
-		var req struct{ Server, Task string }
-		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&req) != nil {
-			http.Error(w, "geçersiz istek", http.StatusBadRequest)
-			return
-		}
-		j, code, err := app.startServerTask(req.Task, req.Server)
-		if err != nil {
-			http.Error(w, err.Error(), code)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"id": j.ID})
-	}))
 	mux.HandleFunc("/api/updates", app.guard(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		rep, err := app.checkUpdates()

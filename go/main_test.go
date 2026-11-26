@@ -386,60 +386,6 @@ func TestCreateServer(t *testing.T) {
 	}
 }
 
-// gerçek ssh-keygen: pty'de parola istemleri (iki kez) boş yanıtlanır; anahtar oluşur, 0600; ikinci deneme üzerine yazmaz
-func TestKeygenTask(t *testing.T) {
-	if _, err := exec.LookPath("ssh-keygen"); err != nil {
-		t.Skip("ssh-keygen yok")
-	}
-	a := serverTestApp(t)
-	if _, err := a.createServer("kvm", "192.0.2.10", "admin", "22", ""); err != nil {
-		t.Fatal(err)
-	}
-	job, code, err := a.startServerTask("keygen", "kvm")
-	if err != nil {
-		t.Fatalf("başlamadı (%d): %v", code, err)
-	}
-	for i := 0; i < 2; i++ { // "Enter passphrase" ve "Enter same passphrase again"
-		waitFor(t, a, "parola istemi", 8*time.Second, func() bool {
-			return strings.Count(strings.ToLower(string(job.buf)), "passphrase") > i && !strings.HasSuffix(string(job.buf), "\n")
-		})
-		a.jmu.Lock()
-		n := len(job.buf)
-		a.jmu.Unlock()
-		if _, err := job.stdin.Write([]byte("\n")); err != nil {
-			t.Fatal(err)
-		}
-		waitFor(t, a, "yanıt işlendi", 8*time.Second, func() bool { return len(job.buf) > n || job.Done })
-	}
-	waitFor(t, a, "bitiş", 15*time.Second, func() bool { return job.Done })
-	if job.Exit != 0 {
-		t.Fatalf("ssh-keygen çıkış %d: %s", job.Exit, job.buf)
-	}
-	key := a.serversDir + "/kvm/id_ed25519_kvm"
-	if st, err := os.Stat(key); err != nil || st.Mode().Perm() != 0o600 {
-		t.Errorf("özel anahtar yok ya da izin yanlış: %v", err)
-	}
-	if _, err := os.Stat(key + ".pub"); err != nil {
-		t.Error("genel anahtar yok")
-	}
-	before, _ := os.ReadFile(key)
-	for _, j := range a.jobs { // ilk iş bitti
-		j.Done = true
-	}
-	if _, code, err := a.startServerTask("keygen", "kvm"); err == nil || code != 409 {
-		t.Errorf("var olan anahtarın üzerine yazılmamalı (kod %d)", code)
-	}
-	if after, _ := os.ReadFile(key); string(before) != string(after) {
-		t.Error("anahtar değişti")
-	}
-	if _, code, _ := a.startServerTask("bilinmeyen", "kvm"); code != 400 {
-		t.Errorf("bilinmeyen adım: kod %d", code)
-	}
-	if _, code, _ := a.startServerTask("keycopy", "yok_boyle"); code != 404 {
-		t.Errorf("olmayan sunucu: kod %d", code)
-	}
-}
-
 // ---- silme ve yeniden adlandırma (motorun gerçek ModuleManager.sh betiği)
 
 func TestRenameAndRemoveServer(t *testing.T) {
@@ -491,52 +437,11 @@ func TestRenameAndRemoveServer(t *testing.T) {
 	if code, err := a.renameServer("yeni_ad", "x_ad"); err == nil || code != 409 {
 		t.Errorf("çalışan iş varken reddedilmeli (kod %d)", code)
 	}
-	if _, code, err := a.removeServer("yeni_ad", "yeni_ad", true); err == nil || code != 409 {
-		t.Errorf("çalışan iş varken silme reddedilmeli (kod %d)", code)
-	}
 	delete(a.jobs, "busy")
 
-	// silme: onay şartları
-	files, state, err := a.serverFiles("yeni_ad")
-	if err != nil || len(files) != 3 || len(state) != 1 {
-		t.Fatalf("dosya listesi yanlış: %v %v %v", files, state, err)
-	}
-	if _, code, err := a.removeServer("yeni_ad", "yanlis", true); err == nil || code != 400 {
-		t.Errorf("yanlış ad reddedilmeli (kod %d)", code)
-	}
-	if _, code, err := a.removeServer("yeni_ad", "yeni_ad", false); err == nil || code != 400 {
-		t.Errorf("anahtar onayı olmadan reddedilmeli (kod %d)", code)
-	}
-	if _, err := os.Stat(a.serversDir + "/yeni_ad"); err != nil {
-		t.Fatal("reddedilen silme isteği sunucuyu sildi")
-	}
-	// başarılı silme (motorun ad sorusu otomatik yanıtlanır)
-	job, code, err := a.removeServer("yeni_ad", "yeni_ad", true)
-	if err != nil {
-		t.Fatalf("silme başlamadı (%d): %v", code, err)
-	}
-	waitFor(t, a, "silme bitişi", 20*time.Second, func() bool { return job.Done })
-	if job.Exit != 0 {
-		t.Fatalf("silme çıkışı %d: %s", job.Exit, job.buf)
-	}
-	if _, err := os.Stat(a.serversDir + "/yeni_ad"); err == nil {
-		t.Error("sunucu klasörü silinmedi")
-	}
-	if _, err := os.Stat(a.serversDir + "/baska/server.env"); err != nil {
-		t.Error("başka sunucu etkilendi")
-	}
-	// günlükler kalır; purge yalnızca sunucu yokken çalışır
-	if _, err := os.Stat(a.stateDir + "/utility/yeni_ad/results"); err != nil {
-		t.Error("günlükler kendiliğinden silindi")
-	}
+	// silme: TestRemoveServerInTerminal. Sunucu yokken günlükler temizlenebilir.
 	if code, err := a.purgeServerState("baska"); err == nil || code != 409 {
 		t.Errorf("var olan sunucunun günlüğü silinmemeli (kod %d)", code)
-	}
-	if _, err := a.purgeServerState("yeni_ad"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(a.stateDir + "/utility/yeni_ad"); err == nil {
-		t.Error("günlükler silinmedi")
 	}
 }
 

@@ -169,13 +169,10 @@ test("eylem kartı: önkoşul süresi sınırları (en az 1 dk, en fazla 30 dk)"
   assert.match(txt(h, "#act-list"), /✔ p 1 dk önce · 30 dk daha geçerli/); assert.match(txt(h, "#act-list"), /✔ q 67 dk önce · 0 dk daha geçerli/); h.close();
 });
 
-test("eylem düğmeleri: Çalıştır çalıştırma penceresini açar; Onayla… ve Terminal doğrudan gömülü terminalde başlar", async () => {
-  const h = await open("#s=web1&p=utility");
-  await h.click('#srv-body [data-run="utility|durum"]'); assert.ok(h.$("#runmodal").classList.contains("open")); assert.match(h.$("#run-title").textContent, /durum/); assert.ok(!h.$("#run-go").hidden);
-  h.close();
-  for (const [attr, action] of [["write", "rollback_now"], ["term", "rollback_status"]]) {
-    const x = await open("#s=web1&p=linux-hardening"); await x.click(`#srv-body [data-${attr}="linux-hardening|${action}"]`);
+test("eylem düğmeleri: Çalıştır / Onayla… / Terminal hepsi doğrudan gömülü terminalde başlar", async () => {
+  for (const [page, attr, pkg, action] of [["utility", "run", "utility", "durum"], ["linux-hardening", "write", "linux-hardening", "rollback_now"], ["linux-hardening", "term", "linux-hardening", "rollback_status"]]) {
+    const x = await open(`#s=web1&p=${page}`); await x.click(`#srv-body [data-${attr}="${pkg}|${action}"]`);
     const sent = x.calls.filter(c => c.path === "/api/term/task").map(c => `${c.body.server}/${c.body.package}/${c.body.action}`);
-    assert.deepEqual(sent, [`web1/linux-hardening/${action}`]); assert.ok(!x.$("#runmodal").classList.contains("open")); x.close();
+    assert.deepEqual(sent, [`web1/${pkg}/${action}`]); assert.ok(!x.$("#runmodal").classList.contains("open")); x.close();
   }
 });

@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"keylab/internal/platform"
 	"keylab/internal/servers"
@@ -46,20 +45,22 @@ func (a *App) createServer(name, host, user, port, osID string) (int, error) {
 	return 0, nil
 }
 
-// startServerTask: yeni sunucu için anahtar adımları pty altında (parola istemleri arayüzdeki parola penceresine düşer)
+// serverTaskCmd: sunucu hazırlık görevinin komutu ve kapıları; görev terminalinde koşar (parola istemleri terminalde).
+// Program adı HER durumda sabittir (yazılı ad ya da kendi ikilimiz) ve argümanlardan ayrı döner: istekten gelen hiçbir değer çalıştırılacak
+// programı belirleyemez.
 //
 //	keygen  → ssh-keygen (var olan anahtarın üzerine YAZMAZ)
 //	keycopy → motorun ssh_copy_key işlevi (parmak izini gösterir, onay ister, ssh-copy-id çalıştırır)
 //	sshadd  → ssh-add (macOS'ta Keychain'e kaydederek)
 //	keychain → `servers keychain` (USBMonitor_<ÖNEK>_Passphrase kaydı: kaydet/güncelle/sil + doğrulama)
 //	knock   → `servers knock` (protokol, bekleme ve diziyi ayarlar; dizi Keychain'de)
-func (a *App) startServerTask(kind, server string) (*Job, int, error) {
+func (a *App) serverTaskCmd(kind, server string) (program string, args []string, code int, err error) {
 	if !reName.MatchString(server) {
-		return nil, http.StatusBadRequest, fmt.Errorf("geçersiz sunucu adı")
+		return "", nil, http.StatusBadRequest, fmt.Errorf("geçersiz sunucu adı")
 	}
 	list := a.servers(false, server)
 	if len(list) != 1 || !list[0].Valid {
-		return nil, http.StatusNotFound, fmt.Errorf("sunucu yok ya da yapılandırması geçersiz")
+		return "", nil, http.StatusNotFound, fmt.Errorf("sunucu yok ya da yapılandırması geçersiz")
 	}
 	sv := list[0]
 	key := sv.keyPath
@@ -73,41 +74,29 @@ func (a *App) startServerTask(kind, server string) (*Job, int, error) {
 			key = k
 		}
 	}
-	var argv []string
 	switch kind {
 	case "keygen":
 		if _, err := os.Stat(key); err == nil {
-			return nil, http.StatusConflict, fmt.Errorf("bu sunucu için anahtar zaten var (üzerine yazılmaz)")
+			return "", nil, http.StatusConflict, fmt.Errorf("bu sunucu için anahtar zaten var (üzerine yazılmaz)")
 		}
-		argv = []string{"ssh-keygen", "-t", "ed25519", "-a", "100", "-C", server, "-f", key}
+		return "ssh-keygen", []string{"-t", "ed25519", "-a", "100", "-C", server, "-f", key}, 0, nil
 	case "keycopy":
 		if st, err := os.Stat(key); err != nil || !st.Mode().IsRegular() {
-			return nil, http.StatusConflict, fmt.Errorf("önce anahtar oluşturun ya da servers/%s/ içine koyun", server)
+			return "", nil, http.StatusConflict, fmt.Errorf("önce anahtar oluşturun ya da servers/%s/ içine koyun", server)
 		}
-		argv = []string{selfExe(), "keycopy", sv.User, sv.Host, sv.Port, key}
+		return selfExe(), []string{"keycopy", sv.User, sv.Host, sv.Port, key}, 0, nil
 	case "sshadd":
 		if st, err := os.Stat(key); err != nil || !st.Mode().IsRegular() {
-			return nil, http.StatusConflict, fmt.Errorf("anahtar bulunamadı")
+			return "", nil, http.StatusConflict, fmt.Errorf("anahtar bulunamadı")
 		}
-		argv = platform.DefaultAgent().AddKeyArgv(key)
+		return "ssh-add", platform.DefaultAgent().AddKeyArgv(key)[1:], 0, nil // AddKeyArgv'ın ilk öğesi sözleşme gereği "ssh-add"
 	case "keychain":
-		argv = []string{selfExe(), "servers", "-servers", a.serversDir, "keychain", server}
+		return selfExe(), []string{"servers", "-servers", a.serversDir, "keychain", server}, 0, nil
 	case "knock":
-		argv = []string{selfExe(), "servers", "-servers", a.serversDir, "knock", server}
+		return selfExe(), []string{"servers", "-servers", a.serversDir, "knock", server}, 0, nil
 	default:
-		return nil, http.StatusBadRequest, fmt.Errorf("bilinmeyen adım")
+		return "", nil, http.StatusBadRequest, fmt.Errorf("bilinmeyen adım")
 	}
-	job, err := a.newJob(server, "", kind)
-	if err != nil {
-		return nil, http.StatusConflict, err
-	}
-	if err := a.spawn(job, a.engineRoot(), argv); err != nil {
-		a.jmu.Lock()
-		job.Done, job.Exit = true, 1
-		a.jmu.Unlock()
-		return nil, http.StatusInternalServerError, err
-	}
-	return job, 0, nil
 }
 
 /* ---------- sunucu silme ve yeniden adlandırma: sshpocket'in kendi ModuleManager.sh betiğiyle ---------- */
@@ -196,51 +185,28 @@ func (a *App) serverFiles(name string) ([]SrvFile, []string, error) {
 	return files, state, nil
 }
 
-// removeServer: `keylab server-remove` (Go) pty altında (Keychain soruları arayüze düşer).
-// Motor "sunucu adını yazın" diye sorar: arayüzde zaten birebir yazılan ad (sunucu tarafında yeniden denetlenir) o istem belirince iletilir.
-func (a *App) removeServer(name, confirm string, ack bool) (*Job, int, error) {
+// authorizeRemove: sunucu silmenin kapıları (ad birebir, özel anahtar onayı, çalışan eylem yok). Silme görev terminalinde
+// `keylab server-remove` ile koşar (Keychain sorusu orada yanıtlanır).
+func (a *App) authorizeRemove(name, confirm string, ack bool) (int, error) {
 	if !reNewName.MatchString(name) {
-		return nil, http.StatusBadRequest, fmt.Errorf("geçersiz ad")
+		return http.StatusBadRequest, fmt.Errorf("geçersiz ad")
 	}
 	if confirm != name {
-		return nil, http.StatusBadRequest, fmt.Errorf("onay için sunucu adı birebir yazılmalı")
+		return http.StatusBadRequest, fmt.Errorf("onay için sunucu adı birebir yazılmalı")
 	}
 	files, _, err := a.serverFiles(name)
 	if err != nil {
-		return nil, http.StatusNotFound, err
+		return http.StatusNotFound, err
 	}
 	for _, f := range files {
 		if f.IsKey && !ack {
-			return nil, http.StatusBadRequest, fmt.Errorf("özel anahtarın silineceğini onaylamalısınız")
+			return http.StatusBadRequest, fmt.Errorf("özel anahtarın silineceğini onaylamalısınız")
 		}
 	}
-	job, err := a.newJob(name, "", "remove")
-	if err != nil {
-		return nil, http.StatusConflict, err
+	if a.anyRunning() || a.runningTasks() > 0 {
+		return http.StatusConflict, fmt.Errorf("başka eylemler çalışırken bu işlem başlatılamaz; bitmelerini bekleyin")
 	}
-	if err := a.spawn(job, a.engineRoot(), []string{selfExe(), "server-remove", a.serversDir, name}); err != nil {
-		a.jmu.Lock()
-		job.Done, job.Exit = true, 1
-		a.jmu.Unlock()
-		return nil, http.StatusInternalServerError, err
-	}
-	go func() {
-		deadline := time.Now().Add(20 * time.Second)
-		for time.Now().Before(deadline) {
-			a.jmu.Lock()
-			has, done := strings.Contains(string(job.buf), "sunucu adını yazın"), job.Done
-			a.jmu.Unlock()
-			if has {
-				_, _ = job.stdin.Write([]byte(name + "\n"))
-				return
-			}
-			if done {
-				return
-			}
-			time.Sleep(100 * time.Millisecond)
-		}
-	}()
-	return job, 0, nil
+	return 0, nil
 }
 
 // purgeServerState: silinmiş sunucunun kontrolcüdeki durum/günlük klasörlerini kaldırır (yalnızca sunucu klasörü artık yoksa)

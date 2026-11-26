@@ -132,9 +132,8 @@ test("katalog (items): öğe eylem düğmeleri — durum türüne göre; kuruluy
 test("katalog (items): öğe düğmeleri öğe kimliğiyle doğrudan gömülü terminalde başlar", async () => {
   for (const [attr, action] of [["irun", "preview"], ["iwrite", "kaldir"], ["iterm", "yukselt"]]) {
     const h = await open(itemsPkg()); await h.click(`[data-${attr}="kurulum|${action}|docker"]`);
-    if (attr === "irun") { assert.ok(h.$("#runmodal").classList.contains("open")); assert.match(h.$("#run-title").textContent, /preview/); }
-    else assert.deepEqual(h.calls.filter(c => c.path === "/api/term/task").map(c => [c.body.action, c.body.item]), [[action, "docker"]]);
-    h.close();
+    assert.deepEqual(h.calls.filter(c => c.path === "/api/term/task").map(c => [c.body.action, c.body.item]), [[action, "docker"]]);
+    assert.ok(!h.$("#runmodal").classList.contains("open")); h.close();
   }
 });
 
