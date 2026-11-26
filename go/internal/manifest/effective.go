@@ -3,6 +3,7 @@ package manifest
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -48,6 +49,12 @@ func EffectiveVars(manifestPath, valuesPath string, forced map[string]string, na
 			}
 		case float64:
 			res[n] = strconv.FormatFloat(v, 'f', -1, 64)
+		case []any: // liste değişkeni: değer dosyasındaki yazım gibi virgülle (öğeler virgül içeremez)
+			parts := make([]string, 0, len(v))
+			for _, x := range v {
+				parts = append(parts, fmt.Sprint(x))
+			}
+			res[n] = strings.Join(parts, ",")
 		}
 	}
 	return res, nil

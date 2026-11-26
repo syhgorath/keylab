@@ -1,8 +1,16 @@
 # Taslak: şema temelli bileşen ayarları (`settings`)
 
-> **Durum: TASLAK, kod yok, onay bekliyor** (2026-11-21). Hazırlayan: sshpocket oturumu; kapsam kararları kullanıcıyla verildi (§1). Bu belge
-> [package-standard.md](package-standard.md)'a **eklenmedi**; onaylanınca §6'ya (Değişkenler) işlenir. Önceki öneri
-> [`go/PAKET-BOLUMLERI-TASLAK.md`](../go/PAKET-BOLUMLERI-TASLAK.md) (`sections`) uygulanmadı; bu taslak onun yerine `items` üzerinden gider.
+> **Durum: P1 kodlandı** (doğrulayıcı, durum hesabı, ayar kartı; 2026-11-26). Paket tarafında `settings` bildiren yayımlanmış sürüm **henüz yok**; gerçek VM'de denenmedi.
+> P2/P3 tasarım aşamasında. Kapsam kararları kullanıcıyla verildi (§1); geçerli kurallar [package-standard.md](package-standard.md) §6'dadır, bu belge gerekçe ve yol haritasıdır.
+> **P1'de taslaktan sapmalar:**
+> 1. Alan yalnız **üst düzeydedir**; `items[].settings` **desteklenmez**. Neden: yayımlanmış sürümler `items[]` içindeki bilinmeyen alanı reddeder (paket kurulamaz); üst düzeydeki bilinmeyen alanı yok sayar (kod okunup denendi).
+>    §4 ve §9 karar 2'deki `items[].settings` bu yüzden ertelendi; açılırsa paketin en düşük KeyLab sürümünü şart koşması gerekir.
+> 2. Kartlar öğeye göre değil, bağlı değişkenin **`group`** alanına göre oluşur (kart başlığı = grup). `summary_keys` yok.
+> 3. `state.strip_prefix` eklendi (örn. `["server ", "pool "]`): istenen değerden atılan önekler; paket sonuçta yalnız host adını bildirir.
+> 4. `state.keys[]` ile `compare` `set`, `ordered` ya da `present` olmalıdır (`exact` reddedilir).
+> 5. Son okuma başarısızsa ya da paketin başka bir sürümündense durum **bilinmiyor** olur (eski değerle "sapma" uydurulmaz).
+>
+> Önceki öneri [`go/PAKET-BOLUMLERI-TASLAK.md`](../go/PAKET-BOLUMLERI-TASLAK.md) (`sections`) uygulanmadı.
 
 ## 1. Amaç ve verilen kararlar
 
@@ -41,7 +49,7 @@ devam etti. İstenen ile gerçeği yan yana göstermek bunu bir bakışta yakala
 
 ## 3. İlkeler
 
-1. **Geriye uyumlu ve isteğe bağlı:** `settings` yeni, isteğe bağlı bir alandır; `sshpocket_api` artmaz; bilmeyen eski sshpocket yok sayar (standart §10).
+1. **Geriye uyumlu ve isteğe bağlı:** `settings` yeni, isteğe bağlı bir **üst düzey** alandır; `sshpocket_api` artmaz; bilmeyen eski sürüm yok sayar (standart §10). `items[]` içine konursa eski sürümler paketi reddeder.
 2. **Güven kapıları gevşemez:** `settings` yeni bir çalıştırma yolu açmaz. Bir ayarı uygulamak = **paketin tanımlı bir eylemini** çalıştırmak (`apply_via`);
    o eylemin `effects`, `requires`, `confirm`, `requires_sudo` kuralları aynen geçerlidir. Paket kuralları gevşetemez, yalnız sıkılaştırabilir.
 3. **Tek kaynak:** istenen değer hâlâ `.vars` dosyasındadır; şema onu *tanımlar ve gösterir*, ikinci bir depo yoktur.

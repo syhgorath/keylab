@@ -16,7 +16,7 @@ import (
 // Bu dosya sistem/Helpers/component_validate.py'nin Go karşılığıdır: paket SÖZLEŞME UYUM denetimi
 // (docs/package-standard.md §12). YALNIZCA STATİK: paketten hiçbir şey çalıştırmaz.
 
-var pkgSections = []string{"Bildirim", "Düzen", "Eylemler", "Değişkenler", "Güvenlik", "Belge"}
+var pkgSections = []string{"Bildirim", "Düzen", "Eylemler", "Değişkenler", "Ayarlar", "Güvenlik", "Belge"}
 
 var (
 	textExt        = map[string]bool{".yml": true, ".yaml": true, ".j2": true, ".md": true, ".json": true, ".txt": true, ".cfg": true, ".sh": true, ".py": true, ".ini": true, ".in": true, ".toml": true, "": true}
@@ -589,6 +589,40 @@ func (c *pkgChecker) checkVars(root string, info map[string][]string) {
 	}
 }
 
+// checkSettings: "settings" bildiriminin geçerli ama gözden geçirilmesi gereken yanları (hatalar manifest doğrulayıcısındadır).
+func (c *pkgChecker) checkSettings(info map[string][]string) {
+	var ids []string
+	for k := range info {
+		if rest, ok := strings.CutPrefix(k, "setting."); ok && !strings.Contains(rest, ".") {
+			ids = append(ids, rest)
+		}
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		pre := "setting." + id + "."
+		var notes []string
+		if r := first(info, pre+"read"); r != "" && first(info, "action."+r+".sudo") == "yes" {
+			notes = append(notes, "okuma eylemi '"+r+"' sudo istiyor (arayüz arka planda çalıştıramaz, terminalde açılır)")
+		}
+		if first(info, pre+"risk") == "" {
+			for _, a := range strings.Split(first(info, pre+"apply"), ",") {
+				if strings.Contains(first(info, "action."+a+".effects"), "destructive") {
+					notes = append(notes, "yıkıcı eylem '"+a+"' ile uygulanıyor ama risk işareti yok")
+				}
+			}
+		}
+		if first(info, pre+"described") != "yes" {
+			notes = append(notes, "açıklama yok (ayarda ya da değişkende)")
+		}
+		for _, n := range notes {
+			c.warn("Ayarlar", id+": "+n)
+		}
+		if len(notes) == 0 {
+			c.ok("Ayarlar", id)
+		}
+	}
+}
+
 func (c *pkgChecker) checkSecurity(root string) {
 	bad := false
 	c.walkFiles(root, func(f string) {
@@ -743,6 +777,7 @@ func ValidatePackage(arg string, strict, unsigned bool) (lines []string, code in
 			c.checkLayout(root, info)
 			mutating = c.checkActions(root, info)
 			c.checkVars(root, info)
+			c.checkSettings(info)
 		}
 		c.checkSecurity(root)
 		c.checkDocs(root, mutating, archive, unsigned)
