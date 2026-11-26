@@ -32,10 +32,9 @@ test("keşfet: paket adı kimlikle aynıysa kimlik ikinci kez yazılmaz", async 
 });
 
 test("yükseltme: bir iş sürerken Yükselt yeni pencere açmaz", async () => {
-  const f = fakeJobs();
+  const f = fakeJobs(); f.start("web1");
   const h = await boot({ hash: "#s=web1&p=utility", overrides: { ...f.overrides, "/api/home": mixedHome, "/api/updates": REPORT } });
-  const run = h.$$("#srv-body button[data-run]").find(b => b.textContent.trim() === "Çalıştır");
-  await h.click(run); await h.click("#run-go");
+  await h.click("#job-pill");
   const title = h.$("#run-title").textContent; assert.match(title, /durum/);
   await h.click('[data-nav="packages"]'); await h.click("#upd-check"); await h.click('#dlg-body [data-upg="utility"]');
   assert.equal(h.$("#run-title").textContent, title, "çalışan işin penceresi bozulmadı"); assert.equal(h.$("#u-ack"), null);

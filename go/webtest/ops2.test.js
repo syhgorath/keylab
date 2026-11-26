@@ -26,13 +26,6 @@ test("yeniden adlandır: istek sürerken Tamam kilitli; başarıdan sonra liste 
   release(); await h.settle(); assert.ok(renamed); assert.equal(h.calls.filter(c => c.path === "/api/home").length, homes + 1, "liste yeniden okunur"); h.close();
 });
 
-test("hazırlık görevi: bu sunucuda iş sürerken yeni görev penceresi açılmaz", async () => {
-  const f = fakeJobs();
-  const h = await boot({ hash: "#s=web1", overrides: base({ ...f.overrides, "/api/server": () => { const d = fixture("server-web1"); d.server.up = true; d.server.hasKey = true; return d; } }) });
-  await h.click("[data-test]"); await h.click("#run-go"); const title = h.$("#run-title").textContent; assert.match(title, /durum/);
-  await h.click('[data-task="sshadd"]'); assert.equal(h.$("#run-title").textContent, title, "çalışan iş penceresi bozulmaz"); assert.equal(h.$("#run-go").textContent !== "Başlat", true); h.close();
-});
-
 test("sunucu ekle: profil listesi null gelirse hata göstermez; yalnız input olayı alanı 'dokunulmuş' yapar", async () => {
   let h = await boot({ hash: "#v=add", overrides: base({ "/api/profiles": () => null, "/api/server-draft": () => draftOk }) });
   assert.doesNotMatch(h.$("#e-os").textContent, /Profiller alınamadı/); h.close();

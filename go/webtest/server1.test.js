@@ -189,14 +189,15 @@ test("özet: bağlantı hazırlığı adımları ve sayacı (anahtar, ajan, Keyc
   assert.ok(h.$$(".prep-row")[4].querySelector(".prep-dot.warn")); assert.match(txt(h, ".prep-row:nth-child(5)"), /bu Mac'te dizi yok/); assert.match(txt(h, ".oz-card"), /açık · dizi yok/); h.close();
 });
 
-test("özet: geçersiz sunucuda hazırlık düğmeleri kapalı; adım düğmeleri görev penceresini açar; Dene → utility durum onayı", async () => {
+test("özet: geçersiz sunucuda hazırlık düğmeleri kapalı; adım düğmeleri ve Dene doğrudan gömülü terminalde başlar", async () => {
   let h = await boot({ hash: "#s=web1", overrides: srv(d => { d.server.valid = false; d.server.hasKey = true; }) });
   assert.ok(h.$$("[data-task]").every(b => b.disabled)); h.close();
-  h = await boot({ hash: "#s=web1", overrides: srv(d => { d.server.hasKey = true; }) });
-  await h.click('[data-task="sshadd"]'); assert.ok(h.$("#runmodal").classList.contains("open")); assert.match(h.$("#run-title").textContent, /web1/); assert.equal(h.$("#run-sub").textContent, "Bağlantı hazırlığı"); assert.equal(h.$("#run-go").textContent, "Başlat");
-  await h.click("#run-cancel-confirm, #run-close"); h.close();
-  h = await boot({ hash: "#s=web1", overrides: srv(d => { d.server.hasKey = true; }) });
-  await h.click("[data-test]"); assert.ok(h.$("#runmodal").classList.contains("open")); assert.match(h.$("#run-title").textContent, /durum/); h.close();
+  for (const [sel, want] of [['[data-task="sshadd"]', { task: "sshadd" }], ["[data-test]", { package: "utility", action: "durum" }]]) {
+    h = await boot({ hash: "#s=web1", overrides: { ...srv(d => { d.server.hasKey = true; }), "/api/term/task": { id: "k1", kind: "task", title: "g" }, "/api/term/resize": { ok: true } } });
+    await h.click(sel);
+    const sent = h.calls.filter(c => c.path === "/api/term/task").map(c => { const { rows, cols, ...b } = JSON.parse(JSON.stringify(c.body)); return b; });
+    assert.deepEqual(sent, [{ server: "web1", ...want }]); assert.ok(h.$("#termmodal").classList.contains("open")); assert.ok(!h.$("#runmodal").classList.contains("open")); h.close();
+  }
   h = await boot({ hash: "#s=web1", overrides: { ...srv(d => { d.server.hasKey = true; }), "/api/knock": { enabled: false, hasSeq: false, proto: "tcp", delay: "300", ports: "" } } });
   await h.click('[data-task="knock"]'); assert.ok(h.$("#dlg").classList.contains("open")); assert.equal(h.$("#dlg-title").textContent, "Port knocking"); assert.equal(h.$("#dlg-sub").textContent, "web1"); h.close();
 });

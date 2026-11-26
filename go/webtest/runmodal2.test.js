@@ -14,14 +14,18 @@ const isOpen = (h, s) => h.$(s).classList.contains("open");
 const text = (h, s) => h.$(s).textContent.replace(/\s+/g, " ").trim();
 const tickPoll = async (h, n = 1) => { for (let i = 0; i < n; i++) { h.timers.run(600); await h.settle(); } };
 const key = (h, k, extra = {}, target) => { (target || h.doc).dispatchEvent(new h.win.KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true, ...extra })); return h.settle(); };
-const runBtn = h => h.$$("#srv-body button[data-run]").find(b => b.textContent.trim() === "Çalıştır");
+// gömülü terminal sahtesi: /api/term/task gövdeleri toplanır (rows/cols atılır); bitiş h.win.__esObj[n].emit("exit", kod)
+const termOv = (bodies, extra = {}) => ({ "/api/term/task": (u, { body }) => { const { rows, cols, ...b } = JSON.parse(JSON.stringify(body)); bodies.push(b); return { id: "k" + bodies.length, kind: "task", title: b.task || b.action }; },
+  "/api/term/close": { ok: true }, "/api/term/resize": { ok: true }, "/api/term/input": { ok: true }, ...extra });
+const exit = async (h, code, n = 0) => { h.win.__esObj[n].emit("exit", String(code)); await h.settle(); };
 const toast = h => h.$("#toast").textContent;
 
 // utility/durum işini başlatır (web1); iş j1
 async function startJob(opts = {}) {
   const f = fakeJobs();
+  f.start("web1"); f.feed("j1", "basladi web1\n"); // sayfa açılırken sunucuda çalışan arka plan işi (ör. toplu işlem)
   const h = await boot({ hash: "#s=web1&p=utility", overrides: ov({ ...f.overrides, ...(opts.over || {}) }), storage: opts.storage });
-  await h.click(runBtn(h)); await h.click("#run-go");
+  await h.click("#job-pill");
   return { f, h };
 }
 const askInline = { "sshpocket.askpass": "inline" };
@@ -101,18 +105,14 @@ test("bitiş: başarı — süre, 'Sonuç:' çipleri, düğmeler; sunucu verisi 
 test("bitiş: sunucu sayfası YENİ veriyle yeniden çizilir (eylemin son sonucu ekrana yansır); arka plandaki iş bitince de", async () => {
   let phase = 0;
   const fresh = u => { const d = fixture("server-" + u.searchParams.get("name")); if (phase && u.searchParams.get("name") === "web1") { const a = d.packages.find(p => p.id === "utility").actions.find(x => x.id === "durum"); a.lastTime = "2026-11-14T09:59:00Z"; a.lastResult = "ok"; } return d; };
-  const f = fakeJobs(); const h = await boot({ hash: "#s=web1&p=utility", overrides: ov({ ...f.overrides, "/api/server": fresh }) });
-  const okCount = () => h.$$("#srv-body .res.ok").length, before = okCount();
-  await h.click(runBtn(h)); await h.click("#run-go"); phase = 1; f.finish("j1", 0); await tickPoll(h, 1);
-  assert.ok(okCount() > before, "iş bitince sunucu sayfası yeni sonucu gösterir (✔ başarılı)");
-  // arka planda biten iş: başka sunucuda iken bitince ve o sunucu sayfası açıkken yeniden çizilir
-  phase = 0; await h.click("#run-close");
-  await h.click(runBtn(h)); await h.click("#run-go"); await h.click("#run-min");
-  await h.click('[data-tsrv="db1"]'); await h.click('#srv-tabs button[data-p="utility"]'); await h.click(runBtn(h));   // web1 işi arka plana geçer
-  await h.click('[data-tsrv="web1"]'); await h.click('#srv-tabs button[data-p="utility"]'); const b2 = okCount();
-  phase = 1; f.finish("j2", 0); h.timers.run(1500); await h.settle();
-  assert.equal(h.$("#srv-head h1").textContent, "web1"); assert.ok(okCount() > b2, "arka plan işi bitince açık sunucu sayfası yenilenir");
-  assert.deepEqual(h.errors, []); h.close();
+  for (const background of [false, true]) {
+    phase = 0; const f = fakeJobs(); f.start("web1"); if (background) f.start("db1"); // en yeni iş pencereye bağlanır, web1 arka planda kalır
+    const h = await boot({ hash: "#s=web1&p=utility", overrides: ov({ ...f.overrides, "/api/server": fresh }) });
+    const okCount = () => h.$$("#srv-body .res.ok").length, before = okCount();
+    phase = 1; f.finish("j1", 0); h.timers.run(1500); await h.settle();
+    assert.ok(okCount() > before, "iş bitince açık sunucu sayfası yeni sonucu gösterir" + (background ? " (arka plan)" : ""));
+    assert.deepEqual(h.errors, []); h.close();
+  }
 });
 
 test("bitiş: hata — çıkış kodu, uyarı kutusu; pill kırmızı; pencere kapalıyken bildirim", async () => {
@@ -153,12 +153,9 @@ test("günlük: SSHPOCKET_PROGRESS satırları canlı ilerleme çubuğuna dönü
 });
 
 // ---------------- kapatma, iptal, kopma ----------------
-test("kapatma: onay ekranında Vazgeç/Esc kapatır; iş sürerken Esc kapatmaz", async () => {
-  const f = fakeJobs(); const h = await boot({ hash: "#s=web1&p=utility", overrides: ov(f.overrides) });
-  await h.click(runBtn(h)); assert.ok(isOpen(h, "#runmodal")); assert.equal(h.$("#run-close").textContent, "Vazgeç");
-  await h.click("#run-close"); assert.ok(!isOpen(h, "#runmodal"));
-  await h.click(runBtn(h)); await key(h, "Escape"); assert.ok(!isOpen(h, "#runmodal"), "Esc de kapatır");
-  await h.click(runBtn(h)); await h.click("#run-go"); await key(h, "Escape"); assert.ok(isOpen(h, "#runmodal"), "iş sürerken Esc pencereyi kapatmaz"); assert.ok(h.$("#run-close").hidden);
+test("kapatma: iş sürerken Esc pencereyi kapatmaz", async () => {
+  const { h } = await startJob();
+  await key(h, "Escape"); assert.ok(isOpen(h, "#runmodal")); assert.ok(h.$("#run-close").hidden);
   assert.deepEqual(h.errors, []); h.close();
 });
 
@@ -177,53 +174,55 @@ test("bağlantı kopması: yoklama hata verirse 'Bağlantı koptu', Kapat görü
 });
 
 // ---------------- silme / görev / yükseltme modları ----------------
-const deleteOv = (f, extra = {}) => ({
-  ...f.overrides, "/api/server-files": { files: [{ name: "server.env", isKey: false }], state: ["x"] },
-  "/api/server-remove": () => ({ id: f.start("db1", "remove", "") }), "/api/server-purge": { ok: true }, ...extra,
+const deleteOv = (bodies, extra = {}) => termOv(bodies, {
+  "/api/server-files": { files: [{ name: "server.env", isKey: false }], state: ["x"] }, "/api/server-purge": { ok: true }, ...extra,
 });
 const openDeleteDlg = async (h, name = "db1") => {
   h.$$("#servers [data-name]").find(e => e.dataset.name === name).dispatchEvent(new h.win.MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 5, clientY: 5 })); await h.settle();
   await h.click('#ctx button[data-ctx="delete"]');
 };
 
-test("silme modu: onay (ad yazılınca açılır) → /api/server-remove → 'Sunucu siliniyor' penceresi → bitince günlükler silinir, liste yenilenir, Sunucular sayfasına dönülür", async () => {
-  const f = fakeJobs(); const h = await boot({ overrides: ov(deleteOv(f)) });
+test("silme: onaydan (ad yazılınca açılır) sonra terminalde koşar → bitince günlükler silinir, liste yenilenir, Sunucular sayfasına dönülür", async () => {
+  const bodies = []; const h = await boot({ overrides: ov(deleteOv(bodies)) });
   await openDeleteDlg(h); assert.equal(h.$("#dlg-ok").disabled, true);
   await h.type("#dl-name", "db1"); assert.equal(h.$("#dlg-ok").disabled, false); await h.click("#dl-logs");
   await h.click("#dlg-ok");
-  assert.deepEqual(h.calls.find(c => c.path === "/api/server-remove").body, { name: "db1", confirm: "db1", ack: false });
-  assert.ok(isOpen(h, "#runmodal")); assert.ok(!isOpen(h, "#dlg")); assert.equal(text(h, "#run-title"), "Sunucu siliniyor db1"); assert.equal(text(h, "#run-sub"), "KeyLab motoru (ModuleManager.sh remove)");
-  f.finish("j1", 0); const homeBefore = h.calls.filter(c => c.path === "/api/home").length; await tickPoll(h, 1);
+  assert.deepEqual(bodies, [{ server: "db1", task: "remove", confirm: "db1", ack: false }]);
+  assert.ok(isOpen(h, "#termmodal")); assert.ok(!isOpen(h, "#dlg")); assert.ok(!isOpen(h, "#runmodal"));
+  assert.equal(h.calls.filter(c => c.path === "/api/server-purge").length, 0, "motor bitmeden günlük silinmez");
+  const homeBefore = h.calls.filter(c => c.path === "/api/home").length; await exit(h, 0);
   assert.deepEqual(h.calls.filter(c => c.path === "/api/server-purge").map(c => c.body), [{ name: "db1" }]);
-  assert.equal(h.calls.filter(c => c.path === "/api/home").length, homeBefore + 1); assert.equal(h.$(".view:not([hidden])").id, "view-servers"); assert.equal(toast(h), "db1 silindi");
+  assert.ok(h.calls.filter(c => c.path === "/api/home").length > homeBefore); assert.equal(h.$(".view:not([hidden])").id, "view-servers"); assert.equal(toast(h), "db1 silindi");
   assert.deepEqual(h.errors, []); h.close();
 });
 
-test("silme modu: günlük silme işaretlenmediyse purge yok; iş başarısızsa gezinme/purge/bildirim yok", async () => {
-  let f = fakeJobs(); let h = await boot({ overrides: ov(deleteOv(f)) });
-  await openDeleteDlg(h); await h.type("#dl-name", "db1"); await h.click("#dlg-ok"); f.finish("j1", 0); await tickPoll(h, 1);
+test("silme: günlük silme işaretlenmediyse purge yok; motor başarısızsa gezinme ve purge yok", async () => {
+  let h = await boot({ overrides: ov(deleteOv([])) });
+  await openDeleteDlg(h); await h.type("#dl-name", "db1"); await h.click("#dlg-ok"); await exit(h, 0);
   assert.equal(h.calls.filter(c => c.path === "/api/server-purge").length, 0, "işaretsiz: günlük silinmez"); assert.equal(toast(h), "db1 silindi"); h.close();
-  f = fakeJobs(); h = await boot({ overrides: ov(deleteOv(f)) });
-  await openDeleteDlg(h); await h.type("#dl-name", "db1"); await h.click("#dl-logs"); await h.click("#dlg-ok"); f.finish("j1", 1); await tickPoll(h, 1);
-  assert.equal(h.calls.filter(c => c.path === "/api/server-purge").length, 0); assert.notEqual(toast(h), "db1 silindi"); assert.equal(h.$(".view:not([hidden])").id, "view-dash", "başarısız silmede sayfa değişmez");
-  assert.match(text(h, "#run-state"), /başarısız/); assert.deepEqual(h.errors, []); h.close();
-});
-
-test("silme modu: günlük silinemezse bildirim; yine de liste yenilenir ve sayfa değişir", async () => {
-  const f = fakeJobs(); const h = await boot({ overrides: ov(deleteOv(f, { "/api/server-purge": { status: 500, body: "izin yok" } })) });
-  await openDeleteDlg(h); await h.type("#dl-name", "db1"); await h.click("#dl-logs"); await h.click("#dlg-ok"); f.finish("j1", 0); await tickPoll(h, 1);
-  assert.equal(h.$(".view:not([hidden])").id, "view-servers"); assert.equal(toast(h), "db1 silindi", "son bildirim silindi mesajıdır"); assert.deepEqual(h.errors, []); h.close();
-});
-
-test("görev modu (anahtar üret): /api/server-task, bitince liste ve sunucu verisi yenilenir", async () => {
-  const f = fakeJobs();
-  const h = await boot({ hash: "#s=web1", overrides: ov({ ...f.overrides, "/api/server-task": () => ({ id: f.start("web1", "keygen", "") }) }) });
-  await h.click('#srv-body [data-task="keygen"]');
-  assert.ok(isOpen(h, "#runmodal")); assert.equal(text(h, "#run-title"), "Anahtar oluştur web1"); assert.equal(text(h, "#run-sub"), "Bağlantı hazırlığı");
-  await h.click("#run-go"); assert.deepEqual(h.calls.find(c => c.path === "/api/server-task").body, { server: "web1", task: "keygen" });
-  f.finish("j1", 0); const homeB = h.calls.filter(c => c.path === "/api/home").length, srvB = h.calls.filter(c => c.path === "/api/server?name=web1").length; await tickPoll(h, 1);
-  assert.equal(text(h, "#run-state"), "✔ başarılı · 0 sn"); assert.equal(h.calls.filter(c => c.path === "/api/home").length, homeB + 1); assert.equal(h.calls.filter(c => c.path === "/api/server?name=web1").length, srvB + 1);
+  h = await boot({ overrides: ov(deleteOv([])) });
+  await openDeleteDlg(h); await h.type("#dl-name", "db1"); await h.click("#dl-logs"); await h.click("#dlg-ok"); await exit(h, 1);
+  assert.equal(h.calls.filter(c => c.path === "/api/server-purge").length, 0); assert.match(toast(h), /db1: ✖ silme başarısız/); assert.equal(h.$(".view:not([hidden])").id, "view-dash", "başarısız silmede sayfa değişmez");
   assert.deepEqual(h.errors, []); h.close();
+});
+
+test("silme: günlük silinemezse bildirim; yine de liste yenilenir ve sayfa değişir; başlatılamazsa onay penceresi açık kalır", async () => {
+  let h = await boot({ overrides: ov(deleteOv([], { "/api/server-purge": { status: 500, body: "izin yok" } })) });
+  await openDeleteDlg(h); await h.type("#dl-name", "db1"); await h.click("#dl-logs"); await h.click("#dlg-ok"); await exit(h, 0);
+  assert.equal(h.$(".view:not([hidden])").id, "view-servers"); assert.equal(toast(h), "db1 silindi", "son bildirim silindi mesajıdır"); assert.deepEqual(h.errors, []); h.close();
+  h = await boot({ overrides: ov(deleteOv([], { "/api/term/task": { status: 409, body: "başka eylemler çalışırken bu işlem başlatılamaz" } })) });
+  await openDeleteDlg(h); await h.type("#dl-name", "db1"); await h.click("#dlg-ok");
+  assert.ok(isOpen(h, "#dlg")); assert.equal(h.$("#dlg-ok").disabled, false); assert.match(h.$("#dlg-err").textContent, /^✖ başka eylemler/); assert.ok(!isOpen(h, "#termmodal")); h.close();
+});
+
+test("sunucu görevi (anahtar üret): onay penceresi yok, terminalde başlar; bitince liste ve sunucu verisi yenilenir", async () => {
+  const bodies = []; const h = await boot({ hash: "#s=web1", overrides: ov(termOv(bodies)) });
+  await h.click('#srv-body [data-task="keygen"]');
+  assert.deepEqual(bodies, [{ server: "web1", task: "keygen" }]); assert.ok(isOpen(h, "#termmodal")); assert.ok(!isOpen(h, "#runmodal"));
+  assert.match(toast(h), /web1: anahtar üretiliyor.*passphrase/);
+  const homeB = h.calls.filter(c => c.path === "/api/home").length, srvB = h.calls.filter(c => c.path === "/api/server?name=web1").length; await exit(h, 0);
+  assert.ok(h.calls.filter(c => c.path === "/api/home").length > homeB); assert.ok(h.calls.filter(c => c.path === "/api/server?name=web1").length > srvB);
+  assert.match(toast(h), /web1: ✔ keygen tamamlandı/); assert.deepEqual(h.errors, []); h.close();
 });
 
 test("yükseltme modu: Paketler > Güncellemeler > yükselt → /api/upgrade; bitince paket listesi ve güncelleme raporu yenilenir", async () => {
@@ -257,20 +256,20 @@ test("günlük: 'changed:' satırları da yeşil (ok) sınıfı alır", async ()
 });
 
 test("görev modu + Sunucu ekle sihirbazı: bitince adım ✔ olur (markTaskDone + renderAddSteps bağlantısı); başarısızsa olmaz", async () => {
-  for (const [exit, expectDone] of [[0, true], [1, false]]) {
-    const f = fakeJobs(); let created = false;
+  for (const [code, expectDone] of [[0, true], [1, false]]) {
+    const bodies = []; let created = false;
     const home = () => { const d = mixedHome(); if (created) d.servers.push({ name: "yeni1", host: "10.9.9.9", user: "root", port: "22", platform: "linux", os: "linux", hasKey: true, up: false, checked: true, conn: "down", valid: true, knock: false, last: null, recent: [], lynis: null }); return d; };
-    const h = await boot({ hash: "#v=add", overrides: ov({ ...f.overrides, "/api/home": home,
+    const h = await boot({ hash: "#v=add", overrides: ov({ ...termOv(bodies), "/api/home": home,
       "/api/server-draft": { ok: true, envPath: "servers/yeni1/server.env", envText: "IP=10.9.9.9", keyPath: "servers/yeni1/id_ed25519_yeni1", commands: ["ssh-copy-id x"] },
-      "/api/server-create": () => { created = true; return { ok: true }; }, "/api/server-task": () => ({ id: f.start("yeni1", "keycopy", "") }) }) });
+      "/api/server-create": () => { created = true; return { ok: true }; } }) });
     for (const [id, v] of [["#add-name", "yeni1"], ["#add-host", "10.9.9.9"], ["#add-user", "root"], ["#add-port", "22"]]) await h.type(id, v);
     h.timers.run(600); await h.settle();   // alan değişince taslak (önizleme) kısa bir gecikmeyle istenir
     await h.click("#add-create"); assert.equal(h.$("#add-steps").hidden, false, "oluşturulunca adımlar gösterilir");
     const step3 = () => h.$$("#add-steps .act")[2];
     assert.equal(step3().querySelector(".badge").textContent.trim(), "3", "anahtar var, anahtarı gönder adımı henüz yapılmadı"); assert.ok(step3().querySelector('[data-task="keycopy"]'));
-    await h.click('#add-steps [data-task="keycopy"]'); assert.equal(text(h, "#run-title"), "Anahtarı sunucuya gönder yeni1"); await h.click("#run-go");
-    assert.deepEqual(h.calls.find(c => c.path === "/api/server-task").body, { server: "yeni1", task: "keycopy" });
-    f.finish("j1", exit); await tickPoll(h, 1);
+    await h.click('#add-steps [data-task="keycopy"]');
+    assert.deepEqual(bodies, [{ server: "yeni1", task: "keycopy" }]);
+    await exit(h, code);
     assert.equal(step3().querySelector(".badge").textContent.trim(), expectDone ? "✔" : "3", expectDone ? "başarıyla biten görev adımı ✔ yapar" : "başarısız görev adımı ✔ yapmaz");
     assert.deepEqual(h.errors, []); h.close();
   }

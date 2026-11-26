@@ -188,7 +188,7 @@ export function initJobs(hooks) {
     } finally { if (!dropped()) autoReading.delete(key); }
   }
 
-  /* Değiştiren ve sudo isteyen paket eylemleri ayrı onay penceresi olmadan doğrudan gömülü terminalde açılır: sudo parolası ve motorun onayları (değiştiren eylemde
+  /* Paket eylemleri ayrı onay penceresi olmadan doğrudan gömülü terminalde açılır: sudo parolası ve motorun onayları (değiştiren eylemde
      e/h, yıkıcı eylemde sunucu adı) orada yazılır; sunucu ve yürütücü kapıları yeniden denetler. Ayar kartlarının "Kur" zinciri ayrıca
      önizleme → eylem → kontrol adımlarını tek koşuda yürütür. */
   const chained = new Set(); // "sunucu|paket|eylem": biten görev zincirse kontrolü zaten koşmuştur
@@ -205,9 +205,35 @@ export function initJobs(hooks) {
     toast(`${server}: ${action} terminalde çalışıyor — parola ve onayları orada yazın`);
   }
 
-  // görev terminali bitince (paket eylemi): sonuç kartları yenilenir ve sonuç bildirilir; modal gerekmez
+  // Sunucu hazırlık görevi (anahtar üret/gönder, ajana ekle, Keychain, knock): motorun soruları terminalde yanıtlanır
+  async function openServerTask(server, task, hint) {
+    const started = await window.KeyLabTerminal.openTask({ server, task });
+    if (!started.ok) { toast("Eylem başlatılamadı: " + started.error); return; }
+    toast(hint ? `${server}: ${hint}` : `${server}: ${task} terminalde çalışıyor — parola ve onayları orada yazın`);
+  }
+  // Sunucu silme: onay penceresinden sonra motor terminalde koşar; hata (ör. çalışan eylem) onay penceresinde gösterilsin diye sonuç döner
+  const openRemoval = (name, confirm, ack) => window.KeyLabTerminal.openTask({ server: name, task: "remove", confirm, ack });
+
+  async function serverTaskDone(d) {
+    if (d.action === "remove") {
+      const wanted = getRemoval(), purge = wanted.name === d.server && wanted.purge;
+      if (d.code === 0 && purge) { try { await json("/api/server-purge", { name: d.server }); } catch (e) { toast("Günlükler silinemedi: " + e.message); } }
+      await load();
+      if (d.code !== 0) { toast(`${d.server}: ✖ silme başarısız (çıkış kodu ${d.code}); ayrıntı terminal sekmesinde`); return; }
+      appState.srvName = ""; appState.srv = null; showView("servers");
+      toast(`${d.server} silindi`);
+      return;
+    }
+    if (d.code === 0) markTaskDone(d.server + ":" + d.action);
+    await load(); renderAddSteps();
+    if (appState.view === "server" && appState.srvName === d.server) { try { await refreshServer(d.server); } catch (e) { /* sonraki otomatik yenileme alır */ } }
+    toast(d.code === 0 ? `${d.server}: ✔ ${d.action} tamamlandı` : `${d.server}: ✖ ${d.action} başarısız (çıkış kodu ${d.code}); ayrıntı terminal sekmesinde`);
+  }
+
+  // görev terminali bitince: sonuç kartları yenilenir ve sonuç bildirilir; modal gerekmez
   window.addEventListener("keylab:taskexit", async e => {
-    const d = e.detail || {}; if (!d.server || !d.pkg || !d.action) return;
+    const d = e.detail || {}; if (!d.server || !d.action) return;
+    if (!d.pkg) { await serverTaskDone(d); return; }
     let r = null;
     try { r = await refreshServer(d.server); } catch (err) { /* sunucu yanıt vermezse sayfa bir sonraki yenilemede toparlanır */ }
     const label = `${d.action} · ${TAB_LABEL[d.pkg] || d.pkg}`;
@@ -241,12 +267,11 @@ export function initJobs(hooks) {
       (disarmed ? '<div class="small muted sj-8a77e5">Geri alma güvenlik ağı kaldırıldı (erişim doğrulandı).</div>' : "");
   }
 
+  // çalıştırma penceresinden yalnız paket yükseltme başlatılır (USB'ye yazar; sunucuya dokunmaz)
   async function startRun() {
     $("#run-go").disabled = true; askedAt = askCancelledAt = -1; askBusy = false;
-    const body = { server: runSrv, package: runPkg, action: runAct };
-    if (runItem) body.item = runItem;
     let r;
-    try { r = runMode === "upgrade" ? await json("/api/upgrade", { package: runPkg, version: runUpgTo, ack: true }) : runMode === "task" ? await json("/api/server-task", { server: runSrv, task: runAct }) : await json("/api/run", body); }
+    try { r = await json("/api/upgrade", { package: runPkg, version: runUpgTo, ack: true }); }
     catch (e) { $("#run-go").disabled = false; toast("Çalıştırılamadı: " + e.message); return; }
     watchJob(r.id);
   }
@@ -349,13 +374,6 @@ export function initJobs(hooks) {
     $("#run-close").hidden = false; $("#run-close").textContent = "Kapat";
     // kartları yenile (sonuç dosyaları motor tarafından yazıldı)
     if (runMode === "upgrade") { if (appState.view === "packages") { await loadPackages(); checkUpdatesUI(); } load(); return; }
-    if (runMode === "task") { if (ok) markTaskDone(runSrv + ":" + runAct); await load(); renderAddSteps(); if (appState.view === "server" && appState.srvName) { try { appState.srv = await json("/api/server?name=" + encodeURIComponent(appState.srvName)); renderServer(); } catch (e) { /* sonraki otomatik yenileme alır */ } } return; }
-    if (runMode === "remove") {
-      const { name: delName, purge: delPurge } = getRemoval();
-      if (ok && delPurge) { try { await json("/api/server-purge", { name: delName }); } catch (e) { toast("Günlükler silinemedi: " + e.message); } }
-      await load(); if (ok) { appState.srvName = ""; appState.srv = null; showView("servers"); toast(`${delName} silindi`); }
-      return;
-    }
     try { appState.srv = await json("/api/server?name=" + encodeURIComponent(runSrv)); if (appState.view === "server") renderServer(); load(); } catch (e) { /* bir sonraki turda yenilenir */ }
   }
   $("#run-go").addEventListener("click", startRun);
@@ -363,11 +381,12 @@ export function initJobs(hooks) {
   $("#run-cancel").addEventListener("click", async () => { $("#run-cancel").disabled = true; try { await json("/api/run/cancel", { id: runJob }); } catch (e) { toast("İptal edilemedi: " + e.message); } });
 
   const openAction = gated((server, pkg, action, item) => startDirect(server, pkg, action, false, item));
-  // openRun (parolasız salt okunur eylem, sunucu görevi, yükseltme, silme) şimdilik çalıştırma penceresinde
-  const openRun = gated(openRunBase), openWrite = openAction, openTerm = openAction, openCheck = openAction;
+  // openRun: paket eylemi terminalde; paket eylemi olmayan tek kullanım paket yükseltmedir (çalıştırma penceresi)
+  const openRun = (server, pkg, action, item) => (needsPy(server, pkg, action) ? openAction(server, pkg, action, item) : openRunBase(server, pkg, action, item));
+  const openWrite = openAction, openTerm = openAction, openCheck = openAction;
   const openChain = gated((server, pkg, action) => startDirect(server, pkg, action, true));
   return {
-    openRun, openWrite, openTerm, openChain, openCheck, jobBusy, watchJob, closeRun, openJob, adoptJob,
+    openRun, openWrite, openTerm, openChain, openCheck, openServerTask, openRemoval, jobBusy, watchJob, closeRun, openJob, adoptJob,
     setMode: m => { runMode = m; },          // openRun'dan sonra çağıran akışlar (silme, görev, yükseltme) kipi belirler
     setUpgradeTo: v => { runUpgTo = v; },
   };

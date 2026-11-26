@@ -11,24 +11,20 @@ const mixedHome = () => { const h = fixture("home"); h.servers.forEach((s, i) =>
 const { fakeJobs } = require("./lib/fakejobs");
 
 const base = f => ({ "/api/home": mixedHome, ...f.overrides });
-const runBtn = h => h.$$("#srv-body button[data-run]").find(b => b.textContent.trim() === "Çalıştır");
 const toast = h => h.$("#toast").textContent;
 const openModal = h => h.$("#runmodal").classList.contains("open");
 const log = h => h.$("#run-log").textContent;
-const posts = f => f.posts.map(p => `${p.server}/${p.action}`);
 
-async function startOn(h, server) { // sunucu sayfasında "Çalıştır" → pencere → "Çalıştır"
-  await h.click(`[data-tsrv="${server}"]`);
-  await h.click(runBtn(h)); assert.ok(openModal(h), "onay penceresi açılmalı");
-  await h.click("#run-go");
+// sayfa açılırken sunucuda çalışan arka plan işleri (ör. toplu işlem): en yenisi izleme penceresine bağlanır, diğerleri arka planda
+async function adopted(...servers) {
+  const f = fakeJobs(); servers.forEach(s => f.feed(f.start(s), `basladi ${s}\n`));
+  const h = await boot({ hash: "#s=web1&p=utility", overrides: base(f) });
+  return { f, h };
 }
 
-test("tek iş: başlat, çıktı akar, başarıyla biter", async () => {
-  const f = fakeJobs(); const h = await boot({ hash: "#s=web1&p=utility", overrides: base(f) });
-  await h.click(runBtn(h));
-  assert.ok(openModal(h)); assert.match(h.$("#run-title").textContent, /durum/); assert.ok(!h.$("#run-go").hidden);
-  await h.click("#run-go");
-  assert.deepEqual(posts(f), ["web1/durum"]);
+test("tek iş: pencerede çıktı akar, başarıyla biter", async () => {
+  const { f, h } = await adopted("web1");
+  assert.ok(!openModal(h)); await h.click("#job-pill"); assert.ok(openModal(h)); assert.match(h.$("#run-title").textContent, /durum/);
   assert.ok(!h.$("#run-live").hidden); assert.match(log(h), /basladi web1/);
   f.feed("j1", "ikinci satir\n"); h.timers.run(700); await h.settle();
   assert.match(log(h), /ikinci satir/);
@@ -38,57 +34,19 @@ test("tek iş: başlat, çıktı akar, başarıyla biter", async () => {
 });
 
 test("tek iş: hata koduyla biter", async () => {
-  const f = fakeJobs(); const h = await boot({ hash: "#s=web1&p=utility", overrides: base(f) });
-  await h.click(runBtn(h)); await h.click("#run-go");
+  const { f, h } = await adopted("web1"); await h.click("#job-pill");
   f.finish("j1", 3); h.timers.run(700); await h.settle();
   assert.match(h.$("#run-state").textContent, /başarısız.*3/); assert.match(h.$("#run-result").textContent, /başarısız/);
   assert.deepEqual(h.errors, []); h.close();
 });
 
-test("paralel: ikinci sunucuda başlatınca ilk iş arka plana geçer, dock çipinden geri açılır", async () => {
-  const f = fakeJobs(); const h = await boot({ hash: "#s=web1&p=utility", overrides: base(f) });
-  await startOn(h, "web1");
-  f.feed("j1", "web1 ilerliyor\n"); h.timers.run(700); await h.settle();
-  await h.click("#run-min"); assert.ok(!openModal(h));
-  await startOn(h, "db1"); // web1 arka plana alınır, db1 pencereye bağlanır
-  assert.deepEqual(posts(f), ["web1/durum", "db1/durum"]);
-  assert.match(toast(h), /web1.*arka planda/);
-  assert.match(h.$("#run-sub").textContent, /db1/);
-  h.timers.run(3000); await h.settle();                          // dock iş listesini yeniler
+test("paralel: arka plandaki iş dock çipinde görünür; bitince bildirim gelir", async () => {
+  const { f, h } = await adopted("web1", "db1");
+  h.timers.run(3000); await h.settle();
   const chips = h.$$("#dock-jobs .dock-job").map(c => c.textContent.trim().replace(/\s+/g, " "));
   assert.equal(chips.length, 2); assert.ok(chips.some(c => c.includes("web1")) && chips.some(c => c.includes("db1")));
-  // arka plandaki iş sürerken çıktı birikir; çipten açınca baştan görünür
-  f.feed("j1", "arka planda gelen\n"); h.timers.run(1500); await h.settle();
-  await h.click(h.$$("#dock-jobs .dock-job").find(c => c.textContent.includes("web1")));
-  assert.match(h.$("#run-sub").textContent, /web1/); assert.ok(openModal(h));
-  assert.match(log(h), /web1 ilerliyor/); assert.match(log(h), /arka planda gelen/);
-  assert.deepEqual(h.errors, []); h.close();
-});
-
-test("paralel: arka plandaki iş bitince bildirim gelir", async () => {
-  const f = fakeJobs(); const h = await boot({ hash: "#s=web1&p=utility", overrides: base(f) });
-  await startOn(h, "web1"); await h.click("#run-min");
-  await startOn(h, "db1");
   f.finish("j1", 0); h.timers.run(1500); await h.settle();
-  assert.match(toast(h), /✔ web1: durum/);
-  assert.deepEqual(h.errors, []); h.close();
-});
-
-test("aynı sunucuda ikinci iş reddedilir (istemci ikinci POST göndermez)", async () => {
-  const f = fakeJobs(); const h = await boot({ hash: "#s=web1&p=utility", overrides: base(f) });
-  await startOn(h, "web1"); await h.click("#run-min");
-  await h.click(runBtn(h)); // web1 için yeniden başlat
-  assert.match(toast(h), /Bu sunucuda bir eylem çalışıyor/);
-  assert.deepEqual(posts(f), ["web1/durum"]);
-  assert.deepEqual(h.errors, []); h.close();
-});
-
-test("sunucu 409 dönerse hata bildirimi gösterilir", async () => {
-  const f = fakeJobs(); f.start("web1"); // başka bir yerden başlamış iş
-  const h = await boot({ hash: "#s=web1&p=utility", overrides: { ...base(f), "/api/jobs": () => ({ jobs: [], running: "", runningIds: [] }) } });
-  await h.click(runBtn(h)); await h.click("#run-go");
-  assert.match(toast(h), /Çalıştırılamadı: bu sunucuda başka bir eylem çalışıyor/);
-  assert.deepEqual(h.errors, []); h.close();
+  assert.match(toast(h), /✔ web1: durum/); assert.deepEqual(h.errors, []); h.close();
 });
 
 test("sayfa yenilenince çalışan işlere yeniden bağlanır (en yenisi pencerede, diğeri arka planda)", async () => {
@@ -103,8 +61,7 @@ test("sayfa yenilenince çalışan işlere yeniden bağlanır (en yenisi pencere
 });
 
 test("iptal: çalışan iş iptal edilir", async () => {
-  const f = fakeJobs(); const h = await boot({ hash: "#s=web1&p=utility", overrides: base(f) });
-  await h.click(runBtn(h)); await h.click("#run-go");
+  const { h } = await adopted("web1"); await h.click("#job-pill");
   await h.click("#run-cancel");
   assert.ok(h.calls.some(c => c.path === "/api/run/cancel" && c.body.id === "j1"));
   h.timers.run(700); await h.settle(); assert.match(h.$("#run-state").textContent, /başarısız/);

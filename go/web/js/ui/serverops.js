@@ -2,11 +2,11 @@
    app.js'ten çıkarıldı (refaktör 5e), kod BİREBİR. Testler: go/webtest/ops.test.js, runmodal2.test.js */
 import { $, esc, json, toast } from "../lib/util.js";
 
-// hooks: { openDlg, closeDlg, jobs (openRun, jobBusy, watchJob, setMode), load(), openServer(ad) }
+// hooks: { openDlg, closeDlg, jobs (jobBusy, openRemoval), load(), openServer(ad) }
 //   →  { openRename(ad), openDelete(ad), getRemoval() → {name, purge} (iş penceresi bitişinde günlük silme seçimi) }
 export function initServerOps(hooks) {
   const { openDlg, closeDlg, jobs, load, openServer } = hooks;
-  const { openRun, jobBusy, watchJob } = jobs;
+  const { jobBusy } = jobs;
   let delName = "", delPurge = false;
 
   function openRename(name) {
@@ -45,15 +45,10 @@ export function initServerOps(hooks) {
       ok: "Sil", okClass: "dangerbtn",
       onOk: async () => {
         $("#dlg-ok").disabled = true;
-        let r;
-        try { r = await json("/api/server-remove", { name, confirm: $("#dl-name").value, ack: !!($("#dl-key") && $("#dl-key").checked) }); }
-        catch (e) { $("#dlg-ok").disabled = false; $("#dlg-err").textContent = "✖ " + e.message; return; }
         delName = name; delPurge = !!($("#dl-logs") && $("#dl-logs").checked);
+        const r = await jobs.openRemoval(name, $("#dl-name").value, !!($("#dl-key") && $("#dl-key").checked));
+        if (!r.ok) { $("#dlg-ok").disabled = false; $("#dlg-err").textContent = "✖ " + r.error; return; }
         closeDlg();
-        openRun("", "", "remove"); jobs.setMode("remove");
-        $("#run-title").innerHTML = `Sunucu siliniyor <span class="draft-tag sj-0996f7">${esc(name)}</span>`;
-        $("#run-sub").textContent = "KeyLab motoru (ModuleManager.sh remove)";
-        watchJob(r.id);
       },
     });
     const check = () => { const okc = $("#dl-name").value === name && (!$("#dl-key") || $("#dl-key").checked); $("#dlg-ok").disabled = !okc; };

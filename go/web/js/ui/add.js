@@ -4,31 +4,16 @@ import { $, $$, t, esc, json, toast } from "../lib/util.js";
 import { appState } from "../state.js";
 import { TAB_LABEL } from "../lib/labels.js";
 
-// hooks: { load(), openServer(ad, sekme?), openVars(ad, paket), jobs (openRun, jobBusy, setMode) }
+// hooks: { load(), openServer(ad, sekme?), openVars(ad, paket), jobs (openRun, openServerTask) }
 //   →  { init() (sayfa ilk açılışında), renderSteps(), openTask(sunucu, görev), markTaskDone(anahtar) }
 export function initAddServer(hooks) {
   const { load, openServer, openVars, jobs } = hooks;
-  const { openRun, jobBusy } = jobs;
+  const { openRun } = jobs;
   let addServer = "";
   const addDone = new Set();
-  const TASKS = {
-    keygen: ["Yeni anahtar üret", "Anahtar oluştur", "ed25519 anahtarı <span class=\"mono\">servers/&lt;ad&gt;/id_ed25519_&lt;ad&gt;</span> olarak oluşturulacak (var olan anahtarın üzerine yazılmaz). Passphrase belirlemeniz istenecek (<b>boş bırakmanız önerilmez</b>): parola penceresi iki kez açılır."],
-    keycopy: ["Anahtarı sunucuya gönder", "Anahtarı sunucuya gönder", "Genel anahtar sunucuya eklenecek (<span class=\"mono\">ssh-copy-id</span>). Motor parmak izini gösterip onay ister; sunucunun <b>ilk bağlantı sorusunu</b> (host anahtarı) dikkatle okuyun. Sunucudaki kullanıcının parolası istenirse parola penceresine yazın."],
-    keychain: ["Keychain parolası", "Passphrase'i Keychain'e kaydet / güncelle / sil", "Anahtarın passphrase'i macOS Keychain'e (<span class=\"mono\">USBMonitor_&lt;ÖNEK&gt;_Passphrase</span>) kaydedilir; eylemler anahtarı parola sormadan ajana ekleyebilir. Motor önce ne yapacağınızı sorar (1 kaydet · 2 sil · 0 geri); kayıttan sonra anahtar açılarak doğrulanır."],
-    knock: ["Port knocking", "Port knocking ayarları", "SSH portu kapalıyken önceden kararlaştırılmış bir port sırasına 'vurarak' açtırma yöntemi (istemci tarafı). Protokol, bekleme ve dizi sorulur; dizi Keychain'e kaydedilir. Sunucuda knock kurulumu yönetici tarafından yapılmış olmalıdır. Bağlanırken ve Terminal'de açarken knock otomatik gönderilir."],
-    sshadd: ["ssh-agent'a ekle", "Anahtarı ssh-agent'a ekle", "Anahtar ssh-agent'a eklenecek (macOS'ta Keychain'e kaydedilerek); eylemler parola sormadan bağlanabilsin. Anahtarın passphrase'i istenecek."],
-  };
-  function openTask(server, task) {
-    if (jobBusy(server)) return;
-    openRun(server, "", task);
-    jobs.setMode("task");
-    const [, title, text] = TASKS[task];
-    $("#run-title").innerHTML = `${esc(title)} <span class=\"draft-tag sj-c8ceca\">${esc(server)}</span>`;
-    $("#run-sub").textContent = "Bağlantı hazırlığı";
-    $("#run-confirm-text").innerHTML = text;
-    $("#run-confirm-note").textContent = "Motorun soruları çıktıda belirir: Evet/Hayır düğmeleriyle ya da kutuya yazarak yanıtlayın. Parolalar sistem parola penceresine yazılır.";
-    $("#run-go").textContent = "Başlat";
-  }
+  // görev başlarken kısa uyarı (motorun soruları terminalde yanıtlanır)
+  const HINTS = { keygen: "anahtar üretiliyor — terminalde passphrase belirleyin (boş bırakmanız önerilmez)", keycopy: "anahtar gönderiliyor — ilk bağlantıda parmak izini dikkatle okuyun" };
+  const openTask = (server, task) => jobs.openServerTask(server, task, HINTS[task]);
   function renderAddSteps() {
     const wrap = $("#add-steps");
     if (!addServer) { wrap.hidden = true; $("#add-form-wrap").hidden = false; return; }
