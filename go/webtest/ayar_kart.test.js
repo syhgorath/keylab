@@ -25,7 +25,7 @@ const VARS = () => [
 
 // state: testin değiştirebildiği sahte sunucu; posts: /api/vars'a yazılanlar
 function world(opts = {}) {
-  const w = { settings: opts.settings || JSON.parse(JSON.stringify(SETTINGS)), cards: opts.cards === undefined ? CARDS : opts.cards, vars: opts.vars || VARS(), posts: [], reply: opts.reply, catalog: opts.catalog, f: opts.f };
+  const w = { settings: opts.settings || JSON.parse(JSON.stringify(SETTINGS)), cards: opts.cards === undefined ? CARDS : opts.cards, vars: opts.vars || VARS(), posts: [], reply: opts.reply, catalog: opts.catalog, f: opts.f, run: opts.run };
   const server = u => {
     const d = fixture("server-" + u.searchParams.get("name")); d.server.up = true;
     const p = d.packages.find(x => x.id === "utility"), base = p.actions.find(a => a.id === "durum");
@@ -49,6 +49,7 @@ function world(opts = {}) {
       return { ok: true };
     },
   };
+  if (w.run !== undefined) w.overrides["/api/run"] = w.run;
   return w;
 }
 const open = async opts => {
@@ -330,4 +331,82 @@ test("paket metni HTML olarak yorumlanmaz", async () => {
 test("settings yoksa kart yok", async () => {
   const h = await open({ settings: [] });
   assert.equal(h.$("#srv-body [data-setcard]"), null); h.close();
+});
+
+// değiştiren eylem bitince ayar kartlarının parola istemeyen okumaları kendiliğinden koşar
+const exitEvent = async (h, action, code = 0) => { h.win.dispatchEvent(new h.win.CustomEvent("keylab:taskexit", { detail: { server: "web1", pkg: "utility", action, code } })); await h.settle(); };
+const advance = async (h, ms) => { h.timers.run(ms); await h.settle(); };
+const runs = h => h.calls.filter(c => c.path === "/api/run" && c.method === "POST").map(c => c.body);
+const fakeRun = (opts = {}) => { let n = 0, polls = 0; return (u, { method }) => method === "POST" ? { id: "j" + ++n } : { done: ++polls > (opts.busy || 0), exit: opts.exit || 0, next: 0 }; };
+const toastText = h => h.$("#toast").textContent;
+
+test("uygulama bitince: kısa beklemeden sonra okumalar sırayla koşar, sayfa yenilenir, 'Kontrol et' gerekmez", async () => {
+  const h = await open({ run: fakeRun({ busy: 2 }) });
+  await exitEvent(h, "ntp_ayarla");
+  assert.match(toastText(h), /✔ ntp_ayarla/); await advance(h, 4000); assert.deepEqual(runs(h), [], "hizmet toparlanmadan okunmaz");
+  await advance(h, 1000);
+  assert.deepEqual(runs(h), [{ server: "web1", package: "utility", action: "durum" }], "ikincisi birincisi bitmeden başlamaz");
+  assert.match(toastText(h), /durum okunuyor/);
+  await advance(h, 700); await advance(h, 700); assert.equal(runs(h).length, 1);
+  const n0 = h.calls.filter(c => c.path === "/api/server?name=web1").length;
+  await advance(h, 700); await advance(h, 700);
+  assert.deepEqual(runs(h).map(b => b.action), ["durum", "ntp_durum"]);
+  assert.match(toastText(h), /web1: ✔ durum güncellendi/);
+  assert.ok(h.calls.filter(c => c.path === "/api/server?name=web1").length > n0);
+  assert.deepEqual(h.errors, []); h.close();
+});
+
+test("kendiliğinden okuma yalnız başarılı DEĞİŞTİREN eylemden sonra; parola isteyen okuma elle kalır", async () => {
+  const h = await open({ run: fakeRun() });
+  await exitEvent(h, "preview"); await exitEvent(h, "ntp_ayarla", 1); await advance(h, 20000);
+  assert.deepEqual(runs(h), [], "salt okunur ya da başarısız eylem okuma başlatmaz"); h.close();
+  const sudo = await open({ run: fakeRun(), f: p => { Object.assign(p.actions.find(a => a.id === "durum"), { runnable: false, terminal: true }); } });
+  await exitEvent(sudo, "ntp_ayarla"); await advance(sudo, 5000); await advance(sudo, 700);
+  assert.deepEqual(runs(sudo).map(b => b.action), ["ntp_durum"]); assert.deepEqual(sudo.errors, []); sudo.close();
+  const yok = await open({ run: fakeRun(), settings: [] });
+  await exitEvent(yok, "ntp_ayarla"); await advance(yok, 20000); assert.deepEqual(runs(yok), [], "ayar kartı yoksa okuma yok"); yok.close();
+});
+
+test("kendiliğinden okuma: art arda iki bitiş tek okuma; başlatılamazsa ya da başarısızsa söylenir", async () => {
+  const h = await open({ run: fakeRun({ busy: 99 }) });
+  await exitEvent(h, "ntp_ayarla"); await exitEvent(h, "apply"); await advance(h, 5000);
+  assert.equal(runs(h).length, 1); h.close();
+  const dolu = await open({ run: { status: 409, body: "bu sunucuda zaten çalışan bir eylem var" } });
+  await exitEvent(dolu, "ntp_ayarla"); await advance(dolu, 5000);
+  assert.equal(runs(dolu).length, 1); assert.match(toastText(dolu), /durum kendiliğinden okunamadı \(bu sunucuda zaten çalışan bir eylem var\); "Kontrol et" ile okuyun/); dolu.close();
+  const bozuk = await open({ run: fakeRun({ exit: 4 }) });
+  await exitEvent(bozuk, "ntp_ayarla"); await advance(bozuk, 5000); await advance(bozuk, 700); await advance(bozuk, 700);
+  assert.equal(runs(bozuk).length, 2, "biri başarısız olsa da diğeri okunur"); assert.match(toastText(bozuk), /durum okunamadı/); bozuk.close();
+});
+
+// sağlık özeti uyarı veriyorsa (hizmet henüz toparlanmamış) yalnız o okuma aralıklarla yeniden koşar
+const sickCards = () => [{ ...CARDS[0], readAction: "ntp_durum", health: [{ label: "Senkron", value: "no", unit: "", state: "warn" }] }, { ...CARDS[1] }];
+const heal = h => { h.w.cards[0].health[0] = { label: "Senkron", value: "yes", unit: "", state: "ok" }; };
+const reads = h => runs(h).map(b => b.action);
+const finishRound = async (h, n) => { for (let i = 0; i < n; i++) await advance(h, 700); };
+
+test("sağlık uyarısı varsa yalnız o özetin okuması yeniden koşar; düzelince durur", async () => {
+  const h = await open({ run: fakeRun(), cards: sickCards() });
+  await exitEvent(h, "ntp_ayarla"); await advance(h, 5000); await finishRound(h, 2);
+  assert.deepEqual(reads(h), ["durum", "ntp_durum"]); assert.match(toastText(h), /birazdan yeniden okunacak/);
+  await advance(h, 14000); assert.equal(runs(h).length, 2, "aralık dolmadan okunmaz");
+  heal(h); await advance(h, 1000); await finishRound(h, 1);
+  assert.deepEqual(reads(h), ["durum", "ntp_durum", "ntp_durum"]); assert.match(toastText(h), /✔ durum güncellendi/);
+  await advance(h, 120000); assert.equal(runs(h).length, 3); assert.deepEqual(h.errors, []); h.close();
+});
+
+test("sağlık uyarısı sürerse iki yeniden denemeden sonra vazgeçilir ve söylenir", async () => {
+  const h = await open({ run: fakeRun(), cards: sickCards() });
+  await exitEvent(h, "ntp_ayarla"); await advance(h, 5000); await finishRound(h, 2);
+  await advance(h, 15000); await finishRound(h, 1); await advance(h, 25000); await finishRound(h, 1);
+  assert.match(toastText(h), /sağlık özetinde uyarı sürüyor/);
+  await advance(h, 200000); assert.deepEqual(reads(h), ["durum", "ntp_durum", "ntp_durum", "ntp_durum"]); assert.deepEqual(h.errors, []); h.close();
+});
+
+test("bekleme sırasında yeni bir uygulama biterse eski sıra bırakılır, okumalar baştan koşar", async () => {
+  const h = await open({ run: fakeRun(), cards: sickCards() });
+  await exitEvent(h, "ntp_ayarla"); await advance(h, 5000); await finishRound(h, 2);
+  heal(h); await exitEvent(h, "apply"); await advance(h, 5000); await finishRound(h, 2);
+  assert.deepEqual(reads(h), ["durum", "ntp_durum", "durum", "ntp_durum"], "ikinci uygulama da okunur");
+  await advance(h, 120000); assert.equal(runs(h).length, 4, "eski sıranın yeniden denemesi koşmaz"); assert.deepEqual(h.errors, []); h.close();
 });

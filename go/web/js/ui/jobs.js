@@ -201,16 +201,75 @@ export function initJobs(hooks) {
     toast(`${runSrv}: ${label} terminalde çalışıyor — parola ve onayları orada yazın`);
   }
 
+  const refreshServer = async server => {
+    const r = await json("/api/server?name=" + encodeURIComponent(server));
+    if (appState.view === "server" && appState.srvName === server) { appState.srv = r; renderServer(); }
+    load();
+    return r;
+  };
+
+  /* Değiştiren bir eylem başarıyla bitince ayar kartlarının okumaları kendiliğinden koşar; kullanıcı ayrıca "Kontrol et" demek zorunda kalmaz.
+     Yalnız arayüzün doğrudan çalıştırabildiği okumalar (salt okunur, sudo'suz, onaysız, önkoşulsuz): parola isteyen okuma elle kalır.
+     Kısa bekleme, yeniden başlatılan hizmetin (ör. chrony) toparlanması içindir. Sunucu aynı anda tek iş çalıştırdığından sırayla koşarlar.
+     Sağlık özeti hâlâ uyarı veriyorsa (hizmet henüz toparlanmamış olabilir) yalnız o özetin okuması RETRY_MS aralıklarıyla yeniden koşar. */
+  const SETTLE_MS = 5000, RETRY_MS = [15000, 25000], READ_POLL_MS = 700, READ_POLL_MAX = 200;
+  const autoReading = new Map(); // "sunucu|paket" -> sıra belirteci: yeni bir uygulama bitince eski sıra bırakılır
+  const wait = ms => new Promise(done => setTimeout(done, ms));
+  function cardReads(p) {
+    const wanted = new Set([...(p.settings || []), ...(p.settingCards || [])].map(x => x.readAction).filter(Boolean));
+    return (p.actions || []).filter(a => wanted.has(a.id) && a.runnable && !(a.effects || []).length).map(a => a.id);
+  }
+  // verilen okumalardan hangilerinin sağlık özeti uyarı veriyor
+  const ailing = (p, actions) => actions.filter(id => ((p && p.settingCards) || []).some(c => c.readAction === id && (c.health || []).some(h => h.state === "warn")));
+  async function readOnce(server, pkg, action) {
+    const { id } = await json("/api/run", { server, package: pkg, action });
+    let d = { next: 0 };
+    for (let i = 0; !d.done; i++) {
+      if (i >= READ_POLL_MAX) throw new Error("zaman aşımı");
+      await wait(READ_POLL_MS);
+      d = await json(`/api/run?id=${encodeURIComponent(id)}&from=${d.next}`);
+    }
+    return d.exit;
+  }
+  async function autoRead(server, pkg, actions) {
+    const key = server + "|" + pkg, token = {};
+    autoReading.set(key, token);
+    const dropped = () => autoReading.get(key) !== token;
+    try {
+      let todo = actions, delay = SETTLE_MS;
+      for (let round = 0; ; round++) {
+        await wait(delay);
+        if (dropped()) return;
+        toast(`${server}: durum okunuyor…`);
+        let failed = 0;
+        for (const action of todo) {
+          if (await readOnce(server, pkg, action) !== 0) failed++;
+          if (dropped()) return;
+        }
+        const r = await refreshServer(server);
+        if (failed) { toast(`${server}: durum okunamadı; ayrıntı Günlükler sayfasında`); return; }
+        todo = ailing((r.packages || []).find(x => x.id === pkg), todo);
+        if (!todo.length) { toast(`${server}: ✔ durum güncellendi`); return; }
+        if (round >= RETRY_MS.length) { toast(`${server}: durum güncellendi; sağlık özetinde uyarı sürüyor`); return; }
+        delay = RETRY_MS[round];
+        toast(`${server}: sağlık henüz toparlanmadı; birazdan yeniden okunacak`);
+      }
+    } catch (err) {
+      if (!dropped()) toast(`${server}: durum kendiliğinden okunamadı (${err.message}); "Kontrol et" ile okuyun`);
+    } finally { if (!dropped()) autoReading.delete(key); }
+  }
+
   // görev terminali bitince (paket eylemi): sonuç kartları yenilenir ve sonuç bildirilir; modal gerekmez
   window.addEventListener("keylab:taskexit", async e => {
     const d = e.detail || {}; if (!d.server || !d.pkg || !d.action) return;
-    try {
-      const r = await json("/api/server?name=" + encodeURIComponent(d.server));
-      if (appState.view === "server" && appState.srvName === d.server) { appState.srv = r; renderServer(); }
-      load();
-    } catch (err) { /* sunucu yanıt vermezse sayfa bir sonraki yenilemede toparlanır */ }
+    let r = null;
+    try { r = await refreshServer(d.server); } catch (err) { /* sunucu yanıt vermezse sayfa bir sonraki yenilemede toparlanır */ }
     const label = `${d.action} · ${TAB_LABEL[d.pkg] || d.pkg}`;
     toast(d.code === 0 ? `${d.server}: ✔ ${label} tamamlandı` : `${d.server}: ✖ ${label} başarısız (çıkış kodu ${d.code}); ayrıntı terminal sekmesinde`);
+    const p = r && (r.packages || []).find(x => x.id === d.pkg), a = p && (p.actions || []).find(x => x.id === d.action);
+    if (d.code !== 0 || !a || !(a.effects || []).length) return;
+    const reads = cardReads(p);
+    if (reads.length) autoRead(d.server, d.pkg, reads);
   });
 
   // ham terminal çıktısı → okunur metin: ANSI kaçışlarını at, "\r" ile satır başına dönmeyi uygula

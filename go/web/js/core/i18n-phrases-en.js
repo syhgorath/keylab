@@ -211,6 +211,8 @@ window.KeyLabPhrasesEN = {
   patterns: [
     [/^son okuma paketin eski sürümünden \((.+)\)$/, "last read is from an older package version ($1)"], [/^(\d+) sapma$/, "$1 drifted"], [/^(\d+) bilinmiyor$/, "$1 unknown"], [/^Sunucu: ([^·]+)$/, "Server: $1"],
     [/^⚠ (.+)\. Yine de kaydetmek için tekrar tıklayın\.$/, "⚠ $1. Click again to save anyway."],
+    [/^(.+): durum okunuyor…$/, "$1: reading status…"], [/^(.+): ✔ durum güncellendi$/, "$1: ✔ status updated"], [/^(.+): sağlık henüz toparlanmadı; birazdan yeniden okunacak$/, "$1: health has not recovered yet; reading again shortly"], [/^(.+): durum güncellendi; sağlık özetinde uyarı sürüyor$/, "$1: status updated; the health summary still shows a warning"],
+    [/^(.+): durum okunamadı; ayrıntı Günlükler sayfasında$/, "$1: could not read status; see the Logs page"], [/^(.+): durum kendiliğinden okunamadı \((.+)\); "Kontrol et" ile okuyun$/, "$1: automatic status read failed ($2); use \"Check\""],
     [/^Uygula: (.+)$/, "Apply: $1"], [/^Kontrol et: (.+)$/, "Check: $1"], [/^Önizle: (.+)$/, "Preview: $1"],
     [/^(\d+) dk önce$/, "$1 min ago"], [/^(\d+) sa önce$/, "$1 h ago"], [/^(\d+) gün önce$/, "$1 d ago"],
     [/^(\d+) dk işlem yapılmadığı için ekran gizlendi\. Açık pencereler ve çalışan işler olduğu gibi duruyor\.$/, "Screen hidden after $1 min of inactivity. Open windows and running jobs are left as they are."],
