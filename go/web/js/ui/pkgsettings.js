@@ -1,7 +1,8 @@
 /* KeyLab — Paket ayar kartları ve ayar penceresi (#setmodal): component.json "settings" / "setting_cards" bildirimi.
    Kart yalnız durum özetini gösterir; "Ayarlar" penceresi istenen değeri düzenler (Kaydet yalnız bu bilgisayardaki .vars dosyasını yazar) ve altında
-   sunucudan SON OKUNAN değeri gösterir. Durumu arka uç hesaplar (pkgsettings.go). Okuma yalnız başarılı bir değiştiren eylemden sonra kendiliğinden başlar (parola istemeyen okumalar, jobs.js); Kontrol et / Önizle / Uygula
-   paketin mevcut eylemleridir, onay ve terminal pencereleri aynen açılır (o sırada bu pencere gizlenir, kapanınca geri gelir). Testler: go/webtest/ayar_kart.test.js */
+   sunucudan SON OKUNAN değeri gösterir. Durumu arka uç hesaplar (pkgsettings.go).
+   Tek tık: "Kontrol et" okumayı, "Kur" / "Uygula" / "Yükselt" önizleme → eylem → kontrol zincirini doğrudan gömülü terminalde açar (ayrı onay penceresi
+   yok; parola ve gereken onaylar terminalde yazılır; jobs.js). Terminal açıkken bu pencere gizlenir, kapanınca geri gelir. Testler: go/webtest/ayar_kart.test.js */
 import { $, $$, esc, json, toast, ago, localTime } from "../lib/util.js";
 import { appState } from "../state.js";
 
@@ -56,7 +57,7 @@ function whenHtml(p, c) {
   return when ? `<span>Son okuma:</span> ${when}` : "";
 }
 
-// hooks: { openRun, openWrite, openTerm — iş penceresi; reload() — sunucu verisini yeniden al ve sayfayı çiz; saved() — değişken kaydedildi }
+// hooks: { openChain, openCheck — gömülü terminalde zincir / okuma; reload() — sunucu verisini yeniden al ve sayfayı çiz; saved() — değişken kaydedildi }
 //   →  { cards(paket) → kart HTML'i, open(paket, kart), refresh() }
 export function initPkgSettings(hooks) {
   const modal = $("#setmodal");
@@ -132,18 +133,15 @@ export function initPkgSettings(hooks) {
     const byId = id => p.actions.find(a => a.id === id);
     const managed = c.rows.some(x => x.status !== "unmanaged" && (x.desired || []).length);
     const applies = managed ? uniq(c.rows.flatMap(x => x.applyVia || [])).map(byId).filter(a => a && a.applicable) : [];
-    const previews = uniq(applies.flatMap(a => a.requires || [])).map(byId).filter(a => a && a.applicable && !(a.effects || []).length);
-    const btn = (a, text, cls, needsSaved) => {
-      const kind = a.runnable ? "run" : a.write ? "write" : a.terminal ? "term" : "";
-      const why = needsSaved && changed ? "önce kaydedin" : !kind ? a.reason || "şimdi çalıştırılamaz" : "";
-      return why ? `<button class="btn sm" disabled title="${esc(why)}">${text}</button>` : `<button class="btn sm ${cls}" data-go="${kind}" data-action="${esc(a.id)}" title="${esc(a.id)}">${text}</button>`;
-    };
-    const named = (list, a) => (list.length > 1 ? `: ${esc(a.id)}` : "");
+    const btn = (a, text, cls, attr, why) => (why ? `<button class="btn sm" disabled title="${esc(why)}">${text}</button>`
+      : `<button class="btn sm ${cls}" ${attr} data-action="${esc(a.id)}" title="${esc(a.id)}">${text}</button>`);
     const reads = readsOf(p, c);
-    put($("#set-reads"), reads.map(a => btn(a, `Kontrol et${named(reads, a)}`, "")).join(""));
-    put($("#set-acts"), `<button class="btn sm primary" data-save${changed ? "" : " disabled"}>${cur.ack.size ? "Onayla ve kaydet" : "Kaydet"}</button>` +
-      previews.map(a => btn(a, `Önizle${named(previews, a)}`, "", true)).join("") +
-      applies.map(a => btn(a, `Uygula${named(applies, a)}`, a.destructive ? "dangerbtn" : "warnbtn", true)).join(""));
+    put($("#set-reads"), reads.map(a => btn(a, reads.length > 1 ? `Kontrol et: ${esc(a.id)}` : "Kontrol et", "", "data-check",
+      a.runnable || a.terminal ? "" : a.reason || "şimdi çalıştırılamaz")).join(""));
+    const verb = a => (/_kur$/.test(a.id) ? "Kur" : /_yukselt$/.test(a.id) ? "Yükselt" : "Uygula");
+    put($("#set-acts"), `<button class="btn sm${applies.length ? "" : " primary"}" data-save${changed ? "" : " disabled"}>${cur.ack.size ? "Onayla ve kaydet" : "Kaydet"}</button>` +
+      applies.map(a => btn(a, applies.filter(b => verb(b) === verb(a)).length > 1 ? `${verb(a)}: ${esc(a.id)}` : verb(a), a.destructive ? "dangerbtn" : "primary", "data-chain",
+        (a.missingVars || []).length ? `gerekli değişken eksik: ${a.missingVars.join(", ")}` : "")).join(""));
   }
 
   const say = (cls, text) => { const m = $("#set-msg"); m.className = "small " + cls; m.textContent = text; };
@@ -173,12 +171,12 @@ export function initPkgSettings(hooks) {
       try {
         r = await fetch("/api/vars", { method: "POST", headers: { "X-Requested-With": "sshpocket" }, body: JSON.stringify({ server: cur.srv, package: cur.pkg, name, value, action, ack: cur.ack.has(name) }) });
         body = await r.json().catch(() => ({}));
-      } catch (e) { if (cur === mine) say("err", `✖ ${name}: ${e.message}`); return; }
+      } catch (e) { if (cur === mine) say("err", `✖ ${name}: ${e.message}`); return false; }
       if (cur !== mine) return;
       if (!r.ok) {
         if (r.status === 409 && body.needAck) { cur.ack.add(name); say("warn", `⚠ ${String(body.error).replace(/[.;\s]+$/, "")}. Yine de kaydetmek için tekrar tıklayın.`); }
         else say("err", `✖ ${name}: ${body.error || "kaydedilemedi"}`);
-        paintLive(); return;
+        paintLive(); return false;
       }
       cur.ack.delete(name);
       if (action === "set") { v.value = value; v.set = true; } else { v.value = ""; v.set = false; el.value = valueOf(v); }
@@ -187,7 +185,15 @@ export function initPkgSettings(hooks) {
     try { const vars = await loadVars(); if (cur !== mine) return; cur.vars = vars; await hooks.reload(); } catch (e) { /* sonraki yenilemede toparlanır */ }
     if (cur !== mine) return;
     const c = cardNow(pkgNow());
-    if (c) { paintBody(c); paintLive(); say("ok", "✔ Kaydedildi. Sunucuya yazmak için Önizle ve Uygula."); }
+    if (c) { paintBody(c); paintLive(); say("ok", "✔ Kaydedildi. Sunucuya yazmak için Kur / Uygula."); }
+    return true;
+  }
+
+  // Kur / Uygula / Yükselt: kaydedilmemiş değer varsa önce kaydeder (uyarı onayı gerekiyorsa durur), sonra zinciri açar
+  async function chain(action) {
+    const mine = cur;
+    if (dirty().length && !(await save())) return;
+    if (cur === mine) hooks.openChain(mine.srv, mine.pkg, action);
   }
 
   const forceClose = () => { cur = null; modal.classList.remove("open", "behind"); };
@@ -205,13 +211,15 @@ export function initPkgSettings(hooks) {
   }
 
   $("#set-x").addEventListener("click", close);
-  $("#set-reads").addEventListener("click", e => go(e));
-  $("#set-acts").addEventListener("click", e => { if (e.target.closest("[data-save]")) save(); else go(e); });
-  function go(e) {
-    const b = e.target.closest("[data-go]");
-    if (!b || !cur) return;
-    ({ run: hooks.openRun, write: hooks.openWrite, term: hooks.openTerm })[b.dataset.go](cur.srv, cur.pkg, b.dataset.action);
-  }
+  $("#set-reads").addEventListener("click", e => {
+    const b = e.target.closest("[data-check]");
+    if (b && cur) hooks.openCheck(cur.srv, cur.pkg, b.dataset.action);
+  });
+  $("#set-acts").addEventListener("click", e => {
+    if (!cur) return;
+    const b = e.target.closest("[data-chain]");
+    if (e.target.closest("[data-save]")) save(); else if (b) chain(b.dataset.action);
+  });
   // başka bir pencere (onay, terminal, Python denetimi…) açıkken bu pencere gizlenir: iki pencere üst üste binmez
   const others = $$(".modal-back").filter(m => m !== modal);
   const covered = () => others.some(m => m.classList.contains("open"));

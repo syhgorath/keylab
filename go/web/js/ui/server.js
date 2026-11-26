@@ -14,7 +14,7 @@ import { initPkgSettings, cardsOf } from "./pkgsettings.js";
 //          logs, lynis — Günlükler/Lynis sayfası API'leri }
 //   →  { openServer, renderServer, goLogs, goLynis, openEditAddr, resetCatalog }
 export function initServer(hooks) {
-  const { openRun, openWrite, openTerm, openVars, varCur, openDlg, closeDlg, openTask, openCtx, showView, load, renderSrvTree, setHash, stateText, logs, lynis } = hooks;
+  const { openRun, openWrite, openTerm, openChain, openCheck, openVars, varCur, openDlg, closeDlg, openTask, openCtx, showView, load, renderSrvTree, setHash, stateText, logs, lynis } = hooks;
 
   const TAB_ORDER = ["linux-hardening", "utility", "kurulum"];
 
@@ -172,7 +172,7 @@ export function initServer(hooks) {
   const knock = initKnock({ openDlg, closeDlg, reloadServer });
   const openKnock = knock.open;
   // paket ayar kartları ve ayar penceresi (js/ui/pkgsettings.js)
-  const pkgSettings = initPkgSettings({ openRun, openWrite, openTerm, reload: reloadServer, saved: () => { catSrv = ""; window.KeyLabCompare?.invalidate(); } });
+  const pkgSettings = initPkgSettings({ openChain, openCheck, reload: reloadServer, saved: () => { catSrv = ""; window.KeyLabCompare?.invalidate(); } });
 
   /* ---------------- Paket sayfası (Hardening / Utility / Kurulum) ---------------- */
   let actFilter = "all";

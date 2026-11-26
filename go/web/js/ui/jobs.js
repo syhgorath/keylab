@@ -259,6 +259,17 @@ export function initJobs(hooks) {
     } finally { if (!dropped()) autoReading.delete(key); }
   }
 
+  /* Ayar kartlarının tek tık akışı: ayrı onay penceresi yok, her şey gömülü terminalde. "Kur" zinciri önizleme → eylem → kontrol koşar;
+     sudo parolası ve gereken onaylar (yıkıcı eylemde sunucu adı) orada yazılır. "Kontrol et" okumayı doğrudan terminalde açar. */
+  const chained = new Set(); // "sunucu|paket|eylem": biten görev zincirse kontrolü zaten koşmuştur
+  async function startDirect(server, pkg, action, chain) {
+    const key = `${server}|${pkg}|${action}`;
+    if (chain) chained.add(key); else chained.delete(key);
+    const started = await window.KeyLabTerminal.openTask({ server, package: pkg, action, ...(chain ? { chain: true } : {}) });
+    if (!started.ok) { chained.delete(key); toast("Eylem başlatılamadı: " + started.error); return; }
+    toast(`${server}: ${action} terminalde çalışıyor — parola ve onayları orada yazın`);
+  }
+
   // görev terminali bitince (paket eylemi): sonuç kartları yenilenir ve sonuç bildirilir; modal gerekmez
   window.addEventListener("keylab:taskexit", async e => {
     const d = e.detail || {}; if (!d.server || !d.pkg || !d.action) return;
@@ -266,9 +277,11 @@ export function initJobs(hooks) {
     try { r = await refreshServer(d.server); } catch (err) { /* sunucu yanıt vermezse sayfa bir sonraki yenilemede toparlanır */ }
     const label = `${d.action} · ${TAB_LABEL[d.pkg] || d.pkg}`;
     toast(d.code === 0 ? `${d.server}: ✔ ${label} tamamlandı` : `${d.server}: ✖ ${label} başarısız (çıkış kodu ${d.code}); ayrıntı terminal sekmesinde`);
+    const chain = chained.delete(`${d.server}|${d.pkg}|${d.action}`);
     const p = r && (r.packages || []).find(x => x.id === d.pkg), a = p && (p.actions || []).find(x => x.id === d.action);
     if (d.code !== 0 || !a || !(a.effects || []).length) return;
-    const reads = cardReads(p);
+    // zincir kontrol adımlarını kendisi koştu: yalnız henüz toparlanmamış sağlık özeti yeniden okunur
+    const reads = chain ? ailing(p, cardReads(p)) : cardReads(p);
     if (reads.length) autoRead(d.server, d.pkg, reads);
   });
 
@@ -416,8 +429,10 @@ export function initJobs(hooks) {
   $("#run-cancel").addEventListener("click", async () => { $("#run-cancel").disabled = true; try { await json("/api/run/cancel", { id: runJob }); } catch (e) { toast("İptal edilemedi: " + e.message); } });
 
   const openRun = gated(openRunBase), openWrite = gated(openWriteBase), openTerm = gated(openTermBase);
+  const openChain = gated((server, pkg, action) => startDirect(server, pkg, action, true));
+  const openCheck = gated((server, pkg, action) => startDirect(server, pkg, action, false));
   return {
-    openRun, openWrite, openTerm, jobBusy, watchJob, closeRun, openJob, adoptJob,
+    openRun, openWrite, openTerm, openChain, openCheck, jobBusy, watchJob, closeRun, openJob, adoptJob,
     setMode: m => { runMode = m; },          // openRun'dan sonra çağıran akışlar (silme, görev, yükseltme) kipi belirler
     setUpgradeTo: v => { runUpgTo = v; },
   };

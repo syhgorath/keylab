@@ -1,7 +1,7 @@
 "use strict";
 /* Paket ayar kartları ve ayar penceresi (component.json "settings" / "setting_cards"). Kart yalnız durum özetini gösterir; pencerede istenen değer
    düzenlenir (Kaydet yalnız .vars dosyasını yazar) ve altında sunucudan okunan değer durur. Durum arka uçtan gelir (pkgsettings.go).
-   Hiçbir okuma kendiliğinden başlamaz; Kontrol et / Önizle / Uygula paketin mevcut eylemleri ve pencereleridir. */
+   Tek tık: Kontrol et ve Kur / Uygula / Yükselt gömülü terminalde açılır (ayrı onay penceresi yok). */
 process.env.TZ = "UTC";
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -40,6 +40,7 @@ function world(opts = {}) {
   };
   w.overrides = {
     "/api/home": mixedHome, "/api/server": server,
+    "/api/term/task": opts.task || { id: "k1", kind: "task", title: "utility · eylem" }, "/api/term/close": { ok: true }, "/api/term/resize": { ok: true }, "/api/term/input": { ok: true },
     "/api/vars": (u, { method, body }) => {
       if (method !== "POST") return { vars: JSON.parse(JSON.stringify(w.vars)) };
       w.posts.push(body);
@@ -117,23 +118,22 @@ test("pencere: istenen değer kutuda, sunucudaki değer ve durum altında; seçe
   assert.match(txt(field(h, "platform")), /okunamaz.*bu sunucuda okunamıyor/);
   const opts = h.$("#set-body .set-optbox");
   assert.deepEqual([...opts.querySelectorAll(".set-opt")].map(o => o.dataset.set), ["adim"]); assert.doesNotMatch(txt(opts), /okunamaz/);
-  assert.deepEqual(btns(h), ["Kontrol et", "Kaydet", "Önizle", "Uygula"]);
-  assert.ok(btn(h, "Kaydet").disabled);
-  assert.equal(btn(h, "Önizle").dataset.go, "term"); assert.equal(btn(h, "Uygula").dataset.action, "ntp_ayarla");
+  assert.deepEqual(btns(h), ["Kontrol et", "Kaydet", "Uygula"]);
+  assert.ok(btn(h, "Kaydet").disabled); assert.ok(!btn(h, "Uygula").disabled, "önizleme önkoşulu aranmaz: zincirin içinde");
+  assert.equal(btn(h, "Uygula").dataset.action, "ntp_ayarla");
   await h.click("#set-x"); assert.ok(!isOpen(h));
   await openCard(h, "sistem");
   assert.equal(txt(field(h, "zone").querySelector('[data-live="have"] .chip')), "Europe/Istanbul", "uyumluysa istenen yazım");
-  assert.ok(btn(h, "Uygula").disabled); assert.equal(btn(h, "Uygula").title, "önce preview");
+  assert.equal(btn(h, "Uygula").dataset.action, "apply"); assert.ok(!btn(h, "Uygula").disabled);
   assert.deepEqual(h.errors, []); h.close();
 });
 
-test("değişiklik: Kaydet açılır, Önizle ve Uygula kaydedene kadar kapalı; sayfa tazelenince yazılan silinmez, durum yenilenir", async () => {
+test("değişiklik: Kaydet açılır; sayfa tazelenince yazılan silinmez, durum yenilenir", async () => {
   const h = await open();
   await openCard(h, "saat");
   await edit(h, "v_kaynak", "yeni.example.org");
   assert.ok(!btn(h, "Kaydet").disabled);
-  for (const t of ["Önizle", "Uygula"]) { assert.ok(btn(h, t).disabled, t); assert.equal(btn(h, t).title, "önce kaydedin"); }
-  assert.ok(!btn(h, "Kontrol et").disabled);
+  assert.ok(!btn(h, "Uygula").disabled, "Uygula önce kendisi kaydeder"); assert.ok(!btn(h, "Kontrol et").disabled);
   h.w.settings[0].status = "match"; h.w.settings[0].desired = ["a"]; h.w.settings[0].actual = ["a"];
   await h.click('#srv-tabs [data-p="linux-hardening"]'); await h.click('#srv-tabs [data-p="utility"]');
   h.win.dispatchEvent(new h.win.CustomEvent("keylab:taskexit", { detail: { server: "web1", pkg: "utility", action: "preview", code: 0 } })); await h.settle();
@@ -192,7 +192,8 @@ test("kaydet: hata gösterilir, değişiklik korunur", async () => {
   const h = await open({ reply: () => ({ status: 400, body: { error: "geçersiz değer" } }) });
   await openCard(h, "saat");
   await edit(h, "v_kaynak", "bad"); await h.click(btn(h, "Kaydet"));
-  assert.match(txt(h.$("#set-msg")), /v_kaynak: geçersiz değer/); assert.equal(ctl(h, "v_kaynak").value, "bad"); assert.ok(!btn(h, "Kaydet").disabled); assert.ok(btn(h, "Uygula").disabled);
+  assert.match(txt(h.$("#set-msg")), /v_kaynak: geçersiz değer/); assert.equal(ctl(h, "v_kaynak").value, "bad"); assert.ok(!btn(h, "Kaydet").disabled);
+  await h.click(btn(h, "Uygula")); assert.deepEqual(tasks(h), [], "kaydedilemeyen değerle zincir açılmaz");
   h.close();
 });
 
@@ -205,18 +206,65 @@ test("kaydedilmemiş değişiklikle kapatma ikinci tıklama ister; Esc de aynı"
   await openCard(h, "saat"); assert.equal(ctl(h, "v_kaynak").value, "0.tr.pool.ntp.org", "atılan değişiklik geri gelmez"); assert.equal(h.w.posts.length, 0); h.close();
 });
 
-test("eylem düğmesi mevcut onay penceresini açar; o sırada ayar penceresi gizlenir, kapanınca geri gelir; Esc yalnız üsttekini kapatır", async () => {
+const tasks = h => h.calls.filter(c => c.method === "POST" && c.path === "/api/term/task").map(c => { const { rows, cols, ...x } = JSON.parse(JSON.stringify(c.body)); return x; });
+const termOpen = h => h.$("#termmodal").classList.contains("open");
+
+test("Kontrol et: ayrı onay penceresi olmadan doğrudan terminalde açılır; ayar penceresi gizlenir", async () => {
   const h = await open();
   await openCard(h, "saat");
   await h.click(btn(h, "Kontrol et"));
-  assert.ok(h.$("#runmodal").classList.contains("open")); assert.match(txt(h.$("#run-title")), /ntp_durum/);
+  assert.deepEqual(tasks(h), [{ server: "web1", package: "utility", action: "ntp_durum" }]);
+  assert.ok(termOpen(h)); assert.ok(!h.$("#runmodal").classList.contains("open"));
   assert.ok(modal(h).classList.contains("behind")); assert.ok(isOpen(h));
-  await esc(h);
-  assert.ok(!h.$("#runmodal").classList.contains("open")); assert.ok(isOpen(h), "ayar penceresi kalır"); assert.ok(!modal(h).classList.contains("behind"));
-  assert.equal(h.calls.filter(c => c.method === "POST").length, 0, "onaysız hiçbir şey çalışmaz");
-  await h.click(btn(h, "Önizle")); assert.match(txt(h.$("#run-title")), /preview/); await h.click("#run-close");
-  await h.click(btn(h, "Uygula")); assert.match(txt(h.$("#run-title")), /ntp_ayarla.*yazar/); assert.ok(h.$("#w-snap"), "snapshot onayı aynen"); assert.ok(h.$("#run-go").disabled);
-  h.close();
+  assert.deepEqual(h.errors, []); h.close();
+});
+
+test("Uygula: tek tık zinciri terminalde açar; onay penceresi, snapshot kutusu ve Önizle yok", async () => {
+  const h = await open();
+  await openCard(h, "saat");
+  await h.click(btn(h, "Uygula"));
+  assert.deepEqual(tasks(h), [{ server: "web1", package: "utility", action: "ntp_ayarla", chain: true }]);
+  assert.ok(termOpen(h)); assert.ok(!h.$("#runmodal").classList.contains("open")); assert.equal(h.w.posts.length, 0);
+  assert.match(h.$("#toast").textContent, /terminalde çalışıyor/); assert.deepEqual(h.errors, []); h.close();
+});
+
+test("Uygula: kaydedilmemiş değer önce kaydedilir; uyarı onayı gerekiyorsa ikinci tıklama ister", async () => {
+  const h = await open({ reply: b => (!b.ack ? { status: 409, body: { error: "riskli", needAck: true } } : null) });
+  await openCard(h, "saat");
+  await edit(h, "v_kaynak", "x.example.org"); await h.click(btn(h, "Uygula"));
+  assert.deepEqual(tasks(h), [], "onay verilmeden zincir açılmaz"); assert.match(txt(h.$("#set-msg")), /riskli/);
+  await h.click(btn(h, "Uygula"));
+  assert.deepEqual(h.w.posts.map(p => p.ack), [false, true]); assert.equal(tasks(h).length, 1);
+  assert.deepEqual(h.calls.filter(c => c.method === "POST" && c.path !== "/api/term/ticket").map(c => c.path), ["/api/vars", "/api/vars", "/api/term/task"]); h.close();
+});
+
+test("zincir başlatılamazsa söylenir; yıkıcı ve adlı düğmeler; eksik değişkende kapalı", async () => {
+  const h = await open({ task: { status: 409, body: "bu sunucuda zaten çalışan bir eylem var" } });
+  await openCard(h, "saat"); await h.click(btn(h, "Uygula"));
+  assert.equal(h.$("#toast").textContent, "Eylem başlatılamadı: bu sunucuda zaten çalışan bir eylem var"); assert.ok(!modal(h).classList.contains("behind")); h.close();
+  const rows = [set("kaynak", "drift", { desired: ["8080"], applyVia: ["nginx_kur", "nginx_yukselt"] })];
+  const k = await open({ settings: rows, cards: [CARDS[0]], f: p => {
+    const base = p.actions.find(a => a.id === "ntp_ayarla");
+    p.actions.push({ ...base, id: "nginx_kur" }, { ...base, id: "nginx_yukselt", destructive: true, effects: ["destructive"] });
+  } });
+  await openCard(k, "saat"); assert.deepEqual(btns(k), ["Kontrol et", "Kaydet", "Kur", "Yükselt"]);
+  assert.ok(btn(k, "Yükselt").classList.contains("dangerbtn")); await k.click(btn(k, "Yükselt"));
+  assert.deepEqual(tasks(k), [{ server: "web1", package: "utility", action: "nginx_yukselt", chain: true }]); k.close();
+  const e = await open({ f: p => { p.actions.find(a => a.id === "ntp_ayarla").missingVars = ["v_zorunlu"]; } });
+  await openCard(e, "saat"); assert.ok(btn(e, "Uygula").disabled); assert.match(btn(e, "Uygula").title, /v_zorunlu/); e.close();
+});
+
+test("zincir bitince okumalar yeniden koşmaz; yalnız toparlanmamış sağlık özeti okunur", async () => {
+  const saglam = await open({ run: fakeRun() });
+  await openCard(saglam, "saat"); await saglam.click(btn(saglam, "Uygula"));
+  await exitEvent(saglam, "ntp_ayarla"); await advance(saglam, 60000); assert.deepEqual(runs(saglam), []); saglam.close();
+  const hasta = await open({ run: fakeRun(), cards: sickCards() });
+  await openCard(hasta, "saat"); await hasta.click(btn(hasta, "Uygula"));
+  await exitEvent(hasta, "ntp_ayarla"); await advance(hasta, 5000); await finishRound(hasta, 1);
+  assert.deepEqual(reads(hasta), ["ntp_durum"]);
+  // aynı eylem sonradan zincirsiz biterse (Genel eylemler) bütün okumalar koşar
+  await exitEvent(hasta, "ntp_ayarla"); await advance(hasta, 5000); await finishRound(hasta, 2);
+  assert.deepEqual(reads(hasta).slice(1), ["durum", "ntp_durum"]); assert.deepEqual(hasta.errors, []); hasta.close();
 });
 
 test("üstte ortak iletişim penceresi (ör. Python denetimi) varken Esc yalnız onu kapatır", async () => {
@@ -234,7 +282,7 @@ test("yönetilmeyen kartta uygulama düğmesi yok; birden çok uygulama eylemi a
   await openCard(h, "saat"); assert.deepEqual(btns(h), ["Kontrol et", "Kaydet"]); h.close();
   const iki = await open({ settings: [set("kaynak", "match", { desired: ["a"], actual: ["a"], stale: true }), set("adim", "drift", { desired: ["2"], applyVia: ["apply"] })] });
   assert.deepEqual([...cardEl(iki, "saat").querySelectorAll(".app-title .badge")].map(txt), ["1 sapma", "güncel olmayabilir"]);
-  await openCard(iki, "saat"); assert.deepEqual(btns(iki), ["Kontrol et", "Kaydet", "Önizle", "Uygula: ntp_ayarla", "Uygula: apply"]); iki.close();
+  await openCard(iki, "saat"); assert.deepEqual(btns(iki), ["Kontrol et", "Kaydet", "Uygula: ntp_ayarla", "Uygula: apply"]); iki.close();
 });
 
 const H = (label, value, state, unit) => ({ label, value, state, unit });
@@ -301,7 +349,7 @@ test("sunucuda yok: ayrı durum, sapma sayılmaz; kurmak için uygulama düğmes
   await openCard(h, "saat");
   assert.equal(txt(field(h, "kaynak").querySelector('[data-live="state"]')), "sunucuda yok");
   assert.match(txt(field(h, "kaynak").querySelector('[data-live="have"]')), /Sunucuda:\s*—/);
-  assert.deepEqual(btns(h), ["Kontrol et", "Kaydet", "Önizle", "Uygula"]); h.close();
+  assert.deepEqual(btns(h), ["Kontrol et", "Kaydet", "Uygula"]); h.close();
 });
 
 test("uygulanmaz: karşılaştırılmaz, sapma sayılmaz; yanında uyumlu ayar varsa kart uyumlu kalır", async () => {

@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -173,6 +174,42 @@ func (a *App) authorizeRunItem(server, pkg, action, item string, snapshot bool, 
 		return nil, "", http.StatusConflict, fmt.Errorf("bu eylem arayüzden çalıştırılamaz: %s", ai.Reason)
 	}
 	return ai, itemVar, 0, nil
+}
+
+// authorizeChain: tek tık zinciri yalnız bir ayar kartının uygulama eylemi için açılır. Önkoşul (önizleme) zincirin içinde koştuğundan burada
+// aranmaz; yürütücü her adımda bütün kapıları yeniden denetler. Yıkıcı eylemde sunucu adı onayını yürütücü terminalde ister (ChainPlan).
+func (a *App) authorizeChain(server, pkg, action, item string) (int, error) {
+	if item != "" {
+		return http.StatusBadRequest, fmt.Errorf("zincir katalog öğesiyle kullanılmaz")
+	}
+	s, ok := a.findServerQuiet(server)
+	if !ok || !s.Valid {
+		return http.StatusConflict, fmt.Errorf("sunucu yok ya da yapılandırması geçersiz")
+	}
+	for _, p := range a.packageInfosFor(s, "") {
+		if p.ID != pkg {
+			continue
+		}
+		card := false
+		for _, x := range p.Settings {
+			card = card || slices.Contains(x.ApplyVia, action)
+		}
+		for _, x := range p.Actions {
+			if x.ID != action {
+				continue
+			}
+			switch {
+			case !card || len(x.Effects) == 0:
+				return http.StatusConflict, fmt.Errorf("bu eylem bir ayar kartının uygulama eylemi değil")
+			case !x.Applicable:
+				return http.StatusConflict, fmt.Errorf("bu eylem bu sunucunun platformuna uygulanmaz")
+			case len(x.MissingVars) > 0:
+				return http.StatusConflict, fmt.Errorf("gerekli değişken eksik: %s", strings.Join(x.MissingVars, ", "))
+			}
+			return 0, nil
+		}
+	}
+	return http.StatusConflict, fmt.Errorf("paket ya da eylem bulunamadı")
 }
 
 // spawn: argv'yi pty altında başlatır ve çıktıyı job.buf'a akıtır. Çağıran a.jmu'yu TUTMAMALI.

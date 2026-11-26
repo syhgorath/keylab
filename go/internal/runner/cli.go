@@ -31,6 +31,7 @@ type CLI struct {
 	Now           func() time.Time
 	LogKeep       int
 	RunSet        string // katalog seçimi (koşuya özel): satır satır "ad=değer"; değer dosyasına YAZILMAZ (bkz. RunSets)
+	Chain         bool   // tek tık zinciri: önizleme → eylem → kontrol (bkz. chain.go)
 }
 
 var (
@@ -162,6 +163,15 @@ func (c *CLI) Run(id, action, server string) int {
 			strings.ReplaceAll(manifest.ActionGet(info, action, "platforms"), ",", ", "))
 		return 2
 	}
+	var plan Chain
+	if c.Chain {
+		if manifest.InfoGet(info, "runner") != "ansible" {
+			return refuse("Zincir yalnız Ansible paketlerinde desteklenir.")
+		}
+		if plan, err = ChainPlan(info, action, plat); err != nil {
+			return refuse(err.Error())
+		}
+	}
 	prefix := strings.ToUpper(server)
 	ip, _ := serverGet(dir, prefix, "IP")
 	user, _ := serverGet(dir, prefix, "USER")
@@ -270,37 +280,43 @@ func (c *CLI) Run(id, action, server string) int {
 	if c.Now != nil {
 		ec.Now = func() int64 { return c.Now().Unix() }
 	}
+	// report: koşulan bir adımın kaydı (gizli bilgi yok: tarih|paket|sürüm|eylem|sonuç) ve özeti
+	report := func(action string, res ExecResult) {
+		outcome := "fail"
+		if res.RC == 0 {
+			outcome = "ok"
+		}
+		now := time.Now()
+		if c.Now != nil {
+			now = c.Now()
+		}
+		if f, err := os.OpenFile(filepath.Join(dir, "components.log"), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o600); err == nil {
+			fmt.Fprintf(f, "%s|%s|%s|%s|%s\n", now.UTC().Format("2006-01-02T15:04:05Z"), id, ver, action, outcome)
+			f.Close()
+		}
+		if len(res.Result) > 0 {
+			say("Sonuç:\n")
+			for _, l := range res.Result {
+				say("  %s\n", l)
+			}
+		}
+		if res.LogFile != "" {
+			if res.RC != 0 {
+				say("❌ Eylem başarısız. Tam günlük: %s\n", res.LogFile)
+			} else {
+				say("Günlük: %s\n", res.LogFile)
+			}
+		}
+	}
+	if c.Chain {
+		return ec.runChain(info, id, ver, plan, report)
+	}
 	res := ExecAction(ec, info, id, ver, action)
 	if res.RC == Refused {
 		say("Çalıştırılmadı.\n")
 		return res.RC
 	}
-	// Kayıt (gizli bilgi yok): tarih|paket|sürüm|eylem|sonuç
-	outcome := "fail"
-	if res.RC == 0 {
-		outcome = "ok"
-	}
-	now := time.Now()
-	if c.Now != nil {
-		now = c.Now()
-	}
-	if f, err := os.OpenFile(filepath.Join(dir, "components.log"), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o600); err == nil {
-		fmt.Fprintf(f, "%s|%s|%s|%s|%s\n", now.UTC().Format("2006-01-02T15:04:05Z"), id, ver, action, outcome)
-		f.Close()
-	}
-	if len(res.Result) > 0 {
-		say("Sonuç:\n")
-		for _, l := range res.Result {
-			say("  %s\n", l)
-		}
-	}
-	if res.LogFile != "" {
-		if res.RC != 0 {
-			say("❌ Eylem başarısız. Tam günlük: %s\n", res.LogFile)
-		} else {
-			say("Günlük: %s\n", res.LogFile)
-		}
-	}
+	report(action, res)
 	return res.RC
 }
 
