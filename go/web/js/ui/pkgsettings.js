@@ -19,7 +19,7 @@ export function cardsOf(p) {
   const all = p.settings || [], out = [];
   for (const c of p.settingCards || []) {
     const rows = all.filter(x => x.card === c.id);
-    if (rows.length) out.push({ id: c.id, label: c.label || c.id, description: c.description || "", rows });
+    if (rows.length) out.push({ id: c.id, label: c.label || c.id, description: c.description || "", rows, readAction: c.readAction || "", health: c.health || [], note: c.note || "", stale: !!c.stale });
   }
   const known = new Set(out.map(c => c.id));
   for (const x of all) {
@@ -32,17 +32,27 @@ export function cardsOf(p) {
   return out;
 }
 
-function cardBadge(rows) {
-  const n = st => rows.filter(x => x.status === st).length;
+function cardBadge(c) {
+  const rows = c.rows, n = st => rows.filter(x => x.status === st).length;
   const main = n("drift") ? `<span class="badge warn">${n("drift")} sapma</span>` : n("unknown") ? `<span class="badge plain">${n("unknown")} bilinmiyor</span>`
     : n("match") ? '<span class="badge ok">uyumlu</span>' : n("unmanaged") ? '<span class="badge plain">yönetilmiyor</span>' : "";
-  return main + (rows.some(x => x.stale) ? '<span class="badge warn" title="Bu okumadan sonra bu sunucuda değişiklik yapan bir eylem çalıştı.">güncel olmayabilir</span>' : "");
+  // ayarlar uyumlu olsa bile sağlık sorunu varsa kart yalnız yeşil görünmesin
+  const ill = (c.health || []).some(h => h.state === "warn") ? '<span class="badge warn">⚠ dikkat</span>' : "";
+  return main + ill + (c.stale || rows.some(x => x.stale) ? '<span class="badge warn" title="Bu okumadan sonra bu sunucuda değişiklik yapan bir eylem çalıştı.">güncel olmayabilir</span>' : "");
 }
 
-// kartın okuma eylemleri ve "Son okuma" satırı
-function readsOf(p, rows) { return uniq(rows.map(x => x.readAction).filter(Boolean)).map(id => p.actions.find(a => a.id === id)).filter(Boolean); }
-function whenHtml(p, rows) {
-  const when = readsOf(p, rows).map(a => `<span title="${esc(a.id)}${a.lastTime ? " · " + esc(localTime(a.lastTime)) : ""}">${a.lastTime ? esc(since(a.lastTime)) : "henüz okunmadı"}</span>`).join(" · ");
+// sağlık özeti (kartın "summary" bildirimi): sonuç sözcükleri okunur yazılır, sayılara birim eklenir; durum arka uçtan gelir
+const WORD = { yes: "evet", no: "hayır", active: "çalışıyor", inactive: "çalışmıyor", unknown: "bilinmiyor" };
+function healthHtml(c) {
+  if (!c.readAction) return "";
+  if (!c.health.length) return `<div class="set-health small muted"><span>Sağlık bilgisi:</span> <span>${esc(c.note || "okuma bu değeri bildirmedi")}</span></div>`;
+  return `<div class="set-health">${c.health.map(h => `<span class="set-hitem" data-st="${esc(h.state || "")}"><span class="muted">${esc(h.label)}</span> <b>${WORD[h.value] || esc(h.value)}</b>${h.unit && !WORD[h.value] ? ` <span class="muted">${esc(h.unit)}</span>` : ""}</span>`).join("")}</div>`;
+}
+
+// kartın okuma eylemleri (ayarların ve sağlık özetinin) ve "Son okuma" satırı
+function readsOf(p, c) { return uniq([...c.rows.map(x => x.readAction), c.readAction].filter(Boolean)).map(id => p.actions.find(a => a.id === id)).filter(Boolean); }
+function whenHtml(p, c) {
+  const when = readsOf(p, c).map(a => `<span title="${esc(a.id)}${a.lastTime ? " · " + esc(localTime(a.lastTime)) : ""}">${a.lastTime ? esc(since(a.lastTime)) : "henüz okunmadı"}</span>`).join(" · ");
   return when ? `<span>Son okuma:</span> ${when}` : "";
 }
 
@@ -54,8 +64,8 @@ export function initPkgSettings(hooks) {
   const isOpen = () => modal.classList.contains("open");
 
   const cards = p => cardsOf(p).map(c => `<div class="card app-card set-app" data-setcard="${esc(c.id)}" data-st="settings">
-      <div class="app-top"><div class="app-ico" aria-hidden="true">⚙️</div><div class="app-titles"><div class="app-title"><span>${esc(c.label)}</span>${cardBadge(c.rows)}</div><p class="app-desc">${esc(c.description)}</p></div></div>
-      <div class="app-foot"><span class="small muted">${whenHtml(p, c.rows)}</span><div class="app-btns"><button class="btn sm primary" data-setopen="${esc(c.id)}">Ayarlar</button></div></div></div>`).join("");
+      <div class="app-top"><div class="app-ico" aria-hidden="true">⚙️</div><div class="app-titles"><div class="app-title"><span>${esc(c.label)}</span><span class="set-badges">${cardBadge(c)}</span></div><p class="app-desc">${esc(c.description)}</p></div></div>
+      ${healthHtml(c)}<div class="app-foot"><span class="small muted">${whenHtml(p, c)}</span><div class="app-btns"><button class="btn sm primary" data-setopen="${esc(c.id)}">Ayarlar</button></div></div></div>`).join("");
 
   const pkgNow = () => appState.srv && (appState.srv.packages || []).find(x => x.id === cur.pkg);
   const cardNow = p => p && cardsOf(p).find(c => c.id === cur.card);
@@ -84,7 +94,7 @@ export function initPkgSettings(hooks) {
 
   function paintBody(c) {
     const fields = c.rows.filter(x => !isOption(x)), opts = c.rows.filter(isOption);
-    $("#set-body").innerHTML = fields.map(x => `<div class="set-field" data-set="${esc(x.id)}">
+    $("#set-body").innerHTML = (c.readAction ? '<div class="set-field" id="set-health"></div>' : "") + fields.map(x => `<div class="set-field" data-set="${esc(x.id)}">
         <div class="set-fhead">${nameHtml(x)}${risks(x)}<span class="grow"></span><span data-live="state"></span></div>
         ${control(x)}<div data-live="have"></div></div>`).join("") +
       (opts.length ? `<div class="set-field set-optbox"><div class="small muted">Uygulama seçenekleri:</div>${opts.map(x => `<div class="set-opt" data-set="${esc(x.id)}">${control(x)}${nameHtml(x)}${risks(x)}</div>`).join("")}</div>` : "");
@@ -103,7 +113,8 @@ export function initPkgSettings(hooks) {
   function paintLive() {
     const p = pkgNow(), c = cardNow(p);
     if (!c) return;
-    put($("#set-sub"), `<span>Sunucu: ${esc(cur.srv)}</span>${whenHtml(p, c.rows) ? " · " + whenHtml(p, c.rows) : ""}`);
+    put($("#set-sub"), `<span>Sunucu: ${esc(cur.srv)}</span>${whenHtml(p, c) ? " · " + whenHtml(p, c) : ""}`);
+    if ($("#set-health")) put($("#set-health"), healthHtml(c));
     for (const x of c.rows) {
       const el = $$("#set-body .set-field[data-set]").find(f => f.dataset.set === x.id);
       if (!el) continue;
@@ -124,7 +135,7 @@ export function initPkgSettings(hooks) {
       return why ? `<button class="btn sm" disabled title="${esc(why)}">${text}</button>` : `<button class="btn sm ${cls}" data-go="${kind}" data-action="${esc(a.id)}" title="${esc(a.id)}">${text}</button>`;
     };
     const named = (list, a) => (list.length > 1 ? `: ${esc(a.id)}` : "");
-    const reads = readsOf(p, c.rows);
+    const reads = readsOf(p, c);
     put($("#set-reads"), reads.map(a => btn(a, `Kontrol et${named(reads, a)}`, "")).join(""));
     put($("#set-acts"), `<button class="btn sm primary" data-save${changed ? "" : " disabled"}>${cur.ack.size ? "Onayla ve kaydet" : "Kaydet"}</button>` +
       previews.map(a => btn(a, `Önizle${named(previews, a)}`, "", true)).join("") +

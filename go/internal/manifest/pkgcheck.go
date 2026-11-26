@@ -598,6 +598,18 @@ func (c *pkgChecker) checkSettings(info map[string][]string) {
 		}
 	}
 	sort.Strings(ids)
+	var cards []string
+	for k := range info {
+		if rest, ok := strings.CutPrefix(k, "setting_card."); ok && strings.HasSuffix(rest, ".read") {
+			cards = append(cards, strings.TrimSuffix(rest, ".read"))
+		}
+	}
+	sort.Strings(cards)
+	for _, id := range cards {
+		if r := first(info, "setting_card."+id+".read"); first(info, "action."+r+".sudo") == "yes" {
+			c.warn("Ayarlar", "kart "+id+": özet eylemi '"+r+"' sudo istiyor (arayüz arka planda çalıştıramaz, terminalde açılır)")
+		}
+	}
 	for _, id := range ids {
 		pre := "setting." + id + "."
 		var notes []string

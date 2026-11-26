@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -154,13 +155,68 @@ func TestSettingCardsInInfo(t *testing.T) {
 	writePkg(t, comp, "demo", "0.2.0", setPkg)
 	a := &App{serversDir: t.TempDir(), compDir: comp, stateDir: t.TempDir()}
 	p := a.packageInfos(Server{Name: "web1"})[0]
-	if len(p.SettingCards) != 1 || p.SettingCards[0] != (SettingCard{ID: "saat", Label: "Saat", Description: "d"}) {
+	if len(p.SettingCards) != 1 || !reflect.DeepEqual(p.SettingCards[0], SettingCard{ID: "saat", Label: "Saat", Description: "d"}) {
 		t.Fatalf("kartlar: %+v", p.SettingCards)
 	}
 	for _, s := range p.Settings {
 		if want := map[string]string{"adim": "saat"}[s.ID]; s.Card != want {
 			t.Errorf("%s kartı %q (beklenen %q)", s.ID, s.Card, want)
 		}
+	}
+}
+
+func TestSettingCardHealth(t *testing.T) {
+	manifestWithSummary := strings.Replace(setPkg, `{"id":"saat","label":"Saat","description":"d"}`,
+		`{"id":"saat","label":"Saat","summary":{"action":"ntp_durum","items":[
+		  {"key":"ntp_senkron","label":"Senkron","ok":"yes"},
+		  {"key":"ntp_kaynak_1","label":"Ofset","max_abs":1000,"unit":"ms"},
+		  {"key":"liste","label":"Bilgi"},
+		  {"key":"yok_boyle","label":"Eksik"}]}}`, 1)
+	card := func(reads ...setRead) SettingCard {
+		t.Helper()
+		comp, srv, state := t.TempDir(), t.TempDir(), t.TempDir()
+		writePkg(t, comp, "demo", "0.2.0", manifestWithSummary)
+		sdir := filepath.Join(state, "demo", "web1")
+		os.MkdirAll(sdir, 0o700)
+		var log strings.Builder
+		for _, r := range reads {
+			fmt.Fprintf(&log, "%d|%s|%s|%s\n", r.epoch, r.ver, r.action, r.outcome)
+			if r.keys != nil {
+				os.WriteFile(filepath.Join(sdir, "result."+r.action), []byte(fmt.Sprintf("%d\n%s\n", r.epoch, strings.Join(r.keys, "\n"))), 0o600)
+			}
+		}
+		os.WriteFile(filepath.Join(sdir, "results"), []byte(log.String()), 0o600)
+		a := &App{serversDir: srv, compDir: comp, stateDir: state}
+		return a.packageInfos(Server{Name: "web1"})[0].SettingCards[0]
+	}
+	items := func(c SettingCard) string {
+		var out []string
+		for _, h := range c.Health {
+			out = append(out, h.Label+"="+h.Value+h.Unit+"/"+h.State)
+		}
+		return strings.Join(out, " ")
+	}
+	if c := card(); c.ReadAction != "ntp_durum" || c.Note != "henüz okunmadı" || c.Health != nil {
+		t.Errorf("okunmamış: %+v", c)
+	}
+	good := card(ntpRead(100, "ntp_senkron=yes", "ntp_kaynak_1=-12.5", "liste=a+b"))
+	if got := items(good); got != "Senkron=yes/ok Ofset=-12.5ms/ok Bilgi=a+b/" || good.Note != "" || good.Stale {
+		t.Errorf("iyi: %q %+v", got, good)
+	}
+	if got := items(card(ntpRead(100, "ntp_senkron=no", "ntp_kaynak_1=-1500"))); got != "Senkron=no/warn Ofset=-1500ms/warn" {
+		t.Errorf("kötü: %q", got)
+	}
+	if got := items(card(ntpRead(100, "ntp_senkron=unknown", "ntp_kaynak_1=abc"))); got != "Senkron=unknown/ Ofset=abcms/" {
+		t.Errorf("bilinmeyen: %q", got)
+	}
+	if c := card(ntpRead(100, "ntp_senkron=yes"), setRead{"ntp_durum", "0.2.0", "fail", 200, nil}); c.Note != "son okuma başarısız" || c.Health != nil {
+		t.Errorf("başarısız okumada eski sağlık gösterildi: %+v", c)
+	}
+	if c := card(setRead{"ntp_durum", "0.1.0", "ok", 100, []string{"ntp_senkron=yes"}}); !strings.Contains(c.Note, "0.1.0") || c.Health != nil {
+		t.Errorf("eski sürüm: %+v", c)
+	}
+	if c := card(ntpRead(100, "ntp_senkron=yes"), setRead{"apply", "0.2.0", "ok", 300, nil}); !c.Stale {
+		t.Errorf("eskimiş değil: %+v", c)
 	}
 }
 

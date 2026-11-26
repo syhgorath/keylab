@@ -236,6 +236,46 @@ test("yönetilmeyen kartta uygulama düğmesi yok; birden çok uygulama eylemi a
   await openCard(iki, "saat"); assert.deepEqual(btns(iki), ["Kontrol et", "Kaydet", "Önizle", "Uygula: ntp_ayarla", "Uygula: apply"]); iki.close();
 });
 
+const H = (label, value, state, unit) => ({ label, value, state, unit });
+const healthCards = (extra, items) => [{ ...CARDS[0], readAction: "ntp_durum", health: items, ...extra }, CARDS[1]];
+
+test("sağlık özeti kartta ve pencerede: sözcükler okunur yazılır, birim eklenir, sorun varsa kart yalnız yeşil görünmez", async () => {
+  const iyi = [set("kaynak", "match", { desired: ["a"], actual: ["a"] })].concat(SETTINGS.slice(3));
+  const h = await open({ settings: iyi, cards: healthCards({}, [H("Senkron", "no", "warn"), H("Servis", "active", "ok"), H("Ofset", "-0.5", "ok", "ms"), H("Kaynak", "unknown", "", "ms")]) });
+  const card = cardEl(h, "saat");
+  assert.deepEqual([...card.querySelectorAll(".app-title .badge")].map(txt), ["uyumlu", "⚠ dikkat"]);
+  assert.deepEqual([...card.querySelectorAll(".set-hitem")].map(i => [txt(i), i.dataset.st]),
+    [["Senkron hayır", "warn"], ["Servis çalışıyor", "ok"], ["Ofset -0.5 ms", "ok"], ["Kaynak bilinmiyor", ""]]);
+  assert.equal(cardEl(h, "sistem").querySelector(".set-health"), null, "özet bildirmeyen kartta yok");
+  await openCard(h, "saat");
+  assert.equal(h.$("#set-body").firstElementChild.id, "set-health", "pencerenin başında");
+  assert.equal(h.$$("#set-health .set-hitem").length, 4);
+  h.w.cards[0].health = [H("Senkron", "yes", "ok")];
+  h.win.dispatchEvent(new h.win.CustomEvent("keylab:taskexit", { detail: { server: "web1", pkg: "utility", action: "ntp_durum", code: 0 } })); await h.settle();
+  assert.deepEqual(h.$$("#set-health .set-hitem").map(txt), ["Senkron evet"], "okuma sonrası tazelenir");
+  assert.deepEqual([...cardEl(h, "saat").querySelectorAll(".app-title .badge")].map(txt), ["uyumlu"]);
+  assert.deepEqual(h.errors, []); h.close();
+});
+
+test("sağlık yoksa nedeni yazılır; özetin okuma eylemi 'Kontrol et' ile çalıştırılabilir; eskimiş özet uyarılır", async () => {
+  const only = [set("adim", "unreadable", { desired: ["true"], readAction: "" })].concat(SETTINGS.slice(3));
+  const h = await open({ settings: only, cards: healthCards({ note: "son okuma başarısız", stale: true }, []) });
+  assert.match(txt(cardEl(h, "saat")), /Sağlık bilgisi: son okuma başarısız.*Son okuma: henüz okunmadı/);
+  assert.deepEqual([...cardEl(h, "saat").querySelectorAll(".app-title .badge")].map(txt), ["güncel olmayabilir"]);
+  await openCard(h, "saat");
+  assert.match(txt(h.$("#set-health")), /son okuma başarısız/);
+  assert.equal(btn(h, "Kontrol et").dataset.action, "ntp_durum"); h.close();
+});
+
+test("sağlık metni HTML olarak yorumlanmaz", async () => {
+  const bad = '<img src=x onerror="window.__x=1">';
+  const h = await open({ cards: healthCards({}, [H(bad, bad, bad, bad)]) });
+  await openCard(h, "saat");
+  assert.equal(h.$("#srv-body img"), null); assert.equal(h.$("#setmodal img"), null); h.close();
+  const n = await open({ cards: healthCards({ note: bad }, []) });
+  assert.equal(n.$("#srv-body img"), null); assert.equal(n.win.__x, undefined); n.close();
+});
+
 test("paket metni HTML olarak yorumlanmaz", async () => {
   const bad = '<img src=x onerror="window.__x=1">';
   const h = await open({

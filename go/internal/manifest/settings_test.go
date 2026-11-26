@@ -123,6 +123,49 @@ func TestSettingCards(t *testing.T) {
 			t.Errorf("%s: kod %d, hata %v (beklenen %q)", tc.name, code, errs, tc.want)
 		}
 	}
+	sum := func(body string) ([]string, []string, int) {
+		return with(`[{"id":"saat","label":"S","summary":`+body+`}]`, one)
+	}
+	lines, errs, code = sum(`{"action":"durum","items":[{"key":"zone","label":"Dilim","ok":"x"},{"key":"k1","label":"K","max_abs":5,"unit":"ms"}]}`)
+	if code != 0 {
+		t.Fatalf("geçerli özet reddedildi: %v", errs)
+	}
+	got = "\n" + strings.Join(lines, "\n") + "\n"
+	for _, want := range []string{"setting_card.saat.read=durum", "setting_card.saat.keys=zone,k1"} {
+		if !strings.Contains(got, "\n"+want+"\n") {
+			t.Errorf("özet satırı yok: %q", want)
+		}
+	}
+	item := func(body string) string { return `{"action":"durum","items":[` + body + `]}` }
+	for _, tc := range []struct{ name, body, want string }{
+		{"nesne değil", `[]`, "summary nesne"},
+		{"bilinmeyen alan", `{"action":"durum","items":[{"key":"zone","label":"L"}],"cmd":"x"}`, "bilinmeyen alan: cmd"},
+		{"yazan eylem", `{"action":"apply","items":[{"key":"zone","label":"L"}]}`, "salt okunur"},
+		{"tanımsız eylem", `{"action":"yok","items":[{"key":"zone","label":"L"}]}`, "salt okunur"},
+		{"boş liste", `{"action":"durum","items":[]}`, "items 1-6"},
+		{"anahtar bildirilmemiş", item(`{"key":"baska","label":"L"}`), "outputs.keys listesinde"},
+		{"anahtar yinelenmiş", item(`{"key":"zone","label":"L"},{"key":"zone","label":"M"}`), "yinelenmiş"},
+		{"etiket yok", item(`{"key":"zone"}`), "label geçersiz"},
+		{"ok ve sınır", item(`{"key":"zone","label":"L","ok":"x","max_abs":1}`), "birlikte"},
+		{"negatif sınır", item(`{"key":"zone","label":"L","max_abs":-1}`), "max_abs sıfır"},
+		{"uzun birim", item(`{"key":"zone","label":"L","unit":"123456789"}`), "unit geçersiz"},
+		{"öğe alanı", item(`{"key":"zone","label":"L","path":"/"}`), "bilinmeyen alan: path"},
+	} {
+		_, errs, code := sum(tc.body)
+		if code == 0 || !strings.Contains(strings.Join(errs, "\n"), tc.want) {
+			t.Errorf("özet %s: kod %d, hata %v (beklenen %q)", tc.name, code, errs, tc.want)
+		}
+	}
+	lines, _, _ = sum(`{"action":"kok","items":[{"key":"zone","label":"L"}]}`)
+	c := &pkgChecker{}
+	c.checkSettings(parseInfo(lines))
+	found := false
+	for _, r := range c.results {
+		found = found || (r.level == "warn" && strings.Contains(r.text, "kart saat: özet eylemi 'kok' sudo"))
+	}
+	if !found {
+		t.Errorf("sudo isteyen özet uyarılmadı: %+v", c.results)
+	}
 	alone := strings.Replace(fmt.Sprintf(setBase, setGood), `"settings":`, `"setting_cards":[],"yok":`, 1)
 	if _, errs, code := Validate([]byte(alone), "demo", "0.1.0"); code == 0 || !strings.Contains(strings.Join(errs, "\n"), "yalnızca settings") {
 		t.Errorf("settings olmadan setting_cards kabul edildi: %v", errs)

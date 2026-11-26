@@ -240,8 +240,8 @@ func (a *App) buildPackageInfo(s Server, p Package, itemOverride string) (Packag
 			Default     json.RawMessage `json:"default"`
 			Description string          `json:"description"`
 		} `json:"vars"`
-		Settings     []settingDecl `json:"settings"`
-		SettingCards []SettingCard `json:"setting_cards"`
+		Settings     []settingDecl     `json:"settings"`
+		SettingCards []settingCardDecl `json:"setting_cards"`
 	}
 	if json.Unmarshal(b, &c) != nil {
 		return PackageInfo{}, false
@@ -360,7 +360,7 @@ func (a *App) buildPackageInfo(s Server, p Package, itemOverride string) (Packag
 			groups[v.Name] = v.Group
 		}
 		info.Settings = a.settingInfos(s, p, c.Settings, groups, info.Actions)
-		info.SettingCards = cleanSettingCards(c.SettingCards)
+		info.SettingCards = a.settingCards(s, p, c.SettingCards, info.Actions)
 	}
 	if itemOverride == "" && len(info.Items) > 0 {
 		for i := range info.Items {
