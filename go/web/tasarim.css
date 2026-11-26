@@ -523,6 +523,7 @@ a{color:var(--accent)}
 .set-field[data-st="drift"]{box-shadow:inset 3px 0 0 var(--warn-border)}
 .set-fhead{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .set-field input:not([type="checkbox"]),.set-field select{width:100%}
+.set-modal select{font:inherit;color:var(--text);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-md,10px);padding:6px 10px;min-width:0}
 .set-name{font-weight:600}
 .set-info summary{cursor:pointer;list-style:none;display:flex;gap:6px;align-items:center}
 .set-info summary::-webkit-details-marker{display:none}

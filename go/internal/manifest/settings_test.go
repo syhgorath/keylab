@@ -34,7 +34,7 @@ func setValidate(settings string) ([]string, []string, int) {
 const setGood = `[
  {"id":"ntp","label":"NTP sunucuları","var":"demo_ntp","description":"d","risk":["time-jump"],"risk_note":"n","apply_via":["apply"],
   "state":{"action":"durum","keys":["k1","k2"],"compare":"set","source":"result","strip_prefix":["server ","pool "]}},
- {"id":"zone","label":"Saat dilimi","var":"demo_zone","description":"d","apply_via":["apply"],"state":{"action":"durum","key":"zone"}},
+ {"id":"zone","label":"Saat dilimi","var":"demo_zone","description":"d","apply_via":["apply"],"state":{"action":"durum","key":"zone","absent":"yok","ignore":["otomatik"]}},
  {"id":"duz","label":"Okunmayan","var":"demo_zone","description":"d","apply_via":["apply"]}
 ]`
 
@@ -84,6 +84,11 @@ func TestSettingsRejects(t *testing.T) {
 		{"summary kaynağı", st(`"action":"durum","key":"zone","source":"summary"`), "source yalnızca"},
 		{"strip_prefix uzun", st(`"action":"durum","key":"zone","strip_prefix":["123456789012345678901"]`), "strip_prefix"},
 		{"state bilinmeyen alan", st(`"action":"durum","key":"zone","path":"/etc"`), "bilinmeyen alan: path"},
+		{"absent boşluklu", st(`"action":"durum","key":"zone","absent":"hiç yok"`), "absent sonuç satırı"},
+		{"absent keys ile", st(`"action":"durum","keys":["k1"],"compare":"set","absent":"yok"`), "absent yalnızca"},
+		{"ignore boş liste", st(`"action":"durum","key":"zone","ignore":[]`), "ignore en çok"},
+		{"ignore metin değil", st(`"action":"durum","key":"zone","ignore":[1]`), "ignore en çok"},
+		{"ignore çok uzun", st(`"action":"durum","key":"zone","ignore":["a","b","c","d","e","f"]`), "ignore en çok"},
 		{"kart tanımsız", one(`,"card":"yok"`), "card, setting_cards"},
 	} {
 		_, errs, code := setValidate(tc.settings)

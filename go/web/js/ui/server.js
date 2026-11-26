@@ -298,9 +298,14 @@ export function initServer(hooks) {
     const varsOf = it => (it.params && it.params.length) ? catVars.filter(v => it.params.includes(v.name)) : catVars.filter(v => it.group && v.group === it.group);
     const short = (v, it) => { let n = v.name; if (n.startsWith(p.id + "_")) n = n.slice(p.id.length + 1); if (n.startsWith(it.id + "_")) n = n.slice(it.id.length + 1); return n; };
     const claimed = new Set();
-    const cards = items.map(it => {
-      const id = it.id, on = id in inst, mode = inst[id];
-      const badge = !known ? '<span class="badge plain">durum okunmadı</span>' : on ? `<span class="badge ok">✔ Kurulu${mode ? " (" + esc(mode) + ")" : ""}</span>` : '<span class="badge plain">Kurulmadı</span>';
+    // aynı kimlikli ayar kartı olan uygulama katalogda iki kez görünmez: kurulu bilgisi ayar kartına taşınır, eski kart çizilmez
+    const setIds = new Set(cardsOf(p).map(c => c.id));
+    const instBadge = id => (!known ? '<span class="badge plain">durum okunmadı</span>' : id in inst ? `<span class="badge ok">✔ Kurulu${inst[id] ? " (" + esc(inst[id]) + ")" : ""}</span>` : '<span class="badge plain">Kurulmadı</span>');
+    const instSt = id => (!known ? "?" : id in inst ? "on" : "off");
+    const merged = Object.fromEntries(items.filter(it => setIds.has(it.id)).map(it => [it.id, { st: instSt(it.id), badge: instBadge(it.id), icon: esc(LEGACY_ICONS[it.id] || String(it.label).charAt(0).toUpperCase()) }]));
+    const cards = items.filter(it => !setIds.has(it.id)).map(it => {
+      const id = it.id, on = id in inst;
+      const badge = instBadge(id);
       const meta = [];
       if (on && ports[id]) meta.push(`Port: <strong>${esc(ports[id])}</strong>`);
       const vars = varsOf(it);
@@ -323,7 +328,7 @@ export function initServer(hooks) {
       const live = itemActs.length > 0; // öğe eylemlerini bildirmeyen (ör. eski kurulum 0.1.0) kartlar eskisi gibi kapalı kalır
       const btns = live ? itemActs.filter(a => a === "preview" || (a === "kur" ? !on : on)).map(ibtn).join("") : `${off("Önizle", tip)}${on ? off("Yükselt", tip) + off("Kaldır", tip) : off("Kur", tip)}`;
       const ico = esc(LEGACY_ICONS[id] || String(it.label).charAt(0).toUpperCase());
-      return `<div class="card app-card" data-app="${esc(id)}" data-st="${!known ? "?" : on ? "on" : "off"}">
+      return `<div class="card app-card" data-app="${esc(id)}" data-st="${instSt(id)}">
         <div class="app-top"><div class="app-ico" aria-hidden="true">${ico}</div><div class="app-titles"><div class="app-title"><span>${esc(it.label)}</span>${badge}</div><p class="app-desc">${esc(it.description)}</p></div></div>
         ${meta.length ? `<div class="app-meta">${meta.map(m => `<span class="meta-chip">${m}</span>`).join("")}</div>` : ""}
         <div class="app-vars"><div class="av-head"><span class="oz-title">Değişkenler</span><button class="link" data-kvars="${esc(groups.length === 1 ? groups[0] : "")}">Düzenle…</button></div>${rows}</div>
@@ -336,9 +341,9 @@ export function initServer(hooks) {
     const itemVar = p.itemVar || (legacy && isKurulumCat(p) ? "kurulum_yazilim" : "");
     const sub = legacy ? "Kurulum motoru" : esc(p.name || p.id);
     return `<div class="store-head"><div><h2>Uygulama kataloğu</h2><div class="small muted">${sub} <span class="mono">v${esc(p.version)}</span> · bu USB'de.${legacy ? " Docker ya da yerel paket (native) olarak kurulur." : p.description ? " " + esc(p.description) : ""}</div></div>
-        <div class="fchips2">${chip("all", "Tümü", items.length + cardsOf(p).length)}${known ? chip("on", "Kurulu", onN) + chip("off", "Kurulabilir", items.length - onN) : ""}</div></div>
+        <div class="fchips2">${chip("all", "Tümü", items.length + cardsOf(p).length - Object.keys(merged).length)}${known ? chip("on", "Kurulu", onN) + chip("off", "Kurulabilir", items.length - onN) : ""}</div></div>
       ${known ? "" : `<div class="notice sj-2b583d"><span class="ico" aria-hidden="true">ℹ</span><div>Hangi uygulamaların kurulu olduğu henüz okunmadı. ${dattr ? `<button class="link" ${dattr}>Durumu oku</button> (salt okunur).` : ""}</div></div>`}
-      <div class="store-grid" id="store-grid">${pkgSettings.cards(p)}${cards}</div>
+      <div class="store-grid" id="store-grid">${pkgSettings.cards(p, merged)}${cards}</div>
       <div class="card gen-card"><div class="oz-top"><span class="oz-title">Genel ayarlar</span><span class="oz-tag">tüm uygulamalar</span></div>
         <div class="gen-grid">${gen}</div>
         <div class="oz-foot oz-foot-row"><span>${known && dattr ? `<button class="link" ${dattr}>Durumu yenile</button> · ` : ""}Son durum: ${d && d.lastTime ? esc(ago(d.lastTime)) + " önce" : "okunmadı"}</span><button class="link" data-kvars-all>Tüm değişkenler…</button></div></div>

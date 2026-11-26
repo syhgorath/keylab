@@ -2,6 +2,7 @@ package manifest
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -19,6 +20,7 @@ const (
 	setKeysMax   = 20
 	setPrefixMax = 5
 	setApplyMax  = 5
+	setIgnoreMax = 5
 	setSumMax    = 6
 	setSumLabel  = 30
 	setSumUnit   = 8
@@ -29,7 +31,8 @@ var (
 	setCardFields = []string{"id", "label", "description", "summary"}
 	setSumFields  = []string{"action", "items"}
 	setItemFields = []string{"key", "label", "ok", "max_abs", "unit"}
-	setStateKeys  = []string{"action", "key", "keys", "compare", "source", "strip_prefix"}
+	setStateKeys  = []string{"action", "key", "keys", "compare", "source", "strip_prefix", "absent", "ignore"}
+	reResultValue = regexp.MustCompile(`^[A-Za-z0-9_.:+-]{1,64}$`)
 	setRisks      = []string{"access-loss", "restarts-service", "time-jump", "data-loss"}
 	setComparisns = []string{"exact", "set", "ordered", "present"}
 )
@@ -370,6 +373,24 @@ func validateSettingState(v *validator, w, id string, x any, actions *obj) []str
 		}
 		if !ok {
 			v.err("%s.state: strip_prefix en çok %d kısa metin olmalı", w, setPrefixMax)
+		}
+	}
+	if st.has("absent") {
+		a, ok := asStr(st.get("absent"))
+		switch {
+		case !ok || !reResultValue.MatchString(a):
+			v.err("%s.state: absent sonuç satırı değeri olmalı (1-64 karakter; harf, rakam, _ . : + -)", w)
+		case !st.has("key"):
+			v.err("%s.state: absent yalnızca 'key' ile kullanılır", w)
+		}
+	}
+	if st.has("ignore") {
+		vals, ok := uniqueStrings(st.get("ignore"), setIgnoreMax)
+		for _, s := range vals {
+			ok = ok && s != "" && pyLen(s) <= 64 && !reTextBad.MatchString(s)
+		}
+		if !ok {
+			v.err("%s.state: ignore en çok %d kısa metin olmalı", w, setIgnoreMax)
 		}
 	}
 	return []string{"setting." + id + ".read=" + action, "setting." + id + ".keys=" + strings.Join(keys, ","), "setting." + id + ".compare=" + compare}
