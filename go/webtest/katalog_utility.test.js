@@ -55,3 +55,46 @@ test("'Genel eylemler' açıksa sayfa yeniden çizilince (başka sekmeye gidip d
   await h.click('#srv-tabs [data-p="linux-hardening"]'); await h.click('#srv-tabs [data-p="utility"]');
   assert.equal(det().open, true, "açık durum korunur"); h.close();
 });
+
+// genel okuma (kurulum_durum) ile uygulama başına okumalar (<uyg>_durum): rozet en yenisinden
+const read = (id, lastTime, keys, extra) => d => { const u = pkg(d, "utility"), base = u.actions.find(a => a.id === "kurulum_durum");
+  u.actions.push({ ...JSON.parse(JSON.stringify(base)), id, lastTime, lastResult: "ok", effects: [], keys, ...extra }); };
+const overview = (lastTime, keys) => d => { const a = pkg(d, "utility").actions.find(x => x.id === "kurulum_durum"); Object.assign(a, { lastTime, lastResult: "ok", ...(keys ? { keys } : {}) }); };
+const compose = (...fs) => d => { merged(d); fs.forEach(f => f(d)); };
+const states = h => h.$$("#store-grid .app-card").map(c => `${c.dataset.app}:${c.dataset.st}`);
+const card = (h, id) => h.$(`#store-grid .app-card[data-app="${id}"]`).textContent.replace(/\s+/g, " ");
+const chips = h => h.$$("#srv-body [data-sf]").map(b => b.textContent.replace(/\s+/g, " ").trim());
+const T1 = "2026-11-10T10:00:00Z", T2 = "2026-11-10T11:00:00Z";
+
+test("katalog rozeti: uygulamanın daha yeni okuması genel okumayı geçer (kurulum, durmuş, kaldırma, biçim ve port)", async () => {
+  const h = await open(compose(overview(T1),
+    read("mariadb_durum", T2, { mariadb_kurulu: "evet", mariadb_mod: "docker", mariadb_port: "3307" }),
+    read("redis_durum", T2, { redis_kurulu: "durmus", redis_mod: "native", redis_port: "ic" }),
+    read("nginx_durum", T2, { nginx_kurulu: "hayir", nginx_mod: "yok", nginx_port: "yok" })));
+  assert.deepEqual(states(h), ["docker:on", "nginx:off", "mariadb:on", "redis:on"]);
+  assert.match(card(h, "mariadb"), /✔ Kurulu \(docker\).*Port: 3307/); assert.match(card(h, "redis"), /✔ Kurulu \(native\)/); assert.doesNotMatch(card(h, "redis"), /Port:/);
+  assert.match(card(h, "nginx"), /Kurulmadı/); assert.deepEqual(chips(h).slice(1), ["Kurulu 3", "Kurulabilir 1"]);
+  assert.deepEqual(h.errors, []); h.close();
+});
+
+test("katalog rozeti: genel okuma daha yeniyse o geçerli; başarısız, bilinmeyen ve değiştiren eylem sonuçları sayılmaz", async () => {
+  const eski = await open(compose(overview(T2), read("mariadb_durum", T1, { mariadb_kurulu: "evet" }), read("nginx_durum", T1, { nginx_kurulu: "hayir" })));
+  assert.deepEqual(states(eski), ["docker:on", "nginx:on", "mariadb:off", "redis:off"]); eski.close();
+  const h = await open(compose(overview(T1),
+    read("mariadb_durum", T2, { mariadb_kurulu: "evet" }, { lastResult: "fail" }),
+    read("nginx_durum", T2, { nginx_kurulu: "unknown" }),
+    read("redis_kur", T2, { redis_kurulu: "evet" }, { effects: ["changes-config"] }),
+    read("redis_durum", T2, { redis_kurulu: "unknown" })));
+  assert.deepEqual(states(h), ["docker:on", "nginx:on", "mariadb:off", "redis:off"]); h.close();
+  // genel okuma uygulama için "unknown" derse eski davranış: yönetilenler listesi geçerli
+  const g = await open(compose(overview(T1, { kurulu: "nginx:native", portlar: "yok", nginx_kurulu: "unknown" })));
+  assert.deepEqual(states(g), ["docker:off", "nginx:on", "mariadb:off", "redis:off"]); assert.match(card(g, "nginx"), /✔ Kurulu \(native\)/); g.close();
+});
+
+test("katalog rozeti: genel okuma hiç yapılmadıysa yalnız okunan uygulamalar bilinir", async () => {
+  const h = await open(compose(overview("", {}), read("redis_durum", T2, { redis_kurulu: "evet", redis_mod: "docker" })));
+  assert.deepEqual(states(h), ["docker:?", "nginx:?", "mariadb:?", "redis:on"]);
+  assert.match(card(h, "nginx"), /durum okunmadı/); assert.deepEqual(chips(h).slice(1), ["Kurulu 1", "Kurulabilir 0"]);
+  assert.equal(h.$(".store-head + .notice"), null, "en az bir okuma varsa 'henüz okunmadı' uyarısı yok");
+  assert.deepEqual(h.errors, []); h.close();
+});
