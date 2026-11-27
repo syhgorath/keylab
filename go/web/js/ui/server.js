@@ -259,7 +259,8 @@ export function initServer(hooks) {
   /* ---------------- Yazılım kataloğu (paketin `items` bildirimi) ---------------- */
   // GENEL sayfa: component.json'da `items` (+ item_var) taşıyan HER paket için çizilir; sayfa belirli bir paket kimliğine bağlı değildir
   // (bkz. docs/package-standard.md). Kurulu/kurulmadı durumu son `durum` eyleminin `kurulu` ("kimlik[:mod]+kimlik…") ve `portlar`
-  // ("kimlik:port+…") anahtarlarından gelir. Uyumluluk: `items` bildirmeyen kurulum 0.1.0 için LEGACY_ITEMS kullanılır.
+  // ("kimlik:port+…") anahtarlarından ya da uygulamanın daha yeni kendi okumasından (bkz. itemState) gelir. Uyumluluk: `items` bildirmeyen
+  // kurulum 0.1.0 için LEGACY_ITEMS kullanılır.
   // Kur/Yükselt/Kaldır düğmeleri KAPALI: eylemler paket düzeyindedir ve önizleme önkoşulu öğeye özel tutulmaz;
   // öğeye özel çalıştırma (koşuya özel seçim + öğe başına kapı) gelene dek yalnız "Genel eylemler" çalışır.
   let storeFilter = "all", catVars = [], catSrv = "", catPkg = "", storeActOpen = false; // storeActOpen: "Genel eylemler" açık mı (sayfa yenilenince kapanmasın)
@@ -276,6 +277,24 @@ export function initServer(hooks) {
   const splitPlus = v => (!v || v === "yok" ? [] : v.split("+").map(x => x.split(":")));
   const catVal = n => { const v = catVars.find(x => x.name === n); return v ? varCur(v) : ""; };
 
+  // Öğenin kurulu bilgisi: `<kimlik>_kurulu` bildiren okumalarla genel okumanın `kurulu` listesinden EN YENİSİ. Uygulama başına okuma yapan pakette
+  // kurulumdan sonra yalnız o uygulama okunur, genel özet eski kalabilir. Hiçbir okuma bir şey söylemiyorsa null ("durum okunmadı").
+  function itemState(p, overview, id) {
+    let best = null;
+    const take = (a, on, mode, port) => { const t = a.lastTime || ""; if (!best || t > best.t) best = { t, on, mode: mode === "yok" ? "" : mode, port: /^\d+$/.test(port || "") ? port : "" }; };
+    for (const a of p.actions) {
+      const k = a.keys || {}, own = k[id + "_kurulu"];
+      if ((a.effects || []).length || !["evet", "durmus", "hayir"].includes(own) || (a !== overview && a.lastResult === "fail")) continue;
+      take(a, own !== "hayir", k[id + "_mod"], k[id + "_port"]);
+    }
+    const k = (overview && overview.keys) || {};
+    if ("kurulu" in k && !["evet", "durmus", "hayir"].includes(k[id + "_kurulu"])) {
+      const inst = Object.fromEntries(splitPlus(k.kurulu)), ports = Object.fromEntries(splitPlus(k.portlar));
+      take(overview, id in inst, inst[id], ports[id]);
+    }
+    return best;
+  }
+
   // Katalog öğeleri: paketin `items` alanı; yoksa yalnız eski kurulum paketi için yerleşik liste; yoksa null (katalog sayfası yok).
   function catalogItems(p) {
     if (p.items && p.items.length) return p.items.map(it => ({ id: it.id, label: it.label || it.id, description: it.description || "", params: it.params || [], group: "", actions: it.actions || [], states: it.states || {} }));
@@ -291,24 +310,25 @@ export function initServer(hooks) {
 
   function catalogStore(s, p, ok, na, items) {
     const legacy = !(p.items && p.items.length);
-    const d = p.actions.find(a => a.id === (p.id === "utility" ? "kurulum_durum" : "durum")), k = (d && d.keys) || {}, known = "kurulu" in k;
-    const inst = Object.fromEntries(splitPlus(k.kurulu)), ports = Object.fromEntries(splitPlus(k.portlar));
+    const d = p.actions.find(a => a.id === (p.id === "utility" ? "kurulum_durum" : "durum"));
+    const states = Object.fromEntries(items.map(it => [it.id, itemState(p, d, it.id)]));
+    const known = items.some(it => states[it.id]);
     const dattr = d ? actBtnAttr(d, p) : "";
-    const onN = items.filter(it => it.id in inst).length;
+    const onN = items.filter(it => states[it.id]?.on).length, offN = items.filter(it => states[it.id] && !states[it.id].on).length;
     const loaded = catSrv === appState.srvName && catPkg === p.id;
     const varsOf = it => (it.params && it.params.length) ? catVars.filter(v => it.params.includes(v.name)) : catVars.filter(v => it.group && v.group === it.group);
     const short = (v, it) => { let n = v.name; if (n.startsWith(p.id + "_")) n = n.slice(p.id.length + 1); if (n.startsWith(it.id + "_")) n = n.slice(it.id.length + 1); return n; };
     const claimed = new Set();
     // aynı kimlikli ayar kartı olan uygulama katalogda iki kez görünmez: kurulu bilgisi ayar kartına taşınır, eski kart çizilmez
     const setIds = new Set(cardsOf(p).map(c => c.id));
-    const instBadge = id => (!known ? '<span class="badge plain">durum okunmadı</span>' : id in inst ? `<span class="badge ok">✔ Kurulu${inst[id] ? " (" + esc(inst[id]) + ")" : ""}</span>` : '<span class="badge plain">Kurulmadı</span>');
-    const instSt = id => (!known ? "?" : id in inst ? "on" : "off");
+    const instBadge = id => { const st = states[id]; return !st ? '<span class="badge plain">durum okunmadı</span>' : st.on ? `<span class="badge ok">✔ Kurulu${st.mode ? " (" + esc(st.mode) + ")" : ""}</span>` : '<span class="badge plain">Kurulmadı</span>'; };
+    const instSt = id => (!states[id] ? "?" : states[id].on ? "on" : "off");
     const merged = Object.fromEntries(items.filter(it => setIds.has(it.id)).map(it => [it.id, { st: instSt(it.id), badge: instBadge(it.id), icon: esc(LEGACY_ICONS[it.id] || String(it.label).charAt(0).toUpperCase()) }]));
     const cards = items.filter(it => !setIds.has(it.id)).map(it => {
-      const id = it.id, on = id in inst;
+      const id = it.id, on = !!states[id]?.on;
       const badge = instBadge(id);
       const meta = [];
-      if (on && ports[id]) meta.push(`Port: <strong>${esc(ports[id])}</strong>`);
+      if (on && states[id].port) meta.push(`Port: <strong>${esc(states[id].port)}</strong>`);
       const vars = varsOf(it);
       vars.forEach(v => claimed.add(v.name));
       const groups = [...new Set(vars.map(v => v.group).filter(Boolean))];
@@ -342,7 +362,7 @@ export function initServer(hooks) {
     const itemVar = p.itemVar || (legacy && isKurulumCat(p) ? "kurulum_yazilim" : "");
     const sub = legacy ? "Kurulum motoru" : esc(p.name || p.id);
     return `<div class="store-head"><div><h2>Uygulama kataloğu</h2><div class="small muted">${sub} <span class="mono">v${esc(p.version)}</span> · bu USB'de.${legacy ? " Docker ya da yerel paket (native) olarak kurulur." : p.description ? " " + esc(p.description) : ""}</div></div>
-        <div class="fchips2">${chip("all", "Tümü", items.length + cardsOf(p).length - Object.keys(merged).length)}${known ? chip("on", "Kurulu", onN) + chip("off", "Kurulabilir", items.length - onN) : ""}</div></div>
+        <div class="fchips2">${chip("all", "Tümü", items.length + cardsOf(p).length - Object.keys(merged).length)}${known ? chip("on", "Kurulu", onN) + chip("off", "Kurulabilir", offN) : ""}</div></div>
       ${known ? "" : `<div class="notice sj-2b583d"><span class="ico" aria-hidden="true">ℹ</span><div>Hangi uygulamaların kurulu olduğu henüz okunmadı. ${dattr ? `<button class="link" ${dattr}>Durumu oku</button> (salt okunur).` : ""}</div></div>`}
       <div class="store-grid" id="store-grid">${pkgSettings.cards(p, merged)}${cards}</div>
       <div class="card gen-card"><div class="oz-top"><span class="oz-title">Genel ayarlar</span><span class="oz-tag">tüm uygulamalar</span></div>
