@@ -16,8 +16,10 @@ import (
 func TestOpenChainTask(t *testing.T) {
 	a := batchApp(t)
 	// "baska": değiştiren ama hiçbir ayar kartının uygulama eylemi olmayan eylem
-	writePkg(t, a.compDir, "demo", "0.2.0", strings.Replace(setPkg, `"apply":{`, `"baska":{"cmd":"x","effects":["changes-config"],"confirm":"yes-no"},
-  "apply":{`, 1))
+	// "incele": hiçbir karta bağlı olmayan ama önizlemeli e/h eylemi ("Önizle ve uygula")
+	writePkg(t, a.compDir, "demo", "0.2.0", strings.Replace(strings.Replace(setPkg, `"apply":{`, `"baska":{"cmd":"x","effects":["changes-config"],"confirm":"yes-no"},
+  "incele":{"cmd":"x","effects":["changes-config"],"confirm":"yes-no","requires":["durum"]},
+  "apply":{`, 1), `"sshpocket_api":1,`, `"sshpocket_api":1,"runner":"ansible",`, 1))
 	old := taskProgram
 	taskProgram = func(string) string { return "echo" }
 	t.Cleanup(func() { taskProgram = old })
@@ -25,8 +27,9 @@ func TestOpenChainTask(t *testing.T) {
 	for _, c := range []struct {
 		server, action, item, want string
 	}{
-		{"s1", "durum", "", "uygulama eylemi değil"},
-		{"s1", "baska", "", "uygulama eylemi değil"},
+		{"s1", "durum", "", "önizlemeli e/h eylemi değil"},
+		{"s1", "baska", "", "önizlemeli e/h eylemi değil"},
+		{"s1", "incele", "docker", "öğesiyle"},
 		{"s1", "yokeylem", "", "bulunamadı"},
 		{"yok", "apply", "", "sunucu yok"},
 		{"s1", "apply", "docker", "öğesiyle"},
@@ -56,5 +59,15 @@ func TestOpenChainTask(t *testing.T) {
 	b, _ := os.ReadFile(filepath.Join(a.stateDir, "terminal-audit.log"))
 	if !strings.Contains(string(b), "chain:demo.apply\ts1\t"+ts.ID) {
 		t.Fatalf("denetim günlüğü: %q", b)
+	}
+	// inceleme zinciri de aynı kapıdan açılır
+	ts2, code, err := a.openTaskX(true, "s1", "demo", "incele", "", 24, 80)
+	if err != nil {
+		t.Fatalf("incele: %d %v", code, err)
+	}
+	endTask(t, ts2)
+	waitDone(t, ts2, 5*time.Second)
+	if out := taskOutput(ts2); !strings.Contains(strings.TrimSpace(out), "demo incele s1") {
+		t.Fatalf("komut: %q", out)
 	}
 }

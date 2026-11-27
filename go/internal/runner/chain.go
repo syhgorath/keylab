@@ -19,6 +19,7 @@ type Chain struct {
 	Pre    []string // eylemin önkoşulları (salt okunur; önizleme)
 	Action string   // değiştiren eylem
 	Post   []string // eylemin dokunduğu ayar kartlarının okumaları (kontrol)
+	Ask    bool     // inceleme zinciri: eylemin e/h onayını düğme vermez, önizlemeden sonra terminalde sorulur
 }
 
 // Steps: koşulma sırasıyla bütün adımlar.
@@ -26,16 +27,18 @@ func (c Chain) Steps() []string {
 	return append(append(append([]string(nil), c.Pre...), c.Action), c.Post...)
 }
 
-// ChainPlan: zinciri manifestten çıkarır. Yalnız bir ayar kartının uygulama eylemi zincirlenebilir. Yıkıcı eylem ancak sunucu adı onayı
-// istiyorsa kabul edilir (o onay terminalde elle verilir).
+// ChainPlan: zinciri manifestten çıkarır. İki tür vardır: bir ayar kartının uygulama eylemi ("Kur": düğme e/h onayıdır, sonunda kontrol) ve
+// kartı olmayan, önizlemesi (requires) bulunan e/h onaylı eylem ("Önizle ve uygula": e/h terminalde sorulur, kontrol adımı yoktur). Yıkıcı eylem
+// ancak sunucu adı onayı istiyorsa ve bir karta bağlıysa kabul edilir (o onay terminalde elle verilir).
 func ChainPlan(info []string, action, platform string) (Chain, error) {
 	c := Chain{Action: action}
 	if !Mutating(info, action) {
 		return c, errors.New("Zincir yalnız değişiklik yapan eylem içindir.")
 	}
 	reads, linked := affectedReads(info, action)
-	if !linked {
-		return c, fmt.Errorf("'%s' bir ayar kartının uygulama eylemi değil.", action)
+	c.Ask = !linked
+	if c.Ask && (manifest.ActionGet(info, action, "confirm") != "yes-no" || manifest.ActionGet(info, action, "requires") == "") {
+		return c, fmt.Errorf("'%s' zincirlenmez: bir ayar kartının uygulama eylemi ya da önizlemesi olan e/h onaylı bir eylem olmalı.", action)
 	}
 	if has(strings.Split(manifest.ActionGet(info, action, "effects"), ","), "destructive") && manifest.ActionGet(info, action, "confirm") != "type-server-name" {
 		return c, fmt.Errorf("'%s' yıkıcı ve sunucu adı onayı istemiyor; zincirlenmez.", action)
@@ -114,7 +117,7 @@ func (ec *ExecCtx) runChain(info []string, id, ver string, c Chain, record func(
 		ec.say("\n── Adım %d/%d · %s: %s ──\n", i+1, len(steps), label, a)
 		// Düğmeye basmak yıkıcı OLMAYAN eylemin "devam edilsin mi" onayıdır; sunucu adı onayı ve değişken uyarıları yine terminalde sorulur.
 		// (yıkıcı eylemde onay kuralı her zaman "type-server-name"dir: doğrulayıcı yükseltir, ChainPlan da denetler)
-		ec.autoYes = a == c.Action && manifest.ActionGet(info, a, "confirm") == "yes-no"
+		ec.autoYes = !c.Ask && a == c.Action && manifest.ActionGet(info, a, "confirm") == "yes-no"
 		res := ExecAction(ec, info, id, ver, a)
 		ec.autoYes = false
 		if res.RC != Refused {

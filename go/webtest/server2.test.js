@@ -134,6 +134,21 @@ test("eylem kartı: rozetler (etkiler, sudo, onay türü), sınıf ve kategori",
   assert.ok(c("a_read").querySelector(".btn.primary[data-run]")); assert.ok(c("a_cfg").querySelector(".btn.warnbtn[data-write]")); assert.equal(c("a_cfg").querySelector("[data-write]").textContent, "Onayla ve çalıştır…"); assert.ok(c("a_dst").querySelector(".btn.dangerbtn[data-write]")); assert.equal(c("a_dst").querySelector("[data-write]").textContent, "Yıkıcı eylem…"); h.close();
 });
 
+test("Önizle ve uygula: yalnız review eyleminde; zinciri terminalde açar; eski önkoşul nedeni gizlenir", async () => {
+  const h = await open("#s=web1&p=utility", d => { pkg(d, "utility").actions = [
+    { id: "hazir", applicable: true, write: true, review: true, effects: ["changes-config"], confirm: "yes-no" },
+    { id: "eski", applicable: true, review: true, effects: ["changes-config"], confirm: "yes-no", reason: "önkoşul tamam değil" },
+    { id: "diger", applicable: true, effects: ["changes-config"], reason: "önkoşul tamam değil" },
+  ]; });
+  const c = id => h.$$("#act-list > .act").find(a => a.querySelector(".act-name").textContent === id);
+  assert.equal(c("hazir").querySelector("[data-review]").textContent, "Önizle ve uygula"); assert.ok(c("hazir").querySelector("[data-write]"), "ayrı çalıştırma düğmesi de durur");
+  assert.ok(c("eski").querySelector("[data-review]")); assert.doesNotMatch(c("eski").textContent, /önkoşul tamam değil/);
+  assert.equal(c("diger").querySelector("[data-review]"), null); assert.match(c("diger").textContent, /önkoşul tamam değil/);
+  await h.click('#srv-body [data-review="utility|eski"]');
+  assert.deepEqual(h.calls.filter(x => x.path === "/api/term/task").map(({ body }) => [body.server, body.package, body.action, body.chain]), [["web1", "utility", "eski", true]]);
+  h.close();
+});
+
 test("eylem kartı: terminal düğmesi, uygulanamaz neden metni, 'uygulanmaz' bölümü, boş liste", async () => {
   const h = await open("#s=web1&p=utility", d => { pkg(d, "utility").actions = [
     { id: "a_term", applicable: true, terminal: true, effects: [] }, { id: "a_none", applicable: true, effects: [], reason: "yetki yok" },

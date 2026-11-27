@@ -32,7 +32,9 @@ const chainPkg = `{
   "saat_ayarla":{"cmd":"ansible-playbook playbooks/saat_ayarla.yml","effects":["changes-config"],"requires":["preview"],"confirm":"yes-no","warnings":["w"]},
   "saat_adim":{"cmd":"ansible-playbook playbooks/saat_adim.yml","effects":["changes-config"],"requires":["preview"],"confirm":"yes-no","warnings":["w"]},
   "serbest_ayarla":{"cmd":"ansible-playbook playbooks/serbest_ayarla.yml","effects":["changes-config"],"requires":["preview"],"confirm":"yes-no","warnings":["w"]},
-  "baska":{"cmd":"ansible-playbook playbooks/baska.yml","effects":["changes-config"],"requires":["preview"],"confirm":"yes-no","warnings":["w"]}
+  "baska":{"cmd":"ansible-playbook playbooks/baska.yml","effects":["changes-config"],"requires":["preview"],"confirm":"yes-no","warnings":["w"]},
+  "onizlemesiz":{"cmd":"ansible-playbook playbooks/o.yml","effects":["changes-config"],"confirm":"yes-no","warnings":["w"]},
+  "adli":{"cmd":"ansible-playbook playbooks/a.yml","effects":["changes-config"],"requires":["preview"],"confirm":"type-server-name","warnings":["w"]}
  },
  "vars":[{"name":"demo_zone","type":"string","default":"","group":"Zaman","description":"x"},{"name":"demo_saat","type":"string","default":"","group":"Zaman","description":"x"},{"name":"demo_adim","type":"string","default":"","group":"Zaman","description":"x"},{"name":"demo_serbest","type":"string","default":"","group":"Zaman","description":"x"},{"name":"demo_serbest2","type":"string","default":"","group":"Zaman","description":"x"}],
  "setting_cards":[{"id":"sistem","label":"Sistem","summary":{"action":"kok","items":[{"key":"zone","label":"Dilim"}]}},
@@ -145,7 +147,14 @@ func TestChainPlan(t *testing.T) {
 	if _, err := ChainPlan(raw, "yikici_eh", ""); err == nil || !strings.Contains(err.Error(), "zincirlenmez") {
 		t.Fatalf("adsız yıkıcı eylem: %v", err)
 	}
-	for action, want := range map[string]string{"durum": "değişiklik yapan", "baska": "ayar kartının"} {
+	// kartı olmayan, önizlemeli e/h eylemi: kontrol adımı yok ve onay düğmeyle verilmez
+	if got, err := ChainPlan(info, "baska", ""); err != nil || !got.Ask || !reflect.DeepEqual(got.Steps(), []string{"preview", "baska"}) {
+		t.Errorf("inceleme zinciri: %+v %v", got, err)
+	}
+	if c.Ask {
+		t.Error("kart zincirinde onay düğmedir")
+	}
+	for action, want := range map[string]string{"durum": "değişiklik yapan", "onizlemesiz": "zincirlenmez", "adli": "zincirlenmez"} {
 		if _, err := ChainPlan(info, action, ""); err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("%s: %v (beklenen %q)", action, err, want)
 		}
@@ -193,6 +202,22 @@ func TestChainRunsAllStepsWithOnePassword(t *testing.T) {
 		if strings.Contains(strings.SplitN(c, "|", 3)[2], pw) || strings.Contains(c, "--ask-become-pass") {
 			t.Errorf("komut satırı: %s", c)
 		}
+	}
+}
+
+func TestReviewChainAsksAfterPreview(t *testing.T) {
+	for _, answer := range []string{"\n", "h\n", ""} { // boş Enter, hayır, girdi yok: uygulanmaz
+		r := runTestChain(t, "baska", "x\n"+answer, "")
+		if names, _ := r.ran(); r.rc != Refused || !reflect.DeepEqual(names, []string{"preview"}) {
+			t.Errorf("%q: onaysız uygulanmamalı: rc=%d %v\n%s", answer, r.rc, names, r.out)
+		}
+	}
+	r := runTestChain(t, "baska", "x\ne\n", "")
+	if names, _ := r.ran(); r.rc != 0 || !reflect.DeepEqual(names, []string{"preview", "baska"}) {
+		t.Fatalf("e ile uygulanmalı: rc=%d %v\n%s", r.rc, names, r.out)
+	}
+	if strings.Contains(r.out, "düğmesiyle") || !strings.Contains(r.out, "Devam edilsin mi? [e/H]") || strings.Index(r.out, "adim preview calisti") > strings.Index(r.out, "Devam edilsin mi?") {
+		t.Errorf("soru önizlemeden sonra terminalde sorulmalı:\n%s", r.out)
 	}
 }
 

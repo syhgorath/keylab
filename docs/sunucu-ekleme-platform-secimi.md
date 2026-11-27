@@ -74,7 +74,7 @@ Paket `component.json`'a ekler (hepsi isteğe bağlı; eski sshpocket yok sayar)
   olarak işaretli değişkenleri) `onboarding_vars` dışında reddeder.
 - `platform_choices[].auto_detect: false` → tahmin bu platformu önermez (Raspberry Pi). Pi'ye özgü değişkenler (örn. `hardening_rpi_strict`) sunucu eklerken **ASLA sorulmaz** ve `defaults`'a girmez.
 - `platform_choices[].apply_vars` + `apply_warnings` (paket oturumunun isteği; **kullanıcı onayladı**, koşullarla): örn. `{"hardening_pve_apply": true}`.
-  Sunucu eklerken **yazılmaz**; yalnızca değişiklik yapan eylemin (`apply`) onayından (`type-server-name`) **sonra**, o koşuya özel
+  Sunucu eklerken **yazılmaz**; yalnızca değişiklik yapan eylemin (`apply`) onayından (sunucu adı ya da e/h; aşağıdaki 2026-11-27 kararı) **sonra**, o koşuya özel
   `-e` ile geçer ve **yalnızca değişken `.vars` dosyasında YOKSA** (kullanıcı bilerek `false` yazdıysa ezilmez). Koşullar:
   1. `apply_vars` doluysa `apply_warnings` boş olamaz ve metin **onay sorusundan önce** gösterilir ("bu koşuda hardening_pve_apply=true verilecek");
   2. `.vars` dosyasına **yazılmaz**; günlük başlığında "bu koşuya özel: hardening_pve_apply=true" satırı çıkar;
@@ -166,11 +166,11 @@ Kopyalama senaryosunu çözmüyoruz; yalnızca uyarı öneriyoruz:
 `servers/` yerel↔USB ayrışması için yalnızca uyarı (§9).
 
 **Uygulama durumu:** manifest + `requires_vars` kapısı (#150) · sunucu eklerken platform + `allow_from` sorusu (`Helpers/ComponentsOnboard.sh`, `ModuleGenerator.sh`; `platform_detect` önerisi YOK, liste doğrudan sorulur; `allow_from` boş kalırsa platform yine yazılır, `allow_from` yazılmaz) ·
-`apply_vars` uygulaması (`comp_gate_apply_vars`; yalnız type-server-name onaylı, changes-config, yıkıcı olmayan ve `requires` taşıyan eylemlerde = `apply`, `pve_firewall_apply`) ·
+`apply_vars` uygulaması (kabukta `comp_gate_apply_vars` yalnız type-server-name onaylı eylemde; KeyLab (Go) 2026-11-27'den beri terminalde onayı sorulan e/h eyleminde de — changes-config, yıkıcı olmayan ve `requires` taşıyan eylemler) ·
 eski sunucuların ilk açılış sorusu (`comp_onboard_needed`, paket menüsü girişi; yalnız `platform_var` dosyada yoksa sorar, `allow_from` boşluğunu ⛔ kapısı yönetir).
 
 **Sorular ve sonuçları (2026-11-02):**
-1. ~~`apply_vars`~~ **Kullanıcı onayladı:** `apply` sunucu adı onayından sonra `apply_vars` (örn. `hardening_pve_apply`) geçirilir; `.vars`'taki kullanıcı değeri ezilmez. Kuralı sshpocket uygular, pakette ara değişken yok (§5, §5.1).
+1. ~~`apply_vars`~~ **Kullanıcı onayladı:** `apply` sunucu adı onayından sonra `apply_vars` (örn. `hardening_pve_apply`) geçirilir; `.vars`'taki kullanıcı değeri ezilmez. Kuralı sshpocket uygular, pakette ara değişken yok (§5, §5.1). **Güncelleme (2026-11-27, kullanıcı kararı):** linux-hardening `apply` onayı e/h olduğundan `apply_vars` Proxmox'ta da e/h onayından sonra geçer. Ayar kartının "Kur" düğmesiyle onaylanan adımda geçmez: onay terminalde sorulmuş olmalıdır.
 2. ~~Soru anı~~ **Uygulandı:** sunucu eklerken **ve** paket menüsü ilk açılırken (aynı kod, `comp_onboard_package`).
 3. ~~Birden çok paket platform listesi bildirirse~~ **Karar (kullanıcı): platform paket başına sorulur.** Her paketin listesi farklı olabilir, cevaplar karışmaz. Ortak "sunucu türü" sözlüğü şimdilik yok; ikinci bir paket platform bildirince yeniden değerlendirilir.
 4. **Ertelendi (kullanıcı: "olmazsa olmaz değil"):** `doctor` Mac'teki ve USB'deki `servers/` `.vars` dosyalarını karşılaştırıp fark gösterebilir (salt okunur, sunucuya bakmaz, otomatik kopya yok). Yapılmazsa: iki kopyayı birlikte kullananlar bir kopyada `allow_from` doldurup ötekinde doldurmayabilir ve o kopyada eylemler ⛔ kalır (güvenlik açığı değil, anlaşılması zor bir tutarsızlık). Yalnız USB'den çalışanlar etkilenmez.

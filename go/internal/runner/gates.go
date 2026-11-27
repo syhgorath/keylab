@@ -347,9 +347,10 @@ func WarnVars(names []string, ask AskFunc) error {
 	return nil
 }
 
-// ApplyVars: seçili platformun apply_vars'ından BU koşuya özel geçirilecek "ad=değer" satırları (dosyaya yazılmaz).
+// ApplyVars: seçili platformun apply_vars'ından BU koşuya özel geçirilecek "ad=değer" satırları (dosyaya yazılmaz). Yalnız onay isteyen
+// eylemde (e/h ya da sunucu adı); onayı terminalde değil düğmeyle verilen adımda yürütücü bunları hiç geçirmez.
 func ApplyVars(info []string, action, vf string) []string {
-	if manifest.ActionGet(info, action, "confirm") != "type-server-name" {
+	if mode := manifest.ActionGet(info, action, "confirm"); mode != "type-server-name" && mode != "yes-no" {
 		return nil
 	}
 	eff := "," + manifest.ActionGet(info, action, "effects") + ","

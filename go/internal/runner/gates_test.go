@@ -292,10 +292,11 @@ func TestVarGatesMatchShell(t *testing.T) {
 				}
 				sh = runShellLive(t, root, nil, "", "", "comp_gate_apply_vars", joined, a, vf)
 				got := ApplyVars(info, a, vf)
-				if want := splitNonEmpty(sh.stdout); !reflect.DeepEqual(want, got) {
+				// bilinçli ayrışma (2026-11-27): Go e/h onaylı eylemde de geçirir, durdurulmuş kabuk motoru yalnız sunucu adı onayında
+				if want := splitNonEmpty(sh.stdout); manifest.ActionGet(info, a, "confirm") != "yes-no" && !reflect.DeepEqual(want, got) {
 					t.Errorf("%s apply_vars: kabuk=%q go=%q", label, want, got)
 				}
-				if len(got) > 0 {
+				if len(got) > 0 && manifest.ActionGet(info, a, "confirm") != "yes-no" {
 					shn := runShellLive(t, root, nil, "", "", "comp_gate_apply_vars_notice", append([]string{joined, vf}, got...)...)
 					var out bytes.Buffer
 					ApplyVarsNotice(info, vf, got, &out)
