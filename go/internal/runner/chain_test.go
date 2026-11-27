@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -23,12 +24,25 @@ const chainPkg = `{
   "apply":{"cmd":"ansible-playbook playbooks/apply.yml","effects":["changes-config"],"requires_sudo":true,"requires":["preview"],"confirm":"yes-no","warnings":["w"]},
   "sil":{"cmd":"ansible-playbook playbooks/sil.yml","effects":["destructive"],"requires_sudo":true,"requires":["preview"],"confirm":"type-server-name","warnings":["w"]},
   "yikici_eh":{"cmd":"ansible-playbook playbooks/x.yml","effects":["destructive"],"requires":["preview"],"confirm":"yes-no","warnings":["w"]},
+  "saat_oku":{"cmd":"ansible-playbook playbooks/saat_oku.yml","effects":[],"confirm":"none","warnings":["w"],"outputs":{"format":"keyvalue-line","prefix":"SSHPOCKET_RESULT demo.saat_oku","keys":["zone"]}},
+  "saat_kardes":{"cmd":"ansible-playbook playbooks/saat_kardes.yml","effects":[],"confirm":"none","warnings":["w"],"outputs":{"format":"keyvalue-line","prefix":"SSHPOCKET_RESULT demo.saat_kardes","keys":["zone"]}},
+  "saat_ozet":{"cmd":"ansible-playbook playbooks/saat_ozet.yml","effects":[],"confirm":"none","warnings":["w"],"outputs":{"format":"keyvalue-line","prefix":"SSHPOCKET_RESULT demo.saat_ozet","keys":["zone"]}},
+  "serbest_oku":{"cmd":"ansible-playbook playbooks/serbest_oku.yml","effects":[],"confirm":"none","warnings":["w"],"outputs":{"format":"keyvalue-line","prefix":"SSHPOCKET_RESULT demo.serbest_oku","keys":["zone"]}},
+  "baska_serbest_oku":{"cmd":"ansible-playbook playbooks/baska_serbest_oku.yml","effects":[],"confirm":"none","warnings":["w"],"outputs":{"format":"keyvalue-line","prefix":"SSHPOCKET_RESULT demo.baska_serbest_oku","keys":["zone"]}},
+  "saat_ayarla":{"cmd":"ansible-playbook playbooks/saat_ayarla.yml","effects":["changes-config"],"requires":["preview"],"confirm":"yes-no","warnings":["w"]},
+  "saat_adim":{"cmd":"ansible-playbook playbooks/saat_adim.yml","effects":["changes-config"],"requires":["preview"],"confirm":"yes-no","warnings":["w"]},
+  "serbest_ayarla":{"cmd":"ansible-playbook playbooks/serbest_ayarla.yml","effects":["changes-config"],"requires":["preview"],"confirm":"yes-no","warnings":["w"]},
   "baska":{"cmd":"ansible-playbook playbooks/baska.yml","effects":["changes-config"],"requires":["preview"],"confirm":"yes-no","warnings":["w"]}
  },
- "vars":[{"name":"demo_zone","type":"string","default":"","group":"Zaman","description":"x"}],
- "setting_cards":[{"id":"sistem","label":"Sistem","summary":{"action":"kok","items":[{"key":"zone","label":"Dilim"}]}}],
+ "vars":[{"name":"demo_zone","type":"string","default":"","group":"Zaman","description":"x"},{"name":"demo_saat","type":"string","default":"","group":"Zaman","description":"x"},{"name":"demo_adim","type":"string","default":"","group":"Zaman","description":"x"},{"name":"demo_serbest","type":"string","default":"","group":"Zaman","description":"x"},{"name":"demo_serbest2","type":"string","default":"","group":"Zaman","description":"x"}],
+ "setting_cards":[{"id":"sistem","label":"Sistem","summary":{"action":"kok","items":[{"key":"zone","label":"Dilim"}]}},
+   {"id":"saat","label":"Saat","summary":{"action":"saat_ozet","items":[{"key":"zone","label":"Dilim"}]}}],
  "settings":[
-  {"id":"zone","card":"sistem","label":"Saat dilimi","var":"demo_zone","description":"d","apply_via":["apply","sil","yikici_eh"],"state":{"action":"durum","key":"zone"}}
+  {"id":"zone","card":"sistem","label":"Saat dilimi","var":"demo_zone","description":"d","apply_via":["apply","sil","yikici_eh"],"state":{"action":"durum","key":"zone"}},
+  {"id":"serbest","label":"serbest","var":"demo_serbest","description":"d","apply_via":["apply"],"state":{"action":"serbest_oku","key":"zone"}},
+  {"id":"kaynak","card":"saat","label":"kaynak","var":"demo_saat","description":"d","apply_via":["saat_ayarla"],"state":{"action":"saat_oku","key":"zone"}},
+  {"id":"adim","card":"saat","label":"adim","var":"demo_adim","description":"d","apply_via":["saat_adim"],"state":{"action":"saat_kardes","key":"zone"}},
+  {"id":"serbest2","label":"serbest2","var":"demo_serbest2","description":"d","apply_via":["serbest_ayarla"],"state":{"action":"baska_serbest_oku","key":"zone"}}
  ]}`
 
 // sahte ansible: koşan playbook'u, argümanları ve (varsa) fd 3'ten okunan parolayı kaydeder
@@ -38,7 +52,7 @@ pw="-"
 case " $* " in *" --become-password-file /dev/fd/3 "*) IFS= read -r pw </dev/fd/3 ;; esac
 echo "$pb|$pw|$*" >> "$CHAIN_LOG"
 echo "adim $pb calisti"
-case "$pb" in durum|kok) echo "SSHPOCKET_RESULT demo.$pb zone=UTC" ;; esac
+case "$pb" in durum|kok|*_oku|saat_*) echo "SSHPOCKET_RESULT demo.$pb zone=UTC" ;; esac
 [ "$pb" = "$CHAIN_FAIL" ] && exit 4
 exit 0
 `
@@ -100,12 +114,19 @@ func TestChainPlan(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(c.Pre, []string{"preview"}) || c.Action != "apply" {
 		t.Fatalf("%+v %v", c, err)
 	}
-	post := map[string]bool{}
-	for _, p := range c.Post {
-		post[p] = true
-	}
-	if len(c.Post) != 2 || !post["durum"] || !post["kok"] {
-		t.Fatalf("kontrol adımları ayar ve özet okumaları olmalı: %v", c.Post)
+	// yalnız eylemin dokunduğu kartlar (ayar ve özet okumaları) ile aynı eyleme bağlı kartsız ayarlar okunur; ilgisiz kartlar okunmaz
+	for action, want := range map[string][]string{
+		"apply":          {"durum", "kok", "serbest_oku"},
+		"saat_ayarla":    {"saat_kardes", "saat_oku", "saat_ozet"}, // aynı karttaki başka eylemin ayarı da kartın parçasıdır
+		"saat_adim":      {"saat_kardes", "saat_oku", "saat_ozet"},
+		"serbest_ayarla": {"baska_serbest_oku"}, // kartsız ayar: yalnız kendi okuması
+	} {
+		got, err := ChainPlan(info, action, "")
+		post := slices.Clone(got.Post)
+		slices.Sort(post)
+		if err != nil || !reflect.DeepEqual(post, want) {
+			t.Errorf("%s kontrol adımları: %v %v (beklenen %v)", action, post, err, want)
+		}
 	}
 	if _, err := ChainPlan(info, "sil", ""); err != nil {
 		t.Fatalf("ad onaylı yıkıcı eylem zincirlenebilmeli: %v", err)
@@ -135,12 +156,12 @@ func TestChainRunsAllStepsWithOnePassword(t *testing.T) {
 	const pw = "deneme-degeri-123"
 	r := runTestChain(t, "apply", pw+"\n", "")
 	names, passwords := r.ran()
-	if r.rc != 0 || len(names) != 4 || names[0] != "preview" || names[1] != "apply" {
+	if r.rc != 0 || len(names) != 5 || names[0] != "preview" || names[1] != "apply" {
 		t.Fatalf("rc=%d adımlar=%v\n%s", r.rc, names, r.out)
 	}
 	for i, n := range names {
 		want := pw
-		if n == "durum" {
+		if n == "durum" || n == "serbest_oku" {
 			want = "-" // sudo istemeyen okumaya parola verilmez
 		}
 		if passwords[i] != want {

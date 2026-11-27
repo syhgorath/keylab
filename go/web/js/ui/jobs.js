@@ -160,6 +160,8 @@ export function initJobs(hooks) {
     }
     return d.exit;
   }
+  // zincirin okumadığı kartlardan uygulama yüzünden eskiyenler ("güncel olmayabilir")
+  const outdated = (p, actions) => actions.filter(id => [...(p.settings || []), ...(p.settingCards || [])].some(x => x.readAction === id && x.stale));
   async function autoRead(server, pkg, actions) {
     const key = server + "|" + pkg, token = {};
     autoReading.set(key, token);
@@ -202,6 +204,7 @@ export function initJobs(hooks) {
     try { started = await window.KeyLabTerminal.openTask({ server, package: pkg, action, ...(item ? { item } : {}), ...(chain ? { chain: true } : {}) }); }
     finally { starting.delete(key); }
     if (!started.ok) { chained.delete(key); toast("Eylem başlatılamadı: " + started.error); return; }
+    autoReading.delete(`${server}|${pkg}`); // bekleyen arka plan okuması yeni eylemle çakışmasın; bitince yeniden kurulur
     toast(`${server}: ${action} terminalde çalışıyor — parola ve onayları orada yazın`);
   }
 
@@ -241,8 +244,9 @@ export function initJobs(hooks) {
     const chain = chained.delete(`${d.server}|${d.pkg}|${d.action}`);
     const p = r && (r.packages || []).find(x => x.id === d.pkg), a = p && (p.actions || []).find(x => x.id === d.action);
     if (d.code !== 0 || !a || !(a.effects || []).length) return;
-    // zincir kontrol adımlarını kendisi koştu: yalnız henüz toparlanmamış sağlık özeti yeniden okunur
-    const reads = chain ? ailing(p, cardReads(p)) : cardReads(p);
+    // zincir yalnız eylemin kartlarını okudu: burada eskiyen diğer okumalar ve toparlanmamış sağlık özeti sessizce yenilenir
+    let reads = cardReads(p);
+    if (chain) { const again = new Set([...outdated(p, reads), ...ailing(p, reads)]); reads = reads.filter(id => again.has(id)); }
     if (reads.length) autoRead(d.server, d.pkg, reads);
   });
 

@@ -18,7 +18,7 @@ import (
 type Chain struct {
 	Pre    []string // eylemin önkoşulları (salt okunur; önizleme)
 	Action string   // değiştiren eylem
-	Post   []string // ayar kartlarının okumaları (kontrol)
+	Post   []string // eylemin dokunduğu ayar kartlarının okumaları (kontrol)
 }
 
 // Steps: koşulma sırasıyla bütün adımlar.
@@ -33,20 +33,8 @@ func ChainPlan(info []string, action, platform string) (Chain, error) {
 	if !Mutating(info, action) {
 		return c, errors.New("Zincir yalnız değişiklik yapan eylem içindir.")
 	}
-	var applies, reads []string
-	for _, line := range info {
-		key, val, ok := strings.Cut(line, "=")
-		if !ok || (!strings.HasPrefix(key, "setting.") && !strings.HasPrefix(key, "setting_card.")) {
-			continue
-		}
-		switch {
-		case strings.HasPrefix(key, "setting.") && strings.HasSuffix(key, ".apply"):
-			applies = append(applies, strings.Split(val, ",")...)
-		case strings.HasSuffix(key, ".read"):
-			reads = append(reads, val)
-		}
-	}
-	if !has(applies, action) {
+	reads, linked := affectedReads(info, action)
+	if !linked {
 		return c, fmt.Errorf("'%s' bir ayar kartının uygulama eylemi değil.", action)
 	}
 	if has(strings.Split(manifest.ActionGet(info, action, "effects"), ","), "destructive") && manifest.ActionGet(info, action, "confirm") != "type-server-name" {
@@ -68,6 +56,37 @@ func ChainPlan(info []string, action, platform string) (Chain, error) {
 		}
 	}
 	return c, nil
+}
+
+// affectedReads: eylemin dokunduğu okumalar: onu apply_via'da sayan ayarların okuması ile o ayarların kartlarındaki (diğer ayarların ve sağlık
+// özetinin) okumalar. İlgisiz kartlar kontrol edilmez: paket büyüdükçe tek tık uzamasın. linked: eylem en az bir ayarın uygulama eylemi.
+func affectedReads(info []string, action string) (reads []string, linked bool) {
+	ids, cards := map[string]bool{}, map[string]bool{} // "setting.<id>" ve "setting_card.<id>"
+	for _, line := range info {
+		key, val, ok := strings.Cut(line, "=")
+		if id, apply := strings.CutSuffix(key, ".apply"); ok && apply && strings.HasPrefix(id, "setting.") && has(strings.Split(val, ","), action) {
+			ids[id], linked = true, true
+		}
+	}
+	for _, line := range info {
+		key, val, ok := strings.Cut(line, "=")
+		if id, card := strings.CutSuffix(key, ".card"); ok && card && ids[id] {
+			cards["setting_card."+val] = true
+		}
+	}
+	for _, line := range info {
+		key, val, ok := strings.Cut(line, "=")
+		if id, card := strings.CutSuffix(key, ".card"); ok && card && cards["setting_card."+val] {
+			ids[id] = true
+		}
+	}
+	for _, line := range info {
+		key, val, ok := strings.Cut(line, "=")
+		if id, read := strings.CutSuffix(key, ".read"); ok && read && (ids[id] || cards[id]) {
+			reads = append(reads, val)
+		}
+	}
+	return reads, linked
 }
 
 func has(list []string, x string) bool {
