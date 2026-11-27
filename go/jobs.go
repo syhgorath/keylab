@@ -189,7 +189,7 @@ func (a *App) authorizeTerm(server, pkg, action, item string) (string, int, erro
 	return itemVar, 0, nil
 }
 
-// authorizeChain: tek tık zinciri yalnız bir ayar kartının uygulama eylemi için açılır. Önkoşul (önizleme) zincirin içinde koştuğundan burada
+// authorizeChain: tek tık zinciri bir ayar kartının uygulama eylemi ya da "Önizle ve uygula" eylemi (ActionInfo.Review) için açılır. Önkoşul (önizleme) zincirin içinde koştuğundan burada
 // aranmaz; yürütücü her adımda bütün kapıları yeniden denetler. Yıkıcı eylemde sunucu adı onayını yürütücü terminalde ister (ChainPlan).
 func (a *App) authorizeChain(server, pkg, action, item string) (int, error) {
 	if item != "" {
@@ -212,8 +212,8 @@ func (a *App) authorizeChain(server, pkg, action, item string) (int, error) {
 				continue
 			}
 			switch {
-			case !card || len(x.Effects) == 0:
-				return http.StatusConflict, fmt.Errorf("bu eylem bir ayar kartının uygulama eylemi değil")
+			case (!card && !x.Review) || len(x.Effects) == 0:
+				return http.StatusConflict, fmt.Errorf("bu eylem bir ayar kartının uygulama eylemi ya da önizlemeli e/h eylemi değil")
 			case !x.Applicable:
 				return http.StatusConflict, fmt.Errorf("bu eylem bu sunucunun platformuna uygulanmaz")
 			case len(x.MissingVars) > 0:

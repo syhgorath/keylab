@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -35,6 +36,7 @@ type ActionInfo struct {
 	Terminal     bool              `json:"terminal"`         // sudo parolası gerektiren salt okunur eylem: macOS Terminal'de çalıştırılabilir
 	Runnable     bool              `json:"runnable"`         // arayüzden çalıştırılabilir mi (şimdilik yalnızca salt okunur, sudo'suz, onaysız, önkoşulsuz)
 	Reason       string            `json:"reason,omitempty"` // çalıştırılamıyorsa nedeni
+	Review       bool              `json:"review,omitempty"` // "Önizle ve uygula": önizleme → terminalde e/h → eylem tek koşuda
 	LastTime     string            `json:"lastTime,omitempty"`
 	LastResult   string            `json:"lastResult,omitempty"`
 	Keys         map[string]string `json:"keys,omitempty"`
@@ -223,6 +225,7 @@ func (a *App) buildPackageInfo(s Server, p Package, itemOverride string) (Packag
 			Actions     []string `json:"actions"`
 			Params      []string `json:"params"`
 		} `json:"items"`
+		Runner  string `json:"runner"`
 		Actions map[string]struct {
 			Effects      []string `json:"effects"`
 			RequiresSudo bool     `json:"requires_sudo"`
@@ -302,6 +305,12 @@ func (a *App) buildPackageInfo(s Server, p Package, itemOverride string) (Packag
 		}
 		info.Vars = append(info.Vars, vi)
 	}
+	cardAction := map[string]bool{} // bir ayar kartının uygulama eylemi: onun düğmesi kartta (Kur)
+	for _, x := range c.Settings {
+		for _, a := range x.ApplyVia {
+			cardAction[a] = true
+		}
+	}
 	for id, x := range c.Actions {
 		if !reName.MatchString(id) {
 			continue
@@ -339,6 +348,13 @@ func (a *App) buildPackageInfo(s Server, p Package, itemOverride string) (Packag
 			}
 		}
 		ai.Runnable, ai.Terminal, ai.Write, ai.Reason = classify(ai)
+		// motorun inceleme zinciri kuralının aynısı (runner.ChainPlan); yürütücü yine her adımda bütün kapıları denetler
+		ai.Review = c.Runner == "ansible" && ai.Applicable && len(ai.MissingVars) == 0 && len(ai.Effects) > 0 && !ai.Destructive &&
+			ai.Confirm == "yes-no" && len(ai.Requires) > 0 && !cardAction[id]
+		for _, rq := range ai.Requires {
+			r, ok := c.Actions[rq]
+			ai.Review = ai.Review && ok && len(r.Effects) == 0 && (len(r.Platforms) == 0 || slices.Contains(r.Platforms, s.Platform))
+		}
 		ts, keys := readResultFile(filepath.Join(sdir, "result."+id))
 		ai.Keys = keys
 		ai.LastTime = ts

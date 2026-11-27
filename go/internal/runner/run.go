@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"keylab/internal/manifest"
+	"keylab/internal/platform"
 )
 
 // Refused: çalıştırılmadan reddedildi (kapı/değişken/onay/hazırlık).
@@ -126,6 +127,9 @@ func (ec *ExecCtx) input() *bufio.Reader {
 
 // ask: istemi Stderr'e yazar, girdiden bir satır okur; girdi yoksa (EOF) yeni satır yazıp ok=false döner.
 func (ec *ExecCtx) ask(prompt string) (string, bool) {
+	if ec.chain { // zincirde adımlar akarken basılmış tuşlar sorulmamış soruyu yanıtlamasın
+		ec.dropTypeahead()
+	}
 	fmt.Fprint(ec.Stderr, prompt)
 	line, err := ec.input().ReadString('\n')
 	if err != nil {
@@ -133,6 +137,17 @@ func (ec *ExecCtx) ask(prompt string) (string, bool) {
 		return "", false
 	}
 	return strings.TrimSuffix(line, "\n"), true
+}
+
+// dropTypeahead: girdi gerçek bir terminalse bekleyen (okunmamış) tuş vuruşlarını atar. Boru ve testte bir şey yapmaz.
+func (ec *ExecCtx) dropTypeahead() {
+	f, ok := ec.Stdin.(*os.File)
+	if !ok || !platform.FlushInput(f) {
+		return
+	}
+	if ec.rd != nil {
+		_, _ = ec.rd.Discard(ec.rd.Buffered())
+	}
 }
 
 func (ec *ExecCtx) now() int64 {
@@ -302,7 +317,10 @@ func (ec *ExecCtx) execBody(info []string, id, ver, action string) (rc int, sdir
 			setKV(kv)
 		}
 	}
-	applied := ApplyVars(info, action, ec.values())
+	var applied []string
+	if !ec.autoYes { // platformun gerçek değişikliği açan değişkenleri yalnız terminalde sorulan bir onaydan sonra geçer
+		applied = ApplyVars(info, action, ec.values())
+	}
 	for _, kv := range applied {
 		setKV(kv)
 	}
