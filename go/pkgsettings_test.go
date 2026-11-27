@@ -21,7 +21,7 @@ const setPkg = `{"id":"demo","version":"0.2.0","sshpocket_api":1,"name":"Demo","
   {"name":"demo_zone","type":"string","default":"","group":"Zaman","description":"y"},
   {"name":"demo_adim","type":"bool","default":true,"group":"NTP","description":"z"},
   {"name":"demo_uyg","type":"string","default":"","group":"Uyg","description":"u"},
-  {"name":"demo_erisim","type":"string","default":"otomatik","group":"Uyg","description":"e"}
+  {"name":"demo_erisim","type":"enum","values":["otomatik","ic","agdan"],"default":"otomatik","group":"Uyg","description":"e"}
  ],
  "setting_cards":[{"id":"saat","label":"Saat","description":"d"},{"id":"../kotu","label":"x"}],
  "settings":[
@@ -31,7 +31,7 @@ const setPkg = `{"id":"demo","version":"0.2.0","sshpocket_api":1,"name":"Demo","
   {"id":"adim","label":"Saat adımlama","var":"demo_adim","apply_via":["apply"],"card":"saat"},
   {"id":"uyg","label":"Uygulamalar","var":"demo_uyg","apply_via":["apply"],"state":{"action":"ntp_durum","key":"liste","compare":"set"}},
   {"id":"pve","label":"PVE","var":"demo_uyg","apply_via":["apply"],"state":{"action":"pve_oku","key":"pve"}},
-  {"id":"erisim","label":"Erişim","var":"demo_erisim","apply_via":["apply"],"state":{"action":"ntp_durum","key":"liste","absent":"yok","ignore":["otomatik"],"not_applicable":["dagitim"]}}
+  {"id":"erisim","label":"Erişim","var":"demo_erisim","apply_via":["apply"],"state":{"action":"ntp_durum","key":"liste","absent":"yok","ignore":["otomatik"],"not_applicable":["dagitim"]},"value_labels":{"ic":"yalnız iç ağ"}}
  ]}`
 
 // result.<eylem> dosyası ve results günlüğü
@@ -166,6 +166,9 @@ func TestSettingAbsentAndIgnore(t *testing.T) {
 	check("otomatik okunmuş", "", setUnmanaged, "agdan", read("agdan"))
 	// yönetilen değer: karşılaştırılır
 	check("uyumlu", "demo_erisim=ic\n", setMatch, "ic", read("ic"))
+	if got := setSettings(t, "")["erisim"].ValueLabels; !reflect.DeepEqual(got, map[string]string{"ic": "yalnız iç ağ"}) {
+		t.Errorf("seçenek açıklamaları: %v", got)
+	}
 	check("sapma", "demo_erisim=ic\n", setDrift, "agdan", read("agdan"))
 	// "absent": sunucuda yok → sapma değil, ayrı durum; okunmamışsa bilinmiyor
 	check("yok", "demo_erisim=ic\n", setAbsent, "", read("yok"))

@@ -9,6 +9,8 @@ import { appState } from "../state.js";
 const ST = { match: ["ok", "✔ uyumlu"], drift: ["warn", "⚠ sapma"], unknown: ["plain", "bilinmiyor"], absent: ["plain", "sunucuda yok"], unmanaged: ["plain", "yönetilmiyor"], unreadable: ["plain", "okunamaz"], na: ["plain", "uygulanmaz"] };
 const RISK = { "access-loss": ["danger", "erişimi kesebilir"], "restarts-service": ["warn", "servisi yeniden başlatır"], "time-jump": ["warn", "saati sıçratır"], "data-loss": ["danger", "veriyi etkiler"] };
 const uniq = l => [...new Set(l)];
+// seçenek değerinin yanında paketin açıklaması ("agdan — ağdaki herkes"); değer değişmez
+const valueText = (x, v) => (x.valueLabels && Object.hasOwn(x.valueLabels, v) ? `${v} — ${x.valueLabels[v]}` : v);
 const chips = list => list.map(v => `<span class="chip">${esc(v)}</span>`).join("") || '<span class="muted">—</span>';
 const risks = x => (x.risk || []).filter(r => RISK[r]).map(r => `<span class="badge ${RISK[r][0]}" title="${esc(x.riskNote || "")}">${RISK[r][1]}</span>`).join("");
 const since = iso => { const v = ago(iso); return v === "şimdi" ? v : `${v} önce`; };
@@ -86,7 +88,7 @@ export function initPkgSettings(hooks) {
     if (!v) return `<span class="small muted">değişken bulunamadı: <span class="mono">${esc(x.var)}</span></span>`;
     const val = valueOf(v), attr = `data-var="${esc(v.name)}" aria-label="${esc(x.label)}"`;
     if (v.type === "bool") return `<input type="checkbox" ${attr}${val.toLowerCase() === "true" ? " checked" : ""}>`;
-    if (v.values && v.values.length) return `<select ${attr}>${v.values.map(o => `<option value="${esc(o)}"${o === val ? " selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
+    if (v.values && v.values.length) return `<select ${attr}>${v.values.map(o => `<option value="${esc(o)}"${o === val ? " selected" : ""}>${esc(valueText(x, o))}</option>`).join("")}</select>`;
     const type = /^(int|integer|number|float)$/.test(v.type) ? "number" : "text";
     return `<input type="${type}" ${attr} value="${esc(val)}" placeholder="${esc(v.default || "boş = dokunma")}" spellcheck="false" autocomplete="off">${/^list/.test(v.type) ? '<div class="small muted">Birden çok değeri virgülle ayırın.</div>' : ""}`;
   }
@@ -127,7 +129,7 @@ export function initPkgSettings(hooks) {
       // uyumluysa istenen yazım gösterilir (sonuç satırı '/' gibi karakterleri '_' yapar)
       const have = x.status === "match" ? x.desired : x.actual;
       put($('[data-live="state"]', el), `<span class="badge ${cls}">${label}</span>`);
-      put($('[data-live="have"]', el), `<div class="set-have"><span class="small muted">Sunucuda:</span>${chips(have || [])}</div>${x.note ? `<div class="small muted">${esc(x.note)}</div>` : ""}`);
+      put($('[data-live="have"]', el), `<div class="set-have"><span class="small muted">Sunucuda:</span>${chips((have || []).map(v => valueText(x, v)))}</div>${x.note ? `<div class="small muted">${esc(x.note)}</div>` : ""}`);
     }
     const changed = dirty().length > 0;
     const byId = id => p.actions.find(a => a.id === id);
