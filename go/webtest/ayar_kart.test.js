@@ -254,7 +254,7 @@ test("zincir başlatılamazsa söylenir; yıkıcı ve adlı düğmeler; eksik de
   await openCard(e, "saat"); assert.ok(btn(e, "Uygula").disabled); assert.match(btn(e, "Uygula").title, /v_zorunlu/); e.close();
 });
 
-test("zincir bitince okumalar yeniden koşmaz; yalnız toparlanmamış sağlık özeti okunur", async () => {
+test("zincir bitince güncel okumalar yeniden koşmaz; yalnız toparlanmamış sağlık özeti okunur", async () => {
   const saglam = await open({ run: fakeRun() });
   await openCard(saglam, "saat"); await saglam.click(btn(saglam, "Uygula"));
   await exitEvent(saglam, "ntp_ayarla"); await advance(saglam, 60000); assert.deepEqual(runs(saglam), []); saglam.close();
@@ -265,6 +265,26 @@ test("zincir bitince okumalar yeniden koşmaz; yalnız toparlanmamış sağlık 
   // aynı eylem sonradan zincirsiz biterse (Genel eylemler) bütün okumalar koşar
   await exitEvent(hasta, "ntp_ayarla"); await advance(hasta, 5000); await finishRound(hasta, 2);
   assert.deepEqual(reads(hasta).slice(1), ["durum", "ntp_durum"]); assert.deepEqual(hasta.errors, []); hasta.close();
+});
+
+test("zincirin okumadığı kartta okuma eskidiyse arka planda yalnız o yenilenir (ayar ya da sağlık özeti)", async () => {
+  const eskiAyar = SETTINGS.map(x => (x.id === "zone" ? { ...x, stale: true } : x));
+  const a = await open({ run: fakeRun(), settings: eskiAyar });
+  await openCard(a, "saat"); await a.click(btn(a, "Uygula"));
+  await exitEvent(a, "ntp_ayarla"); await advance(a, 4000); assert.deepEqual(runs(a), []);
+  await advance(a, 1000); await finishRound(a, 1); await advance(a, 60000);
+  assert.deepEqual(reads(a), ["durum"], "güncel olan ntp_durum yeniden okunmaz"); assert.deepEqual(a.errors, []); a.close();
+  const ozet = await open({ run: fakeRun(), cards: [CARDS[0], { ...CARDS[1], readAction: "durum", stale: true }] });
+  await openCard(ozet, "saat"); await ozet.click(btn(ozet, "Uygula"));
+  await exitEvent(ozet, "ntp_ayarla"); await advance(ozet, 5000); await finishRound(ozet, 1); await advance(ozet, 60000);
+  assert.deepEqual(reads(ozet), ["durum"]); assert.deepEqual(ozet.errors, []); ozet.close();
+});
+
+test("yeni eylem başlatılınca bekleyen arka plan okuması bırakılır", async () => {
+  const h = await open({ run: fakeRun() });
+  await exitEvent(h, "ntp_ayarla"); await advance(h, 2000);
+  await openCard(h, "saat"); await h.click(btn(h, "Uygula")); assert.equal(tasks(h).length, 1);
+  await advance(h, 60000); assert.deepEqual(runs(h), [], "eylem sürerken okuma koşmaz"); assert.deepEqual(h.errors, []); h.close();
 });
 
 test("üstte ortak iletişim penceresi (ör. Python denetimi) varken Esc yalnız onu kapatır", async () => {
