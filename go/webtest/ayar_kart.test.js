@@ -458,3 +458,17 @@ test("bekleme sırasında yeni bir uygulama biterse eski sıra bırakılır, oku
   assert.deepEqual(reads(h), ["durum", "ntp_durum", "durum", "ntp_durum"], "ikinci uygulama da okunur");
   await advance(h, 120000); assert.equal(runs(h).length, 4, "eski sıranın yeniden denemesi koşmaz"); assert.deepEqual(h.errors, []); h.close();
 });
+
+test("seçenek açıklaması: açılır listede ve Sunucuda satırında değerin yanında; kaydedilen değer değişmez; HTML yorumlanmaz", async () => {
+  const labels = { agdan: "ağdaki herkes", sunucu: '<img src=x onerror="window.__x=1">' };
+  const h = await open({ cards: [CARDS[0]], settings: [set("kaynak", "drift", { desired: ["sunucu"], actual: ["agdan"], valueLabels: labels })],
+    vars: [V("v_kaynak", { type: "enum", values: ["otomatik", "sunucu", "agdan"], default: "otomatik" })] });
+  await openCard(h, "saat");
+  const sel = ctl(h, "v_kaynak");
+  assert.deepEqual([...sel.options].map(o => [o.value, o.textContent]), [["otomatik", "otomatik"], ["sunucu", 'sunucu — <img src=x onerror="window.__x=1">'], ["agdan", "agdan — ağdaki herkes"]]);
+  assert.equal(txt(field(h, "kaynak").querySelector('[data-live="have"] .chip')), "agdan — ağdaki herkes");
+  assert.equal(h.$("#setmodal img"), null); assert.equal(h.win.__x, undefined);
+  await edit(h, "v_kaynak", "agdan"); await h.click(btn(h, "Kaydet"));
+  assert.deepEqual(h.w.posts.map(p => p.value), ["agdan"]); assert.deepEqual(h.errors, []); h.close();
+});
+

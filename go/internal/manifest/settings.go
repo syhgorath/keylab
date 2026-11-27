@@ -24,10 +24,11 @@ const (
 	setSumMax    = 6
 	setSumLabel  = 30
 	setSumUnit   = 8
+	setValLabels = 20
 )
 
 var (
-	setFields     = []string{"id", "label", "var", "description", "risk", "risk_note", "apply_via", "state", "card"}
+	setFields     = []string{"id", "label", "var", "description", "risk", "risk_note", "apply_via", "state", "card", "value_labels"}
 	setCardFields = []string{"id", "label", "description", "summary"}
 	setSumFields  = []string{"action", "items"}
 	setItemFields = []string{"key", "label", "ok", "max_abs", "unit"}
@@ -36,6 +37,31 @@ var (
 	setRisks      = []string{"access-loss", "restarts-service", "time-jump", "data-loss"}
 	setComparisns = []string{"exact", "set", "ordered", "present"}
 )
+
+// validateValueLabels: seçenekli (enum) değişkenin değerlerine kısa açıklama: {"<değer>": "<açıklama>"}. Yalnız arayüzde gösterilir.
+func validateValueLabels(v *validator, w string, x any, spec varSpec, declared bool) {
+	if !declared || spec.typ != "enum" {
+		v.err("%s: value_labels yalnız seçenekli (enum) değişken için kullanılır", w)
+		return
+	}
+	o, ok := asObj(x)
+	if !ok || o.len() < 1 || o.len() > setValLabels {
+		v.err("%s: value_labels 1-%d değer içeren nesne olmalı", w, setValLabels)
+		return
+	}
+	values, _ := asList(spec.v.getDef("values", []any{}))
+	for _, k := range o.keys {
+		if !listHas(values, k) {
+			v.err("%s.value_labels: '%s' değişkenin değerleri arasında yok", w, k)
+			continue
+		}
+		if s, isStr := asStr(o.get(k)); !isStr || s == "" {
+			v.err("%s.value_labels.%s: açıklama boş olamaz", w, k)
+		} else {
+			v.textOK(s, w+".value_labels."+k, setLabelMax)
+		}
+	}
+}
 
 // uniqueStrings, x 1-max öğeli, yinelenmeyen metin listesiyse onu döndürür.
 func uniqueStrings(x any, max int) ([]string, bool) {
@@ -147,6 +173,9 @@ func validateSettings(v *validator, d *obj, actions *obj, varSpecs map[string]va
 		}
 		if so.has("risk_note") {
 			v.textOK(so.get("risk_note"), w+".risk_note", setNoteMax)
+		}
+		if so.has("value_labels") {
+			validateValueLabels(v, w, so.get("value_labels"), spec, declared)
 		}
 		apply, aok := uniqueStrings(so.get("apply_via"), setApplyMax)
 		for _, a := range apply {

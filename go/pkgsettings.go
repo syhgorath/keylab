@@ -22,8 +22,10 @@ type settingDecl struct {
 	Description string   `json:"description"`
 	Risk        []string `json:"risk"`
 	RiskNote    string   `json:"risk_note"`
-	ApplyVia    []string `json:"apply_via"`
-	Card        string   `json:"card"`
+	// enum değerlerinin arayüzde gösterilen açıklamaları
+	ValueLabels map[string]string `json:"value_labels"`
+	ApplyVia    []string          `json:"apply_via"`
+	Card        string            `json:"card"`
 	State       *struct {
 		Action      string   `json:"action"`
 		Key         string   `json:"key"`
@@ -152,22 +154,23 @@ const (
 )
 
 type SettingInfo struct {
-	ID          string   `json:"id"`
-	Label       string   `json:"label"`
-	Group       string   `json:"group"`          // değişkenin grubu: kart bildirilmemişse kart başlığı
-	Card        string   `json:"card,omitempty"` // setting_cards kimliği
-	Var         string   `json:"var"`
-	Description string   `json:"description,omitempty"`
-	Risk        []string `json:"risk,omitempty"`
-	RiskNote    string   `json:"riskNote,omitempty"`
-	ApplyVia    []string `json:"applyVia"`
-	ReadAction  string   `json:"readAction,omitempty"`
-	Desired     []string `json:"desired"`
-	Actual      []string `json:"actual"`
-	Status      string   `json:"status"`
-	Note        string   `json:"note,omitempty"`
-	ReadTime    string   `json:"readTime,omitempty"`
-	Stale       bool     `json:"stale,omitempty"` // okumadan sonra değiştiren bir eylem çalıştı
+	ID          string            `json:"id"`
+	Label       string            `json:"label"`
+	Group       string            `json:"group"`          // değişkenin grubu: kart bildirilmemişse kart başlığı
+	Card        string            `json:"card,omitempty"` // setting_cards kimliği
+	Var         string            `json:"var"`
+	Description string            `json:"description,omitempty"`
+	Risk        []string          `json:"risk,omitempty"`
+	RiskNote    string            `json:"riskNote,omitempty"`
+	ValueLabels map[string]string `json:"valueLabels,omitempty"`
+	ApplyVia    []string          `json:"applyVia"`
+	ReadAction  string            `json:"readAction,omitempty"`
+	Desired     []string          `json:"desired"`
+	Actual      []string          `json:"actual"`
+	Status      string            `json:"status"`
+	Note        string            `json:"note,omitempty"`
+	ReadTime    string            `json:"readTime,omitempty"`
+	Stale       bool              `json:"stale,omitempty"` // okumadan sonra değiştiren bir eylem çalıştı
 }
 
 var reNotResultChar = regexp.MustCompile(`[^A-Za-z0-9_.:+-]`)
@@ -240,7 +243,7 @@ func (a *App) settingInfos(s Server, p Package, decls []settingDecl, groups map[
 		if !reName.MatchString(d.ID) || !reName.MatchString(d.Var) {
 			continue
 		}
-		info := SettingInfo{ID: d.ID, Label: d.Label, Group: groups[d.Var], Var: d.Var, Description: d.Description, Risk: d.Risk, RiskNote: d.RiskNote,
+		info := SettingInfo{ID: d.ID, Label: d.Label, Group: groups[d.Var], Var: d.Var, Description: d.Description, Risk: d.Risk, RiskNote: d.RiskNote, ValueLabels: d.ValueLabels,
 			Card: d.Card, ApplyVia: d.ApplyVia, Desired: splitList(effective[d.Var], ","), Actual: []string{}}
 		if info.ApplyVia == nil {
 			info.ApplyVia = []string{}

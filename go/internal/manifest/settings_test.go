@@ -23,7 +23,8 @@ const setBase = `{
  },
  "vars":[
   {"name":"demo_ntp","type":"list[string]","default":[],"group":"NTP","description":"x"},
-  {"name":"demo_zone","type":"string","default":"","group":"Zaman"}
+  {"name":"demo_zone","type":"string","default":"","group":"Zaman"},
+  {"name":"demo_erisim","type":"enum","values":["otomatik","agdan"],"default":"otomatik"}
  ],
  "settings":%s}`
 
@@ -35,7 +36,8 @@ const setGood = `[
  {"id":"ntp","label":"NTP sunucuları","var":"demo_ntp","description":"d","risk":["time-jump"],"risk_note":"n","apply_via":["apply"],
   "state":{"action":"durum","keys":["k1","k2"],"compare":"set","source":"result","strip_prefix":["server ","pool "]}},
  {"id":"zone","label":"Saat dilimi","var":"demo_zone","description":"d","apply_via":["apply"],"state":{"action":"durum","key":"zone","absent":"yok","ignore":["otomatik"],"not_applicable":["dagitim","ic"]}},
- {"id":"duz","label":"Okunmayan","var":"demo_zone","description":"d","apply_via":["apply"]}
+ {"id":"duz","label":"Okunmayan","var":"demo_zone","description":"d","apply_via":["apply"]},
+ {"id":"erisim","label":"Erişim","var":"demo_erisim","description":"d","apply_via":["apply"],"value_labels":{"otomatik":"dışarı açmaz","agdan":"ağdaki herkes"}}
 ]`
 
 func TestSettingsValid(t *testing.T) {
@@ -60,6 +62,9 @@ func TestSettingsRejects(t *testing.T) {
 		return `[{"id":"a","label":"A","var":"demo_zone","apply_via":["apply"]` + extra + `}]`
 	}
 	st := func(body string) string { return one(`,"state":{` + body + `}`) }
+	en := func(labels string) string {
+		return `[{"id":"a","label":"A","var":"demo_erisim","apply_via":["apply"],"value_labels":` + labels + `}]`
+	}
 	for _, tc := range []struct{ name, settings, want string }{
 		{"liste değil", `{}`, "settings 1-40"},
 		{"boş liste", `[]`, "settings 1-40"},
@@ -94,6 +99,13 @@ func TestSettingsRejects(t *testing.T) {
 		{"not_applicable boşluklu", st(`"action":"durum","key":"zone","not_applicable":["iç ağ"]`), "not_applicable en çok"},
 		{"not_applicable unknown", st(`"action":"durum","key":"zone","not_applicable":["unknown"]`), "not_applicable en çok"},
 		{"not_applicable absent ile aynı", st(`"action":"durum","key":"zone","absent":"yok","not_applicable":["yok"]`), "not_applicable en çok"},
+		{"value_labels enum olmayan", one(`,"value_labels":{"a":"b"}`), "yalnız seçenekli"},
+		{"value_labels bilinmeyen değer", en(`{"yok":"x"}`), "değerleri arasında yok"},
+		{"value_labels boş açıklama", en(`{"agdan":""}`), "boş olamaz"},
+		{"value_labels sayı açıklama", en(`{"agdan":1}`), "boş olamaz"},
+		{"value_labels uzun açıklama", en(`{"agdan":"` + strings.Repeat("u", 61) + `"}`), "value_labels.agdan"},
+		{"value_labels boş nesne", en(`{}`), "değer içeren nesne"},
+		{"value_labels liste", en(`["agdan"]`), "değer içeren nesne"},
 		{"kart tanımsız", one(`,"card":"yok"`), "card, setting_cards"},
 	} {
 		_, errs, code := setValidate(tc.settings)
