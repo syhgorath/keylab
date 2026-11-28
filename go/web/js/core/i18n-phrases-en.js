@@ -118,7 +118,7 @@ window.KeyLabPhrasesEN = {
     "Dizi (port sırası)": "Sequence (port order)", "Vuruşlar arası bekleme (ms)": "Delay between knocks (ms)",
     "Yazdıklarımı göster": "Show what I type", "Evet (e)": "Yes (y)", "Hayır (H)": "No (N)", "Devam · onay": "Continue · confirm",
     "1 · Önizleme": "1 · Preview", "2 · Onay": "2 · Confirm", "3 · Uygula": "3 · Apply",
-    "Onayla ve çalıştır…": "Confirm and run…", "Önizle ve uygula": "Preview and apply", "Önce önizleme koşar; sonuca bakıp terminalde e yazarsanız uygulanır (Enter: hayır)": "The preview runs first; check it, then type e in the terminal to apply (Enter: no)", "Onayla (taslak)": "Confirm (draft)", "Paket eylemi (taslak)…": "Package action (draft)…",
+    "Onayla ve çalıştır…": "Confirm and run…", "Önizle ve uygula": "Preview and apply", "Önce kaldırma önizlemesi koşar; terminalde e yazarsanız kaldırılır (Enter: hayır)": "The removal preview runs first; type e in the terminal to remove (Enter: no)", "Önce önizleme koşar; sonuca bakıp terminalde e yazarsanız uygulanır (Enter: hayır)": "The preview runs first; check it, then type e in the terminal to apply (Enter: no)", "Onayla (taslak)": "Confirm (draft)", "Paket eylemi (taslak)…": "Package action (draft)…",
     "Seçili sunucuda bağlam menüsü": "Context menu on the selected server", "Sayfa içi kutu": "In-page box",
     "Motor girdi bekliyor": "Engine waiting for input", "Yanıt": "Reply", "Dışarıya açık": "Exposed externally",
     "Parolayı bu sayfaya yazmak istemezseniz": "If you do not want to type the passphrase on this page",
