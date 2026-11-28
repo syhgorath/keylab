@@ -279,7 +279,7 @@ export function initServer(hooks) {
 
   // Öğenin kurulu bilgisi: `<kimlik>_kurulu` bildiren okumalarla genel okumanın `kurulu` listesinden EN YENİSİ. Uygulama başına okuma yapan pakette
   // kurulumdan sonra yalnız o uygulama okunur, genel özet eski kalabilir. Hiçbir okuma bir şey söylemiyorsa null ("durum okunmadı").
-  function itemState(p, overview, id) {
+  function itemState(p, overview, id, listed) {
     let best = null;
     const take = (a, on, mode, port) => { const t = a.lastTime || ""; if (!best || t > best.t) best = { t, on, mode: mode === "yok" ? "" : mode, port: /^\d+$/.test(port || "") ? port : "" }; };
     for (const a of p.actions) {
@@ -288,7 +288,7 @@ export function initServer(hooks) {
       take(a, own !== "hayir", k[id + "_mod"], k[id + "_port"]);
     }
     const k = (overview && overview.keys) || {};
-    if ("kurulu" in k && !["evet", "durmus", "hayir"].includes(k[id + "_kurulu"])) {
+    if (listed && "kurulu" in k && !["evet", "durmus", "hayir"].includes(k[id + "_kurulu"])) {
       const inst = Object.fromEntries(splitPlus(k.kurulu)), ports = Object.fromEntries(splitPlus(k.portlar));
       take(overview, id in inst, inst[id], ports[id]);
     }
@@ -308,10 +308,15 @@ export function initServer(hooks) {
     if (appState.view === "server" && appState.srvTab === pkg && appState.srv) renderServer();
   }
 
-  function catalogStore(s, p, ok, na, items) {
+  // Katalog listesinde olmayan uygulama kartları: salt okunur bir eylemi `<kart>_kurulu` anahtarını bildiren ayar kartı (genel `kurulu` listesinde yer almaz).
+  const appCards = (p, items) => cardsOf(p).filter(c => !items.some(it => it.id === c.id) && p.actions.some(a => !(a.effects || []).length && (a.outKeys || []).includes(c.id + "_kurulu")))
+    .map(c => ({ id: c.id, label: c.label, own: true }));
+
+  function catalogStore(s, p, ok, na, listed) {
     const legacy = !(p.items && p.items.length);
+    const items = listed.concat(appCards(p, listed));
     const d = p.actions.find(a => a.id === (p.id === "utility" ? "kurulum_durum" : "durum"));
-    const states = Object.fromEntries(items.map(it => [it.id, itemState(p, d, it.id)]));
+    const states = Object.fromEntries(items.map(it => [it.id, itemState(p, d, it.id, !it.own)]));
     const known = items.some(it => states[it.id]);
     const dattr = d ? actBtnAttr(d, p) : "";
     const onN = items.filter(it => states[it.id]?.on).length, offN = items.filter(it => states[it.id] && !states[it.id].on).length;
