@@ -98,3 +98,30 @@ test("katalog rozeti: genel okuma hiç yapılmadıysa yalnız okunan uygulamalar
   assert.equal(h.$(".store-head + .notice"), null, "en az bir okuma varsa 'henüz okunmadı' uyarısı yok");
   assert.deepEqual(h.errors, []); h.close();
 });
+
+// yerleşik listede olmayan uygulama (ör. proxy): ayar kartı + `<kart>_kurulu` bildiren salt okunur eylem
+const proxy = (keys, extra = {}) => d => {
+  const u = pkg(d, "utility");
+  u.settingCards = [{ id: "proxy", label: "Nginx Proxy Manager", description: "ters proxy" }, { id: "sistem", label: "Sistem" }];
+  u.settings = ["proxy", "sistem"].map(card => ({ id: card + "_a", label: "Ad", card, var: "v_" + card, applyVia: [card + "_kur"], desired: [], actual: [], status: "unknown" }));
+  read("proxy_durum", T2, keys, { outKeys: ["proxy_kurulu", "proxy_mod"], ...extra })(d);
+  read("durum", T2, {}, { outKeys: ["sistem_kurulu"], effects: ["changes-config"] })(d); // değiştiren eylem kart tanımlamaz
+};
+const appEl = (h, id) => h.$(`#store-grid .app-card[data-setcard="${id}"]`);
+
+test("listede olmayan uygulama kartı: rozet, süzgeç ve sayılar; uygulama olmayan ayar kartı sayılmaz", async () => {
+  const h = await open(compose(overview(T1), proxy({ proxy_kurulu: "evet", proxy_mod: "docker" })));
+  assert.equal(appEl(h, "proxy").dataset.st, "on"); assert.match(appEl(h, "proxy").textContent.replace(/\s+/g, " "), /✔ Kurulu \(docker\)/);
+  assert.equal(appEl(h, "sistem").dataset.st, "settings"); assert.doesNotMatch(appEl(h, "sistem").textContent, /Kurul|durum okunmadı/);
+  assert.deepEqual(chips(h), ["Tümü 6", "Kurulu 3", "Kurulabilir 2"]);
+  await h.click('#srv-body [data-sf="on"]'); assert.equal(appEl(h, "proxy").hidden, false); assert.equal(appEl(h, "sistem").hidden, true);
+  assert.deepEqual(h.errors, []); h.close();
+});
+
+test("listede olmayan uygulama: okunmadan 'durum okunmadı'; genel okumanın listesi onu 'Kurulmadı' yapmaz", async () => {
+  const bos = await open(compose(overview(T2), proxy({}, { lastTime: "" })));
+  assert.equal(appEl(bos, "proxy").dataset.st, "?"); assert.match(appEl(bos, "proxy").textContent, /durum okunmadı/); bos.close();
+  const eski = await open(compose(overview("2026-11-10T12:00:00Z"), proxy({ proxy_kurulu: "evet" })));
+  assert.equal(appEl(eski, "proxy").dataset.st, "on", "daha yeni genel okuma uygulamayı bilmiyor"); eski.close();
+});
+

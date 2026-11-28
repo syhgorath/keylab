@@ -33,10 +33,11 @@ type ActionInfo struct {
 	Destructive  bool              `json:"destructive"`
 	Prereqs      []Prereq          `json:"prereqs,omitempty"`
 	PrereqsOK    bool              `json:"prereqsOk"`
-	Terminal     bool              `json:"terminal"`         // sudo parolası gerektiren salt okunur eylem: macOS Terminal'de çalıştırılabilir
-	Runnable     bool              `json:"runnable"`         // arayüzden çalıştırılabilir mi (şimdilik yalnızca salt okunur, sudo'suz, onaysız, önkoşulsuz)
-	Reason       string            `json:"reason,omitempty"` // çalıştırılamıyorsa nedeni
-	Review       bool              `json:"review,omitempty"` // "Önizle ve uygula": önizleme → terminalde e/h → eylem tek koşuda
+	Terminal     bool              `json:"terminal"`          // sudo parolası gerektiren salt okunur eylem: macOS Terminal'de çalıştırılabilir
+	Runnable     bool              `json:"runnable"`          // arayüzden çalıştırılabilir mi (şimdilik yalnızca salt okunur, sudo'suz, onaysız, önkoşulsuz)
+	Reason       string            `json:"reason,omitempty"`  // çalıştırılamıyorsa nedeni
+	Review       bool              `json:"review,omitempty"`  // "Önizle ve uygula": önizleme → terminalde e/h → eylem tek koşuda
+	OutKeys      []string          `json:"outKeys,omitempty"` // bildirilen sonuç anahtarları (outputs.keys)
 	LastTime     string            `json:"lastTime,omitempty"`
 	LastResult   string            `json:"lastResult,omitempty"`
 	Keys         map[string]string `json:"keys,omitempty"`
@@ -234,6 +235,9 @@ func (a *App) buildPackageInfo(s Server, p Package, itemOverride string) (Packag
 			Warnings     []string `json:"warnings"`
 			Platforms    []string `json:"platforms"`
 			RequiresVars []string `json:"requires_vars"`
+			Outputs      struct {
+				Keys []string `json:"keys"`
+			} `json:"outputs"`
 		} `json:"actions"`
 		Vars []struct {
 			Name        string          `json:"name"`
@@ -315,7 +319,7 @@ func (a *App) buildPackageInfo(s Server, p Package, itemOverride string) (Packag
 		if !reName.MatchString(id) {
 			continue
 		}
-		ai := ActionInfo{ID: id, Effects: x.Effects, RequiresSud: x.RequiresSudo, Confirm: x.Confirm, Requires: x.Requires, Warnings: x.Warnings, Platforms: x.Platforms, Applicable: len(x.Platforms) == 0}
+		ai := ActionInfo{ID: id, OutKeys: x.Outputs.Keys, Effects: x.Effects, RequiresSud: x.RequiresSudo, Confirm: x.Confirm, Requires: x.Requires, Warnings: x.Warnings, Platforms: x.Platforms, Applicable: len(x.Platforms) == 0}
 		for _, pl := range x.Platforms {
 			if pl == s.Platform {
 				ai.Applicable = true

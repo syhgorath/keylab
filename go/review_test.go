@@ -81,3 +81,23 @@ func TestReviewFlag(t *testing.T) {
 		}
 	}
 }
+
+// Bildirilen sonuç anahtarları arayüze gider (katalog, uygulama kartını bunlardan tanır).
+func TestActionOutKeys(t *testing.T) {
+	a := batchApp(t)
+	writePkg(t, a.compDir, "demo", "0.2.0", reviewPkg)
+	s, ok := a.findServerQuiet("s1")
+	if !ok {
+		t.Fatal("sunucu yok")
+	}
+	for _, p := range a.packageInfosFor(s, "") {
+		for _, x := range p.Actions {
+			if p.ID == "demo" && x.ID == "durum" && !(len(x.OutKeys) == 1 && x.OutKeys[0] == "zone") {
+				t.Errorf("durum anahtarları: %v", x.OutKeys)
+			}
+			if p.ID == "demo" && x.ID == "preview" && len(x.OutKeys) != 0 {
+				t.Errorf("preview anahtarları: %v", x.OutKeys)
+			}
+		}
+	}
+}
