@@ -69,9 +69,11 @@ export function initPkgSettings(hooks) {
   // app: katalogdaki bir uygulamanın yerini alan kart için { <kart kimliği>: { st: "on"|"off"|"?", badge, icon } } (kurulu bilgisi katalogdan)
   const cards = (p, app = {}) => cardsOf(p).map(c => {
     const a = Object.hasOwn(app, c.id) ? app[c.id] : null;
+    // kurulu uygulamada kaldırma: paketin `<kart>_kaldir` eylemi (önizlemeli, e/h terminalde); onay düğmeyle verilmez
+    const rm = a && a.st === "on" && (p.actions || []).find(x => x.id === c.id + "_kaldir" && x.review);
     return `<div class="card app-card set-app" data-setcard="${esc(c.id)}" data-st="${a ? a.st : "settings"}">
       <div class="app-top"><div class="app-ico" aria-hidden="true">${a ? a.icon : "⚙️"}</div><div class="app-titles"><div class="app-title"><span>${esc(c.label)}</span><span class="set-badges">${a ? a.badge : ""}${cardBadge(c)}</span></div><p class="app-desc">${esc(c.description)}</p></div></div>
-      ${healthHtml(c)}<div class="app-foot"><span class="small muted">${whenHtml(p, c)}</span><div class="app-btns"><button class="btn sm primary" data-setopen="${esc(c.id)}">Ayarlar</button></div></div></div>`;
+      ${healthHtml(c)}<div class="app-foot"><span class="small muted">${whenHtml(p, c)}</span><div class="app-btns">${rm ? `<button class="btn sm dangerbtn" data-review="${esc(p.id)}|${esc(rm.id)}" title="Önce kaldırma önizlemesi koşar; terminalde e yazarsanız kaldırılır (Enter: hayır)">Kaldır</button>` : ""}<button class="btn sm primary" data-setopen="${esc(c.id)}">Ayarlar</button></div></div></div>`;
   }).join("");
 
   const pkgNow = () => appState.srv && (appState.srv.packages || []).find(x => x.id === cur.pkg);

@@ -125,3 +125,20 @@ test("listede olmayan uygulama: okunmadan 'durum okunmadı'; genel okumanın lis
   assert.equal(appEl(eski, "proxy").dataset.st, "on", "daha yeni genel okuma uygulamayı bilmiyor"); eski.close();
 });
 
+const removable = (keys, review = true) => compose(overview(T1), proxy(keys), d => {
+  const u = pkg(d, "utility"), base = u.actions.find(a => a.id === "kurulum_durum");
+  for (const id of ["proxy_kaldir", "sistem_kaldir"]) u.actions.push({ ...JSON.parse(JSON.stringify(base)), id, keys: {}, effects: ["changes-config"], runnable: false, review });
+});
+
+test("kartta Kaldır: yalnız kurulu uygulamada ve inceleme eyleminde; zinciri terminalde açar", async () => {
+  const h = await open(removable({ proxy_kurulu: "evet" }));
+  const btn = appEl(h, "proxy").querySelector("[data-review]");
+  assert.equal(btn.textContent, "Kaldır"); assert.ok(btn.classList.contains("dangerbtn")); assert.match(btn.title, /Enter: hayır/);
+  assert.equal(appEl(h, "sistem").querySelector("[data-review]"), null, "uygulama olmayan kartta yok");
+  await h.click('#store-grid [data-review="utility|proxy_kaldir"]');
+  assert.deepEqual(h.calls.filter(x => x.path === "/api/term/task").map(({ body }) => [body.package, body.action, body.chain]), [["utility", "proxy_kaldir", true]]); h.close();
+  for (const [name, f] of [["kurulu değil", removable({ proxy_kurulu: "hayir" })], ["okunmadı", removable({})], ["inceleme eylemi değil", removable({ proxy_kurulu: "evet" }, false)]]) {
+    const x = await open(f); assert.equal(appEl(x, "proxy").querySelector("[data-review]"), null, name); x.close();
+  }
+});
+

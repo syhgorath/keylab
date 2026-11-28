@@ -34,7 +34,9 @@ const chainPkg = `{
   "serbest_ayarla":{"cmd":"ansible-playbook playbooks/serbest_ayarla.yml","effects":["changes-config"],"requires":["preview"],"confirm":"yes-no","warnings":["w"]},
   "baska":{"cmd":"ansible-playbook playbooks/baska.yml","effects":["changes-config"],"requires":["preview"],"confirm":"yes-no","warnings":["w"]},
   "onizlemesiz":{"cmd":"ansible-playbook playbooks/o.yml","effects":["changes-config"],"confirm":"yes-no","warnings":["w"]},
-  "adli":{"cmd":"ansible-playbook playbooks/a.yml","effects":["changes-config"],"requires":["preview"],"confirm":"type-server-name","warnings":["w"]}
+  "adli":{"cmd":"ansible-playbook playbooks/a.yml","effects":["changes-config"],"requires":["preview"],"confirm":"type-server-name","warnings":["w"]},
+  "saat_kaldir":{"cmd":"ansible-playbook playbooks/sk.yml","effects":["changes-config"],"requires":["preview"],"confirm":"yes-no","warnings":["w"]},
+  "yok_kaldir":{"cmd":"ansible-playbook playbooks/yk.yml","effects":["changes-config"],"requires":["preview"],"confirm":"yes-no","warnings":["w"]}
  },
  "vars":[{"name":"demo_zone","type":"string","default":"","group":"Zaman","description":"x"},{"name":"demo_saat","type":"string","default":"","group":"Zaman","description":"x"},{"name":"demo_adim","type":"string","default":"","group":"Zaman","description":"x"},{"name":"demo_serbest","type":"string","default":"","group":"Zaman","description":"x"},{"name":"demo_serbest2","type":"string","default":"","group":"Zaman","description":"x"}],
  "setting_cards":[{"id":"sistem","label":"Sistem","summary":{"action":"kok","items":[{"key":"zone","label":"Dilim"}]}},
@@ -146,6 +148,15 @@ func TestChainPlan(t *testing.T) {
 	}
 	if _, err := ChainPlan(raw, "yikici_eh", ""); err == nil || !strings.Contains(err.Error(), "zincirlenmez") {
 		t.Fatalf("adsız yıkıcı eylem: %v", err)
+	}
+	// uygulama kaldırma: onay yine terminalde; sonunda yalnız adını taşıdığı kart okunur
+	for action, want := range map[string][]string{"saat_kaldir": {"saat_kardes", "saat_oku", "saat_ozet"}, "yok_kaldir": nil} {
+		got, err := ChainPlan(info, action, "")
+		post := slices.Clone(got.Post)
+		slices.Sort(post)
+		if err != nil || !got.Ask || !reflect.DeepEqual(got.Pre, []string{"preview"}) || len(post) != len(want) || (len(want) > 0 && !reflect.DeepEqual(post, want)) {
+			t.Errorf("%s: %+v %v (beklenen okumalar %v)", action, got, err, want)
+		}
 	}
 	// kartı olmayan, önizlemeli e/h eylemi: kontrol adımı yok ve onay düğmeyle verilmez
 	if got, err := ChainPlan(info, "baska", ""); err != nil || !got.Ask || !reflect.DeepEqual(got.Steps(), []string{"preview", "baska"}) {

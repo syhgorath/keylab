@@ -28,7 +28,7 @@ func (c Chain) Steps() []string {
 }
 
 // ChainPlan: zinciri manifestten çıkarır. İki tür vardır: bir ayar kartının uygulama eylemi ("Kur": düğme e/h onayıdır, sonunda kontrol) ve
-// kartı olmayan, önizlemesi (requires) bulunan e/h onaylı eylem ("Önizle ve uygula": e/h terminalde sorulur, kontrol adımı yoktur). Yıkıcı eylem
+// kartı olmayan, önizlemesi (requires) bulunan e/h onaylı eylem ("Önizle ve uygula": e/h terminalde sorulur; yalnız `<kart>_kaldir` eyleminde sonunda o kart okunur). Yıkıcı eylem
 // ancak sunucu adı onayı istiyorsa ve bir karta bağlıysa kabul edilir (o onay terminalde elle verilir).
 func ChainPlan(info []string, action, platform string) (Chain, error) {
 	c := Chain{Action: action}
@@ -39,6 +39,10 @@ func ChainPlan(info []string, action, platform string) (Chain, error) {
 	c.Ask = !linked
 	if c.Ask && (manifest.ActionGet(info, action, "confirm") != "yes-no" || manifest.ActionGet(info, action, "requires") == "") {
 		return c, fmt.Errorf("'%s' zincirlenmez: bir ayar kartının uygulama eylemi ya da önizlemesi olan e/h onaylı bir eylem olmalı.", action)
+	}
+	// uygulama kaldırma (`<kart>_kaldir`): ayar eylemi değildir ama sonunda o kart yeniden okunur ki rozet eski kalmasın
+	if card, removal := strings.CutSuffix(action, "_kaldir"); c.Ask && removal {
+		reads = cardReads(info, card)
 	}
 	if has(strings.Split(manifest.ActionGet(info, action, "effects"), ","), "destructive") && manifest.ActionGet(info, action, "confirm") != "type-server-name" {
 		return c, fmt.Errorf("'%s' yıkıcı ve sunucu adı onayı istemiyor; zincirlenmez.", action)
@@ -90,6 +94,24 @@ func affectedReads(info []string, action string) (reads []string, linked bool) {
 		}
 	}
 	return reads, linked
+}
+
+// cardReads: bir ayar kartının okumaları: kartın sağlık özeti ve karttaki ayarlar.
+func cardReads(info []string, card string) (reads []string) {
+	ids := map[string]bool{"setting_card." + card: true}
+	for _, line := range info {
+		key, val, ok := strings.Cut(line, "=")
+		if id, in := strings.CutSuffix(key, ".card"); ok && in && val == card {
+			ids[id] = true
+		}
+	}
+	for _, line := range info {
+		key, val, ok := strings.Cut(line, "=")
+		if id, read := strings.CutSuffix(key, ".read"); ok && read && ids[id] {
+			reads = append(reads, val)
+		}
+	}
+	return reads
 }
 
 func has(list []string, x string) bool {
